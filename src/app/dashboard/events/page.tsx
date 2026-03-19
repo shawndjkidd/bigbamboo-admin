@@ -4,7 +4,7 @@ import { supabase } from '@/lib/supabase'
 
 const BLANK_EVENT = {
   title:'', type:'', description:'', event_date:'', start_time:'', end_time:'',
-  facebook_link:'', is_free:true, ticket_price:'', ticket_link:'', capacity:'', rsvp_enabled:true
+  facebook_link:'', image_url:'', is_free:true, ticket_price:'', ticket_link:'', capacity:'', rsvp_enabled:true
 }
 
 export default function EventsPage() {
@@ -41,6 +41,7 @@ export default function EventsPage() {
       start_time: newEvent.start_time || null,
       end_time: newEvent.end_time || null,
       facebook_link: newEvent.facebook_link || null,
+      image_url: newEvent.image_url || null,
       is_free: newEvent.is_free,
       ticket_price: newEvent.is_free ? 0 : (parseInt(newEvent.ticket_price) || 0),
       ticket_link: newEvent.ticket_link || null,
@@ -114,6 +115,11 @@ export default function EventsPage() {
           <div style={{marginBottom:10}}>
             <label className="label">Facebook Event Link</label>
             <input className="input" value={newEvent.facebook_link} onChange={e=>setNewEvent((p:any)=>({...p,facebook_link:e.target.value}))} placeholder="https://facebook.com/events/..." />
+          </div>
+          <div style={{marginBottom:10}}>
+            <label className="label">Event Photo URL (optional)</label>
+            <input className="input" value={newEvent.image_url} onChange={e=>setNewEvent((p:any)=>({...p,image_url:e.target.value}))} placeholder="https://... or /images/event-name.jpg" />
+            <div style={{fontSize:10,color:'rgba(255,255,255,0.3)',marginTop:3}}>Upload photo to Hostinger public_html/images/ then paste the URL</div>
           </div>
 
           {/* Ticketing section */}
@@ -216,6 +222,11 @@ export default function EventsPage() {
                 <div style={{marginBottom:10}}>
                   <label className="label">Facebook Event Link</label>
                   <input className="input" defaultValue={event.facebook_link||''} onBlur={e => updateEvent(event.id, {facebook_link: e.target.value})} placeholder="https://facebook.com/events/..." />
+                </div>
+                <div style={{marginBottom:10}}>
+                  <label className="label">Event Photo URL</label>
+                  <input className="input" defaultValue={event.image_url||''} onBlur={e => updateEvent(event.id, {image_url: e.target.value || null})} placeholder="https://... or /images/event.jpg" />
+                  <div style={{fontSize:10,color:'rgba(255,255,255,0.3)',marginTop:3}}>Upload to Hostinger public_html/images/ then paste URL here</div>
                 </div>
 
                 {/* Ticketing box */}
