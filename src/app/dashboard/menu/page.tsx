@@ -263,10 +263,3 @@ export default function MenuPage() {
     </div>
   )
 }
-```
-
-3. Push to GitHub:
-```
-git add .
-git commit -m "Beer: size and price editor with Add Size button"
-git push origin main
