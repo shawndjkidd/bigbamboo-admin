@@ -10,17 +10,76 @@ const SECTIONS = [
 ]
 
 const TAG_PRESETS: Record<string, {label:string,color:string}[]> = {
-  cocktails: [{label:'Bestseller',color:'yellow'},{label:'Crowd Fav',color:'yellow'},{label:'New',color:'teal'},{label:'Craft',color:'teal'},{label:'Drink Wisely',color:'red'},{label:'Limited',color:'orange'}],
+  cocktails: [{label:'Bestseller',color:'yellow'},{label:'New',color:'teal'},{label:'Craft',color:'teal'},{label:'Drink Wisely',color:'red'},{label:'Limited',color:'orange'}],
   beer: [{label:'Bestseller',color:'yellow'},{label:'Local',color:'yellow'},{label:'Limited',color:'orange'},{label:'New',color:'teal'}],
-  na: [{label:'Bestseller',color:'yellow'},{label:'No Alcohol',color:'teal'},{label:'Vegan',color:'green'},{label:'New',color:'teal'}],
+  na: [{label:'Bestseller',color:'yellow'},{label:'No Alcohol',color:'teal'},{label:'New',color:'teal'}],
   bites: [{label:"Chef's Pick",color:'yellow'},{label:'Crowd Pleaser',color:'yellow'},{label:'Bestseller',color:'yellow'},{label:'New',color:'teal'},{label:'Vegan',color:'green'},{label:'Spicy',color:'red'}],
 }
 
 function tagStyle(color: string) {
-  const map: any = { yellow:'rgba(232,168,32,0.15)', teal:'rgba(58,168,164,0.15)', green:'rgba(0,177,79,0.15)', red:'rgba(192,48,32,0.15)', orange:'rgba(212,88,32,0.15)' }
-  const textMap: any = { yellow:'#E8A820', teal:'#3AA8A4', green:'#00C858', red:'#E06060', orange:'#D45820' }
-  const borderMap: any = { yellow:'rgba(232,168,32,0.3)', teal:'rgba(58,168,164,0.3)', green:'rgba(0,177,79,0.3)', red:'rgba(192,48,32,0.3)', orange:'rgba(212,88,32,0.3)' }
-  return { background: map[color]||map.yellow, color: textMap[color]||textMap.yellow, border: `1px solid ${borderMap[color]||borderMap.yellow}` }
+  const bg: any = {yellow:'rgba(232,168,32,0.15)',teal:'rgba(58,168,164,0.15)',green:'rgba(0,177,79,0.15)',red:'rgba(192,48,32,0.15)',orange:'rgba(212,88,32,0.15)'}
+  const text: any = {yellow:'#E8A820',teal:'#3AA8A4',green:'#00C858',red:'#E06060',orange:'#D45820'}
+  const border: any = {yellow:'rgba(232,168,32,0.3)',teal:'rgba(58,168,164,0.3)',green:'rgba(0,177,79,0.3)',red:'rgba(192,48,32,0.3)',orange:'rgba(212,88,32,0.3)'}
+  return { background: bg[color]||bg.yellow, color: text[color]||text.yellow, border: `1px solid ${border[color]||border.yellow}` }
+}
+
+function parseSizes(priceStr: string): {size:string, price:string}[] {
+  if (!priceStr || !priceStr.includes('/')) {
+    return [{size:'', price: priceStr || ''}]
+  }
+  return priceStr.split('/').map(p => {
+    const colon = p.indexOf(':')
+    if (colon > -1) return { size: p.slice(0, colon).trim(), price: p.slice(colon+1).trim() }
+    return { size: '', price: p.trim() }
+  })
+}
+
+function formatSizes(sizes: {size:string, price:string}[]): string {
+  const filled = sizes.filter(s => s.price.trim())
+  if (filled.length === 0) return ''
+  if (filled.length === 1 && !filled[0].size) return filled[0].price
+  return filled.map(s => s.size ? `${s.size}: ${s.price}` : s.price).join(' / ')
+}
+
+function BeerPriceEditor({ value, onChange }: { value: string, onChange: (v: string) => void }) {
+  const [sizes, setSizes] = useState<{size:string, price:string}[]>(() => parseSizes(value))
+
+  function update(newSizes: {size:string, price:string}[]) {
+    setSizes(newSizes)
+    onChange(formatSizes(newSizes))
+  }
+
+  function addRow() { update([...sizes, {size:'', price:''}]) }
+  function removeRow(i: number) { update(sizes.filter((_, idx) => idx !== i)) }
+  function setRow(i: number, field: 'size'|'price', val: string) {
+    const next = sizes.map((s, idx) => idx === i ? {...s, [field]: val} : s)
+    update(next)
+  }
+
+  return (
+    <div>
+      <label className="label">Sizes & Prices</label>
+      <div style={{display:'flex',flexDirection:'column',gap:6}}>
+        {sizes.map((s, i) => (
+          <div key={i} style={{display:'flex',gap:6,alignItems:'center'}}>
+            <input className="input" value={s.size} onChange={e => setRow(i, 'size', e.target.value)} placeholder="e.g. Small, Large, 330ml" style={{width:130,flexShrink:0}} />
+            <input className="input" value={s.price} onChange={e => setRow(i, 'price', e.target.value)} placeholder="45,000" style={{flex:1,fontFamily:'monospace'}} />
+            {sizes.length > 1 && (
+              <button onClick={() => removeRow(i)} style={{background:'rgba(192,48,32,0.15)',border:'1px solid rgba(192,48,32,0.3)',color:'#E06060',width:28,height:28,borderRadius:6,cursor:'pointer',fontSize:13,flexShrink:0}}>✕</button>
+            )}
+          </div>
+        ))}
+        <button onClick={addRow} style={{background:'rgba(255,255,255,0.04)',border:'1px dashed rgba(255,255,255,0.15)',color:'rgba(255,255,255,0.4)',padding:'6px',borderRadius:6,cursor:'pointer',fontSize:11,fontFamily:'DM Mono',letterSpacing:'0.1em',textTransform:'uppercase'}}>
+          + Add Size
+        </button>
+      </div>
+      {sizes.length > 0 && formatSizes(sizes) && (
+        <div style={{fontSize:10,color:'rgba(255,255,255,0.25)',marginTop:5,fontFamily:'DM Mono'}}>
+          Saves as: {formatSizes(sizes)}
+        </div>
+      )}
+    </div>
+  )
 }
 
 export default function MenuPage() {
@@ -75,7 +134,6 @@ export default function MenuPage() {
         <button className="btn-yellow" onClick={() => setShowAdd(!showAdd)} style={{fontFamily:'Bebas Neue',fontSize:16,letterSpacing:'0.1em'}}>+ Add Item</button>
       </div>
 
-      {/* Section tabs */}
       <div style={{display:'flex',gap:6,marginBottom:20,flexWrap:'wrap'}}>
         {SECTIONS.map(s => (
           <button key={s.key} onClick={() => setSection(s.key)} style={{padding:'8px 18px',borderRadius:100,fontFamily:'DM Mono',fontSize:11,letterSpacing:'0.08em',textTransform:'uppercase',cursor:'pointer',transition:'all 0.15s',background:section===s.key?'#E8A820':'transparent',color:section===s.key?'#1a0800':'rgba(255,255,255,0.5)',border:`1px solid ${section===s.key?'#E8A820':'rgba(255,255,255,0.15)'}`}}>
@@ -84,15 +142,23 @@ export default function MenuPage() {
         ))}
       </div>
 
-      {/* Add new item form */}
       {showAdd && (
         <div className="card" style={{padding:20,marginBottom:20,border:'1px dashed rgba(58,168,164,0.4)'}}>
           <div style={{fontFamily:'DM Mono',fontSize:10,letterSpacing:'0.15em',textTransform:'uppercase',color:'#3AA8A4',marginBottom:14}}>+ Add New Item</div>
-          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 100px',gap:10,marginBottom:10}}>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:10}}>
             <div><label className="label">Name</label><input className="input" value={newItem.name} onChange={e=>setNewItem(p=>({...p,name:e.target.value}))} placeholder="Item name" /></div>
             <div><label className="label">Subtitle (food only)</label><input className="input" value={newItem.subtitle} onChange={e=>setNewItem(p=>({...p,subtitle:e.target.value}))} placeholder="e.g. Pulled Pork Slamwich" /></div>
-            <div><label className="label">Price</label><input className="input" value={newItem.price} onChange={e=>setNewItem(p=>({...p,price:e.target.value}))} /></div>
           </div>
+          {section === 'beer' ? (
+            <div style={{marginBottom:10}}>
+              <BeerPriceEditor value={newItem.price === 'TBA' ? '' : newItem.price} onChange={v => setNewItem(p=>({...p, price: v || 'TBA'}))} />
+            </div>
+          ) : (
+            <div style={{marginBottom:10}}>
+              <label className="label">Price</label>
+              <input className="input" value={newItem.price} onChange={e=>setNewItem(p=>({...p,price:e.target.value}))} placeholder="TBA" style={{width:120}} />
+            </div>
+          )}
           {section !== 'bites' && (
             <div style={{display:'grid',gridTemplateColumns:'1fr 80px',gap:10,marginBottom:10}}>
               <div><label className="label">Description</label><input className="input" value={newItem.description} onChange={e=>setNewItem(p=>({...p,description:e.target.value}))} placeholder="Short punchy description" /></div>
@@ -108,39 +174,58 @@ export default function MenuPage() {
         </div>
       )}
 
-      {/* Items list */}
       {loading ? <div style={{color:'rgba(255,255,255,0.4)',padding:20}}>Loading...</div> : (
         <div style={{display:'flex',flexDirection:'column',gap:8}}>
           {items.map(item => {
             const presets = TAG_PRESETS[section] || []
             return (
               <div key={item.id} className="card" style={{padding:16}}>
-                <div style={{display:'grid',gridTemplateColumns:'1fr 100px 80px',gap:10,marginBottom:10,alignItems:'start'}}>
-                  <div>
-                    <label className="label">Name</label>
-                    <input className="input" defaultValue={item.name} onBlur={e => e.target.value !== item.name && updateItem(item.id, {name: e.target.value})} style={{fontWeight:600}} />
-                  </div>
-                  <div>
-                    <label className="label">Price</label>
-                    <input className="input" defaultValue={item.price} onBlur={e => e.target.value !== item.price && updateItem(item.id, {price: e.target.value})} style={{fontFamily:'monospace',textAlign:'center'}} />
-                  </div>
-                  <div>
-                    <label className="label">ABV</label>
-                    <input className="input" defaultValue={item.abv||''} onBlur={e => updateItem(item.id, {abv: e.target.value})} style={{fontFamily:'monospace',fontSize:12}} />
-                  </div>
-                </div>
                 <div style={{marginBottom:10}}>
-                  <label className="label">Description</label>
-                  <input className="input" defaultValue={item.description||''} onBlur={e => updateItem(item.id, {description: e.target.value})} style={{fontStyle:'italic',fontSize:13}} />
+                  <label className="label">Name</label>
+                  <input className="input" defaultValue={item.name} onBlur={e => e.target.value !== item.name && updateItem(item.id, {name: e.target.value})} style={{fontWeight:600}} />
                 </div>
-                {item.subtitle !== undefined && (
+
+                <div style={{marginBottom:10}}>
+                  {section === 'beer' ? (
+                    <BeerPriceEditor value={item.price || ''} onChange={v => updateItem(item.id, {price: v || 'TBA'})} />
+                  ) : (
+                    <div style={{display:'grid',gridTemplateColumns:'120px 80px',gap:10}}>
+                      <div><label className="label">Price</label>
+                        <input className="input" defaultValue={item.price} onBlur={e => e.target.value !== item.price && updateItem(item.id, {price: e.target.value})} style={{fontFamily:'monospace',textAlign:'center'}} />
+                      </div>
+                      <div><label className="label">ABV</label>
+                        <input className="input" defaultValue={item.abv||''} onBlur={e => updateItem(item.id, {abv: e.target.value})} style={{fontFamily:'monospace',fontSize:12}} />
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {section === 'beer' && (
+                  <div style={{marginBottom:10,display:'grid',gridTemplateColumns:'1fr 80px',gap:10}}>
+                    <div><label className="label">Description</label>
+                      <input className="input" defaultValue={item.description||''} onBlur={e => updateItem(item.id, {description: e.target.value})} style={{fontStyle:'italic',fontSize:13}} />
+                    </div>
+                    <div><label className="label">ABV</label>
+                      <input className="input" defaultValue={item.abv||''} onBlur={e => updateItem(item.id, {abv: e.target.value})} style={{fontFamily:'monospace',fontSize:12}} />
+                    </div>
+                  </div>
+                )}
+
+                {section !== 'beer' && (
+                  <div style={{marginBottom:10}}>
+                    <label className="label">Description</label>
+                    <input className="input" defaultValue={item.description||''} onBlur={e => updateItem(item.id, {description: e.target.value})} style={{fontStyle:'italic',fontSize:13}} />
+                  </div>
+                )}
+
+                {section === 'bites' && (
                   <div style={{marginBottom:10}}>
                     <label className="label">Subtitle</label>
                     <input className="input" defaultValue={item.subtitle||''} onBlur={e => updateItem(item.id, {subtitle: e.target.value})} />
                   </div>
                 )}
+
                 <div style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap'}}>
-                  {/* Tag presets */}
                   {presets.map(p => {
                     const on = item.tags?.includes(p.label)
                     return (
@@ -170,7 +255,6 @@ export default function MenuPage() {
         </div>
       )}
 
-      {/* Toast */}
       {toast && (
         <div style={{position:'fixed',bottom:24,right:24,background:'#00B14F',color:'#fff',padding:'11px 20px',borderRadius:8,fontFamily:'DM Mono',fontSize:11,letterSpacing:'0.1em',zIndex:9999}}>
           {toast}
@@ -179,3 +263,10 @@ export default function MenuPage() {
     </div>
   )
 }
+```
+
+3. Push to GitHub:
+```
+git add .
+git commit -m "Beer: size and price editor with Add Size button"
+git push origin main
