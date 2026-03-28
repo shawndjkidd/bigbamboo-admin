@@ -17,15 +17,12 @@ export default function LoginPage() {
     try {
       const { error: authError } = await supabase.auth.signInWithPassword({ email, password })
       if (authError) throw authError
-
-      // Check staff record exists
       const { data: staff, error: staffError } = await supabase
         .from('staff_users')
         .select('id,role,active')
         .eq('email', email)
         .eq('active', true)
         .single()
-
       if (staffError || !staff) throw new Error('No active staff account for this email.')
       router.push('/dashboard')
     } catch (err: any) {
@@ -36,33 +33,67 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4" style={{background: 'linear-gradient(135deg, #0A1614 0%, #0E2220 100%)'}}>
-      <div className="w-full max-w-sm">
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, background: 'var(--bg)' }}>
+      <div style={{ width: '100%', maxWidth: 400 }}>
         {/* Logo */}
-        <div className="text-center mb-8">
-          <div style={{fontFamily:'Bebas Neue',fontSize:40,letterSpacing:'0.06em',color:'#E8A820',lineHeight:1}}>BigBamBoo</div>
-          <div style={{fontFamily:'DM Mono',fontSize:11,letterSpacing:'0.2em',textTransform:'uppercase',color:'rgba(255,255,255,0.35)',marginTop:6}}>Staff Dashboard</div>
+        <div style={{ textAlign: 'center', marginBottom: 40 }}>
+          <div style={{ fontFamily: 'Bebas Neue', fontSize: 48, letterSpacing: '0.06em', color: 'var(--accent)', lineHeight: 1 }}>BigBamBoo</div>
+          <div style={{ fontSize: 13, letterSpacing: '0.12em', textTransform: 'uppercase' as const, color: 'var(--text-muted)', marginTop: 8 }}>Staff Dashboard</div>
         </div>
 
-        <div className="card p-6">
-          <form onSubmit={handleLogin} className="flex flex-col gap-4">
+        <div className="card" style={{ padding: 32 }}>
+          <div style={{ fontFamily: 'Bebas Neue', fontSize: 24, letterSpacing: '0.04em', color: 'var(--text)', marginBottom: 24 }}>Sign In</div>
+
+          <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
             <div>
               <label className="label">Email</label>
-              <input className="input" type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="you@bigbamboo.app" required />
+              <input
+                className="input"
+                type="email"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                placeholder="you@bigbamboo.app"
+                required
+                style={{ fontSize: 15, padding: '12px 16px' }}
+              />
             </div>
             <div>
               <label className="label">Password</label>
-              <input className="input" type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="••••••••" required />
+              <input
+                className="input"
+                type="password"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                placeholder="Enter your password"
+                required
+                style={{ fontSize: 15, padding: '12px 16px' }}
+              />
             </div>
-            {error && <div style={{background:'rgba(192,48,32,0.12)',border:'1px solid rgba(192,48,32,0.3)',borderRadius:6,padding:'10px 14px',fontSize:13,color:'#E06060'}}>{error}</div>}
-            <button className="btn-yellow w-full" type="submit" disabled={loading} style={{fontFamily:'Bebas Neue',fontSize:18,letterSpacing:'0.1em',padding:'13px'}}>
+
+            {error && (
+              <div style={{
+                background: 'var(--badge-red-bg)',
+                border: '1px solid var(--badge-red-border)',
+                borderRadius: 8,
+                padding: '12px 16px',
+                fontSize: 14,
+                color: 'var(--badge-red-text)'
+              }}>{error}</div>
+            )}
+
+            <button
+              className="btn-accent"
+              type="submit"
+              disabled={loading}
+              style={{ fontFamily: 'Bebas Neue', fontSize: 20, letterSpacing: '0.08em', padding: '14px', width: '100%', marginTop: 4 }}
+            >
               {loading ? 'Signing in...' : 'Sign In'}
             </button>
           </form>
         </div>
 
-        <div style={{textAlign:'center',marginTop:20,fontFamily:'DM Mono',fontSize:10,letterSpacing:'0.12em',textTransform:'uppercase',color:'rgba(255,255,255,0.2)'}}>
-          bigbamboo.app · An Phú, Saigon
+        <div style={{ textAlign: 'center', marginTop: 24, fontSize: 12, color: 'var(--text-muted)' }}>
+          bigbamboo.app — An Phu, Saigon
         </div>
       </div>
     </div>
