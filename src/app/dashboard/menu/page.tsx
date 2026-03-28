@@ -3,38 +3,40 @@ import { useEffect, useState } from 'react'
 import { supabase, MenuItem } from '@/lib/supabase'
 
 const SECTIONS = [
-  { key: 'cocktails', label: '🍹 Cocktails' },
-  { key: 'beer', label: '🍺 Beer' },
-  { key: 'na', label: '🥤 Non-Alcoholic' },
-  { key: 'bites', label: '🍟 Bar Bites' },
+  { key: 'cocktails', label: 'Cocktails' },
+  { key: 'beer', label: 'Beer' },
+  { key: 'na', label: 'Non-Alcoholic' },
+  { key: 'bites', label: 'Bar Bites' },
 ]
 
-const TAG_PRESETS: Record<string, {label:string,color:string}[]> = {
-  cocktails: [{label:'Bestseller',color:'yellow'},{label:'New',color:'teal'},{label:'Craft',color:'teal'},{label:'Drink Wisely',color:'red'},{label:'Limited',color:'orange'}],
-  beer: [{label:'Bestseller',color:'yellow'},{label:'Local',color:'yellow'},{label:'Limited',color:'orange'},{label:'New',color:'teal'}],
-  na: [{label:'Bestseller',color:'yellow'},{label:'No Alcohol',color:'teal'},{label:'New',color:'teal'}],
-  bites: [{label:"Chef's Pick",color:'yellow'},{label:'Crowd Pleaser',color:'yellow'},{label:'Bestseller',color:'yellow'},{label:'New',color:'teal'},{label:'Vegan',color:'green'},{label:'Spicy',color:'red'}],
+const TAG_PRESETS: Record<string, { label: string, color: string }[]> = {
+  cocktails: [{ label: 'Bestseller', color: 'orange' }, { label: 'New', color: 'blue' }, { label: 'Craft', color: 'blue' }, { label: 'Drink Wisely', color: 'red' }, { label: 'Limited', color: 'orange' }],
+  beer: [{ label: 'Bestseller', color: 'orange' }, { label: 'Local', color: 'orange' }, { label: 'Limited', color: 'orange' }, { label: 'New', color: 'blue' }],
+  na: [{ label: 'Bestseller', color: 'orange' }, { label: 'No Alcohol', color: 'blue' }, { label: 'New', color: 'blue' }],
+  bites: [{ label: "Chef's Pick", color: 'orange' }, { label: 'Crowd Pleaser', color: 'orange' }, { label: 'Bestseller', color: 'orange' }, { label: 'New', color: 'blue' }, { label: 'Vegan', color: 'green' }, { label: 'Spicy', color: 'red' }],
 }
 
-function tagStyle(color: string) {
-  const bg: any = {yellow:'rgba(232,168,32,0.15)',teal:'rgba(58,168,164,0.15)',green:'rgba(0,177,79,0.15)',red:'rgba(192,48,32,0.15)',orange:'rgba(212,88,32,0.15)'}
-  const text: any = {yellow:'#E8A820',teal:'#3AA8A4',green:'#00C858',red:'#E06060',orange:'#D45820'}
-  const border: any = {yellow:'rgba(232,168,32,0.3)',teal:'rgba(58,168,164,0.3)',green:'rgba(0,177,79,0.3)',red:'rgba(192,48,32,0.3)',orange:'rgba(212,88,32,0.3)'}
-  return { background: bg[color]||bg.yellow, color: text[color]||text.yellow, border: `1px solid ${border[color]||border.yellow}` }
-}
-
-function parseSizes(priceStr: string): {size:string, price:string}[] {
-  if (!priceStr || !priceStr.includes('/')) {
-    return [{size:'', price: priceStr || ''}]
+function tagStyle(color: string, on: boolean) {
+  if (!on) return { background: 'var(--bg-hover)', color: 'var(--text-muted)', border: '1px solid var(--border)' }
+  const map: any = {
+    orange: { background: 'var(--badge-orange-bg)', color: 'var(--badge-orange-text)', border: '1px solid var(--badge-orange-border)' },
+    blue: { background: 'var(--badge-blue-bg)', color: 'var(--badge-blue-text)', border: '1px solid var(--badge-blue-border)' },
+    green: { background: 'var(--badge-green-bg)', color: 'var(--badge-green-text)', border: '1px solid var(--badge-green-border)' },
+    red: { background: 'var(--badge-red-bg)', color: 'var(--badge-red-text)', border: '1px solid var(--badge-red-border)' },
   }
+  return map[color] || map.orange
+}
+
+function parseSizes(priceStr: string): { size: string, price: string }[] {
+  if (!priceStr || !priceStr.includes('/')) return [{ size: '', price: priceStr || '' }]
   return priceStr.split('/').map(p => {
     const colon = p.indexOf(':')
-    if (colon > -1) return { size: p.slice(0, colon).trim(), price: p.slice(colon+1).trim() }
+    if (colon > -1) return { size: p.slice(0, colon).trim(), price: p.slice(colon + 1).trim() }
     return { size: '', price: p.trim() }
   })
 }
 
-function formatSizes(sizes: {size:string, price:string}[]): string {
+function formatSizes(sizes: { size: string, price: string }[]): string {
   const filled = sizes.filter(s => s.price.trim())
   if (filled.length === 0) return ''
   if (filled.length === 1 && !filled[0].size) return filled[0].price
@@ -42,41 +44,29 @@ function formatSizes(sizes: {size:string, price:string}[]): string {
 }
 
 function BeerPriceEditor({ value, onChange }: { value: string, onChange: (v: string) => void }) {
-  const [sizes, setSizes] = useState<{size:string, price:string}[]>(() => parseSizes(value))
-
-  function update(newSizes: {size:string, price:string}[]) {
-    setSizes(newSizes)
-    onChange(formatSizes(newSizes))
-  }
-
-  function addRow() { update([...sizes, {size:'', price:''}]) }
+  const [sizes, setSizes] = useState<{ size: string, price: string }[]>(() => parseSizes(value))
+  function update(newSizes: { size: string, price: string }[]) { setSizes(newSizes); onChange(formatSizes(newSizes)) }
+  function addRow() { update([...sizes, { size: '', price: '' }]) }
   function removeRow(i: number) { update(sizes.filter((_, idx) => idx !== i)) }
-  function setRow(i: number, field: 'size'|'price', val: string) {
-    const next = sizes.map((s, idx) => idx === i ? {...s, [field]: val} : s)
-    update(next)
-  }
+  function setRow(i: number, field: 'size' | 'price', val: string) { update(sizes.map((s, idx) => idx === i ? { ...s, [field]: val } : s)) }
 
   return (
     <div>
       <label className="label">Sizes & Prices</label>
-      <div style={{display:'flex',flexDirection:'column',gap:6}}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {sizes.map((s, i) => (
-          <div key={i} style={{display:'flex',gap:6,alignItems:'center'}}>
-            <input className="input" value={s.size} onChange={e => setRow(i, 'size', e.target.value)} placeholder="e.g. Small, Large, 330ml" style={{width:130,flexShrink:0}} />
-            <input className="input" value={s.price} onChange={e => setRow(i, 'price', e.target.value)} placeholder="45,000" style={{flex:1,fontFamily:'monospace'}} />
+          <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <input className="input" value={s.size} onChange={e => setRow(i, 'size', e.target.value)} placeholder="e.g. Small, 330ml" style={{ width: 140, flexShrink: 0 }} />
+            <input className="input" value={s.price} onChange={e => setRow(i, 'price', e.target.value)} placeholder="45,000" style={{ flex: 1, fontFamily: 'DM Mono, monospace' }} />
             {sizes.length > 1 && (
-              <button onClick={() => removeRow(i)} style={{background:'rgba(192,48,32,0.15)',border:'1px solid rgba(192,48,32,0.3)',color:'#E06060',width:28,height:28,borderRadius:6,cursor:'pointer',fontSize:13,flexShrink:0}}>✕</button>
+              <button onClick={() => removeRow(i)} className="btn-red" style={{ width: 32, height: 32, padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 14 }}>x</button>
             )}
           </div>
         ))}
-        <button onClick={addRow} style={{background:'rgba(255,255,255,0.04)',border:'1px dashed rgba(255,255,255,0.15)',color:'rgba(255,255,255,0.4)',padding:'6px',borderRadius:6,cursor:'pointer',fontSize:11,fontFamily:'DM Mono',letterSpacing:'0.1em',textTransform:'uppercase'}}>
-          + Add Size
-        </button>
+        <button onClick={addRow} className="btn-outline" style={{ fontSize: 12, padding: '6px 12px' }}>+ Add Size</button>
       </div>
       {sizes.length > 0 && formatSizes(sizes) && (
-        <div style={{fontSize:10,color:'rgba(255,255,255,0.25)',marginTop:5,fontFamily:'DM Mono'}}>
-          Saves as: {formatSizes(sizes)}
-        </div>
+        <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 6, fontFamily: 'DM Mono, monospace' }}>Preview: {formatSizes(sizes)}</div>
       )}
     </div>
   )
@@ -86,10 +76,10 @@ export default function MenuPage() {
   const [section, setSection] = useState('cocktails')
   const [items, setItems] = useState<MenuItem[]>([])
   const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState<string|null>(null)
+  const [saving, setSaving] = useState<string | null>(null)
   const [toast, setToast] = useState('')
   const [showAdd, setShowAdd] = useState(false)
-  const [newItem, setNewItem] = useState({ name:'', subtitle:'', description:'', price:'TBA', abv:'', tags:[] as string[], is_draft:false })
+  const [newItem, setNewItem] = useState({ name: '', subtitle: '', description: '', price: 'TBA', abv: '', tags: [] as string[], is_draft: false })
 
   useEffect(() => { loadItems() }, [section])
 
@@ -102,16 +92,16 @@ export default function MenuPage() {
 
   async function updateItem(id: string, changes: Partial<MenuItem>) {
     setSaving(id)
-    await supabase.from('menu_items').update({...changes, updated_at: new Date().toISOString()}).eq('id', id)
-    setItems(prev => prev.map(i => i.id === id ? {...i, ...changes} : i))
+    await supabase.from('menu_items').update({ ...changes, updated_at: new Date().toISOString() }).eq('id', id)
+    setItems(prev => prev.map(i => i.id === id ? { ...i, ...changes } : i))
     setSaving(null)
-    showToast('Saved!')
+    showToast('Saved')
   }
 
   async function addItem() {
     if (!newItem.name) return
     const { data } = await supabase.from('menu_items').insert({ ...newItem, section, sort_order: items.length + 1 }).select().single()
-    if (data) { setItems(prev => [...prev, data]); setNewItem({ name:'', subtitle:'', description:'', price:'TBA', abv:'', tags:[], is_draft:false }); setShowAdd(false); showToast('Item added!') }
+    if (data) { setItems(prev => [...prev, data]); setNewItem({ name: '', subtitle: '', description: '', price: 'TBA', abv: '', tags: [], is_draft: false }); setShowAdd(false); showToast('Item added') }
   }
 
   async function deleteItem(id: string) {
@@ -128,126 +118,127 @@ export default function MenuPage() {
   }
 
   return (
-    <div>
-      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:20}}>
-        <div style={{fontFamily:'Bebas Neue',fontSize:32,letterSpacing:'0.06em'}}>Menu</div>
-        <button className="btn-yellow" onClick={() => setShowAdd(!showAdd)} style={{fontFamily:'Bebas Neue',fontSize:16,letterSpacing:'0.1em'}}>+ Add Item</button>
+    <div style={{ maxWidth: 900 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 28 }}>
+        <div>
+          <div className="page-title">Menu</div>
+          <div style={{ fontSize: 14, color: 'var(--text-muted)', marginTop: 4 }}>{items.length} items in {SECTIONS.find(s => s.key === section)?.label}</div>
+        </div>
+        <button className="btn-accent" onClick={() => setShowAdd(!showAdd)} style={{ fontSize: 14 }}>+ Add Item</button>
       </div>
 
-      <div style={{display:'flex',gap:6,marginBottom:20,flexWrap:'wrap'}}>
+      {/* Section tabs */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 24 }}>
         {SECTIONS.map(s => (
-          <button key={s.key} onClick={() => setSection(s.key)} style={{padding:'8px 18px',borderRadius:100,fontFamily:'DM Mono',fontSize:11,letterSpacing:'0.08em',textTransform:'uppercase',cursor:'pointer',transition:'all 0.15s',background:section===s.key?'#E8A820':'transparent',color:section===s.key?'#1a0800':'rgba(255,255,255,0.5)',border:`1px solid ${section===s.key?'#E8A820':'rgba(255,255,255,0.15)'}`}}>
+          <button key={s.key} onClick={() => setSection(s.key)} style={{
+            padding: '10px 20px', borderRadius: 100, fontSize: 14, fontWeight: 500, cursor: 'pointer', transition: 'all 0.15s',
+            background: section === s.key ? 'var(--accent)' : 'transparent',
+            color: section === s.key ? '#fff' : 'var(--text-secondary)',
+            border: `1px solid ${section === s.key ? 'var(--accent)' : 'var(--border)'}`,
+          }}>
             {s.label}
           </button>
         ))}
       </div>
 
+      {/* Add item form */}
       {showAdd && (
-        <div className="card" style={{padding:20,marginBottom:20,border:'1px dashed rgba(58,168,164,0.4)'}}>
-          <div style={{fontFamily:'DM Mono',fontSize:10,letterSpacing:'0.15em',textTransform:'uppercase',color:'#3AA8A4',marginBottom:14}}>+ Add New Item</div>
-          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:10}}>
-            <div><label className="label">Name</label><input className="input" value={newItem.name} onChange={e=>setNewItem(p=>({...p,name:e.target.value}))} placeholder="Item name" /></div>
-            <div><label className="label">Subtitle (food only)</label><input className="input" value={newItem.subtitle} onChange={e=>setNewItem(p=>({...p,subtitle:e.target.value}))} placeholder="e.g. Pulled Pork Slamwich" /></div>
+        <div className="card" style={{ padding: 24, marginBottom: 24, borderColor: 'var(--accent)', borderStyle: 'dashed' }}>
+          <div className="section-title" style={{ color: 'var(--accent)', marginBottom: 18 }}>New Item</div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
+            <div><label className="label">Name</label><input className="input" value={newItem.name} onChange={e => setNewItem(p => ({ ...p, name: e.target.value }))} placeholder="Item name" /></div>
+            <div><label className="label">Subtitle</label><input className="input" value={newItem.subtitle} onChange={e => setNewItem(p => ({ ...p, subtitle: e.target.value }))} placeholder="e.g. Pulled Pork Slamwich" /></div>
           </div>
           {section === 'beer' ? (
-            <div style={{marginBottom:10}}>
-              <BeerPriceEditor value={newItem.price === 'TBA' ? '' : newItem.price} onChange={v => setNewItem(p=>({...p, price: v || 'TBA'}))} />
-            </div>
+            <div style={{ marginBottom: 14 }}><BeerPriceEditor value={newItem.price === 'TBA' ? '' : newItem.price} onChange={v => setNewItem(p => ({ ...p, price: v || 'TBA' }))} /></div>
           ) : (
-            <div style={{marginBottom:10}}>
-              <label className="label">Price</label>
-              <input className="input" value={newItem.price} onChange={e=>setNewItem(p=>({...p,price:e.target.value}))} placeholder="TBA" style={{width:120}} />
+            <div style={{ display: 'grid', gridTemplateColumns: '140px 1fr 80px', gap: 14, marginBottom: 14 }}>
+              <div><label className="label">Price</label><input className="input" value={newItem.price} onChange={e => setNewItem(p => ({ ...p, price: e.target.value }))} placeholder="TBA" /></div>
+              <div><label className="label">Description</label><input className="input" value={newItem.description} onChange={e => setNewItem(p => ({ ...p, description: e.target.value }))} placeholder="Short punchy description" /></div>
+              {section !== 'bites' && <div><label className="label">ABV</label><input className="input" value={newItem.abv} onChange={e => setNewItem(p => ({ ...p, abv: e.target.value }))} placeholder="~8%" /></div>}
             </div>
           )}
-          {section !== 'bites' && (
-            <div style={{display:'grid',gridTemplateColumns:'1fr 80px',gap:10,marginBottom:10}}>
-              <div><label className="label">Description</label><input className="input" value={newItem.description} onChange={e=>setNewItem(p=>({...p,description:e.target.value}))} placeholder="Short punchy description" /></div>
-              <div><label className="label">ABV</label><input className="input" value={newItem.abv} onChange={e=>setNewItem(p=>({...p,abv:e.target.value}))} placeholder="~8%" /></div>
-            </div>
-          )}
-          {section === 'bites' && <div style={{marginBottom:10}}><label className="label">Description</label><input className="input" value={newItem.description} onChange={e=>setNewItem(p=>({...p,description:e.target.value}))} placeholder="Short punchy description" /></div>}
-          <div style={{display:'flex',gap:10,alignItems:'center'}}>
-            {section !== 'bites' && <label style={{display:'flex',alignItems:'center',gap:6,fontSize:13,color:'rgba(255,255,255,0.6)',cursor:'pointer'}}><input type="checkbox" checked={newItem.is_draft} onChange={e=>setNewItem(p=>({...p,is_draft:e.target.checked}))} style={{accentColor:'#E8A820'}} /> On Tap</label>}
-            <button className="btn-green" onClick={addItem}>+ Add</button>
+          <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+            {section !== 'bites' && (
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, color: 'var(--text-secondary)', cursor: 'pointer' }}>
+                <input type="checkbox" checked={newItem.is_draft} onChange={e => setNewItem(p => ({ ...p, is_draft: e.target.checked }))} style={{ accentColor: 'var(--accent)' }} /> On Tap
+              </label>
+            )}
+            <button className="btn-accent" onClick={addItem}>Add Item</button>
             <button className="btn-outline" onClick={() => setShowAdd(false)}>Cancel</button>
           </div>
         </div>
       )}
 
-      {loading ? <div style={{color:'rgba(255,255,255,0.4)',padding:20}}>Loading...</div> : (
-        <div style={{display:'flex',flexDirection:'column',gap:8}}>
+      {/* Items list */}
+      {loading ? (
+        <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>Loading...</div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {items.map(item => {
             const presets = TAG_PRESETS[section] || []
             return (
-              <div key={item.id} className="card" style={{padding:16}}>
-                <div style={{marginBottom:10}}>
-                  <label className="label">Name</label>
-                  <input className="input" defaultValue={item.name} onBlur={e => e.target.value !== item.name && updateItem(item.id, {name: e.target.value})} style={{fontWeight:600}} />
-                </div>
-
-                <div style={{marginBottom:10}}>
-                  {section === 'beer' ? (
-                    <BeerPriceEditor value={item.price || ''} onChange={v => updateItem(item.id, {price: v || 'TBA'})} />
-                  ) : (
-                    <div style={{display:'grid',gridTemplateColumns:'120px 80px',gap:10}}>
-                      <div><label className="label">Price</label>
-                        <input className="input" defaultValue={item.price} onBlur={e => e.target.value !== item.price && updateItem(item.id, {price: e.target.value})} style={{fontFamily:'monospace',textAlign:'center'}} />
-                      </div>
-                      <div><label className="label">ABV</label>
-                        <input className="input" defaultValue={item.abv||''} onBlur={e => updateItem(item.id, {abv: e.target.value})} style={{fontFamily:'monospace',fontSize:12}} />
-                      </div>
+              <div key={item.id} className="card" style={{ padding: 20 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
+                  <div style={{ flex: 1, marginRight: 16 }}>
+                    <div style={{ marginBottom: 10 }}>
+                      <label className="label">Name</label>
+                      <input className="input" defaultValue={item.name} onBlur={e => e.target.value !== item.name && updateItem(item.id, { name: e.target.value })} style={{ fontWeight: 600, fontSize: 15 }} />
                     </div>
-                  )}
+
+                    {section === 'beer' ? (
+                      <BeerPriceEditor value={item.price || ''} onChange={v => updateItem(item.id, { price: v || 'TBA' })} />
+                    ) : (
+                      <div style={{ display: 'grid', gridTemplateColumns: '120px 80px', gap: 10 }}>
+                        <div><label className="label">Price</label><input className="input" defaultValue={item.price} onBlur={e => e.target.value !== item.price && updateItem(item.id, { price: e.target.value })} style={{ fontFamily: 'DM Mono, monospace' }} /></div>
+                        {section !== 'bites' && <div><label className="label">ABV</label><input className="input" defaultValue={item.abv || ''} onBlur={e => updateItem(item.id, { abv: e.target.value })} style={{ fontFamily: 'DM Mono, monospace' }} /></div>}
+                      </div>
+                    )}
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-end', flexShrink: 0 }}>
+                    {section !== 'bites' && (
+                      <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text-secondary)', cursor: 'pointer' }}>
+                        <input type="checkbox" checked={item.is_draft} onChange={e => updateItem(item.id, { is_draft: e.target.checked })} style={{ accentColor: 'var(--accent)' }} /> On Tap
+                      </label>
+                    )}
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text-secondary)', cursor: 'pointer' }}>
+                      <input type="checkbox" checked={item.is_available} onChange={e => updateItem(item.id, { is_available: e.target.checked })} style={{ accentColor: 'var(--green)' }} /> Available
+                    </label>
+                    {saving === item.id && <span style={{ fontSize: 12, color: 'var(--accent)' }}>Saving...</span>}
+                    <button className="btn-red" onClick={() => deleteItem(item.id)} style={{ fontSize: 12, padding: '5px 10px' }}>Remove</button>
+                  </div>
                 </div>
 
                 {section === 'beer' && (
-                  <div style={{marginBottom:10,display:'grid',gridTemplateColumns:'1fr 80px',gap:10}}>
-                    <div><label className="label">Description</label>
-                      <input className="input" defaultValue={item.description||''} onBlur={e => updateItem(item.id, {description: e.target.value})} style={{fontStyle:'italic',fontSize:13}} />
-                    </div>
-                    <div><label className="label">ABV</label>
-                      <input className="input" defaultValue={item.abv||''} onBlur={e => updateItem(item.id, {abv: e.target.value})} style={{fontFamily:'monospace',fontSize:12}} />
-                    </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 80px', gap: 10, marginBottom: 10 }}>
+                    <div><label className="label">Description</label><input className="input" defaultValue={item.description || ''} onBlur={e => updateItem(item.id, { description: e.target.value })} /></div>
+                    <div><label className="label">ABV</label><input className="input" defaultValue={item.abv || ''} onBlur={e => updateItem(item.id, { abv: e.target.value })} style={{ fontFamily: 'DM Mono, monospace' }} /></div>
                   </div>
                 )}
 
                 {section !== 'beer' && (
-                  <div style={{marginBottom:10}}>
-                    <label className="label">Description</label>
-                    <input className="input" defaultValue={item.description||''} onBlur={e => updateItem(item.id, {description: e.target.value})} style={{fontStyle:'italic',fontSize:13}} />
-                  </div>
+                  <div style={{ marginBottom: 10 }}><label className="label">Description</label><input className="input" defaultValue={item.description || ''} onBlur={e => updateItem(item.id, { description: e.target.value })} /></div>
                 )}
 
                 {section === 'bites' && (
-                  <div style={{marginBottom:10}}>
-                    <label className="label">Subtitle</label>
-                    <input className="input" defaultValue={item.subtitle||''} onBlur={e => updateItem(item.id, {subtitle: e.target.value})} />
-                  </div>
+                  <div style={{ marginBottom: 10 }}><label className="label">Subtitle</label><input className="input" defaultValue={item.subtitle || ''} onBlur={e => updateItem(item.id, { subtitle: e.target.value })} /></div>
                 )}
 
-                <div style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap'}}>
+                {/* Tags */}
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                   {presets.map(p => {
                     const on = item.tags?.includes(p.label)
                     return (
-                      <span key={p.label} onClick={() => toggleTag(item, p.label)} style={{...tagStyle(on ? p.color : 'none'), background: on ? tagStyle(p.color).background : 'rgba(255,255,255,0.04)', color: on ? tagStyle(p.color).color : 'rgba(255,255,255,0.3)', border: on ? tagStyle(p.color).border : '1px solid rgba(255,255,255,0.1)', padding:'2px 9px',borderRadius:100,fontSize:9,letterSpacing:'0.08em',textTransform:'uppercase',cursor:'pointer',userSelect:'none'}}>
+                      <span key={p.label} onClick={() => toggleTag(item, p.label)} style={{
+                        ...tagStyle(p.color, on),
+                        padding: '4px 12px', borderRadius: 100, fontSize: 12, fontWeight: 500,
+                        cursor: 'pointer', userSelect: 'none', transition: 'all 0.15s',
+                      }}>
                         {p.label}
                       </span>
                     )
                   })}
-                  <div style={{marginLeft:'auto',display:'flex',gap:6,alignItems:'center'}}>
-                    {section !== 'bites' && (
-                      <label style={{display:'flex',alignItems:'center',gap:5,fontSize:11,color:'rgba(255,255,255,0.5)',cursor:'pointer'}}>
-                        <input type="checkbox" checked={item.is_draft} onChange={e => updateItem(item.id, {is_draft: e.target.checked})} style={{accentColor:'#E8A820'}} />
-                        On Tap
-                      </label>
-                    )}
-                    <label style={{display:'flex',alignItems:'center',gap:5,fontSize:11,color:'rgba(255,255,255,0.5)',cursor:'pointer'}}>
-                      <input type="checkbox" checked={item.is_available} onChange={e => updateItem(item.id, {is_available: e.target.checked})} style={{accentColor:'#00B14F'}} />
-                      Available
-                    </label>
-                    {saving === item.id && <span style={{fontSize:11,color:'#3AA8A4'}}>Saving...</span>}
-                    <button className="btn-red" onClick={() => deleteItem(item.id)}>✕</button>
-                  </div>
                 </div>
               </div>
             )
@@ -255,11 +246,7 @@ export default function MenuPage() {
         </div>
       )}
 
-      {toast && (
-        <div style={{position:'fixed',bottom:24,right:24,background:'#00B14F',color:'#fff',padding:'11px 20px',borderRadius:8,fontFamily:'DM Mono',fontSize:11,letterSpacing:'0.1em',zIndex:9999}}>
-          {toast}
-        </div>
-      )}
+      {toast && <div className="toast">{toast}</div>}
     </div>
   )
 }
