@@ -10,6 +10,7 @@ export default function TicketsPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [loading, setLoading] = useState(true)
   const [toast, setToast] = useState('')
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
 
   useEffect(() => { loadData() }, [])
 
@@ -53,6 +54,13 @@ export default function TicketsPage() {
   }
 
   function showToast(msg: string) { setToast(msg); setTimeout(() => setToast(''), 2500) }
+
+  async function deleteOrder(id: string) {
+    await supabase.from('ticket_orders').delete().eq('id', id)
+    setOrders(prev => prev.filter(o => o.id !== id))
+    setConfirmDelete(null)
+    showToast('Order deleted')
+  }
 
   function exportCSV() {
     const headers = ['Name', 'Email', 'Phone', 'Event', 'Quantity', 'Status', 'Checked In', 'Date']
@@ -172,6 +180,14 @@ export default function TicketsPage() {
                       </button>
                       {order.status !== 'cancelled' && (
                         <button className="btn-red" onClick={() => updateStatus(order.id, 'cancelled')} style={{ padding: '6px 12px', fontSize: 12 }}>Cancel</button>
+                      )}
+                      {confirmDelete === order.id ? (
+                        <>
+                          <button className="btn-red" onClick={() => deleteOrder(order.id)} style={{ padding: '6px 12px', fontSize: 12 }}>Yes, Delete</button>
+                          <button className="btn-outline" onClick={() => setConfirmDelete(null)} style={{ padding: '6px 12px', fontSize: 12 }}>No</button>
+                        </>
+                      ) : (
+                        <button className="btn-outline" onClick={() => setConfirmDelete(order.id)} style={{ padding: '6px 12px', fontSize: 12, color: 'var(--text-muted)' }}>Delete</button>
                       )}
                     </div>
                   </td>
