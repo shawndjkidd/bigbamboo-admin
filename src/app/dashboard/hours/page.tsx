@@ -22,7 +22,13 @@ export default function HoursPage() {
 
   async function save(key: string, value: string) {
     setSettings(p => ({ ...p, [key]: value }))
-    await supabase.from('site_settings').upsert({ key, value, updated_at: new Date().toISOString() }, { onConflict: 'key' })
+    // Try update first, then insert if no rows affected
+    const { data: existing } = await supabase.from('site_settings').select('key').eq('key', key).single()
+    if (existing) {
+      await supabase.from('site_settings').update({ value, updated_at: new Date().toISOString() }).eq('key', key)
+    } else {
+      await supabase.from('site_settings').insert({ key, value, updated_at: new Date().toISOString() })
+    }
     showToast('Saved')
   }
 
@@ -46,14 +52,17 @@ export default function HoursPage() {
         <div className="section-title" style={{ marginBottom: 18 }}>Opening Hours</div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           {[
-            { label: 'Mon \u2013 Thu', k: 'hours_mon_thu' },
+            { label: 'Monday', k: 'hours_mon' },
+            { label: 'Tuesday', k: 'hours_tue' },
+            { label: 'Wednesday', k: 'hours_wed' },
+            { label: 'Thursday', k: 'hours_thu' },
             { label: 'Friday', k: 'hours_fri' },
             { label: 'Saturday', k: 'hours_sat' },
             { label: 'Sunday', k: 'hours_sun' },
           ].map(h => (
             <div key={h.k} style={{ display: 'grid', gridTemplateColumns: '130px 1fr', alignItems: 'center', gap: 14 }}>
               <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-secondary)' }}>{h.label}</div>
-              <input className="input" value={settings[h.k] || ''} onChange={e => setSettings(p => ({ ...p, [h.k]: e.target.value }))} onBlur={e => save(h.k, e.target.value)} placeholder={h.k.includes('mon') ? 'Closed' : '17:00 \u2013 23:00'} style={{ fontFamily: 'DM Mono, monospace', fontSize: 14 }} />
+              <input className="input" value={settings[h.k] || ''} onChange={e => setSettings(p => ({ ...p, [h.k]: e.target.value }))} onBlur={e => save(h.k, e.target.value)} placeholder="Closed" style={{ fontFamily: 'DM Mono, monospace', fontSize: 14 }} />
             </div>
           ))}
         </div>
