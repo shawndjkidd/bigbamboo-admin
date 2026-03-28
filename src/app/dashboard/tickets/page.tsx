@@ -61,12 +61,12 @@ export default function TicketsPage() {
       o.status, o.checked_in ? 'Yes' : 'No',
       new Date(o.created_at).toLocaleDateString()
     ])
-    const csv = [headers.join(','), ...rows.map(r => r.map(c => `"${c}"`).join(','))].join('\n')
+    const csv = [headers.join(','), ...rows.map(r => r.map((c: any) => \`"\${c}"\`).join(','))].join('\n')
     const blob = new Blob([csv], { type: 'text/csv' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `tickets-${new Date().toISOString().split('T')[0]}.csv`
+    a.download = \`tickets-\${new Date().toISOString().split('T')[0]}.csv\`
     a.click()
     URL.revokeObjectURL(url)
     showToast('CSV exported')
@@ -89,19 +89,17 @@ export default function TicketsPage() {
 
   return (
     <div style={{ maxWidth: 1100 }}>
-      {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 28 }}>
         <div>
           <div className="page-title">Ticket Sales</div>
           <div style={{ fontSize: 14, color: 'var(--text-muted)', marginTop: 4 }}>Manage orders, confirm payments & check in guests</div>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
-          <button className="btn-outline" onClick={exportCSV} style={{ fontSize: 13 }}>↓ Export CSV</button>
-          <button className="btn-outline" onClick={loadData} style={{ fontSize: 13 }}>↻ Refresh</button>
+          <button className="btn-outline" onClick={exportCSV} style={{ fontSize: 13 }}>Export CSV</button>
+          <button className="btn-outline" onClick={loadData} style={{ fontSize: 13 }}>Refresh</button>
         </div>
       </div>
 
-      {/* Stats */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 24 }}>
         {[
           { label: 'Total Orders', value: filtered.length },
@@ -109,22 +107,15 @@ export default function TicketsPage() {
           { label: 'Pending Payment', value: pending, highlight: pending > 0 },
           { label: 'Checked In', value: checkedIn },
         ].map(s => (
-          <div key={s.label} className="card" style={{ padding: '18px 20px' }}>
-            <div style={{ fontFamily: 'Bebas Neue', fontSize: 36, color: s.highlight ? 'var(--accent)' : 'var(--text)', letterSpacing: '0.02em', lineHeight: 1 }}>{s.value}</div>
-            <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 6 }}>{s.label}</div>
+          <div key={s.label} className="card kpi-card">
+            <div className="kpi-label">{s.label}</div>
+            <div className="kpi-value" style={{ color: s.highlight ? 'var(--accent)' : 'var(--text)' }}>{s.value}</div>
           </div>
         ))}
       </div>
 
-      {/* Filters */}
       <div style={{ display: 'flex', gap: 10, marginBottom: 20, flexWrap: 'wrap', alignItems: 'center' }}>
-        <input
-          className="input"
-          value={searchQuery}
-          onChange={e => setSearchQuery(e.target.value)}
-          placeholder="Search by name, email, or phone..."
-          style={{ width: 280, fontSize: 14 }}
-        />
+        <input className="input" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search by name, email, or phone..." style={{ width: 280, fontSize: 14 }} />
         <select className="input" value={selectedEvent} onChange={e => setSelectedEvent(e.target.value)} style={{ width: 200 }}>
           <option value="all">All Events</option>
           {events.map(ev => <option key={ev.id} value={ev.id}>{ev.title}</option>)}
@@ -138,7 +129,6 @@ export default function TicketsPage() {
         <div style={{ fontSize: 13, color: 'var(--text-muted)', marginLeft: 'auto' }}>{filtered.length} order{filtered.length !== 1 ? 's' : ''}</div>
       </div>
 
-      {/* Table */}
       {loading ? (
         <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>Loading orders...</div>
       ) : filtered.length === 0 ? (
@@ -149,26 +139,19 @@ export default function TicketsPage() {
         <div className="card" style={{ overflow: 'hidden' }}>
           <table className="data-table">
             <thead>
-              <tr>
-                <th>Guest</th>
-                <th>Event</th>
-                <th>Qty</th>
-                <th>Status</th>
-                <th>Date</th>
-                <th style={{ textAlign: 'right' }}>Actions</th>
-              </tr>
+              <tr><th>Guest</th><th>Event</th><th>Qty</th><th>Status</th><th>Date</th><th style={{ textAlign: 'right' }}>Actions</th></tr>
             </thead>
             <tbody>
               {filtered.map(order => (
                 <tr key={order.id}>
                   <td>
                     <div style={{ fontWeight: 600, fontSize: 14 }}>{order.name}</div>
-                    <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{order.email}{order.phone && ` · ${order.phone}`}</div>
+                    <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{order.email}{order.phone && \` \u00b7 \${order.phone}\`}</div>
                   </td>
-                  <td style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{order.event_title || '—'}</td>
+                  <td style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{order.event_title || '\u2014'}</td>
                   <td style={{ fontWeight: 500 }}>{order.quantity || 1}</td>
                   <td>
-                    <span className={`badge ${order.status === 'confirmed' ? 'badge-green' : order.status === 'pending_payment' ? 'badge-orange' : 'badge-red'}`}>
+                    <span className={\`badge \${order.status === 'confirmed' ? 'badge-green' : order.status === 'pending_payment' ? 'badge-orange' : 'badge-red'}\`}>
                       {order.status === 'pending_payment' ? 'Pending' : order.status === 'confirmed' ? 'Confirmed' : 'Cancelled'}
                     </span>
                     {order.checked_in && <span className="badge badge-green" style={{ marginLeft: 6 }}>In</span>}
@@ -179,21 +162,16 @@ export default function TicketsPage() {
                   <td style={{ textAlign: 'right' }}>
                     <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
                       {order.status === 'pending_payment' && (
-                        <button className="btn-green" onClick={() => updateStatus(order.id, 'confirmed')} style={{ padding: '6px 12px', fontSize: 12 }}>
-                          Confirm
-                        </button>
+                        <button className="btn-green" onClick={() => updateStatus(order.id, 'confirmed')} style={{ padding: '6px 12px', fontSize: 12 }}>Confirm</button>
                       )}
-                      <button
-                        className={order.checked_in ? 'btn-green' : 'btn-outline'}
-                        onClick={() => checkIn(order.id, order.checked_in)}
-                        style={{ padding: '6px 12px', fontSize: 12 }}
-                      >
+                      {order.status === 'cancelled' && (
+                        <button className="btn-green" onClick={() => updateStatus(order.id, 'confirmed')} style={{ padding: '6px 12px', fontSize: 12 }}>Re-confirm</button>
+                      )}
+                      <button className={order.checked_in ? 'btn-green' : 'btn-outline'} onClick={() => checkIn(order.id, order.checked_in)} style={{ padding: '6px 12px', fontSize: 12 }}>
                         {order.checked_in ? 'Checked In' : 'Check In'}
                       </button>
                       {order.status !== 'cancelled' && (
-                        <button className="btn-red" onClick={() => updateStatus(order.id, 'cancelled')} style={{ padding: '6px 12px', fontSize: 12 }}>
-                          Cancel
-                        </button>
+                        <button className="btn-red" onClick={() => updateStatus(order.id, 'cancelled')} style={{ padding: '6px 12px', fontSize: 12 }}>Cancel</button>
                       )}
                     </div>
                   </td>
