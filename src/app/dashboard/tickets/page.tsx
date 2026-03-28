@@ -26,7 +26,20 @@ export default function TicketsPage() {
   async function updateStatus(id: string, status: string) {
     await supabase.from('ticket_orders').update({ status }).eq('id', id)
     setOrders(prev => prev.map(o => o.id === id ? { ...o, status } : o))
-    showToast(status === 'confirmed' ? '✓ Confirmed' : 'Updated')
+    if (status === 'confirmed') {
+      const order = orders.find(o => o.id === id)
+      if (order?.email) {
+        try {
+          const ev = events.find(e => e.id === order.event_id)
+          await fetch('https://hodqpckslglxuyhitlgh.supabase.co/functions/v1/send-ticket-email', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ order: { id: order.id, name: order.name, email: order.email, event_title: ev?.title || 'BigBamBoo Event', quantity: order.quantity } })
+          })
+          showToast('✓ Confirmed & ticket emailed')
+        } catch { showToast('✓ Confirmed (email failed)') }
+      } else { showToast('✓ Confirmed') }
+    } else { showToast('Updated') }
   }
 
   async function checkIn(id: string, checked: boolean) {
