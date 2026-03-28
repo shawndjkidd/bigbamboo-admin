@@ -1,11 +1,12 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import Sidebar from '@/components/Sidebar'
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter()
+  const pathname = usePathname()
   const [staff, setStaff] = useState<any>(null)
   const [loading, setLoading] = useState(true)
 
@@ -20,11 +21,18 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         .eq('active', true)
         .single()
       if (!staffData) { router.push('/login'); return }
+
+      // Scanner role can only access scan page and profile
+      if (staffData.role === 'scanner' && !pathname.startsWith('/dashboard/scan') && !pathname.startsWith('/dashboard/profile')) {
+        router.push('/dashboard/scan')
+        return
+      }
+
       setStaff(staffData)
       setLoading(false)
     }
     checkAuth()
-  }, [router])
+  }, [router, pathname])
 
   if (loading) return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg)' }}>
