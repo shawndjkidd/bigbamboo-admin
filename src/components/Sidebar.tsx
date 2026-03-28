@@ -4,19 +4,24 @@ import { usePathname, useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 
 const NAV = [
-  { href: '/dashboard', label: 'Dashboard', icon: '📊' },
-  { href: '/dashboard/menu', label: 'Menu', icon: '🍹' },
-  { href: '/dashboard/events', label: 'Events', icon: '📅' },
-  { href: '/dashboard/tickets', label: 'Ticket Sales', icon: '🎟️' },
-  { href: '/dashboard/scan', label: 'Door Scanner', icon: '📷' },
-  { href: '/dashboard/hours', label: 'Hours & Location', icon: '🕐' },
-  { href: '/dashboard/loyalty', label: 'Drinks Club', icon: '✦' },
-  { href: '/dashboard/settings', label: 'Settings', icon: '⚙️', adminOnly: true },
+  { href: '/dashboard', label: 'Dashboard' },
+  { href: '/dashboard/menu', label: 'Menu' },
+  { href: '/dashboard/events', label: 'Events' },
+  { href: '/dashboard/tickets', label: 'Ticket Sales' },
+  { href: '/dashboard/scan', label: 'Door Scanner' },
+  { href: '/dashboard/hours', label: 'Hours & Location' },
+  { href: '/dashboard/loyalty', label: 'Drinks Club' },
+  { href: '/dashboard/settings', label: 'Settings', adminOnly: true },
+]
+
+const SCANNER_NAV = [
+  { href: '/dashboard/scan', label: 'Door Scanner' },
 ]
 
 export default function Sidebar({ role }: { role: string }) {
   const pathname = usePathname()
   const router = useRouter()
+  const navItems = role === 'scanner' ? SCANNER_NAV : NAV
 
   async function handleSignOut() {
     await supabase.auth.signOut()
@@ -33,7 +38,7 @@ export default function Sidebar({ role }: { role: string }) {
 
   return (
     <aside style={{
-      width: 240,
+      width: 220,
       flexShrink: 0,
       background: 'var(--bg-sidebar)',
       borderRight: '1px solid var(--border)',
@@ -45,32 +50,29 @@ export default function Sidebar({ role }: { role: string }) {
       transition: 'background 0.2s',
     }}>
       {/* Logo */}
-      <div style={{ padding: '20px 20px 16px', borderBottom: '1px solid var(--border)' }}>
-        <div style={{ fontFamily: 'Bebas Neue', fontSize: 22, letterSpacing: '0.06em', color: 'var(--accent)' }}>BigBamBoo</div>
-        <div style={{ fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-muted)', marginTop: 3 }}>
-          {role === 'super_admin' ? 'Super Admin' : 'Manager'}
+      <div style={{ padding: '24px 20px 20px' }}>
+        <div style={{ fontFamily: 'Bebas Neue', fontSize: 22, letterSpacing: '0.06em', color: 'var(--accent)', lineHeight: 1 }}>BigBamBoo</div>
+        <div style={{ fontSize: 11, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)', marginTop: 4 }}>
+          {role === 'super_admin' ? 'Super Admin' : role === 'scanner' ? 'Door Staff' : 'Manager'}
         </div>
       </div>
 
       {/* Nav */}
-      <nav style={{ padding: '10px 0', flex: 1, overflowY: 'auto' }}>
-        {NAV.filter(item => !item.adminOnly || role === 'super_admin').map(item => {
+      <nav style={{ flex: 1, overflowY: 'auto', padding: '4px 0' }}>
+        {navItems.filter(item => !(item as any).adminOnly || role === 'super_admin').map(item => {
           const active = item.href === '/dashboard' ? pathname === '/dashboard' : pathname.startsWith(item.href)
           return (
             <Link key={item.href} href={item.href} style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 12,
-              padding: '11px 20px',
-              color: active ? 'var(--accent)' : 'var(--text-secondary)',
+              display: 'block',
+              padding: '10px 20px',
+              color: active ? 'var(--text)' : 'var(--text-secondary)',
               background: active ? 'var(--bg-active)' : 'transparent',
-              borderLeft: active ? '3px solid var(--accent)' : '3px solid transparent',
               fontSize: 14,
-              fontWeight: active ? 600 : 500,
+              fontWeight: active ? 600 : 400,
               textDecoration: 'none',
-              transition: 'all 0.15s',
+              transition: 'all 0.12s',
+              letterSpacing: '0.01em',
             }}>
-              <span style={{ fontSize: 16, width: 20, textAlign: 'center' }}>{item.icon}</span>
               {item.label}
             </Link>
           )
@@ -78,23 +80,23 @@ export default function Sidebar({ role }: { role: string }) {
       </nav>
 
       {/* Footer */}
-      <div style={{ padding: '16px 20px', borderTop: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div style={{ padding: '14px 20px', borderTop: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <Link href="/dashboard/profile" style={{
+          fontSize: 13, color: 'var(--text-secondary)', textDecoration: 'none', fontWeight: 400,
+        }}>
+          Profile
+        </Link>
         <button onClick={toggleTheme} style={{
-          display: 'flex', alignItems: 'center', gap: 8,
-          color: 'var(--text-muted)', fontSize: 13, fontWeight: 500,
+          color: 'var(--text-muted)', fontSize: 13, fontWeight: 400,
           background: 'none', border: 'none', cursor: 'pointer', padding: 0,
+          textAlign: 'left',
         }}>
-          ◑ Toggle theme
+          Toggle theme
         </button>
-        <a href="https://bigbamboo.app" target="_blank" rel="noopener noreferrer" style={{
-          display: 'flex', alignItems: 'center', gap: 8,
-          color: 'var(--accent)', fontSize: 13, fontWeight: 500, textDecoration: 'none',
-        }}>
-          ↗ View Live Site
-        </a>
         <button onClick={handleSignOut} style={{
           fontSize: 13, color: 'var(--text-muted)', background: 'none',
           border: 'none', cursor: 'pointer', padding: 0, textAlign: 'left',
+          fontWeight: 400,
         }}>
           Sign out
         </button>
