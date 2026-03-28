@@ -7,17 +7,14 @@ export default function SettingsPage() {
   const [currentUser, setCurrentUser] = useState<any>(null)
   const [toast, setToast] = useState('')
   const [showAdd, setShowAdd] = useState(false)
-  const [newStaff, setNewStaff] = useState({ name:'', email:'', role:'manager', password:'' })
+  const [newStaff, setNewStaff] = useState({ name: '', email: '', role: 'manager', password: '' })
 
-  useEffect(() => {
-    loadData()
-  }, [])
+  useEffect(() => { loadData() }, [])
 
   async function loadData() {
     const { data: { user } } = await supabase.auth.getUser()
     const { data: me } = await supabase.from('staff_users').select('*').eq('email', user?.email).single()
     setCurrentUser(me)
-
     if (me?.role !== 'super_admin') return
     const { data } = await supabase.from('staff_users').select('*').order('created_at')
     setStaff(data || [])
@@ -25,96 +22,132 @@ export default function SettingsPage() {
 
   async function addStaff() {
     if (!newStaff.name || !newStaff.email || !newStaff.password) return
-    // Create Supabase Auth user
-    const { data: authData, error: authError } = await supabase.auth.signUp({ email: newStaff.email, password: newStaff.password })
+    const { error: authError } = await supabase.auth.signUp({ email: newStaff.email, password: newStaff.password })
     if (authError) { showToast('Error: ' + authError.message); return }
-    // Create staff record
     await supabase.from('staff_users').insert({ name: newStaff.name, email: newStaff.email, role: newStaff.role })
-    setNewStaff({ name:'', email:'', role:'manager', password:'' })
+    setNewStaff({ name: '', email: '', role: 'manager', password: '' })
     setShowAdd(false)
-    showToast('Staff member added!')
+    showToast('Staff member added')
     loadData()
   }
 
   async function toggleActive(id: string, active: boolean) {
     await supabase.from('staff_users').update({ active: !active }).eq('id', id)
-    setStaff(prev => prev.map(s => s.id === id ? {...s, active: !active} : s))
+    setStaff(prev => prev.map(s => s.id === id ? { ...s, active: !active } : s))
     showToast(active ? 'Account deactivated' : 'Account activated')
+  }
+
+  async function updateRole(id: string, role: string) {
+    await supabase.from('staff_users').update({ role }).eq('id', id)
+    setStaff(prev => prev.map(s => s.id === id ? { ...s, role } : s))
+    showToast('Role updated')
   }
 
   function showToast(msg: string) { setToast(msg); setTimeout(() => setToast(''), 3000) }
 
+  function roleLabel(role: string) {
+    if (role === 'super_admin') return 'Super Admin'
+    if (role === 'scanner') return 'Door Staff'
+    return 'Manager'
+  }
+
+  function roleBadge(role: string) {
+    if (role === 'super_admin') return 'badge-orange'
+    if (role === 'scanner') return 'badge-blue'
+    return 'badge-gray'
+  }
+
   if (currentUser?.role !== 'super_admin') {
     return (
-      <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',minHeight:300,color:'rgba(255,255,255,0.4)'}}>
-        <div style={{fontSize:40,marginBottom:12}}>🔒</div>
-        <div style={{fontFamily:'Bebas Neue',fontSize:24,letterSpacing:'0.06em'}}>Super Admin Only</div>
-        <div style={{fontSize:13,marginTop:6}}>You need Super Admin access to view settings.</div>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: 400 }}>
+        <div className="page-title" style={{ fontSize: 28 }}>Super Admin Only</div>
+        <div style={{ fontSize: 15, color: 'var(--text-muted)', marginTop: 8 }}>You need Super Admin access to view settings.</div>
       </div>
     )
   }
 
   return (
-    <div style={{maxWidth:640}}>
-      <div style={{fontFamily:'Bebas Neue',fontSize:32,letterSpacing:'0.06em',marginBottom:24}}>Settings</div>
+    <div style={{ maxWidth: 720 }}>
+      <div className="page-title" style={{ marginBottom: 28 }}>Settings</div>
 
       {/* Staff Management */}
-      <div className="card" style={{padding:20,marginBottom:16}}>
-        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}}>
-          <div style={{fontFamily:'DM Mono',fontSize:10,letterSpacing:'0.18em',textTransform:'uppercase',color:'#3AA8A4'}}>Staff Accounts</div>
-          <button className="btn-yellow" onClick={() => setShowAdd(!showAdd)} style={{fontFamily:'Bebas Neue',fontSize:14,letterSpacing:'0.08em',padding:'7px 16px'}}>+ Add Staff</button>
+      <div className="card" style={{ padding: 24, marginBottom: 20 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+          <div className="section-title">Staff Accounts</div>
+          <button className="btn-accent" onClick={() => setShowAdd(!showAdd)} style={{ fontSize: 13, padding: '8px 16px' }}>+ Add Staff</button>
         </div>
 
         {showAdd && (
-          <div style={{background:'rgba(255,255,255,0.03)',border:'1px dashed rgba(58,168,164,0.3)',borderRadius:8,padding:16,marginBottom:16}}>
-            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:10}}>
-              <div><label className="label">Name</label><input className="input" value={newStaff.name} onChange={e=>setNewStaff(p=>({...p,name:e.target.value}))} placeholder="Full name" /></div>
-              <div><label className="label">Email</label><input className="input" type="email" value={newStaff.email} onChange={e=>setNewStaff(p=>({...p,email:e.target.value}))} placeholder="staff@bigbamboo.app" /></div>
+          <div style={{ background: 'var(--bg-subtle)', border: '1px dashed var(--accent)', borderRadius: 10, padding: 20, marginBottom: 20 }}>
+            <div className="section-title" style={{ color: 'var(--accent)', marginBottom: 16 }}>New Staff Member</div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
+              <div><label className="label">Full Name</label><input className="input" value={newStaff.name} onChange={e => setNewStaff(p => ({ ...p, name: e.target.value }))} placeholder="John Smith" /></div>
+              <div><label className="label">Email</label><input className="input" type="email" value={newStaff.email} onChange={e => setNewStaff(p => ({ ...p, email: e.target.value }))} placeholder="staff@bigbamboo.app" /></div>
             </div>
-            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:12}}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 16 }}>
               <div>
                 <label className="label">Role</label>
-                <select className="input" value={newStaff.role} onChange={e=>setNewStaff(p=>({...p,role:e.target.value}))} style={{cursor:'pointer'}}>
+                <select className="input" value={newStaff.role} onChange={e => setNewStaff(p => ({ ...p, role: e.target.value }))}>
                   <option value="manager">Manager</option>
+                  <option value="scanner">Door Staff (Scanner Only)</option>
                   <option value="super_admin">Super Admin</option>
                 </select>
               </div>
-              <div><label className="label">Temporary Password</label><input className="input" type="password" value={newStaff.password} onChange={e=>setNewStaff(p=>({...p,password:e.target.value}))} placeholder="They can change it later" /></div>
+              <div><label className="label">Temporary Password</label><input className="input" type="password" value={newStaff.password} onChange={e => setNewStaff(p => ({ ...p, password: e.target.value }))} placeholder="They can change later" /></div>
             </div>
-            <div style={{display:'flex',gap:8}}>
-              <button className="btn-green" onClick={addStaff}>+ Create Account</button>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button className="btn-accent" onClick={addStaff}>Create Account</button>
               <button className="btn-outline" onClick={() => setShowAdd(false)}>Cancel</button>
             </div>
           </div>
         )}
 
-        <div style={{display:'flex',flexDirection:'column',gap:8}}>
-          {staff.map(s => (
-            <div key={s.id} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'10px 0',borderBottom:'1px solid rgba(255,255,255,0.06)'}}>
-              <div>
-                <div style={{fontSize:13,fontWeight:600,color:s.active?'#F5EED8':'rgba(255,255,255,0.3)'}}>{s.name}</div>
-                <div style={{fontSize:11,color:'rgba(255,255,255,0.35)'}}>{s.email}</div>
-              </div>
-              <div style={{display:'flex',gap:8,alignItems:'center'}}>
-                <span className={`badge ${s.role==='super_admin'?'badge-yellow':'badge-teal'}`}>{s.role==='super_admin'?'Super Admin':'Manager'}</span>
-                {s.id !== currentUser.id && (
-                  <button onClick={() => toggleActive(s.id, s.active)} style={{fontSize:11,padding:'5px 12px',borderRadius:6,border:'none',cursor:'pointer',background:s.active?'rgba(192,48,32,0.15)':'rgba(0,177,79,0.15)',color:s.active?'#E06060':'#00C858'}}>
-                    {s.active ? 'Deactivate' : 'Activate'}
-                  </button>
-                )}
-              </div>
-            </div>
-          ))}
+        {/* Staff list */}
+        <div className="card" style={{ overflow: 'hidden' }}>
+          <table className="data-table">
+            <thead>
+              <tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th style={{ textAlign: 'right' }}>Actions</th></tr>
+            </thead>
+            <tbody>
+              {staff.map(s => (
+                <tr key={s.id} style={{ opacity: s.active ? 1 : 0.5 }}>
+                  <td style={{ fontWeight: 600 }}>{s.name}</td>
+                  <td style={{ color: 'var(--text-secondary)', fontSize: 13 }}>{s.email}</td>
+                  <td>
+                    {s.id === currentUser.id ? (
+                      <span className={`badge ${roleBadge(s.role)}`}>{roleLabel(s.role)}</span>
+                    ) : (
+                      <select className="input" value={s.role} onChange={e => updateRole(s.id, e.target.value)} style={{ width: 140, padding: '4px 8px', fontSize: 12 }}>
+                        <option value="manager">Manager</option>
+                        <option value="scanner">Door Staff</option>
+                        <option value="super_admin">Super Admin</option>
+                      </select>
+                    )}
+                  </td>
+                  <td><span className={`badge ${s.active ? 'badge-green' : 'badge-red'}`}>{s.active ? 'Active' : 'Inactive'}</span></td>
+                  <td style={{ textAlign: 'right' }}>
+                    {s.id !== currentUser.id && (
+                      <button onClick={() => toggleActive(s.id, s.active)}
+                        className={s.active ? 'btn-red' : 'btn-green'}
+                        style={{ padding: '5px 12px', fontSize: 12 }}>
+                        {s.active ? 'Deactivate' : 'Activate'}
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
 
       {/* Loyalty Config */}
-      <div className="card" style={{padding:20}}>
-        <div style={{fontFamily:'DM Mono',fontSize:10,letterSpacing:'0.18em',textTransform:'uppercase',color:'#3AA8A4',marginBottom:16}}>Loyalty Program Config</div>
+      <div className="card" style={{ padding: 24 }}>
+        <div className="section-title" style={{ marginBottom: 20 }}>Loyalty Program</div>
         <LoyaltySetting />
       </div>
 
-      {toast && <div style={{position:'fixed',bottom:24,right:24,background:'#00B14F',color:'#fff',padding:'11px 20px',borderRadius:8,fontFamily:'DM Mono',fontSize:11,letterSpacing:'0.1em',zIndex:9999}}>{toast}</div>}
+      {toast && <div className="toast">{toast}</div>}
     </div>
   )
 }
@@ -123,22 +156,20 @@ function LoyaltySetting() {
   const [goal, setGoal] = useState('10')
   const [saved, setSaved] = useState(false)
   useEffect(() => {
-    supabase.from('site_settings').select('value').eq('key','loyalty_stamp_goal').single().then(({data}:any) => { if (data) setGoal(data.value) })
+    supabase.from('site_settings').select('value').eq('key', 'loyalty_stamp_goal').single().then(({ data }: any) => { if (data) setGoal(data.value) })
   }, [])
   async function save() {
-    await supabase.from('site_settings').upsert({ key:'loyalty_stamp_goal', value: goal, updated_at: new Date().toISOString() }, { onConflict:'key' })
+    await supabase.from('site_settings').upsert({ key: 'loyalty_stamp_goal', value: goal, updated_at: new Date().toISOString() }, { onConflict: 'key' })
     setSaved(true); setTimeout(() => setSaved(false), 2000)
   }
   return (
-    <div style={{display:'flex',alignItems:'center',gap:12}}>
-      <div style={{flex:1}}>
-        <label className="label">Stamps required for reward</label>
-        <input className="input" type="number" min={1} max={50} value={goal} onChange={e=>setGoal(e.target.value)} style={{width:100,fontFamily:'DM Mono',fontSize:18,textAlign:'center'}} />
+    <div style={{ display: 'flex', alignItems: 'flex-end', gap: 16 }}>
+      <div style={{ flex: 1 }}>
+        <label className="label">Stamps required for free drink</label>
+        <input className="input" type="number" min={1} max={50} value={goal} onChange={e => setGoal(e.target.value)} style={{ width: 120, fontFamily: 'DM Mono, monospace', fontSize: 18, textAlign: 'center' }} />
       </div>
-      <div style={{paddingTop:18}}>
-        <button className="btn-yellow" onClick={save} style={{fontFamily:'Bebas Neue',fontSize:16,letterSpacing:'0.08em'}}>{saved?'Saved!':'Save'}</button>
-      </div>
-      <div style={{paddingTop:18,fontSize:13,color:'rgba(255,255,255,0.4)'}}>Buy {goal} · Get 1 Free</div>
+      <button className="btn-accent" onClick={save} style={{ fontSize: 14 }}>{saved ? 'Saved!' : 'Save'}</button>
+      <div style={{ fontSize: 14, color: 'var(--text-muted)', paddingBottom: 4 }}>Buy {goal}, get 1 free</div>
     </div>
   )
 }
