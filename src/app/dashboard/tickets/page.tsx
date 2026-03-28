@@ -61,12 +61,12 @@ export default function TicketsPage() {
       o.status, o.checked_in ? 'Yes' : 'No',
       new Date(o.created_at).toLocaleDateString()
     ])
-    const csv = [headers.join(','), ...rows.map(r => r.map((c: any) => \`"\${c}"\`).join(','))].join('\n')
+    const csv = [headers.join(','), ...rows.map(r => r.map((c: any) => `"${c}"`).join(','))].join('\n')
     const blob = new Blob([csv], { type: 'text/csv' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = \`tickets-\${new Date().toISOString().split('T')[0]}.csv\`
+    a.download = `tickets-${new Date().toISOString().split('T')[0]}.csv`
     a.click()
     URL.revokeObjectURL(url)
     showToast('CSV exported')
@@ -146,12 +146,12 @@ export default function TicketsPage() {
                 <tr key={order.id}>
                   <td>
                     <div style={{ fontWeight: 600, fontSize: 14 }}>{order.name}</div>
-                    <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{order.email}{order.phone && \` \u00b7 \${order.phone}\`}</div>
+                    <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{order.email}{order.phone && ` \u00b7 ${order.phone}`}</div>
                   </td>
                   <td style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{order.event_title || '\u2014'}</td>
                   <td style={{ fontWeight: 500 }}>{order.quantity || 1}</td>
                   <td>
-                    <span className={\`badge \${order.status === 'confirmed' ? 'badge-green' : order.status === 'pending_payment' ? 'badge-orange' : 'badge-red'}\`}>
+                    <span className={`badge ${order.status === 'confirmed' ? 'badge-green' : order.status === 'pending_payment' ? 'badge-orange' : 'badge-red'}`}>
                       {order.status === 'pending_payment' ? 'Pending' : order.status === 'confirmed' ? 'Confirmed' : 'Cancelled'}
                     </span>
                     {order.checked_in && <span className="badge badge-green" style={{ marginLeft: 6 }}>In</span>}
