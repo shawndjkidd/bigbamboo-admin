@@ -2,23 +2,25 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 
+const BLANK_TICKET = { name: '', email: '', phone: '', event_id: '', quantity: 1, status: 'confirmed' }
+
 export default function TicketsPage() {
   const [orders, setOrders] = useState<any[]>([])
   const [events, setEvents] = useState<any[]>([])
   const [selectedEvent, setSelectedEvent] = useState('all')
   const [selectedStatus, setSelectedStatus] = useState('all')
+  const [searchQuery, setSearchQuery] = useState('')
   const [loading, setLoading] = useState(true)
   const [toast, setToast] = useState('')
-  const [showCreateModal, setShowCreateModal] = useState(false)
-  const [form, setForm] = useState({ name: '', email: '', phone: '', event_id: '', quantity: '1', payment_method: 'cash', send_email: true, notes: '' })
-  const [creating, setCreating] = useState(false)
+  const [showAdd, setShowAdd] = useState(false)
+  const [newTicket, setNewTicket] = useState<any>({ ...BLANK_TICKET })
 
   useEffect(() => { loadData() }, [])
 
   async function loadData() {
     setLoading(true)
     const [{ data: evData }, { data: ordData }] = await Promise.all([
-      supabase.from('events').select('id, title, ticket_price').order('event_date', { ascending: false }),
+      supabase.from('events').select('id, title').order('event_date', { ascending: false }),
       supabase.from('ticket_orders').select('*').order('created_at', { ascending: false })
     ])
     setEvents(evData || [])
@@ -26,231 +28,265 @@ export default function TicketsPage() {
     setLoading(false)
   }
 
-  async function createManualTicket() {
-    if (!form.name.trim()) return showToast('Name is required')
-    if (!form.event_id) return showToast('Select an event')
-    setCreating(true)
-    const selectedEv = events.find(e => e.id === form.event_id)
-    const orderData = {
-      name: form.name.trim(),
-      email: form.email.trim() || null,
-      phone: form.phone.trim() || null,
-      event_id: form.event_id,
-      event_title: selectedEv?.title || '',
-      quantity: parseInt(form.quantity) || 1,
-      payment_method: form.payment_method,
-      status: 'confirmed',
-    }
-    const { data: newOrder, error } = await supabase.from('ticket_orders').insert(orderData).select().single()
-    if (error || !newOrder) { setCreating(false); return showToast('Failed to create ticket') }
-    if (form.send_email && form.email.trim()) {
-      try {
-        const res = await fetch(process.env.NEXT_PUBLIC_SUPABASE_URL + '/functions/v1/send-ticket-email', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ order: newOrder })
-        })
-        const result = await res.json()
-        showToast(result.success ? '✓ Ticket created & emailed! 🎟' : '✓ Ticket created (email failed)')
-      } catch { showToast('✓ Ticket created (email not sent)') }
-    } else { showToast('✓ Ticket created manually') }
-    setOrders(prev => [newOrder, ...prev])
-    setShowCreateModal(false)
-    setForm({ name: '', email: '', phone: '', event_id: '', quantity: '1', payment_method: 'cash', send_email: true, notes: '' })
-    setCreating(false)
-  }
-
   async function updateStatus(id: string, status: string) {
-    await supabase.from('ticket_orders').update({ status }).eq('id', id)
+    const { error } = await supabase.from('ticket_orders').update({ status }).eq('id', id)
+    if (error) { showToast('Error: ' + error.message); return }
     setOrders(prev => prev.map(o => o.id === id ? { ...o, status } : o))
     if (status === 'confirmed') {
       const order = orders.find(o => o.id === id)
       if (order?.email) {
         try {
-          const res = await fetch(process.env.NEXT_PUBLIC_SUPABASE_URL + '/functions/v1/send-ticket-email', {
+          const ev = events.find(e => e.id === order.event_id)
+          await fetch('https://hodqpckslglxuyhitlgh.supabase.co/functions/v1/send-ticket-email', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY },
-            body: JSON.stringify({ order: { ...order, status: 'confirmed' } })
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ order: { id: order.id, name: order.name, email: order.email, event_title: ev?.title || 'BigBamBoo Event', quantity: order.quantity } })
           })
-          const data = await res.json()
-          showToast(data.success ? '✓ Confirmed · Ticket emailed! 🎟' : '✓ Confirmed (email failed)')
-        } catch { showToast('✓ Confirmed (email not sent)') }
-      } else { showToast('✓ Confirmed (no email on order)') }
-    } else { showToast('Updated') }
+          showToast('Confirmed & ticket emailed')
+        } catch { showToast('Confirmed (email failed)') }
+      } else { showToast('Confirmed') }
+    } else { showToast('Status updated') }
+  }
+
+  async function deleteOrder(id: string) {
+    if (!confirm('Permanently delete this ticket order?')) return
+    const { error } = await supabase.from('ticket_orders').delete().eq('id', id)
+    if (error) { showToast('Error: ' + error.message); return }
+    setOrders(prev => prev.filter(o => o.id !== id))
+    showToast('Ticket deleted')
+  }
+
+  async function createTicket() {
+    if (!newTicket.name) { showToast('Name is required'); return }
+    if (!newTicket.event_id) { showToast('Please select an event'); return }
+    const ev = events.find(e => e.id === newTicket.event_id)
+    const { data, error } = await supabase.from('ticket_orders').insert({
+      name: newTicket.name,
+      email: newTicket.email || null,
+      phone: newTicket.phone || null,
+      event_id: newTicket.event_id,
+      event_title: ev?.title || '',
+      quantity: parseInt(newTicket.quantity) || 1,
+      status: newTicket.status,
+    }).select().single()
+    if (error) { showToast('Error: ' + error.message); return }
+    if (data) {
+      setOrders(prev => [data, ...prev])
+      setNewTicket({ ...BLANK_TICKET })
+      setShowAdd(false)
+      showToast('Ticket created')
+    }
   }
 
   async function checkIn(id: string, checked: boolean) {
-    await supabase.from('ticket_orders').update({ checked_in: !checked, checked_in_at: !checked ? new Date().toISOString() : null }).eq('id', id)
+    const { error } = await supabase.from('ticket_orders').update({
+      checked_in: !checked,
+      checked_in_at: !checked ? new Date().toISOString() : null
+    }).eq('id', id)
+    if (error) { showToast('Error: ' + error.message); return }
     setOrders(prev => prev.map(o => o.id === id ? { ...o, checked_in: !checked } : o))
-    showToast(!checked ? '✓ Checked in' : 'Unchecked')
+    showToast(!checked ? 'Checked in' : 'Unchecked')
   }
 
-  function showToast(msg: string) { setToast(msg); setTimeout(() => setToast(''), 3000) }
+  function showToast(msg: string) { setToast(msg); setTimeout(() => setToast(''), 2500) }
+
+  function exportCSV() {
+    const headers = ['Name', 'Email', 'Phone', 'Event', 'Quantity', 'Status', 'Checked In', 'Date']
+    const rows = filtered.map(o => [
+      o.name, o.email || '', o.phone || '', o.event_title || '', o.quantity || 1,
+      o.status, o.checked_in ? 'Yes' : 'No',
+      new Date(o.created_at).toLocaleDateString()
+    ])
+    const csv = [headers.join(','), ...rows.map(r => r.map((c: any) => `"${c}"`).join(','))].join('\n')
+    const blob = new Blob([csv], { type: 'text/csv' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `tickets-${new Date().toISOString().split('T')[0]}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+    showToast('CSV exported')
+  }
 
   const filtered = orders.filter(o => {
     if (selectedEvent !== 'all' && o.event_id !== selectedEvent) return false
     if (selectedStatus !== 'all' && o.status !== selectedStatus) return false
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase()
+      if (!o.name?.toLowerCase().includes(q) && !o.email?.toLowerCase().includes(q) && !o.phone?.toLowerCase().includes(q)) return false
+    }
     return true
   })
 
   const totalTickets = filtered.reduce((sum, o) => sum + (o.quantity || 1), 0)
   const pending = filtered.filter(o => o.status === 'pending_payment').length
+  const confirmed = filtered.filter(o => o.status === 'confirmed').length
   const checkedIn = filtered.filter(o => o.checked_in).length
 
-  function statusBadge(status: string) {
-    const styles: any = {
-      confirmed: { background: 'rgba(0,177,79,0.12)', color: '#00C858', border: '1px solid rgba(0,177,79,0.25)' },
-      pending_payment: { background: 'rgba(232,168,32,0.12)', color: '#E8A820', border: '1px solid rgba(232,168,32,0.25)' },
-      cancelled: { background: 'rgba(192,48,32,0.12)', color: '#E06060', border: '1px solid rgba(192,48,32,0.25)' },
-    }
-    const labels: any = { confirmed: 'Confirmed', pending_payment: 'Pending Payment', cancelled: 'Cancelled' }
-    return <span style={{ ...(styles[status] || styles.confirmed), padding: '2px 9px', borderRadius: 100, fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase' as const, fontFamily: 'DM Mono' }}>{labels[status] || status}</span>
-  }
-
-  const inputStyle = { width: '100%', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, padding: '10px 12px', color: '#F5EED8', fontSize: 14, outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box' as const }
-  const labelStyle = { fontFamily: 'DM Mono', fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase' as const, color: 'rgba(255,255,255,0.4)', marginBottom: 5, display: 'block' }
-
   return (
-    <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-        <div style={{ fontFamily: 'Bebas Neue', fontSize: 32, letterSpacing: '0.06em' }}>Ticket Sales</div>
+    <div style={{ maxWidth: 1100 }}>
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 28 }}>
+        <div>
+          <div className="page-title">Ticket Sales</div>
+          <div style={{ fontSize: 14, color: 'var(--text-muted)', marginTop: 4 }}>Manage orders, confirm payments & check in guests</div>
+        </div>
         <div style={{ display: 'flex', gap: 8 }}>
-          <button className="btn-outline" onClick={loadData} style={{ fontFamily: 'DM Mono', fontSize: 11 }}>↻ Refresh</button>
-          <button onClick={() => setShowCreateModal(true)} style={{ background: '#E8A820', color: '#1a0800', border: 'none', borderRadius: 8, padding: '8px 18px', fontFamily: 'Bebas Neue', fontSize: 16, letterSpacing: '0.08em', cursor: 'pointer' }}>
-            + Create Ticket
-          </button>
+          <button className="btn-accent" onClick={() => setShowAdd(!showAdd)} style={{ fontSize: 13, padding: '9px 18px' }}>+ Add Ticket</button>
+          <button className="btn-outline" onClick={exportCSV} style={{ fontSize: 13 }}>Export CSV</button>
+          <button className="btn-outline" onClick={loadData} style={{ fontSize: 13 }}>Refresh</button>
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 10, marginBottom: 20 }}>
-        {[{ label: 'Total Orders', value: filtered.length, color: '#F5EED8' }, { label: 'Total Tickets', value: totalTickets, color: '#E8A820' }, { label: 'Pending Payment', value: pending, color: '#E8A820' }, { label: 'Checked In', value: checkedIn, color: '#00C858' }].map(s => (
-          <div key={s.label} className="card" style={{ padding: '14px 16px', textAlign: 'center' as const }}>
-            <div style={{ fontFamily: 'Bebas Neue', fontSize: 32, color: s.color, letterSpacing: '0.04em' }}>{s.value}</div>
-            <div style={{ fontFamily: 'DM Mono', fontSize: 9, letterSpacing: '0.12em', textTransform: 'uppercase' as const, color: 'rgba(255,255,255,0.4)', marginTop: 2 }}>{s.label}</div>
+      {/* Add Ticket Form */}
+      {showAdd && (
+        <div className="card" style={{ padding: 24, marginBottom: 24, borderColor: 'var(--accent)', borderStyle: 'dashed' }}>
+          <div className="section-title" style={{ color: 'var(--accent)', marginBottom: 18 }}>New Ticket Order</div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
+            <div><label className="label">Guest Name *</label>
+              <input className="input" value={newTicket.name} onChange={e => setNewTicket((p: any) => ({ ...p, name: e.target.value }))} placeholder="Full name" /></div>
+            <div><label className="label">Event *</label>
+              <select className="input" value={newTicket.event_id} onChange={e => setNewTicket((p: any) => ({ ...p, event_id: e.target.value }))}>
+                <option value="">Select event</option>
+                {events.map(ev => <option key={ev.id} value={ev.id}>{ev.title}</option>)}
+              </select></div>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14, marginBottom: 14 }}>
+            <div><label className="label">Email</label>
+              <input className="input" type="email" value={newTicket.email} onChange={e => setNewTicket((p: any) => ({ ...p, email: e.target.value }))} placeholder="guest@email.com" /></div>
+            <div><label className="label">Phone</label>
+              <input className="input" value={newTicket.phone} onChange={e => setNewTicket((p: any) => ({ ...p, phone: e.target.value }))} placeholder="+84 ..." /></div>
+            <div><label className="label">Quantity</label>
+              <input className="input" type="number" min="1" value={newTicket.quantity} onChange={e => setNewTicket((p: any) => ({ ...p, quantity: e.target.value }))} /></div>
+          </div>
+          <div style={{ display: 'flex', gap: 14, alignItems: 'center', marginBottom: 18 }}>
+            <label className="label" style={{ marginBottom: 0 }}>Status:</label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14, color: 'var(--text-secondary)', cursor: 'pointer' }}>
+              <input type="radio" checked={newTicket.status === 'confirmed'} onChange={() => setNewTicket((p: any) => ({ ...p, status: 'confirmed' }))} style={{ accentColor: 'var(--green)' }} /> Confirmed
+            </label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14, color: 'var(--text-secondary)', cursor: 'pointer' }}>
+              <input type="radio" checked={newTicket.status === 'pending_payment'} onChange={() => setNewTicket((p: any) => ({ ...p, status: 'pending_payment' }))} style={{ accentColor: 'var(--accent)' }} /> Pending Payment
+            </label>
+          </div>
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button className="btn-accent" onClick={createTicket}>Create Ticket</button>
+            <button className="btn-outline" onClick={() => setShowAdd(false)}>Cancel</button>
+          </div>
+        </div>
+      )}
+
+      {/* Stats */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 24 }}>
+        {[
+          { label: 'Total Orders', value: filtered.length },
+          { label: 'Total Tickets', value: totalTickets },
+          { label: 'Pending Payment', value: pending, highlight: pending > 0 },
+          { label: 'Checked In', value: checkedIn },
+        ].map(s => (
+          <div key={s.label} className="card" style={{ padding: '18px 20px' }}>
+            <div style={{ fontFamily: 'Bebas Neue', fontSize: 36, color: s.highlight ? 'var(--accent)' : 'var(--text)', letterSpacing: '0.02em', lineHeight: 1 }}>{s.value}</div>
+            <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 6 }}>{s.label}</div>
           </div>
         ))}
       </div>
 
-      <div style={{ display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap' as const }}>
-        <select value={selectedEvent} onChange={e => setSelectedEvent(e.target.value)} style={{ background: '#1C2A28', border: '1px solid rgba(255,255,255,0.12)', color: '#F5EED8', padding: '8px 12px', borderRadius: 7, fontFamily: 'DM Mono', fontSize: 11, cursor: 'pointer' }}>
+      {/* Filters */}
+      <div style={{ display: 'flex', gap: 10, marginBottom: 20, flexWrap: 'wrap', alignItems: 'center' }}>
+        <input
+          className="input"
+          value={searchQuery}
+          onChange={e => setSearchQuery(e.target.value)}
+          placeholder="Search by name, email, or phone..."
+          style={{ width: 280, fontSize: 14 }}
+        />
+        <select className="input" value={selectedEvent} onChange={e => setSelectedEvent(e.target.value)} style={{ width: 200 }}>
           <option value="all">All Events</option>
           {events.map(ev => <option key={ev.id} value={ev.id}>{ev.title}</option>)}
         </select>
-        <select value={selectedStatus} onChange={e => setSelectedStatus(e.target.value)} style={{ background: '#1C2A28', border: '1px solid rgba(255,255,255,0.12)', color: '#F5EED8', padding: '8px 12px', borderRadius: 7, fontFamily: 'DM Mono', fontSize: 11, cursor: 'pointer' }}>
+        <select className="input" value={selectedStatus} onChange={e => setSelectedStatus(e.target.value)} style={{ width: 180 }}>
           <option value="all">All Statuses</option>
           <option value="pending_payment">Pending Payment</option>
           <option value="confirmed">Confirmed</option>
           <option value="cancelled">Cancelled</option>
         </select>
+        <div style={{ fontSize: 13, color: 'var(--text-muted)', marginLeft: 'auto' }}>{filtered.length} order{filtered.length !== 1 ? 's' : ''}</div>
       </div>
 
-      {loading ? <div style={{ color: 'rgba(255,255,255,0.4)', padding: 20 }}>Loading...</div> : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {filtered.length === 0 && <div style={{ color: 'rgba(255,255,255,0.3)', fontSize: 13, padding: '20px 0' }}>No orders yet.</div>}
-          {filtered.map(order => (
-            <div key={order.id} className="card" style={{ padding: 16, borderLeft: `3px solid ${order.checked_in ? '#00C858' : order.status === 'pending_payment' ? '#E8A820' : 'rgba(255,255,255,0.08)'}` }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap' as const, gap: 10 }}>
-                <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' as const }}>
-                    <span style={{ fontWeight: 600, fontSize: 15, color: '#F5EED8' }}>{order.name}</span>
-                    {statusBadge(order.status)}
-                    {order.checked_in && <span style={{ background: 'rgba(0,177,79,0.12)', color: '#00C858', border: '1px solid rgba(0,177,79,0.25)', padding: '2px 9px', borderRadius: 100, fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase' as const, fontFamily: 'DM Mono' }}>✓ In</span>}
-                    {order.payment_method === 'cash' && <span style={{ background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.4)', border: '1px solid rgba(255,255,255,0.1)', padding: '2px 9px', borderRadius: 100, fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase' as const, fontFamily: 'DM Mono' }}>Cash</span>}
-                    {order.payment_method === 'comp' && <span style={{ background: 'rgba(147,51,234,0.12)', color: '#C084FC', border: '1px solid rgba(147,51,234,0.25)', padding: '2px 9px', borderRadius: 100, fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase' as const, fontFamily: 'DM Mono' }}>Comp</span>}
-                  </div>
-                  <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.45)', fontFamily: 'DM Mono' }}>{order.email || '—'}{order.phone && ` · ${order.phone}`}</div>
-                  <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)', marginTop: 3 }}>{order.event_title} · {order.quantity} ticket{order.quantity > 1 ? 's' : ''} · {new Date(order.created_at).toLocaleDateString('en', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</div>
-                </div>
-                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' as const }}>
-                  {order.status === 'pending_payment' && (
-                    <button onClick={() => updateStatus(order.id, 'confirmed')} style={{ background: 'rgba(0,177,79,0.12)', border: '1px solid rgba(0,177,79,0.3)', color: '#00C858', padding: '6px 14px', borderRadius: 6, fontSize: 11, cursor: 'pointer', fontFamily: 'DM Mono' }}>✓ Confirm Payment</button>
-                  )}
-                  {order.status === 'confirmed' && order.email && (
-                    <button onClick={() => updateStatus(order.id, 'confirmed')} style={{ background: 'rgba(232,168,32,0.08)', border: '1px solid rgba(232,168,32,0.2)', color: '#E8A820', padding: '6px 14px', borderRadius: 6, fontSize: 11, cursor: 'pointer', fontFamily: 'DM Mono' }}>✉ Resend Email</button>
-                  )}
-                  <button onClick={() => checkIn(order.id, order.checked_in)} style={{ background: order.checked_in ? 'rgba(0,177,79,0.12)' : 'rgba(255,255,255,0.06)', border: `1px solid ${order.checked_in ? 'rgba(0,177,79,0.3)' : 'rgba(255,255,255,0.12)'}`, color: order.checked_in ? '#00C858' : 'rgba(255,255,255,0.5)', padding: '6px 14px', borderRadius: 6, fontSize: 11, cursor: 'pointer', fontFamily: 'DM Mono' }}>
-                    {order.checked_in ? '✓ Checked In' : 'Check In'}
-                  </button>
-                  {order.status !== 'cancelled' && (
-                    <button onClick={() => updateStatus(order.id, 'cancelled')} style={{ background: 'rgba(192,48,32,0.08)', border: '1px solid rgba(192,48,32,0.2)', color: '#E06060', padding: '6px 14px', borderRadius: 6, fontSize: 11, cursor: 'pointer', fontFamily: 'DM Mono' }}>Cancel</button>
-                  )}
-                </div>
-              </div>
-            </div>
-          ))}
+      {/* Table */}
+      {loading ? (
+        <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>Loading orders...</div>
+      ) : filtered.length === 0 ? (
+        <div className="card" style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)', fontSize: 14 }}>
+          {searchQuery || selectedEvent !== 'all' || selectedStatus !== 'all' ? 'No orders match your filters' : 'No ticket orders yet'}
+        </div>
+      ) : (
+        <div className="card" style={{ overflow: 'hidden' }}>
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>Guest</th>
+                <th>Event</th>
+                <th>Qty</th>
+                <th>Status</th>
+                <th>Date</th>
+                <th style={{ textAlign: 'right' }}>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map(order => (
+                <tr key={order.id}>
+                  <td>
+                    <div style={{ fontWeight: 600, fontSize: 14 }}>{order.name}</div>
+                    <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{order.email}{order.phone && ` · ${order.phone}`}</div>
+                  </td>
+                  <td style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{order.event_title || '—'}</td>
+                  <td style={{ fontWeight: 500 }}>{order.quantity || 1}</td>
+                  <td>
+                    <span className={`badge ${order.status === 'confirmed' ? 'badge-green' : order.status === 'pending_payment' ? 'badge-orange' : 'badge-red'}`}>
+                      {order.status === 'pending_payment' ? 'Pending' : order.status === 'confirmed' ? 'Confirmed' : 'Cancelled'}
+                    </span>
+                    {order.checked_in && <span className="badge badge-green" style={{ marginLeft: 6 }}>In</span>}
+                  </td>
+                  <td style={{ fontSize: 13, color: 'var(--text-muted)' }}>
+                    {new Date(order.created_at).toLocaleDateString('en', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                  </td>
+                  <td style={{ textAlign: 'right' }}>
+                    <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+                      {order.status === 'pending_payment' && (
+                        <button className="btn-green" onClick={() => updateStatus(order.id, 'confirmed')} style={{ padding: '6px 12px', fontSize: 12 }}>
+                          Confirm
+                        </button>
+                      )}
+                      {order.status === 'cancelled' && (
+                        <button className="btn-green" onClick={() => updateStatus(order.id, 'confirmed')} style={{ padding: '6px 12px', fontSize: 12 }}>
+                          Re-confirm
+                        </button>
+                      )}
+                      <button
+                        className={order.checked_in ? 'btn-green' : 'btn-outline'}
+                        onClick={() => checkIn(order.id, order.checked_in)}
+                        style={{ padding: '6px 12px', fontSize: 12 }}
+                      >
+                        {order.checked_in ? 'Checked In' : 'Check In'}
+                      </button>
+                      {order.status !== 'cancelled' && (
+                        <button className="btn-red" onClick={() => updateStatus(order.id, 'cancelled')} style={{ padding: '6px 12px', fontSize: 12 }}>
+                          Cancel
+                        </button>
+                      )}
+                      <button className="btn-outline" onClick={() => deleteOrder(order.id)} style={{ padding: '6px 10px', fontSize: 12, color: 'var(--badge-red-text)' }}>
+                        Delete
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
 
-      {showCreateModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', zIndex: 9000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
-          <div style={{ background: '#1A3A38', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 16, padding: 28, width: '100%', maxWidth: 480, maxHeight: '90vh', overflowY: 'auto' as const }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-              <div>
-                <div style={{ fontFamily: 'Bebas Neue', fontSize: 26, letterSpacing: '0.06em', color: '#F5EED8' }}>Create Manual Ticket</div>
-                <div style={{ fontFamily: 'DM Mono', fontSize: 10, color: 'rgba(255,255,255,0.35)', letterSpacing: '0.1em', textTransform: 'uppercase' as const, marginTop: 2 }}>Cash · Comp · Walk-in · Staff Guest</div>
-              </div>
-              <button onClick={() => setShowCreateModal(false)} style={{ background: 'rgba(255,255,255,0.08)', border: 'none', color: 'rgba(255,255,255,0.5)', width: 32, height: 32, borderRadius: '50%', cursor: 'pointer', fontSize: 16 }}>✕</button>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              <div>
-                <label style={labelStyle}>Guest Name *</label>
-                <input style={inputStyle} placeholder="Full name" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
-              </div>
-              <div>
-                <label style={labelStyle}>Email (for ticket delivery)</label>
-                <input style={inputStyle} type="email" placeholder="guest@email.com" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} />
-              </div>
-              <div>
-                <label style={labelStyle}>Phone (optional)</label>
-                <input style={inputStyle} type="tel" placeholder="+84 ..." value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} />
-              </div>
-              <div>
-                <label style={labelStyle}>Event *</label>
-                <select style={{ ...inputStyle, cursor: 'pointer' }} value={form.event_id} onChange={e => setForm(f => ({ ...f, event_id: e.target.value }))}>
-                  <option value="">Select event...</option>
-                  {events.map(ev => <option key={ev.id} value={ev.id}>{ev.title}</option>)}
-                </select>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                <div>
-                  <label style={labelStyle}>Quantity</label>
-                  <select style={{ ...inputStyle, cursor: 'pointer' }} value={form.quantity} onChange={e => setForm(f => ({ ...f, quantity: e.target.value }))}>
-                    {[1,2,3,4,5,6,8,10].map(n => <option key={n} value={n}>{n} ticket{n > 1 ? 's' : ''}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label style={labelStyle}>Payment Type</label>
-                  <select style={{ ...inputStyle, cursor: 'pointer' }} value={form.payment_method} onChange={e => setForm(f => ({ ...f, payment_method: e.target.value }))}>
-                    <option value="cash">💵 Cash</option>
-                    <option value="comp">🎁 Comp / Free</option>
-                    <option value="bank_transfer">🏦 Bank Transfer</option>
-                    <option value="card">💳 Card</option>
-                    <option value="other">Other</option>
-                  </select>
-                </div>
-              </div>
-              <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10, padding: '12px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div>
-                  <div style={{ fontSize: 13, color: '#F5EED8', marginBottom: 2 }}>Send ticket email</div>
-                  <div style={{ fontFamily: 'DM Mono', fontSize: 10, color: 'rgba(255,255,255,0.35)' }}>{form.email ? `Will send to ${form.email}` : 'Enter email above to enable'}</div>
-                </div>
-                <button onClick={() => form.email && setForm(f => ({ ...f, send_email: !f.send_email }))} style={{ width: 44, height: 24, borderRadius: 12, border: 'none', cursor: form.email ? 'pointer' : 'not-allowed', background: form.send_email && form.email ? '#E8A820' : 'rgba(255,255,255,0.12)', transition: 'background 0.2s', position: 'relative' as const, flexShrink: 0 }}>
-                  <div style={{ width: 18, height: 18, borderRadius: '50%', background: '#fff', position: 'absolute' as const, top: 3, transition: 'left 0.2s', left: form.send_email && form.email ? 23 : 3 }} />
-                </button>
-              </div>
-              <div>
-                <label style={labelStyle}>Notes (optional)</label>
-                <input style={inputStyle} placeholder="e.g. VIP guest, paid at door..." value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} />
-              </div>
-              <button onClick={createManualTicket} disabled={creating} style={{ background: creating ? 'rgba(232,168,32,0.4)' : '#E8A820', color: '#1a0800', border: 'none', borderRadius: 10, padding: '14px', fontFamily: 'Bebas Neue', fontSize: 20, letterSpacing: '0.08em', cursor: creating ? 'not-allowed' : 'pointer', marginTop: 4 }}>
-                {creating ? 'Creating...' : form.send_email && form.email ? '🎟 Create & Send Ticket' : '✓ Create Ticket'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {toast && <div style={{ position: 'fixed', bottom: 24, right: 24, background: '#00B14F', color: '#fff', padding: '11px 20px', borderRadius: 8, fontFamily: 'DM Mono', fontSize: 11, letterSpacing: '0.1em', zIndex: 9999 }}>{toast}</div>}
+      {toast && <div className="toast">{toast}</div>}
     </div>
   )
 }
