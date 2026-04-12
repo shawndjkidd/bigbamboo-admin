@@ -110,14 +110,49 @@ export default function MenuPage() {
   useEffect(() => { loadItems() }, [section])
 
   async function loadSections() {
-    const { data } = await supabase.from('menu_items').select('section')
-    if (data) {
-      const dbKeys = Array.from(new Set(data.map((r: any) => r.section as string)))
-      const extra = dbKeys
-        .filter(k => k && !DEFAULT_SECTION_KEYS.has(k))
-        .map(k => ({ key: k, label: toLabel(k) }))
-      if (extra.length) setSections([...DEFAULT_SECTIONS, ...extra])
+    const [{ data: itemData }, { data: orderData }] = await Promise.all([
+      supabase.from('menu_items').select('section'),
+      supabase.from('site_settings').select('value').eq('key', 'menu_section_order').single(),
+    ])
+
+    // Build full list: defaults + any custom sections found in DB
+    const all = [...DEFAULT_SECTIONS]
+    if (itemData) {
+      const dbKeys = Array.from(new Set(itemData.map((r: any) => r.section as string)))
+      dbKeys.filter(k => k && !DEFAULT_SECTION_KEYS.has(k))
+            .forEach(k => all.push({ key: k, label: toLabel(k) }))
     }
+
+    // Apply stored order if available
+    if (orderData?.value) {
+      try {
+        const order: string[] = JSON.parse(orderData.value)
+        const byKey = Object.fromEntries(all.map(s => [s.key, s]))
+        const ordered = order.map(k => byKey[k]).filter(Boolean) as typeof all
+        const orderedKeys = new Set(order)
+        all.filter(s => !orderedKeys.has(s.key)).forEach(s => ordered.push(s))
+        setSections(ordered)
+        return
+      } catch { /* fall through to default */ }
+    }
+    setSections(all)
+  }
+
+  async function saveSectionOrder(ordered: { key: string, label: string }[]) {
+    const value = JSON.stringify(ordered.map(s => s.key))
+    await supabase.from('site_settings').upsert(
+      { key: 'menu_section_order', value, updated_at: new Date().toISOString() },
+      { onConflict: 'key' }
+    )
+  }
+
+  function moveSection(idx: number, dir: -1 | 1) {
+    const next = [...sections]
+    const swap = idx + dir
+    if (swap < 0 || swap >= next.length) return
+    ;[next[idx], next[swap]] = [next[swap], next[idx]]
+    setSections(next)
+    saveSectionOrder(next)
   }
 
   async function loadItems() {
@@ -158,7 +193,9 @@ export default function MenuPage() {
     const key = toKey(newSectionLabel)
     if (!key) return
     if (sections.some(s => s.key === key)) { showToast('Section already exists'); return }
-    setSections(prev => [...prev, { key, label: newSectionLabel.trim() }])
+    const updated = [...sections, { key, label: newSectionLabel.trim() }]
+    setSections(updated)
+    saveSectionOrder(updated)
     setSection(key)
     setNewSectionLabel('')
     setShowAddSection(false)
@@ -171,7 +208,9 @@ export default function MenuPage() {
       showToast(`Remove all ${count} item${count !== 1 ? 's' : ''} first`)
       return
     }
-    setSections(prev => prev.filter(s => s.key !== key))
+    const updated = sections.filter(s => s.key !== key)
+    setSections(updated)
+    saveSectionOrder(updated)
     setSection('cocktails')
   }
 
@@ -205,16 +244,36 @@ export default function MenuPage() {
       </div>
 
       {/* Section tabs */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 24, flexWrap: 'wrap', alignItems: 'center' }}>
-        {sections.map(s => (
-          <button key={s.key} onClick={() => { setSection(s.key); setShowAddSection(false) }} style={{
-            padding: '10px 20px', borderRadius: 100, fontSize: 14, fontWeight: 500, cursor: 'pointer', transition: 'all 0.15s',
-            background: section === s.key ? 'var(--accent)' : 'transparent',
-            color: section === s.key ? '#fff' : 'var(--text-secondary)',
-            border: `1px solid ${section === s.key ? 'var(--accent)' : 'var(--border)'}`,
-          }}>
-            {s.label}
-          </button>
+      <div style={{ display: 'flex', gap: 6, marginBottom: 24, flexWrap: 'wrap', alignItems: 'center' }}>
+        {sections.map((s, idx) => (
+          <div key={s.key} style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <button
+              onClick={() => moveSection(idx, -1)}
+              title="Move left"
+              style={{
+                visibility: idx === 0 ? 'hidden' : 'visible',
+                padding: '6px 5px', fontSize: 10, lineHeight: 1, cursor: 'pointer',
+                background: 'transparent', color: 'var(--text-muted)', border: 'none', borderRadius: 4,
+              }}
+            >◀</button>
+            <button onClick={() => { setSection(s.key); setShowAddSection(false) }} style={{
+              padding: '10px 18px', borderRadius: 100, fontSize: 14, fontWeight: 500, cursor: 'pointer', transition: 'all 0.15s',
+              background: section === s.key ? 'var(--accent)' : 'transparent',
+              color: section === s.key ? '#fff' : 'var(--text-secondary)',
+              border: `1px solid ${section === s.key ? 'var(--accent)' : 'var(--border)'}`,
+            }}>
+              {s.label}
+            </button>
+            <button
+              onClick={() => moveSection(idx, 1)}
+              title="Move right"
+              style={{
+                visibility: idx === sections.length - 1 ? 'hidden' : 'visible',
+                padding: '6px 5px', fontSize: 10, lineHeight: 1, cursor: 'pointer',
+                background: 'transparent', color: 'var(--text-muted)', border: 'none', borderRadius: 4,
+              }}
+            >▶</button>
+          </div>
         ))}
 
         {/* Add section */}
