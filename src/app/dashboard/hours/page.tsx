@@ -59,9 +59,11 @@ export default function HoursPage() {
         onChange={e => setSettings(p => ({ ...p, [k]: e.target.value }))}
         onBlur={e => save(k, e.target.value)}
         placeholder={placeholder}
+        name={`bb_field_${k}`}
         autoComplete="off"
         data-lpignore="true"
         data-form-type="other"
+        data-1p-ignore="true"
       />
     </div>
   )
