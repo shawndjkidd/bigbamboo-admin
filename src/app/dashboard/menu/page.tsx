@@ -175,7 +175,7 @@ export default function MenuPage() {
     const { data, error } = await supabase.from('menu_items').insert({ ...newItem, section, sort_order: items.length + 1, is_available: true }).select().single()
     if (error) {
       console.error('addItem error:', error)
-      showToast('Failed to add item')
+      showToast('Failed: ' + (error.message || error.code || 'unknown error'))
       return
     }
     if (data) {
