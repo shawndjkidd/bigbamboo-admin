@@ -17,7 +17,7 @@ export interface StaffUser {
 
 export interface MenuItem {
   id: string
-  section: 'cocktails' | 'beer' | 'na' | 'bites'
+  section: string
   name: string
   subtitle?: string
   description?: string
