@@ -2,6 +2,22 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 
+const TIME_OPTIONS: string[] = []
+for (let h = 0; h < 24; h++) {
+  TIME_OPTIONS.push(`${String(h).padStart(2, '0')}:00`)
+  TIME_OPTIONS.push(`${String(h).padStart(2, '0')}:30`)
+}
+
+function formatTime12(t: string): string {
+  if (!t) return ''
+  const [hStr, mStr] = t.split(':')
+  const h = parseInt(hStr, 10)
+  const m = mStr || '00'
+  const ampm = h < 12 ? 'AM' : 'PM'
+  const h12 = h % 12 === 0 ? 12 : h % 12
+  return `${h12}:${m} ${ampm}`
+}
+
 export default function HoursPage() {
   const [settings, setSettings] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(true)
@@ -22,7 +38,6 @@ export default function HoursPage() {
 
   async function save(key: string, value: string) {
     setSettings(p => ({ ...p, [key]: value }))
-    // Try update first, then insert if no rows affected
     const { data: existing } = await supabase.from('site_settings').select('key').eq('key', key).single()
     if (existing) {
       await supabase.from('site_settings').update({ value, updated_at: new Date().toISOString() }).eq('key', key)
@@ -37,9 +52,65 @@ export default function HoursPage() {
   const Field = ({ label, k, placeholder, type = 'text' }: { label: string, k: string, placeholder?: string, type?: string }) => (
     <div>
       <label className="label">{label}</label>
-      <input className="input" type={type} value={settings[k] || ''} onChange={e => setSettings(p => ({ ...p, [k]: e.target.value }))} onBlur={e => save(k, e.target.value)} placeholder={placeholder} />
+      <input
+        className="input"
+        type={type}
+        value={settings[k] || ''}
+        onChange={e => setSettings(p => ({ ...p, [k]: e.target.value }))}
+        onBlur={e => save(k, e.target.value)}
+        placeholder={placeholder}
+        autoComplete="off"
+        data-lpignore="true"
+        data-form-type="other"
+      />
     </div>
   )
+
+  const HoursRow = ({ label, openKey, closeKey }: { label: string, openKey: string, closeKey: string }) => {
+    const isClosed = settings[openKey] === 'closed'
+    return (
+      <div style={{ display: 'grid', gridTemplateColumns: '130px 1fr', alignItems: 'center', gap: 14 }}>
+        <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-secondary)' }}>{label}</div>
+        {isClosed ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={{ fontSize: 14, color: 'var(--text-muted)', fontFamily: 'DM Mono, monospace' }}>Closed</span>
+            <button
+              className="btn-outline"
+              style={{ fontSize: 12, padding: '4px 12px' }}
+              onClick={() => { save(openKey, ''); save(closeKey, '') }}
+            >Set Hours</button>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <select
+              className="input"
+              value={settings[openKey] || ''}
+              onChange={e => save(openKey, e.target.value)}
+              style={{ fontFamily: 'DM Mono, monospace', fontSize: 14, width: 130 }}
+            >
+              <option value="">Open time</option>
+              {TIME_OPTIONS.map(t => <option key={t} value={t}>{formatTime12(t)}</option>)}
+            </select>
+            <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>to</span>
+            <select
+              className="input"
+              value={settings[closeKey] || ''}
+              onChange={e => save(closeKey, e.target.value)}
+              style={{ fontFamily: 'DM Mono, monospace', fontSize: 14, width: 130 }}
+            >
+              <option value="">Close time</option>
+              {TIME_OPTIONS.map(t => <option key={t} value={t}>{formatTime12(t)}</option>)}
+            </select>
+            <button
+              className="btn-outline"
+              style={{ fontSize: 12, padding: '4px 12px' }}
+              onClick={() => { save(openKey, 'closed'); save(closeKey, 'closed') }}
+            >Closed</button>
+          </div>
+        )}
+      </div>
+    )
+  }
 
   if (loading) return <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>Loading...</div>
 
@@ -51,20 +122,13 @@ export default function HoursPage() {
       <div className="card" style={{ padding: 24, marginBottom: 20 }}>
         <div className="section-title" style={{ marginBottom: 18 }}>Opening Hours</div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {[
-            { label: 'Monday', k: 'hours_mon' },
-            { label: 'Tuesday', k: 'hours_tue' },
-            { label: 'Wednesday', k: 'hours_wed' },
-            { label: 'Thursday', k: 'hours_thu' },
-            { label: 'Friday', k: 'hours_fri' },
-            { label: 'Saturday', k: 'hours_sat' },
-            { label: 'Sunday', k: 'hours_sun' },
-          ].map(h => (
-            <div key={h.k} style={{ display: 'grid', gridTemplateColumns: '130px 1fr', alignItems: 'center', gap: 14 }}>
-              <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-secondary)' }}>{h.label}</div>
-              <input className="input" value={settings[h.k] || ''} onChange={e => setSettings(p => ({ ...p, [h.k]: e.target.value }))} onBlur={e => save(h.k, e.target.value)} placeholder="Closed" style={{ fontFamily: 'DM Mono, monospace', fontSize: 14 }} />
-            </div>
-          ))}
+          <HoursRow label="Monday"    openKey="hours_mon_open"    closeKey="hours_mon_close" />
+          <HoursRow label="Tuesday"   openKey="hours_tue_open"    closeKey="hours_tue_close" />
+          <HoursRow label="Wednesday" openKey="hours_wed_open"    closeKey="hours_wed_close" />
+          <HoursRow label="Thursday"  openKey="hours_thu_open"    closeKey="hours_thu_close" />
+          <HoursRow label="Friday"    openKey="hours_fri_open"    closeKey="hours_fri_close" />
+          <HoursRow label="Saturday"  openKey="hours_sat_open"    closeKey="hours_sat_close" />
+          <HoursRow label="Sunday"    openKey="hours_sun_open"    closeKey="hours_sun_close" />
         </div>
       </div>
 
@@ -88,8 +152,8 @@ export default function HoursPage() {
           <div>
             <label className="label">Grab Coming Soon?</label>
             <select className="input" value={settings['grab_coming_soon'] || 'true'} onChange={e => save('grab_coming_soon', e.target.value)} style={{ width: 280 }}>
-              <option value="true">Yes \u2014 show Coming Soon</option>
-              <option value="false">No \u2014 show Grab button</option>
+              <option value="true">Yes — show Coming Soon</option>
+              <option value="false">No — show Grab button</option>
             </select>
           </div>
         </div>
@@ -100,7 +164,7 @@ export default function HoursPage() {
         <div className="section-title" style={{ marginBottom: 18 }}>Hero Copy</div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <Field label="Slogan" k="slogan" placeholder="Cold drinks. Warm nights. No bad vibes." />
-          <Field label="Tagline" k="tagline" placeholder="Tropical bar & venue \u00b7 An Phu, Saigon" />
+          <Field label="Tagline" k="tagline" placeholder="Tropical bar & venue · An Phu, Saigon" />
         </div>
       </div>
 

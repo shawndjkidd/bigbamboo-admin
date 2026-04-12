@@ -15,13 +15,14 @@ export default function TicketsPage() {
   const [showAdd, setShowAdd] = useState(false)
   const [newTicket, setNewTicket] = useState<any>({ ...BLANK_TICKET })
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [showPastInStats, setShowPastInStats] = useState(false)
 
   useEffect(() => { loadData() }, [])
 
   async function loadData() {
     setLoading(true)
     const [{ data: evData }, { data: ordData }] = await Promise.all([
-      supabase.from('events').select('id, title').order('event_date', { ascending: false }),
+      supabase.from('events').select('id, title, event_date').order('event_date', { ascending: false }),
       supabase.from('ticket_orders').select('*').order('created_at', { ascending: false })
     ])
     setEvents(evData || [])
@@ -138,6 +139,12 @@ export default function TicketsPage() {
     showToast('CSV exported')
   }
 
+  const today = new Date().toISOString().split('T')[0]
+
+  const pastEventIds = new Set(
+    events.filter(e => e.event_date && e.event_date < today).map(e => e.id)
+  )
+
   const filtered = orders.filter(o => {
     if (selectedEvent !== 'all' && o.event_id !== selectedEvent) return false
     if (selectedStatus !== 'all' && o.status !== selectedStatus) return false
@@ -148,10 +155,12 @@ export default function TicketsPage() {
     return true
   })
 
-  const totalTickets = filtered.reduce((sum, o) => sum + (o.quantity || 1), 0)
-  const pending = filtered.filter(o => o.status === 'pending_payment').length
-  const confirmed = filtered.filter(o => o.status === 'confirmed').length
-  const checkedIn = filtered.filter(o => o.checked_in).length
+  const statsFiltered = showPastInStats ? filtered : filtered.filter(o => !pastEventIds.has(o.event_id))
+
+  const totalTickets = statsFiltered.reduce((sum, o) => sum + (o.quantity || 1), 0)
+  const pending = statsFiltered.filter(o => o.status === 'pending_payment').length
+  const confirmed = statsFiltered.filter(o => o.status === 'confirmed').length
+  const checkedIn = statsFiltered.filter(o => o.checked_in).length
 
   return (
     <div style={{ maxWidth: 1100 }}>
@@ -178,7 +187,7 @@ export default function TicketsPage() {
             <div><label className="label">Event *</label>
               <select className="input" value={newTicket.event_id} onChange={e => setNewTicket((p: any) => ({ ...p, event_id: e.target.value }))}>
                 <option value="">Select event</option>
-                {events.map(ev => <option key={ev.id} value={ev.id}>{ev.title}</option>)}
+                {events.map(ev => <option key={ev.id} value={ev.id}>{ev.title}{pastEventIds.has(ev.id) ? ' (past)' : ''}</option>)}
               </select></div>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14, marginBottom: 14 }}>
@@ -214,10 +223,22 @@ export default function TicketsPage() {
         </div>
       )}
 
-      {/* Stats */}
+      {/* Stats Toggle + Cards */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+        <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>
+          {showPastInStats ? 'All Events' : 'Upcoming Events Only'}
+        </div>
+        <button
+          className="btn-outline"
+          style={{ fontSize: 12, padding: '5px 14px' }}
+          onClick={() => setShowPastInStats(p => !p)}
+        >
+          {showPastInStats ? 'Hide Past Events' : 'Include Past Events'}
+        </button>
+      </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 24 }}>
         {[
-          { label: 'Total Orders', value: filtered.length },
+          { label: 'Total Orders', value: statsFiltered.length },
           { label: 'Total Tickets', value: totalTickets },
           { label: 'Pending Payment', value: pending, highlight: pending > 0 },
           { label: 'Checked In', value: checkedIn },
@@ -240,7 +261,11 @@ export default function TicketsPage() {
         />
         <select className="input" value={selectedEvent} onChange={e => setSelectedEvent(e.target.value)} style={{ width: 200 }}>
           <option value="all">All Events</option>
-          {events.map(ev => <option key={ev.id} value={ev.id}>{ev.title}</option>)}
+          {events.map(ev => (
+            <option key={ev.id} value={ev.id}>
+              {ev.title}{pastEventIds.has(ev.id) ? ' (past)' : ''}
+            </option>
+          ))}
         </select>
         <select className="input" value={selectedStatus} onChange={e => setSelectedStatus(e.target.value)} style={{ width: 180 }}>
           <option value="all">All Statuses</option>
@@ -273,82 +298,88 @@ export default function TicketsPage() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map(order => (
-                <tr key={order.id}>
-                  <td>
-                    {editingId === order.id ? (
-                      <div>
-                        <input className="input" defaultValue={order.name} onBlur={e => e.target.value !== order.name && updateOrder(order.id, { name: e.target.value })} style={{ fontSize: 13, marginBottom: 4 }} />
-                        <input className="input" defaultValue={order.email || ''} onBlur={e => updateOrder(order.id, { email: e.target.value || null })} placeholder="email" style={{ fontSize: 12 }} />
+              {filtered.map(order => {
+                const isPast = pastEventIds.has(order.event_id)
+                return (
+                  <tr key={order.id}>
+                    <td>
+                      {editingId === order.id ? (
+                        <div>
+                          <input className="input" defaultValue={order.name} onBlur={e => e.target.value !== order.name && updateOrder(order.id, { name: e.target.value })} style={{ fontSize: 13, marginBottom: 4 }} />
+                          <input className="input" defaultValue={order.email || ''} onBlur={e => updateOrder(order.id, { email: e.target.value || null })} placeholder="email" style={{ fontSize: 12 }} />
+                        </div>
+                      ) : (
+                        <div>
+                          <div style={{ fontWeight: 600, fontSize: 14 }}>{order.name}</div>
+                          <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{order.email}{order.phone && ` · ${order.phone}`}</div>
+                        </div>
+                      )}
+                    </td>
+                    <td style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
+                      {order.event_title || '—'}
+                      {isPast && <span style={{ fontSize: 11, color: 'var(--text-muted)', marginLeft: 6 }}>(past)</span>}
+                    </td>
+                    <td>
+                      {editingId === order.id ? (
+                        <input className="input" type="number" min="1" defaultValue={order.quantity || 1} onBlur={e => updateOrder(order.id, { quantity: parseInt(e.target.value) || 1 })} style={{ width: 60, fontSize: 13, padding: '4px 8px' }} />
+                      ) : (
+                        <span style={{ fontWeight: 500 }}>{order.quantity || 1}</span>
+                      )}
+                    </td>
+                    <td>
+                      {editingId === order.id ? (
+                        <select className="input" value={order.is_free ? 'free' : 'paid'} onChange={e => updateOrder(order.id, { is_free: e.target.value === 'free' })} style={{ width: 80, fontSize: 12, padding: '4px 8px' }}>
+                          <option value="paid">Paid</option>
+                          <option value="free">Free</option>
+                        </select>
+                      ) : (
+                        order.is_free ? <span className="badge badge-blue">Free</span> : <span className="badge badge-gray">Paid</span>
+                      )}
+                    </td>
+                    <td>
+                      <span className={`badge ${order.status === 'confirmed' ? 'badge-green' : order.status === 'pending_payment' ? 'badge-orange' : 'badge-red'}`}>
+                        {order.status === 'pending_payment' ? 'Pending' : order.status === 'confirmed' ? 'Confirmed' : 'Cancelled'}
+                      </span>
+                      {order.checked_in && <span className="badge badge-green" style={{ marginLeft: 6 }}>In</span>}
+                    </td>
+                    <td style={{ fontSize: 13, color: 'var(--text-muted)' }}>
+                      {new Date(order.created_at).toLocaleDateString('en', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                    </td>
+                    <td style={{ textAlign: 'right' }}>
+                      <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+                        <button className="btn-outline" onClick={() => setEditingId(editingId === order.id ? null : order.id)} style={{ padding: '6px 12px', fontSize: 12 }}>
+                          {editingId === order.id ? 'Done' : 'Edit'}
+                        </button>
+                        {order.status === 'pending_payment' && (
+                          <button className="btn-green" onClick={() => updateStatus(order.id, 'confirmed')} style={{ padding: '6px 12px', fontSize: 12 }}>
+                            Confirm
+                          </button>
+                        )}
+                        {order.status === 'cancelled' && (
+                          <button className="btn-green" onClick={() => updateStatus(order.id, 'confirmed')} style={{ padding: '6px 12px', fontSize: 12 }}>
+                            Re-confirm
+                          </button>
+                        )}
+                        <button
+                          className={order.checked_in ? 'btn-green' : 'btn-outline'}
+                          onClick={() => checkIn(order.id, order.checked_in)}
+                          style={{ padding: '6px 12px', fontSize: 12 }}
+                        >
+                          {order.checked_in ? 'Checked In' : 'Check In'}
+                        </button>
+                        {order.status !== 'cancelled' && (
+                          <button className="btn-red" onClick={() => updateStatus(order.id, 'cancelled')} style={{ padding: '6px 12px', fontSize: 12 }}>
+                            Cancel
+                          </button>
+                        )}
+                        <button className="btn-outline" onClick={() => deleteOrder(order.id)} style={{ padding: '6px 10px', fontSize: 12, color: 'var(--badge-red-text)' }}>
+                          Delete
+                        </button>
                       </div>
-                    ) : (
-                      <div>
-                        <div style={{ fontWeight: 600, fontSize: 14 }}>{order.name}</div>
-                        <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{order.email}{order.phone && ` · ${order.phone}`}</div>
-                      </div>
-                    )}
-                  </td>
-                  <td style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{order.event_title || '—'}</td>
-                  <td>
-                    {editingId === order.id ? (
-                      <input className="input" type="number" min="1" defaultValue={order.quantity || 1} onBlur={e => updateOrder(order.id, { quantity: parseInt(e.target.value) || 1 })} style={{ width: 60, fontSize: 13, padding: '4px 8px' }} />
-                    ) : (
-                      <span style={{ fontWeight: 500 }}>{order.quantity || 1}</span>
-                    )}
-                  </td>
-                  <td>
-                    {editingId === order.id ? (
-                      <select className="input" value={order.is_free ? 'free' : 'paid'} onChange={e => updateOrder(order.id, { is_free: e.target.value === 'free' })} style={{ width: 80, fontSize: 12, padding: '4px 8px' }}>
-                        <option value="paid">Paid</option>
-                        <option value="free">Free</option>
-                      </select>
-                    ) : (
-                      order.is_free ? <span className="badge badge-blue">Free</span> : <span className="badge badge-gray">Paid</span>
-                    )}
-                  </td>
-                  <td>
-                    <span className={`badge ${order.status === 'confirmed' ? 'badge-green' : order.status === 'pending_payment' ? 'badge-orange' : 'badge-red'}`}>
-                      {order.status === 'pending_payment' ? 'Pending' : order.status === 'confirmed' ? 'Confirmed' : 'Cancelled'}
-                    </span>
-                    {order.checked_in && <span className="badge badge-green" style={{ marginLeft: 6 }}>In</span>}
-                  </td>
-                  <td style={{ fontSize: 13, color: 'var(--text-muted)' }}>
-                    {new Date(order.created_at).toLocaleDateString('en', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
-                  </td>
-                  <td style={{ textAlign: 'right' }}>
-                    <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
-                      <button className="btn-outline" onClick={() => setEditingId(editingId === order.id ? null : order.id)} style={{ padding: '6px 12px', fontSize: 12 }}>
-                        {editingId === order.id ? 'Done' : 'Edit'}
-                      </button>
-                      {order.status === 'pending_payment' && (
-                        <button className="btn-green" onClick={() => updateStatus(order.id, 'confirmed')} style={{ padding: '6px 12px', fontSize: 12 }}>
-                          Confirm
-                        </button>
-                      )}
-                      {order.status === 'cancelled' && (
-                        <button className="btn-green" onClick={() => updateStatus(order.id, 'confirmed')} style={{ padding: '6px 12px', fontSize: 12 }}>
-                          Re-confirm
-                        </button>
-                      )}
-                      <button
-                        className={order.checked_in ? 'btn-green' : 'btn-outline'}
-                        onClick={() => checkIn(order.id, order.checked_in)}
-                        style={{ padding: '6px 12px', fontSize: 12 }}
-                      >
-                        {order.checked_in ? 'Checked In' : 'Check In'}
-                      </button>
-                      {order.status !== 'cancelled' && (
-                        <button className="btn-red" onClick={() => updateStatus(order.id, 'cancelled')} style={{ padding: '6px 12px', fontSize: 12 }}>
-                          Cancel
-                        </button>
-                      )}
-                      <button className="btn-outline" onClick={() => deleteOrder(order.id)} style={{ padding: '6px 10px', fontSize: 12, color: 'var(--badge-red-text)' }}>
-                        Delete
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
         </div>
