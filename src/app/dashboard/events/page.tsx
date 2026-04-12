@@ -4,7 +4,24 @@ import { supabase } from '@/lib/supabase'
 
 const BLANK_EVENT = {
   title: '', type: '', description: '', event_date: '', start_time: '', end_time: '',
-  facebook_link: '', image_url: '', is_free: true, ticket_price: '', ticket_link: '', capacity: '', rsvp_enabled: true
+  facebook_link: '', image_url: '', is_free: true, ticket_price: '', ticket_link: '', capacity: '', rsvp_enabled: true,
+  is_recurring: false, recurrence_pattern: 'weekly'
+}
+
+function getNextOccurrence(dateStr: string, pattern: string): string {
+  const today = new Date()
+  today.setHours(0,0,0,0)
+  let d = new Date(dateStr + 'T00:00:00')
+  const msDay = 86400000
+  const interval = pattern === 'monthly' ? 0 : pattern === 'biweekly' ? 14 : 7
+  while (d < today) {
+    if (pattern === 'monthly') {
+      d.setMonth(d.getMonth() + 1)
+    } else {
+      d = new Date(d.getTime() + interval * msDay)
+    }
+  }
+  return d.toISOString().split('T')[0]
 }
 
 export default function EventsPage() {
@@ -42,7 +59,9 @@ export default function EventsPage() {
       ticket_price: newEvent.is_free ? 0 : (parseInt(newEvent.ticket_price) || 0),
       ticket_link: newEvent.ticket_link || null,
       capacity: newEvent.capacity ? parseInt(newEvent.capacity) : null,
-      rsvp_enabled: newEvent.rsvp_enabled, is_published: true
+      rsvp_enabled: newEvent.rsvp_enabled, is_published: true,
+      is_recurring: newEvent.is_recurring,
+      recurrence_pattern: newEvent.is_recurring ? newEvent.recurrence_pattern : null,
     }).select().single()
     if (data) {
       setEvents(prev => [...prev, data])
@@ -83,9 +102,13 @@ export default function EventsPage() {
 
   const upcomingEvents = events.filter(e => {
     if (!e.event_date) return true
+    if (e.is_recurring) return true
     return new Date(e.event_date) >= new Date(new Date().toISOString().split('T')[0])
   })
-  const pastEvents = events.filter(e => e.event_date && new Date(e.event_date) < new Date(new Date().toISOString().split('T')[0]))
+  const pastEvents = events.filter(e => {
+    if (e.is_recurring) return false
+    return e.event_date && new Date(e.event_date) < new Date(new Date().toISOString().split('T')[0])
+  })
 
   return (
     <div style={{ maxWidth: 900 }}>
@@ -131,6 +154,22 @@ export default function EventsPage() {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
               <div><label className="label">Capacity</label><input className="input" type="number" value={newEvent.capacity} onChange={e => setNewEvent((p: any) => ({ ...p, capacity: e.target.value }))} placeholder="Leave blank = unlimited" /></div>
               <div style={{ display: 'flex', alignItems: 'flex-end', paddingBottom: 4 }}><label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, color: 'var(--text-secondary)', cursor: 'pointer' }}><input type="checkbox" checked={newEvent.rsvp_enabled} onChange={e => setNewEvent((p: any) => ({ ...p, rsvp_enabled: e.target.checked }))} style={{ accentColor: 'var(--accent)' }} /> Show RSVP form on site</label></div>
+            </div>
+          </div>
+          <div className="card" style={{ padding: 18, marginBottom: 18, background: 'var(--bg-subtle)' }}>
+            <div className="section-title" style={{ marginBottom: 14 }}>Recurring</div>
+            <div style={{ display: 'flex', gap: 20, alignItems: 'center' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, color: 'var(--text-secondary)', cursor: 'pointer' }}>
+                <input type="checkbox" checked={newEvent.is_recurring} onChange={e => setNewEvent((p: any) => ({ ...p, is_recurring: e.target.checked }))} style={{ accentColor: 'var(--accent)' }} />
+                This is a recurring event
+              </label>
+              {newEvent.is_recurring && (
+                <select className="input" value={newEvent.recurrence_pattern} onChange={e => setNewEvent((p: any) => ({ ...p, recurrence_pattern: e.target.value }))} style={{ width: 'auto', minWidth: 140 }}>
+                  <option value="weekly">Every week</option>
+                  <option value="biweekly">Every 2 weeks</option>
+                  <option value="monthly">Every month</option>
+                </select>
+              )}
             </div>
           </div>
           <div style={{ display: 'flex', gap: 10 }}>
@@ -191,10 +230,11 @@ function EventCard({ event, isExpanded, orders, editingId, onToggleEdit, onLoadO
           <div style={{ fontFamily: 'Bebas Neue', fontSize: 22, letterSpacing: '0.04em', color: 'var(--text)', marginBottom: 6 }}>{event.title}</div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
             {event.type && <span className="badge badge-gray">{event.type}</span>}
-            <span className="badge badge-blue">{formatDate(event.event_date)}</span>
+            <span className="badge badge-blue">{formatDate(event.is_recurring && event.event_date ? getNextOccurrence(event.event_date, event.recurrence_pattern) : event.event_date)}</span>
             {event.start_time && <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>{event.start_time}{event.end_time && ` \u2013 ${event.end_time}`}</span>}
             {event.is_free ? <span className="badge badge-green">Free</span> : <span className="badge badge-orange">{event.ticket_price?.toLocaleString()}d</span>}
             {!event.is_published && <span className="badge badge-red">Draft</span>}
+            {event.is_recurring && <span className="badge badge-blue" style={{ background: 'var(--accent)', color: '#fff' }}>🔄 {event.recurrence_pattern === 'monthly' ? 'Monthly' : event.recurrence_pattern === 'biweekly' ? 'Biweekly' : 'Weekly'}</span>}
           </div>
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
@@ -216,7 +256,7 @@ function EventCard({ event, isExpanded, orders, editingId, onToggleEdit, onLoadO
             <div><label className="label">Facebook Link</label><input className="input" defaultValue={event.facebook_link || ''} onBlur={e => onUpdate(event.id, { facebook_link: e.target.value })} /></div>
             <div><label className="label">Photo URL</label><input className="input" defaultValue={event.image_url || ''} onBlur={e => onUpdate(event.id, { image_url: e.target.value || null })} /></div>
           </div>
-          <div className="card" style={{ padding: 16, background: 'var(--bg-subtle)' }}>
+          <div className="card" style={{ padding: 16, marginBottom: 12, background: 'var(--bg-subtle)' }}>
             <div className="section-title" style={{ marginBottom: 12 }}>Ticketing</div>
             <div style={{ display: 'flex', gap: 20, marginBottom: 12 }}>
               <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, color: 'var(--text-secondary)', cursor: 'pointer' }}><input type="radio" checked={!!event.is_free} onChange={() => onUpdate(event.id, { is_free: true, ticket_price: 0 })} style={{ accentColor: 'var(--accent)' }} /> Free</label>
@@ -231,6 +271,22 @@ function EventCard({ event, isExpanded, orders, editingId, onToggleEdit, onLoadO
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               <div><label className="label">Capacity</label><input className="input" type="number" defaultValue={event.capacity || ''} onBlur={e => onUpdate(event.id, { capacity: e.target.value ? parseInt(e.target.value) : null })} placeholder="Unlimited" /></div>
               <div style={{ display: 'flex', alignItems: 'flex-end', paddingBottom: 4 }}><label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, color: 'var(--text-secondary)', cursor: 'pointer' }}><input type="checkbox" checked={!!event.rsvp_enabled} onChange={e => onUpdate(event.id, { rsvp_enabled: e.target.checked })} style={{ accentColor: 'var(--accent)' }} /> RSVP on site</label></div>
+            </div>
+          </div>
+          <div className="card" style={{ padding: 16, marginTop: 12, background: 'var(--bg-subtle)' }}>
+            <div className="section-title" style={{ marginBottom: 12 }}>Recurring</div>
+            <div style={{ display: 'flex', gap: 20, alignItems: 'center' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, color: 'var(--text-secondary)', cursor: 'pointer' }}>
+                <input type="checkbox" checked={!!event.is_recurring} onChange={e => onUpdate(event.id, { is_recurring: e.target.checked, recurrence_pattern: e.target.checked ? (event.recurrence_pattern || 'weekly') : null })} style={{ accentColor: 'var(--accent)' }} />
+                Recurring event
+              </label>
+              {event.is_recurring && (
+                <select className="input" value={event.recurrence_pattern || 'weekly'} onChange={e => onUpdate(event.id, { recurrence_pattern: e.target.value })} style={{ width: 'auto', minWidth: 140 }}>
+                  <option value="weekly">Every week</option>
+                  <option value="biweekly">Every 2 weeks</option>
+                  <option value="monthly">Every month</option>
+                </select>
+              )}
             </div>
           </div>
         </div>

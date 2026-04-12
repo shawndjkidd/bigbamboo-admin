@@ -7,6 +7,7 @@ const SECTIONS = [
   { key: 'beer', label: 'Beer' },
   { key: 'na', label: 'Non-Alcoholic' },
   { key: 'bites', label: 'Bar Bites' },
+  { key: 'special_events', label: 'Special Events' },
 ]
 
 const TAG_PRESETS: Record<string, { label: string, color: string }[]> = {
@@ -14,6 +15,7 @@ const TAG_PRESETS: Record<string, { label: string, color: string }[]> = {
   beer: [{ label: 'Bestseller', color: 'orange' }, { label: 'Local', color: 'orange' }, { label: 'Limited', color: 'orange' }, { label: 'New', color: 'blue' }],
   na: [{ label: 'Bestseller', color: 'orange' }, { label: 'No Alcohol', color: 'blue' }, { label: 'New', color: 'blue' }],
   bites: [{ label: "Chef's Pick", color: 'orange' }, { label: 'Crowd Pleaser', color: 'orange' }, { label: 'Bestseller', color: 'orange' }, { label: 'New', color: 'blue' }, { label: 'Vegan', color: 'green' }, { label: 'Spicy', color: 'red' }],
+  special_events: [{ label: 'Featured', color: 'orange' }, { label: 'Limited', color: 'orange' }, { label: 'New', color: 'blue' }, { label: 'Seasonal', color: 'green' }, { label: 'Premium', color: 'red' }],
 }
 
 function tagStyle(color: string, on: boolean) {
@@ -155,11 +157,11 @@ export default function MenuPage() {
             <div style={{ display: 'grid', gridTemplateColumns: '140px 1fr 80px', gap: 14, marginBottom: 14 }}>
               <div><label className="label">Price</label><input className="input" value={newItem.price} onChange={e => setNewItem(p => ({ ...p, price: e.target.value }))} placeholder="TBA" /></div>
               <div><label className="label">Description</label><input className="input" value={newItem.description} onChange={e => setNewItem(p => ({ ...p, description: e.target.value }))} placeholder="Short punchy description" /></div>
-              {section !== 'bites' && <div><label className="label">ABV</label><input className="input" value={newItem.abv} onChange={e => setNewItem(p => ({ ...p, abv: e.target.value }))} placeholder="~8%" /></div>}
+              {section !== 'bites' && section !== 'special_events' && <div><label className="label">ABV</label><input className="input" value={newItem.abv} onChange={e => setNewItem(p => ({ ...p, abv: e.target.value }))} placeholder="~8%" /></div>}
             </div>
           )}
           <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-            {section !== 'bites' && (
+            {section !== 'bites' && section !== 'special_events' && (
               <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, color: 'var(--text-secondary)', cursor: 'pointer' }}>
                 <input type="checkbox" checked={newItem.is_draft} onChange={e => setNewItem(p => ({ ...p, is_draft: e.target.checked }))} style={{ accentColor: 'var(--accent)' }} /> On Tap
               </label>
@@ -191,13 +193,13 @@ export default function MenuPage() {
                     ) : (
                       <div style={{ display: 'grid', gridTemplateColumns: '120px 80px', gap: 10 }}>
                         <div><label className="label">Price</label><input className="input" defaultValue={item.price} onBlur={e => e.target.value !== item.price && updateItem(item.id, { price: e.target.value })} style={{ fontFamily: 'DM Mono, monospace' }} /></div>
-                        {section !== 'bites' && <div><label className="label">ABV</label><input className="input" defaultValue={item.abv || ''} onBlur={e => updateItem(item.id, { abv: e.target.value })} style={{ fontFamily: 'DM Mono, monospace' }} /></div>}
+                        {section !== 'bites' && section !== 'special_events' && <div><label className="label">ABV</label><input className="input" defaultValue={item.abv || ''} onBlur={e => updateItem(item.id, { abv: e.target.value })} style={{ fontFamily: 'DM Mono, monospace' }} /></div>}
                       </div>
                     )}
                   </div>
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-end', flexShrink: 0 }}>
-                    {section !== 'bites' && (
+                    {section !== 'bites' && section !== 'special_events' && (
                       <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text-secondary)', cursor: 'pointer' }}>
                         <input type="checkbox" checked={item.is_draft} onChange={e => updateItem(item.id, { is_draft: e.target.checked })} style={{ accentColor: 'var(--accent)' }} /> On Tap
                       </label>
@@ -221,7 +223,7 @@ export default function MenuPage() {
                   <div style={{ marginBottom: 10 }}><label className="label">Description</label><input className="input" defaultValue={item.description || ''} onBlur={e => updateItem(item.id, { description: e.target.value })} /></div>
                 )}
 
-                {section === 'bites' && (
+                {(section === 'bites' || section === 'special_events') && (
                   <div style={{ marginBottom: 10 }}><label className="label">Subtitle</label><input className="input" defaultValue={item.subtitle || ''} onBlur={e => updateItem(item.id, { subtitle: e.target.value })} /></div>
                 )}
 

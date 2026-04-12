@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 
-const BLANK_TICKET = { name: '', email: '', phone: '', event_id: '', quantity: 1, status: 'confirmed' }
+const BLANK_TICKET = { name: '', email: '', phone: '', event_id: '', quantity: 1, status: 'confirmed', is_free: false }
 
 export default function TicketsPage() {
   const [orders, setOrders] = useState<any[]>([])
@@ -14,6 +14,7 @@ export default function TicketsPage() {
   const [toast, setToast] = useState('')
   const [showAdd, setShowAdd] = useState(false)
   const [newTicket, setNewTicket] = useState<any>({ ...BLANK_TICKET })
+  const [editingId, setEditingId] = useState<string | null>(null)
 
   useEffect(() => { loadData() }, [])
 
@@ -56,6 +57,13 @@ export default function TicketsPage() {
     showToast('Ticket deleted')
   }
 
+  async function updateOrder(id: string, changes: any) {
+    const { error } = await supabase.from('ticket_orders').update(changes).eq('id', id)
+    if (error) { showToast('Error: ' + error.message); return }
+    setOrders(prev => prev.map(o => o.id === id ? { ...o, ...changes } : o))
+    showToast('Updated')
+  }
+
   async function createTicket() {
     if (!newTicket.name) { showToast('Name is required'); return }
     if (!newTicket.event_id) { showToast('Please select an event'); return }
@@ -68,13 +76,35 @@ export default function TicketsPage() {
       event_title: ev?.title || '',
       quantity: parseInt(newTicket.quantity) || 1,
       status: newTicket.status,
+      is_free: newTicket.is_free,
     }).select().single()
     if (error) { showToast('Error: ' + error.message); return }
     if (data) {
       setOrders(prev => [data, ...prev])
       setNewTicket({ ...BLANK_TICKET })
       setShowAdd(false)
-      showToast('Ticket created')
+      if (newTicket.status === 'confirmed' && newTicket.email) {
+        try {
+          await fetch('https://hodqpckslglxuyhitlgh.supabase.co/functions/v1/send-ticket-email', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              order: {
+                id: data.id,
+                name: newTicket.name,
+                email: newTicket.email,
+                event_title: ev?.title || 'BigBamBoo Event',
+                quantity: parseInt(newTicket.quantity) || 1
+              }
+            })
+          })
+          showToast('Ticket created & emailed')
+        } catch {
+          showToast('Ticket created (email failed)')
+        }
+      } else {
+        showToast('Ticket created')
+      }
     }
   }
 
@@ -159,6 +189,15 @@ export default function TicketsPage() {
             <div><label className="label">Quantity</label>
               <input className="input" type="number" min="1" value={newTicket.quantity} onChange={e => setNewTicket((p: any) => ({ ...p, quantity: e.target.value }))} /></div>
           </div>
+          <div style={{ display: 'flex', gap: 14, alignItems: 'center', marginBottom: 14 }}>
+            <label className="label" style={{ marginBottom: 0 }}>Ticket Type:</label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14, color: 'var(--text-secondary)', cursor: 'pointer' }}>
+              <input type="radio" checked={!newTicket.is_free} onChange={() => setNewTicket((p: any) => ({ ...p, is_free: false }))} style={{ accentColor: 'var(--accent)' }} /> Paid
+            </label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14, color: 'var(--text-secondary)', cursor: 'pointer' }}>
+              <input type="radio" checked={newTicket.is_free} onChange={() => setNewTicket((p: any) => ({ ...p, is_free: true }))} style={{ accentColor: 'var(--green)' }} /> Free
+            </label>
+          </div>
           <div style={{ display: 'flex', gap: 14, alignItems: 'center', marginBottom: 18 }}>
             <label className="label" style={{ marginBottom: 0 }}>Status:</label>
             <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14, color: 'var(--text-secondary)', cursor: 'pointer' }}>
@@ -227,6 +266,7 @@ export default function TicketsPage() {
                 <th>Guest</th>
                 <th>Event</th>
                 <th>Qty</th>
+                <th>Type</th>
                 <th>Status</th>
                 <th>Date</th>
                 <th style={{ textAlign: 'right' }}>Actions</th>
@@ -236,11 +276,36 @@ export default function TicketsPage() {
               {filtered.map(order => (
                 <tr key={order.id}>
                   <td>
-                    <div style={{ fontWeight: 600, fontSize: 14 }}>{order.name}</div>
-                    <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{order.email}{order.phone && ` · ${order.phone}`}</div>
+                    {editingId === order.id ? (
+                      <div>
+                        <input className="input" defaultValue={order.name} onBlur={e => e.target.value !== order.name && updateOrder(order.id, { name: e.target.value })} style={{ fontSize: 13, marginBottom: 4 }} />
+                        <input className="input" defaultValue={order.email || ''} onBlur={e => updateOrder(order.id, { email: e.target.value || null })} placeholder="email" style={{ fontSize: 12 }} />
+                      </div>
+                    ) : (
+                      <div>
+                        <div style={{ fontWeight: 600, fontSize: 14 }}>{order.name}</div>
+                        <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{order.email}{order.phone && ` · ${order.phone}`}</div>
+                      </div>
+                    )}
                   </td>
                   <td style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{order.event_title || '—'}</td>
-                  <td style={{ fontWeight: 500 }}>{order.quantity || 1}</td>
+                  <td>
+                    {editingId === order.id ? (
+                      <input className="input" type="number" min="1" defaultValue={order.quantity || 1} onBlur={e => updateOrder(order.id, { quantity: parseInt(e.target.value) || 1 })} style={{ width: 60, fontSize: 13, padding: '4px 8px' }} />
+                    ) : (
+                      <span style={{ fontWeight: 500 }}>{order.quantity || 1}</span>
+                    )}
+                  </td>
+                  <td>
+                    {editingId === order.id ? (
+                      <select className="input" value={order.is_free ? 'free' : 'paid'} onChange={e => updateOrder(order.id, { is_free: e.target.value === 'free' })} style={{ width: 80, fontSize: 12, padding: '4px 8px' }}>
+                        <option value="paid">Paid</option>
+                        <option value="free">Free</option>
+                      </select>
+                    ) : (
+                      order.is_free ? <span className="badge badge-blue">Free</span> : <span className="badge badge-gray">Paid</span>
+                    )}
+                  </td>
                   <td>
                     <span className={`badge ${order.status === 'confirmed' ? 'badge-green' : order.status === 'pending_payment' ? 'badge-orange' : 'badge-red'}`}>
                       {order.status === 'pending_payment' ? 'Pending' : order.status === 'confirmed' ? 'Confirmed' : 'Cancelled'}
@@ -252,6 +317,9 @@ export default function TicketsPage() {
                   </td>
                   <td style={{ textAlign: 'right' }}>
                     <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+                      <button className="btn-outline" onClick={() => setEditingId(editingId === order.id ? null : order.id)} style={{ padding: '6px 12px', fontSize: 12 }}>
+                        {editingId === order.id ? 'Done' : 'Edit'}
+                      </button>
                       {order.status === 'pending_payment' && (
                         <button className="btn-green" onClick={() => updateStatus(order.id, 'confirmed')} style={{ padding: '6px 12px', fontSize: 12 }}>
                           Confirm
