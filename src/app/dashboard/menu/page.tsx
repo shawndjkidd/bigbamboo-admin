@@ -123,12 +123,13 @@ export default function MenuPage() {
             .forEach(k => all.push({ key: k, label: toLabel(k) }))
     }
 
-    // Apply stored order if available
+    // Apply stored order if available — preserve empty custom sections
     if (orderData?.value) {
       try {
         const order: string[] = JSON.parse(orderData.value)
         const byKey = Object.fromEntries(all.map(s => [s.key, s]))
-        const ordered = order.map(k => byKey[k]).filter(Boolean) as typeof all
+        // For keys in the saved order that aren't in DB yet (empty custom sections), create entries
+        const ordered = order.map(k => byKey[k] || { key: k, label: toLabel(k) })
         const orderedKeys = new Set(order)
         all.filter(s => !orderedKeys.has(s.key)).forEach(s => ordered.push(s))
         setSections(ordered)
