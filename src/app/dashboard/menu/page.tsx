@@ -172,7 +172,12 @@ export default function MenuPage() {
 
   async function addItem() {
     if (!newItem.name) return
-    const { data } = await supabase.from('menu_items').insert({ ...newItem, section, sort_order: items.length + 1 }).select().single()
+    const { data, error } = await supabase.from('menu_items').insert({ ...newItem, section, sort_order: items.length + 1, is_available: true }).select().single()
+    if (error) {
+      console.error('addItem error:', error)
+      showToast('Failed to add item')
+      return
+    }
     if (data) {
       setItems(prev => [...prev, data])
       setNewItem({ name: '', subtitle: '', description: '', price: 'TBA', abv: '', tags: [], is_draft: false })
