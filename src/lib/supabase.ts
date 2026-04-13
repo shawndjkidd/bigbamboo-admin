@@ -34,6 +34,7 @@ export interface MenuItem {
   description_vi?: string
   description_ko?: string
   description_ja?: string
+  brand?: string
 }
 
 export interface Event {

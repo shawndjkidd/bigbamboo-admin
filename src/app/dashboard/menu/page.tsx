@@ -101,7 +101,7 @@ export default function MenuPage() {
   const [saving, setSaving] = useState<string | null>(null)
   const [toast, setToast] = useState('')
   const [showAdd, setShowAdd] = useState(false)
-  const [newItem, setNewItem] = useState({ name: '', subtitle: '', description: '', price: 'TBA', abv: '', tags: [] as string[], is_draft: false, price_glass: '', price_bottle: '', price_small: '', price_large: '', description_vi: '', description_ko: '', description_ja: '' })
+  const [newItem, setNewItem] = useState({ name: '', subtitle: '', description: '', price: 'TBA', abv: '', tags: [] as string[], is_draft: false, price_glass: '', price_bottle: '', price_small: '', price_large: '', description_vi: '', description_ko: '', description_ja: '', brand: '' })
   const [showAddSection, setShowAddSection] = useState(false)
   const [newSectionLabel, setNewSectionLabel] = useState('')
   const addSectionInputRef = useRef<HTMLInputElement>(null)
@@ -183,7 +183,7 @@ export default function MenuPage() {
     }
     if (data) {
       setItems(prev => [...prev, data])
-      setNewItem({ name: '', subtitle: '', description: '', price: 'TBA', abv: '', tags: [], is_draft: false, price_glass: '', price_bottle: '', price_small: '', price_large: '', description_vi: '', description_ko: '', description_ja: '' })
+      setNewItem({ name: '', subtitle: '', description: '', price: 'TBA', abv: '', tags: [], is_draft: false, price_glass: '', price_bottle: '', price_small: '', price_large: '', description_vi: '', description_ko: '', description_ja: '', brand: '' })
       setShowAdd(false)
       showToast('Item added')
     }
@@ -213,13 +213,17 @@ export default function MenuPage() {
     if (DEFAULT_SECTION_KEYS.has(key)) return
     const { count } = await supabase.from('menu_items').select('id', { count: 'exact', head: true }).eq('section', key)
     if (count && count > 0) {
-      showToast(`Remove all ${count} item${count !== 1 ? 's' : ''} first`)
-      return
+      if (!window.confirm(`Delete "${toLabel(key)}" and all ${count} item${count !== 1 ? 's' : ''} in it? This can't be undone.`)) return
+      const { error } = await supabase.from('menu_items').delete().eq('section', key)
+      if (error) { showToast('Error deleting items: ' + error.message); return }
+    } else {
+      if (!window.confirm(`Delete the "${toLabel(key)}" section?`)) return
     }
     const updated = sections.filter(s => s.key !== key)
     setSections(updated)
     saveSectionOrder(updated)
-    setSection('cocktails')
+    setSection(updated[0]?.key || 'cocktails')
+    showToast('Section deleted')
   }
 
   function showToast(msg: string) { setToast(msg); setTimeout(() => setToast(''), 2500) }
@@ -318,6 +322,9 @@ export default function MenuPage() {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
             <div><label className="label">Name</label><input className="input" value={newItem.name} onChange={e => setNewItem(p => ({ ...p, name: e.target.value }))} placeholder="Item name" /></div>
             <div><label className="label">Subtitle</label><input className="input" value={newItem.subtitle} onChange={e => setNewItem(p => ({ ...p, subtitle: e.target.value }))} placeholder="e.g. Pulled Pork Slamwich" /></div>
+          </div>
+          <div style={{ marginBottom: 14 }}>
+            <label className="label">Brand / Producer</label><input className="input" value={newItem.brand} onChange={e => setNewItem(p => ({ ...p, brand: e.target.value }))} placeholder="e.g. Hue Brewing Co., Dalat Winery" />
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: showAbv(section) ? '140px 1fr 80px' : '140px 1fr', gap: 14, marginBottom: 14 }}>
             <div><label className="label">Price</label><input className="input" value={newItem.price} onChange={e => setNewItem(p => ({ ...p, price: e.target.value }))} placeholder="TBA" /></div>
@@ -420,6 +427,11 @@ export default function MenuPage() {
               {section !== 'beer' && (
                 <div style={{ marginBottom: 10 }}><label className="label">Description</label><input className="input" defaultValue={item.description || ''} onBlur={e => updateItem(item.id, { description: e.target.value })} /></div>
               )}
+
+              <div style={{ marginBottom: 10 }}>
+                <label className="label">Brand / Producer</label>
+                <input className="input" defaultValue={item.brand || ''} onBlur={e => updateItem(item.id, { brand: e.target.value })} placeholder="e.g. Hue Brewing Co." style={{ maxWidth: 300 }} />
+              </div>
 
               <div style={{ marginBottom: 10 }}>
                 <button
