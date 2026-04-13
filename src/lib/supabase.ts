@@ -27,6 +27,10 @@ export interface MenuItem {
   is_draft: boolean
   is_available: boolean
   sort_order: number
+  price_glass?: string
+  price_bottle?: string
+  price_small?: string
+  price_large?: string
 }
 
 export interface Event {

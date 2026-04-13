@@ -101,7 +101,7 @@ export default function MenuPage() {
   const [saving, setSaving] = useState<string | null>(null)
   const [toast, setToast] = useState('')
   const [showAdd, setShowAdd] = useState(false)
-  const [newItem, setNewItem] = useState({ name: '', subtitle: '', description: '', price: 'TBA', abv: '', tags: [] as string[], is_draft: false })
+  const [newItem, setNewItem] = useState({ name: '', subtitle: '', description: '', price: 'TBA', abv: '', tags: [] as string[], is_draft: false, price_glass: '', price_bottle: '', price_small: '', price_large: '' })
   const [showAddSection, setShowAddSection] = useState(false)
   const [newSectionLabel, setNewSectionLabel] = useState('')
   const addSectionInputRef = useRef<HTMLInputElement>(null)
@@ -181,7 +181,7 @@ export default function MenuPage() {
     }
     if (data) {
       setItems(prev => [...prev, data])
-      setNewItem({ name: '', subtitle: '', description: '', price: 'TBA', abv: '', tags: [], is_draft: false })
+      setNewItem({ name: '', subtitle: '', description: '', price: 'TBA', abv: '', tags: [], is_draft: false, price_glass: '', price_bottle: '', price_small: '', price_large: '' })
       setShowAdd(false)
       showToast('Item added')
     }
@@ -317,13 +317,21 @@ export default function MenuPage() {
             <div><label className="label">Name</label><input className="input" value={newItem.name} onChange={e => setNewItem(p => ({ ...p, name: e.target.value }))} placeholder="Item name" /></div>
             <div><label className="label">Subtitle</label><input className="input" value={newItem.subtitle} onChange={e => setNewItem(p => ({ ...p, subtitle: e.target.value }))} placeholder="e.g. Pulled Pork Slamwich" /></div>
           </div>
-          {section === 'beer' ? (
-            <div style={{ marginBottom: 14 }}><BeerPriceEditor value={newItem.price === 'TBA' ? '' : newItem.price} onChange={v => setNewItem(p => ({ ...p, price: v || 'TBA' }))} /></div>
-          ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: showAbv(section) ? '140px 1fr 80px' : '140px 1fr', gap: 14, marginBottom: 14 }}>
-              <div><label className="label">Price</label><input className="input" value={newItem.price} onChange={e => setNewItem(p => ({ ...p, price: e.target.value }))} placeholder="TBA" /></div>
-              <div><label className="label">Description</label><input className="input" value={newItem.description} onChange={e => setNewItem(p => ({ ...p, description: e.target.value }))} placeholder="Short punchy description" /></div>
-              {showAbv(section) && <div><label className="label">ABV</label><input className="input" value={newItem.abv} onChange={e => setNewItem(p => ({ ...p, abv: e.target.value }))} placeholder="~8%" /></div>}
+          <div style={{ display: 'grid', gridTemplateColumns: showAbv(section) ? '140px 1fr 80px' : '140px 1fr', gap: 14, marginBottom: 14 }}>
+            <div><label className="label">Price</label><input className="input" value={newItem.price} onChange={e => setNewItem(p => ({ ...p, price: e.target.value }))} placeholder="TBA" /></div>
+            <div><label className="label">Description</label><input className="input" value={newItem.description} onChange={e => setNewItem(p => ({ ...p, description: e.target.value }))} placeholder="Short punchy description" /></div>
+            {showAbv(section) && <div><label className="label">ABV</label><input className="input" value={newItem.abv} onChange={e => setNewItem(p => ({ ...p, abv: e.target.value }))} placeholder="~8%" /></div>}
+          </div>
+          {section === 'beer' && (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
+              <div><label className="label">330ml price</label><input className="input" value={newItem.price_small} onChange={e => setNewItem(p => ({ ...p, price_small: e.target.value }))} placeholder="45,000" style={{ fontFamily: 'DM Mono, monospace' }} /></div>
+              <div><label className="label">500ml price</label><input className="input" value={newItem.price_large} onChange={e => setNewItem(p => ({ ...p, price_large: e.target.value }))} placeholder="65,000" style={{ fontFamily: 'DM Mono, monospace' }} /></div>
+            </div>
+          )}
+          {section === 'wine' && (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
+              <div><label className="label">Glass price</label><input className="input" value={newItem.price_glass} onChange={e => setNewItem(p => ({ ...p, price_glass: e.target.value }))} placeholder="45,000" style={{ fontFamily: 'DM Mono, monospace' }} /></div>
+              <div><label className="label">Bottle price</label><input className="input" value={newItem.price_bottle} onChange={e => setNewItem(p => ({ ...p, price_bottle: e.target.value }))} placeholder="180,000" style={{ fontFamily: 'DM Mono, monospace' }} /></div>
             </div>
           )}
           <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
@@ -356,12 +364,20 @@ export default function MenuPage() {
                     <input className="input" defaultValue={item.name} onBlur={e => e.target.value !== item.name && updateItem(item.id, { name: e.target.value })} style={{ fontWeight: 600, fontSize: 15 }} />
                   </div>
 
-                  {section === 'beer' ? (
-                    <BeerPriceEditor value={item.price || ''} onChange={v => updateItem(item.id, { price: v || 'TBA' })} />
-                  ) : (
-                    <div style={{ display: 'grid', gridTemplateColumns: showAbv(section) ? '120px 80px' : '120px', gap: 10 }}>
-                      <div><label className="label">Price</label><input className="input" defaultValue={item.price} onBlur={e => e.target.value !== item.price && updateItem(item.id, { price: e.target.value })} style={{ fontFamily: 'DM Mono, monospace' }} /></div>
-                      {showAbv(section) && <div><label className="label">ABV</label><input className="input" defaultValue={item.abv || ''} onBlur={e => updateItem(item.id, { abv: e.target.value })} style={{ fontFamily: 'DM Mono, monospace' }} /></div>}
+                  <div style={{ display: 'grid', gridTemplateColumns: showAbv(section) && section !== 'beer' ? '120px 80px' : '120px', gap: 10 }}>
+                    <div><label className="label">Price</label><input className="input" defaultValue={item.price} onBlur={e => e.target.value !== item.price && updateItem(item.id, { price: e.target.value })} style={{ fontFamily: 'DM Mono, monospace' }} /></div>
+                    {showAbv(section) && section !== 'beer' && <div><label className="label">ABV</label><input className="input" defaultValue={item.abv || ''} onBlur={e => updateItem(item.id, { abv: e.target.value })} style={{ fontFamily: 'DM Mono, monospace' }} /></div>}
+                  </div>
+                  {section === 'beer' && (
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 10 }}>
+                      <div><label className="label">330ml price</label><input className="input" defaultValue={item.price_small || ''} onBlur={e => updateItem(item.id, { price_small: e.target.value })} style={{ fontFamily: 'DM Mono, monospace' }} /></div>
+                      <div><label className="label">500ml price</label><input className="input" defaultValue={item.price_large || ''} onBlur={e => updateItem(item.id, { price_large: e.target.value })} style={{ fontFamily: 'DM Mono, monospace' }} /></div>
+                    </div>
+                  )}
+                  {section === 'wine' && (
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 10 }}>
+                      <div><label className="label">Glass price</label><input className="input" defaultValue={item.price_glass || ''} onBlur={e => updateItem(item.id, { price_glass: e.target.value })} style={{ fontFamily: 'DM Mono, monospace' }} /></div>
+                      <div><label className="label">Bottle price</label><input className="input" defaultValue={item.price_bottle || ''} onBlur={e => updateItem(item.id, { price_bottle: e.target.value })} style={{ fontFamily: 'DM Mono, monospace' }} /></div>
                     </div>
                   )}
                 </div>
