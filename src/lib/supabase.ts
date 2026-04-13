@@ -5,7 +5,7 @@ export const supabase = createBrowserClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 )
 
-export type Role = 'super_admin' | 'manager'
+export type Role = 'super_admin' | 'manager' | 'scanner'
 
 export interface StaffUser {
   id: string
