@@ -31,6 +31,9 @@ export interface MenuItem {
   price_bottle?: string
   price_small?: string
   price_large?: string
+  description_vi?: string
+  description_ko?: string
+  description_ja?: string
 }
 
 export interface Event {

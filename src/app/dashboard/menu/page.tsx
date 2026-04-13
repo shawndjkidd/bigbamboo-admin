@@ -101,10 +101,12 @@ export default function MenuPage() {
   const [saving, setSaving] = useState<string | null>(null)
   const [toast, setToast] = useState('')
   const [showAdd, setShowAdd] = useState(false)
-  const [newItem, setNewItem] = useState({ name: '', subtitle: '', description: '', price: 'TBA', abv: '', tags: [] as string[], is_draft: false, price_glass: '', price_bottle: '', price_small: '', price_large: '' })
+  const [newItem, setNewItem] = useState({ name: '', subtitle: '', description: '', price: 'TBA', abv: '', tags: [] as string[], is_draft: false, price_glass: '', price_bottle: '', price_small: '', price_large: '', description_vi: '', description_ko: '', description_ja: '' })
   const [showAddSection, setShowAddSection] = useState(false)
   const [newSectionLabel, setNewSectionLabel] = useState('')
   const addSectionInputRef = useRef<HTMLInputElement>(null)
+  const [showNewItemTranslations, setShowNewItemTranslations] = useState(false)
+  const [expandedTranslations, setExpandedTranslations] = useState<Set<string>>(new Set())
 
   useEffect(() => { loadSections() }, [])
   useEffect(() => { loadItems() }, [section])
@@ -181,7 +183,7 @@ export default function MenuPage() {
     }
     if (data) {
       setItems(prev => [...prev, data])
-      setNewItem({ name: '', subtitle: '', description: '', price: 'TBA', abv: '', tags: [], is_draft: false, price_glass: '', price_bottle: '', price_small: '', price_large: '' })
+      setNewItem({ name: '', subtitle: '', description: '', price: 'TBA', abv: '', tags: [], is_draft: false, price_glass: '', price_bottle: '', price_small: '', price_large: '', description_vi: '', description_ko: '', description_ja: '' })
       setShowAdd(false)
       showToast('Item added')
     }
@@ -322,6 +324,18 @@ export default function MenuPage() {
             <div><label className="label">Description</label><input className="input" value={newItem.description} onChange={e => setNewItem(p => ({ ...p, description: e.target.value }))} placeholder="Short punchy description" /></div>
             {showAbv(section) && <div><label className="label">ABV</label><input className="input" value={newItem.abv} onChange={e => setNewItem(p => ({ ...p, abv: e.target.value }))} placeholder="~8%" /></div>}
           </div>
+          <div style={{ marginBottom: 14 }}>
+            <button onClick={() => setShowNewItemTranslations(p => !p)} style={{ fontSize: 12, color: 'var(--text-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+              {showNewItemTranslations ? '▲' : '▼'} Translations
+            </button>
+            {showNewItemTranslations && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 10 }}>
+                <div><label className="label">Vietnamese</label><input className="input" value={newItem.description_vi} onChange={e => setNewItem(p => ({ ...p, description_vi: e.target.value }))} placeholder="Vietnamese description" /></div>
+                <div><label className="label">Korean</label><input className="input" value={newItem.description_ko} onChange={e => setNewItem(p => ({ ...p, description_ko: e.target.value }))} placeholder="Korean description" /></div>
+                <div><label className="label">Japanese</label><input className="input" value={newItem.description_ja} onChange={e => setNewItem(p => ({ ...p, description_ja: e.target.value }))} placeholder="Japanese description" /></div>
+              </div>
+            )}
+          </div>
           {section === 'beer' && (
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
               <div><label className="label">330ml price</label><input className="input" value={newItem.price_small} onChange={e => setNewItem(p => ({ ...p, price_small: e.target.value }))} placeholder="45,000" style={{ fontFamily: 'DM Mono, monospace' }} /></div>
@@ -406,6 +420,22 @@ export default function MenuPage() {
               {section !== 'beer' && (
                 <div style={{ marginBottom: 10 }}><label className="label">Description</label><input className="input" defaultValue={item.description || ''} onBlur={e => updateItem(item.id, { description: e.target.value })} /></div>
               )}
+
+              <div style={{ marginBottom: 10 }}>
+                <button
+                  onClick={() => setExpandedTranslations(prev => { const next = new Set(prev); next.has(item.id) ? next.delete(item.id) : next.add(item.id); return next })}
+                  style={{ fontSize: 12, color: 'var(--text-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                >
+                  {expandedTranslations.has(item.id) ? '▲' : '▼'} Translations
+                </button>
+                {expandedTranslations.has(item.id) && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 10 }}>
+                    <div><label className="label">Vietnamese</label><input className="input" defaultValue={item.description_vi || ''} onBlur={e => updateItem(item.id, { description_vi: e.target.value })} /></div>
+                    <div><label className="label">Korean</label><input className="input" defaultValue={item.description_ko || ''} onBlur={e => updateItem(item.id, { description_ko: e.target.value })} /></div>
+                    <div><label className="label">Japanese</label><input className="input" defaultValue={item.description_ja || ''} onBlur={e => updateItem(item.id, { description_ja: e.target.value })} /></div>
+                  </div>
+                )}
+              </div>
 
               {showSubtitle(section) && (
                 <div style={{ marginBottom: 10 }}><label className="label">Subtitle</label><input className="input" defaultValue={item.subtitle || ''} onBlur={e => updateItem(item.id, { subtitle: e.target.value })} /></div>
