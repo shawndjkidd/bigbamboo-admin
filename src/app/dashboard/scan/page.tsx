@@ -233,22 +233,34 @@ export default function ScanPage() {
       {/* Page header */}
       <div style={{ marginBottom: 28 }}>
         <h1 style={{ fontFamily: 'Bebas Neue, sans-serif', fontSize: 32, letterSpacing: '0.04em', color: 'var(--text)', margin: 0 }}>Scanner</h1>
-        <p style={{ color: 'var(--text-muted)', fontSize: 14, margin: '4px 0 0' }}>Scan promo QR codes or check in event guests</p>
+        <p style={{ color: 'var(--text-muted)', fontSize: 14, margin: '4px 0 0' }}>Choose a scanner below</p>
       </div>
 
-      {/* Tab selector */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 24 }}>
+      {/* Scanner picker — two big clear cards */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16, marginBottom: 28, maxWidth: 560 }}>
         <button onClick={() => { setTab('promo'); setClaim(null); setResult(null) }}
-          style={{ padding: '10px 24px', borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: 'pointer', border: 'none',
-            background: tab === 'promo' ? '#e8772e' : 'var(--card-bg)', color: tab === 'promo' ? '#fff' : 'var(--text-muted)',
-            transition: 'all 0.2s' }}>
-          Promo Prizes
+          style={{ padding: '28px 24px', borderRadius: 16, cursor: 'pointer', textAlign: 'left', transition: 'all 0.2s',
+            background: tab === 'promo' ? 'rgba(232,119,46,0.12)' : 'var(--card-bg)',
+            border: tab === 'promo' ? '2px solid #e8772e' : '2px solid var(--border)' }}>
+          <div style={{ fontFamily: 'Bebas Neue, sans-serif', fontSize: 22, letterSpacing: '0.04em',
+            color: tab === 'promo' ? '#e8772e' : 'var(--text)' }}>
+            Promo Prizes
+          </div>
+          <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 4, lineHeight: 1.4 }}>
+            Scan a customer's Spin to Win QR code to redeem their prize
+          </div>
         </button>
+
         <a href="/door" target="_blank" rel="noopener noreferrer"
-          style={{ padding: '10px 24px', borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: 'pointer', border: 'none',
-            background: 'var(--card-bg)', color: 'var(--text-muted)', textDecoration: 'none', display: 'inline-block',
-            transition: 'all 0.2s' }}>
-          Door Check-In ↗
+          style={{ padding: '28px 24px', borderRadius: 16, cursor: 'pointer', textAlign: 'left', transition: 'all 0.2s',
+            background: 'var(--card-bg)', border: '2px solid var(--border)', textDecoration: 'none', display: 'block' }}>
+          <div style={{ fontFamily: 'Bebas Neue, sans-serif', fontSize: 22, letterSpacing: '0.04em', color: 'var(--text)' }}>
+            Event Door Check-In
+          </div>
+          <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 4, lineHeight: 1.4 }}>
+            Scan event ticket QR codes at the door to check guests in
+          </div>
+          <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 10, opacity: 0.7 }}>Opens in new tab ↗</div>
         </a>
       </div>
 
