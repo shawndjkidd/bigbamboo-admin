@@ -385,21 +385,25 @@ export default function MenuPage() {
                     <input className="input" defaultValue={item.name} onBlur={e => e.target.value !== item.name && updateItem(item.id, { name: e.target.value })} style={{ fontWeight: 600, fontSize: 15 }} />
                   </div>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: showAbv(section) && section !== 'beer' ? '120px 80px' : '120px', gap: 10 }}>
-                    <div><label className="label">Price</label><input className="input" defaultValue={item.price} onBlur={e => e.target.value !== item.price && updateItem(item.id, { price: e.target.value })} style={{ fontFamily: 'DM Mono, monospace' }} /></div>
-                    {showAbv(section) && section !== 'beer' && <div><label className="label">ABV</label><input className="input" defaultValue={item.abv || ''} onBlur={e => updateItem(item.id, { abv: e.target.value })} style={{ fontFamily: 'DM Mono, monospace' }} /></div>}
-                  </div>
-                  {section === 'beer' && (
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 10 }}>
-                      <div><label className="label">330ml price</label><input className="input" defaultValue={item.price_small || ''} onBlur={e => updateItem(item.id, { price_small: e.target.value })} style={{ fontFamily: 'DM Mono, monospace' }} /></div>
-                      <div><label className="label">500ml price</label><input className="input" defaultValue={item.price_large || ''} onBlur={e => updateItem(item.id, { price_large: e.target.value })} style={{ fontFamily: 'DM Mono, monospace' }} /></div>
-                    </div>
-                  )}
-                  {section === 'wine' && (
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 10 }}>
+                  {section === 'wine' ? (
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 80px', gap: 10 }}>
                       <div><label className="label">Glass price</label><input className="input" defaultValue={item.price_glass || ''} onBlur={e => updateItem(item.id, { price_glass: e.target.value })} style={{ fontFamily: 'DM Mono, monospace' }} /></div>
                       <div><label className="label">Bottle price</label><input className="input" defaultValue={item.price_bottle || ''} onBlur={e => updateItem(item.id, { price_bottle: e.target.value })} style={{ fontFamily: 'DM Mono, monospace' }} /></div>
+                      <div><label className="label">ABV</label><input className="input" defaultValue={item.abv || ''} onBlur={e => updateItem(item.id, { abv: e.target.value })} style={{ fontFamily: 'DM Mono, monospace' }} /></div>
                     </div>
+                  ) : (
+                    <>
+                      <div style={{ display: 'grid', gridTemplateColumns: showAbv(section) && section !== 'beer' ? '120px 80px' : '120px', gap: 10 }}>
+                        <div><label className="label">Price</label><input className="input" defaultValue={item.price} onBlur={e => e.target.value !== item.price && updateItem(item.id, { price: e.target.value })} style={{ fontFamily: 'DM Mono, monospace' }} /></div>
+                        {showAbv(section) && section !== 'beer' && <div><label className="label">ABV</label><input className="input" defaultValue={item.abv || ''} onBlur={e => updateItem(item.id, { abv: e.target.value })} style={{ fontFamily: 'DM Mono, monospace' }} /></div>}
+                      </div>
+                      {section === 'beer' && (
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 10 }}>
+                          <div><label className="label">330ml price</label><input className="input" defaultValue={item.price_small || ''} onBlur={e => updateItem(item.id, { price_small: e.target.value })} style={{ fontFamily: 'DM Mono, monospace' }} /></div>
+                          <div><label className="label">500ml price</label><input className="input" defaultValue={item.price_large || ''} onBlur={e => updateItem(item.id, { price_large: e.target.value })} style={{ fontFamily: 'DM Mono, monospace' }} /></div>
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
 
