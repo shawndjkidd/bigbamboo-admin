@@ -131,18 +131,18 @@ interface Prize {
   max_discount?: number;
 }
 
-// ─── Play Decay ───
-const PLAY_DECAY = [
-  { weights: { big: 5, medium: 25, small: 40, none: 30 } },   // 1st play: 70% win
-  { weights: { big: 2, medium: 15, small: 33, none: 50 } },   // 2nd play: 50% win
-  { weights: { big: 0, medium: 5, small: 25, none: 70 } },    // 3rd play: 30% win
-  { weights: { big: 0, medium: 2, small: 13, none: 85 } },    // 4th+:    15% win
+// ─── Play Decay (defaults, overridden by Supabase game_config) ───
+const DEFAULT_DECAY = [
+  { big: 5, medium: 25, small: 40, none: 30 },   // 1st play: 70% win
+  { big: 2, medium: 15, small: 33, none: 50 },   // 2nd play: 50% win
+  { big: 0, medium: 5, small: 25, none: 70 },    // 3rd play: 30% win
+  { big: 0, medium: 2, small: 13, none: 85 },    // 4th+:    15% win
 ];
 
-function pickPrize(prizes: Prize[], playCount: number): Prize | null {
-  const decay = PLAY_DECAY[Math.min(playCount, PLAY_DECAY.length - 1)];
+function pickPrize(prizes: Prize[], playCount: number, decayTable: typeof DEFAULT_DECAY): Prize | null {
+  const decay = decayTable[Math.min(playCount, decayTable.length - 1)];
   const roll = Math.random() * 100;
-  const { big, medium, small } = decay.weights;
+  const { big, medium, small } = decay;
   let tier: string;
   if (roll < big) tier = "big";
   else if (roll < big + medium) tier = "medium";
@@ -240,6 +240,7 @@ export default function PlayPage() {
   const [prizes, setPrizes] = useState<Prize[]>([]);
   const [loading, setLoading] = useState(true);
   const [playCount, setPlayCount] = useState(0);
+  const [decayTable, setDecayTable] = useState(DEFAULT_DECAY);
 
   // Game state
   const [score, setScore] = useState(0);
@@ -294,6 +295,15 @@ export default function PlayPage() {
             { id: '7', prize_id: "10_off", label: "10% Off Your Bill", emoji: "", tier: "small", weight: 32, prize_type: "discount", discount_pct: 10, max_discount: 100000 },
           ]);
         }
+        // Fetch dynamic decay settings
+        const configData = await sbFetch('site_settings', { query: '?key=eq.game_config&select=value' });
+        if (configData && configData.length > 0) {
+          try {
+            const cfg = JSON.parse(configData[0].value);
+            if (cfg.decay && Array.isArray(cfg.decay)) setDecayTable(cfg.decay);
+          } catch (e) { console.error('Bad game_config:', e); }
+        }
+
         const today = new Date().toISOString().split('T')[0];
         const plays = await sbFetch('game_plays', {
           query: `?session_id=eq.${sessionId.current}&played_at=gte.${today}T00:00:00&select=id`
@@ -471,7 +481,7 @@ export default function PlayPage() {
     if (navigator.vibrate) navigator.vibrate([50, 30, 80]);
 
     // Pick prize
-    const prize = pickPrize(prizes, playCount);
+    const prize = pickPrize(prizes, playCount, decayTable);
     setCurrentPrize(prize);
     setReelPrize(prize);
 
