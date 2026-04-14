@@ -14,10 +14,10 @@ const DEFAULT_SECTIONS = [
 const DEFAULT_SECTION_KEYS = new Set(DEFAULT_SECTIONS.map(s => s.key))
 
 const TAG_PRESETS: Record<string, { label: string, color: string }[]> = {
-  cocktails:     [{ label: 'Bestseller', color: 'orange' }, { label: 'New', color: 'blue' }, { label: 'Craft', color: 'blue' }, { label: 'Drink Wisely', color: 'red' }, { label: 'Limited', color: 'orange' }],
+  cocktails:     [{ label: 'Bestseller', color: 'orange' }, { label: 'New', color: 'blue' }, { label: 'Sparkling', color: 'blue' }, { label: 'Craft', color: 'blue' }, { label: 'Drink Wisely', color: 'red' }, { label: 'Limited', color: 'orange' }],
   beer:          [{ label: 'Bestseller', color: 'orange' }, { label: 'Local', color: 'orange' }, { label: 'Limited', color: 'orange' }, { label: 'New', color: 'blue' }],
   na:            [{ label: 'Bestseller', color: 'orange' }, { label: 'No Alcohol', color: 'blue' }, { label: 'New', color: 'blue' }],
-  wine:          [{ label: 'Bestseller', color: 'orange' }, { label: 'New', color: 'blue' }, { label: 'House Pick', color: 'orange' }, { label: 'Limited', color: 'orange' }, { label: 'Premium', color: 'red' }],
+  wine:          [{ label: 'Bestseller', color: 'orange' }, { label: 'New', color: 'blue' }, { label: 'Sparkling', color: 'blue' }, { label: 'House Pick', color: 'orange' }, { label: 'Limited', color: 'orange' }, { label: 'Premium', color: 'red' }],
   shots:         [{ label: 'Bestseller', color: 'orange' }, { label: 'New', color: 'blue' }, { label: 'Local', color: 'orange' }, { label: 'Premium', color: 'red' }, { label: 'Limited', color: 'orange' }],
   bites:         [{ label: "Chef's Pick", color: 'orange' }, { label: 'Crowd Pleaser', color: 'orange' }, { label: 'Bestseller', color: 'orange' }, { label: 'New', color: 'blue' }, { label: 'Vegan', color: 'green' }, { label: 'Spicy', color: 'red' }],
   special_events:[{ label: 'Featured', color: 'orange' }, { label: 'Limited', color: 'orange' }, { label: 'New', color: 'blue' }, { label: 'Seasonal', color: 'green' }, { label: 'Premium', color: 'red' }],
