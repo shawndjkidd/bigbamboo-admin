@@ -133,10 +133,10 @@ interface Prize {
 
 // ─── Play Decay ───
 const PLAY_DECAY = [
-  { weights: { big: 10, medium: 30, small: 60, none: 0 } },
-  { weights: { big: 0, medium: 25, small: 50, none: 25 } },
-  { weights: { big: 0, medium: 5, small: 40, none: 55 } },
-  { weights: { big: 0, medium: 0, small: 25, none: 75 } },
+  { weights: { big: 5, medium: 25, small: 40, none: 30 } },   // 1st play: 70% win
+  { weights: { big: 2, medium: 15, small: 33, none: 50 } },   // 2nd play: 50% win
+  { weights: { big: 0, medium: 5, small: 25, none: 70 } },    // 3rd play: 30% win
+  { weights: { big: 0, medium: 2, small: 13, none: 85 } },    // 4th+:    15% win
 ];
 
 function pickPrize(prizes: Prize[], playCount: number): Prize | null {
