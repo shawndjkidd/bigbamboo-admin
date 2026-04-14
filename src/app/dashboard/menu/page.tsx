@@ -32,7 +32,7 @@ const CUSTOM_TAG_PRESETS = [
 function isCustom(key: string)    { return !DEFAULT_SECTION_KEYS.has(key) }
 function showAbv(key: string)     { return !['bites', 'special_events', 'na'].includes(key) && !isCustom(key) }
 function showOnTap(key: string)   { return !['bites', 'special_events', 'wine', 'shots', 'na'].includes(key) && !isCustom(key) }
-function showSubtitle(key: string){ return key === 'bites' || key === 'special_events' || key === 'wine' || isCustom(key) }
+function showSubtitle(key: string){ return key === 'bites' || key === 'special_events' || key === 'wine' || key === 'beer' || isCustom(key) }
 
 function toLabel(key: string) {
   return key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
@@ -325,7 +325,7 @@ export default function MenuPage() {
           <div className="section-title" style={{ color: 'var(--accent)', marginBottom: 18 }}>New Item</div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
             <div><label className="label">Name</label><input className="input" value={newItem.name} onChange={e => setNewItem(p => ({ ...p, name: e.target.value }))} placeholder="Item name" /></div>
-            <div><label className="label">{section === 'wine' ? 'Type' : 'Subtitle'}</label><input className="input" value={newItem.subtitle} onChange={e => setNewItem(p => ({ ...p, subtitle: e.target.value }))} placeholder={section === 'wine' ? 'e.g. White, Red, Rosé' : 'e.g. Pulled Pork Slamwich'} /></div>
+            <div><label className="label">{section === 'wine' ? 'Type' : section === 'beer' ? 'Style' : 'Subtitle'}</label><input className="input" value={newItem.subtitle} onChange={e => setNewItem(p => ({ ...p, subtitle: e.target.value }))} placeholder={section === 'wine' ? 'e.g. White, Red, Rosé' : section === 'beer' ? 'e.g. IPA, Lager, Stout' : 'e.g. Pulled Pork Slamwich'} /></div>
           </div>
           <div style={{ marginBottom: 14 }}>
             <label className="label">Brand / Producer</label><input className="input" value={newItem.brand} onChange={e => setNewItem(p => ({ ...p, brand: e.target.value }))} placeholder="e.g. Hue Brewing Co., Dalat Winery" />
@@ -342,8 +342,8 @@ export default function MenuPage() {
           ) : section === 'beer' ? (
             <>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 80px', gap: 14, marginBottom: 14 }}>
-                <div><label className="label">330ml price</label><input className="input" value={newItem.price_small} onChange={e => setNewItem(p => ({ ...p, price_small: e.target.value }))} placeholder="45,000" style={{ fontFamily: 'DM Mono, monospace' }} /></div>
-                <div><label className="label">500ml price</label><input className="input" value={newItem.price_large} onChange={e => setNewItem(p => ({ ...p, price_large: e.target.value }))} placeholder="65,000" style={{ fontFamily: 'DM Mono, monospace' }} /></div>
+                <div><label className="label">Glass price</label><input className="input" value={newItem.price_small} onChange={e => setNewItem(p => ({ ...p, price_small: e.target.value }))} placeholder="45,000" style={{ fontFamily: 'DM Mono, monospace' }} /></div>
+                <div><label className="label">Pint price</label><input className="input" value={newItem.price_large} onChange={e => setNewItem(p => ({ ...p, price_large: e.target.value }))} placeholder="65,000" style={{ fontFamily: 'DM Mono, monospace' }} /></div>
                 <div><label className="label">ABV</label><input className="input" value={newItem.abv} onChange={e => setNewItem(p => ({ ...p, abv: e.target.value }))} placeholder="~5%" /></div>
               </div>
               <div style={{ marginBottom: 14 }}><label className="label">Description</label><input className="input" value={newItem.description} onChange={e => setNewItem(p => ({ ...p, description: e.target.value }))} placeholder="Short punchy description" /></div>
@@ -422,8 +422,8 @@ export default function MenuPage() {
                       </div>
                       {section === 'beer' && (
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 10 }}>
-                          <div><label className="label">330ml price</label><input className="input" defaultValue={item.price_small || ''} onBlur={e => updateItem(item.id, { price_small: e.target.value })} style={{ fontFamily: 'DM Mono, monospace' }} /></div>
-                          <div><label className="label">500ml price</label><input className="input" defaultValue={item.price_large || ''} onBlur={e => updateItem(item.id, { price_large: e.target.value })} style={{ fontFamily: 'DM Mono, monospace' }} /></div>
+                          <div><label className="label">Glass price</label><input className="input" defaultValue={item.price_small || ''} onBlur={e => updateItem(item.id, { price_small: e.target.value })} style={{ fontFamily: 'DM Mono, monospace' }} /></div>
+                          <div><label className="label">Pint price</label><input className="input" defaultValue={item.price_large || ''} onBlur={e => updateItem(item.id, { price_large: e.target.value })} style={{ fontFamily: 'DM Mono, monospace' }} /></div>
                         </div>
                       )}
                     </>
@@ -477,7 +477,7 @@ export default function MenuPage() {
               </div>
 
               {showSubtitle(section) && (
-                <div style={{ marginBottom: 10 }}><label className="label">{section === 'wine' ? 'Type (White, Red, Rosé)' : 'Subtitle'}</label><input className="input" defaultValue={item.subtitle || ''} onBlur={e => updateItem(item.id, { subtitle: e.target.value })} placeholder={section === 'wine' ? 'e.g. White, Red, Rosé' : ''} /></div>
+                <div style={{ marginBottom: 10 }}><label className="label">{section === 'wine' ? 'Type (White, Red, Rosé)' : section === 'beer' ? 'Style' : 'Subtitle'}</label><input className="input" defaultValue={item.subtitle || ''} onBlur={e => updateItem(item.id, { subtitle: e.target.value })} placeholder={section === 'wine' ? 'e.g. White, Red, Rosé' : section === 'beer' ? 'e.g. IPA, Lager, Stout' : ''} /></div>
               )}
 
               {/* Tags */}
