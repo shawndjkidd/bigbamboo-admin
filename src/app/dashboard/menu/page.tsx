@@ -5,6 +5,8 @@ import { supabase, MenuItem } from '@/lib/supabase'
 const DEFAULT_SECTIONS = [
   { key: 'cocktails',     label: 'Cocktails' },
   { key: 'beer',          label: 'Beer' },
+  { key: 'wine',          label: 'Wine' },
+  { key: 'shots',         label: 'Shots & Moonshine' },
   { key: 'na',            label: 'Non-Alcoholic' },
   { key: 'bites',         label: 'Bar Bites' },
   { key: 'special_events', label: 'Special Events' },
@@ -15,6 +17,8 @@ const TAG_PRESETS: Record<string, { label: string, color: string }[]> = {
   cocktails:     [{ label: 'Bestseller', color: 'orange' }, { label: 'New', color: 'blue' }, { label: 'Craft', color: 'blue' }, { label: 'Drink Wisely', color: 'red' }, { label: 'Limited', color: 'orange' }],
   beer:          [{ label: 'Bestseller', color: 'orange' }, { label: 'Local', color: 'orange' }, { label: 'Limited', color: 'orange' }, { label: 'New', color: 'blue' }],
   na:            [{ label: 'Bestseller', color: 'orange' }, { label: 'No Alcohol', color: 'blue' }, { label: 'New', color: 'blue' }],
+  wine:          [{ label: 'Bestseller', color: 'orange' }, { label: 'New', color: 'blue' }, { label: 'House Pick', color: 'orange' }, { label: 'Limited', color: 'orange' }, { label: 'Premium', color: 'red' }],
+  shots:         [{ label: 'Bestseller', color: 'orange' }, { label: 'New', color: 'blue' }, { label: 'Local', color: 'orange' }, { label: 'Premium', color: 'red' }, { label: 'Limited', color: 'orange' }],
   bites:         [{ label: "Chef's Pick", color: 'orange' }, { label: 'Crowd Pleaser', color: 'orange' }, { label: 'Bestseller', color: 'orange' }, { label: 'New', color: 'blue' }, { label: 'Vegan', color: 'green' }, { label: 'Spicy', color: 'red' }],
   special_events:[{ label: 'Featured', color: 'orange' }, { label: 'Limited', color: 'orange' }, { label: 'New', color: 'blue' }, { label: 'Seasonal', color: 'green' }, { label: 'Premium', color: 'red' }],
 }
@@ -26,8 +30,8 @@ const CUSTOM_TAG_PRESETS = [
 
 // Helpers for per-section field visibility
 function isCustom(key: string)    { return !DEFAULT_SECTION_KEYS.has(key) }
-function showAbv(key: string)     { return !['bites', 'special_events'].includes(key) && !isCustom(key) }
-function showOnTap(key: string)   { return !['bites', 'special_events'].includes(key) && !isCustom(key) }
+function showAbv(key: string)     { return !['bites', 'special_events', 'na'].includes(key) && !isCustom(key) }
+function showOnTap(key: string)   { return !['bites', 'special_events', 'wine', 'shots', 'na'].includes(key) && !isCustom(key) }
 function showSubtitle(key: string){ return key === 'bites' || key === 'special_events' || key === 'wine' || isCustom(key) }
 
 function toLabel(key: string) {
@@ -344,6 +348,12 @@ export default function MenuPage() {
               </div>
               <div style={{ marginBottom: 14 }}><label className="label">Description</label><input className="input" value={newItem.description} onChange={e => setNewItem(p => ({ ...p, description: e.target.value }))} placeholder="Short punchy description" /></div>
             </>
+          ) : section === 'shots' ? (
+            <div style={{ display: 'grid', gridTemplateColumns: '120px 80px 1fr', gap: 14, marginBottom: 14 }}>
+              <div><label className="label">Price</label><input className="input" value={newItem.price} onChange={e => setNewItem(p => ({ ...p, price: e.target.value }))} placeholder="TBA" style={{ fontFamily: 'DM Mono, monospace' }} /></div>
+              <div><label className="label">ABV</label><input className="input" value={newItem.abv} onChange={e => setNewItem(p => ({ ...p, abv: e.target.value }))} placeholder="~40%" /></div>
+              <div><label className="label">Description</label><input className="input" value={newItem.description} onChange={e => setNewItem(p => ({ ...p, description: e.target.value }))} placeholder="Short punchy description" /></div>
+            </div>
           ) : section === 'cocktails' ? (
             <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr 80px', gap: 14, marginBottom: 14 }}>
               <div><label className="label">Price</label><input className="input" value={newItem.price} onChange={e => setNewItem(p => ({ ...p, price: e.target.value }))} placeholder="TBA" style={{ fontFamily: 'DM Mono, monospace' }} /></div>
