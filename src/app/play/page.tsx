@@ -845,7 +845,7 @@ export default function PlayPage() {
                 borderRadius: 20, padding: 20, textAlign: "left",
               }}>
                 <div style={{ ...F.body, fontSize: 14, fontWeight: 600, color: "rgba(255,255,255,0.7)", marginBottom: 12 }}>
-                  {contactMode === 'phone' ? 'Enter your phone to lock your prize' : 'Enter your email to lock your prize'}
+                  {contactMode === 'phone' ? 'Enter your phone to claim your prize' : 'Enter your email to claim your prize'}
                 </div>
                 <input
                   type={contactMode === 'phone' ? 'tel' : 'email'}
@@ -892,7 +892,7 @@ export default function PlayPage() {
                     boxShadow: "0 6px 24px rgba(232,120,48,0.35)",
                     opacity: submitting ? 0.5 : 1,
                   }}>
-                  {submitting ? 'Saving...' : 'Lock My Prize'}
+                  {submitting ? 'Saving...' : 'Get My Prize'}
                 </button>
               </div>
 
