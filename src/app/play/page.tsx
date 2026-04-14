@@ -285,13 +285,13 @@ export default function PlayPage() {
           setPrizes(prizesData);
         } else {
           setPrizes([
-            { id: '1', prize_id: "free-cocktail", label: "Free Signature Cocktail", emoji: "\u{1F379}", tier: "big", weight: 5, prize_type: "item" },
-            { id: '2', prize_id: "free-beer", label: "Free Craft Beer", emoji: "\u{1F37A}", tier: "big", weight: 5, prize_type: "item" },
-            { id: '3', prize_id: "free-appetizer", label: "Free Appetizer", emoji: "\u{1F960}", tier: "medium", weight: 12, prize_type: "item" },
-            { id: '4', prize_id: "bogo-cocktail", label: "Buy 1 Get 1 Cocktail", emoji: "\u{1F378}", tier: "medium", weight: 15, prize_type: "item" },
-            { id: '5', prize_id: "bogo-beer", label: "Buy 1 Get 1 Beer", emoji: "\u{1F37B}", tier: "medium", weight: 13, prize_type: "item" },
-            { id: '6', prize_id: "20-off", label: "20% Off Your Bill", emoji: "\u{1F4B0}", tier: "small", weight: 20, prize_type: "discount", discount_pct: 20, max_discount: 200000 },
-            { id: '7', prize_id: "10-off", label: "10% Off Your Bill", emoji: "\u{1F389}", tier: "small", weight: 30, prize_type: "discount", discount_pct: 10, max_discount: 100000 },
+            { id: '1', prize_id: "any_cocktail", label: "Free Cocktail", emoji: "", tier: "big", weight: 3, prize_type: "item" },
+            { id: '2', prize_id: "sandwich", label: "Free Slamwich", emoji: "", tier: "big", weight: 5, prize_type: "item" },
+            { id: '3', prize_id: "sparkling_sangria", label: "Free Sparkling Sangria", emoji: "", tier: "medium", weight: 10, prize_type: "item" },
+            { id: '4', prize_id: "vodka_earl_grey", label: "Free Vodka Earl Grey Lemonade", emoji: "", tier: "medium", weight: 10, prize_type: "item" },
+            { id: '5', prize_id: "huda", label: "Free Huda Draft", emoji: "", tier: "medium", weight: 15, prize_type: "item" },
+            { id: '6', prize_id: "15_off_food", label: "15% Off Food", emoji: "", tier: "small", weight: 25, prize_type: "discount", discount_pct: 15, max_discount: 200000 },
+            { id: '7', prize_id: "10_off", label: "10% Off Your Bill", emoji: "", tier: "small", weight: 32, prize_type: "discount", discount_pct: 10, max_discount: 100000 },
           ]);
         }
         const today = new Date().toISOString().split('T')[0];
@@ -650,13 +650,13 @@ export default function PlayPage() {
         </div>
         <div style={{ ...F.body, fontSize: "clamp(13px,3.2vw,16px)", color: "rgba(255,255,255,0.55)",
           textAlign: "center", lineHeight: 1.5, maxWidth: 320, marginBottom: 32 }}>
-          Free onion rings, Huda, cocktails, shots, discounts, and more.
+          Whack the drinks. Spin the reel. Every player wins something.
         </div>
         <button onClick={beginGame} style={{
           ...S.btnPrimary, borderRadius: 20, padding: "20px 44px",
           fontSize: "clamp(16px,4vw,20px)", animation: "ctaPulse 2s ease-in-out infinite",
         }}>
-          <span style={{ fontSize: 22 }}>{"\u{1F3AF}"}</span> Tap to play
+          Tap to play
         </button>
         <div style={{ position: "absolute", bottom: 16, fontSize: 9, color: "rgba(255,255,255,0.15)",
           letterSpacing: "0.18em", textTransform: "uppercase", fontWeight: 600 }}>
@@ -821,7 +821,6 @@ export default function PlayPage() {
                 boxShadow: `0 16px 50px rgba(0,0,0,0.3), 0 0 60px rgba(240,160,50,0.06)`,
                 animation: "prizeGlow 2s ease-in-out infinite alternate",
               }}>
-                <div style={{ fontSize: 48, marginBottom: 8 }}>{currentPrize.emoji}</div>
                 <div style={{ ...F.display, fontSize: "clamp(24px,7vw,36px)", color: B.gold,
                   marginBottom: 6, lineHeight: 1.1,
                   textShadow: `0 4px 24px ${B.goldGlow}` }}>
@@ -905,7 +904,7 @@ export default function PlayPage() {
             </>
           ) : (
             <>
-              <div style={{ fontSize: 56, marginBottom: 16 }}>{"\u{1F965}"}</div>
+              <div style={{ ...F.display, fontSize: 44, marginBottom: 16, color: B.creamMuted }}>Better luck next round</div>
               <div style={{ ...F.display, fontSize: 30, color: B.cream, marginBottom: 8 }}>
                 No Prize This Time!
               </div>
@@ -948,7 +947,7 @@ export default function PlayPage() {
             {/* Prize name */}
             <div style={{ ...F.display, fontSize: "clamp(24px,6vw,34px)", color: "#fff",
               marginBottom: 6, lineHeight: 1.1 }}>
-              {currentPrize.emoji} {currentPrize.label}
+              {currentPrize.label}
             </div>
 
             {/* QR box */}
@@ -1018,7 +1017,7 @@ export default function PlayPage() {
         {/* No prize claim screen */}
         {!currentPrize && screen === 'claim' && (
           <div style={{ textAlign: "center", marginTop: 60 }}>
-            <div style={{ fontSize: 56, marginBottom: 16 }}>{"\u{1F965}"}</div>
+            <div style={{ ...F.display, fontSize: 44, marginBottom: 16, color: B.creamMuted }}>Better luck next round</div>
             <div style={{ ...F.display, fontSize: 30, color: B.cream, marginBottom: 8 }}>No Prize This Time!</div>
             <div style={{ ...F.body, color: B.creamSoft, marginBottom: 28 }}>Better luck next time!</div>
             <button onClick={resetGame} style={S.btnPrimary}>Play Again</button>
