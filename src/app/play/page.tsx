@@ -77,6 +77,142 @@ const B = {
   dark: "#0e2820",
 };
 
+// ─── Translations ───
+type Lang = 'en' | 'vi';
+
+const T: Record<Lang, Record<string, string>> = {
+  en: {
+    loading: 'Loading...',
+    // Landing
+    tagline: 'Scan. Tap. Win.',
+    taglineVi: 'Quet. Cham. Trung.',
+    subtitle: 'Whack the drinks. Spin the reel. Every player wins something.',
+    tapToPlay: 'Tap to play',
+    ageConfirm: 'By playing you confirm you are 18+ and agree to the',
+    rulesLink: 'rules & terms',
+    // Countdown
+    go: 'GO!',
+    // HUD
+    score: 'SCORE',
+    time: 'TIME',
+    // Reel
+    yourScore: 'Your Score:',
+    mixing: 'Mixing your prizes...',
+    slowing: 'Slowing down...',
+    // Reveal
+    claimCodeLabel: 'YOUR CLAIM CODE',
+    enterPhone: 'Enter your phone to claim your prize',
+    enterEmail: 'Enter your email to claim your prize',
+    phonePlaceholder: '+84 xxx xxx xxxx',
+    emailPlaceholder: 'you@example.com',
+    useEmail: 'Use email instead',
+    usePhone: 'Use phone instead',
+    errPhone: 'Please enter a valid phone number',
+    errEmail: 'Please enter a valid email',
+    optIn: 'Send me deals, events & happy hour alerts from BigBamBoo',
+    privacyNote: 'Your info is only used to verify your prize.',
+    seeRules: 'See rules & terms',
+    checking: 'Checking...',
+    getMyPrize: 'Get My Prize',
+    // Claim
+    active: 'ACTIVE',
+    winner: 'WINNER',
+    showToServer: 'Show this screen to your server to redeem',
+    status: 'Status',
+    statusActive: 'Active',
+    issued: 'Issued',
+    expires: 'Expires',
+    location: 'Location',
+    locationVal: 'BigBamBoo, An Phu',
+    screenshotTip: 'Take a screenshot to save your prize',
+    ageRedeem: 'Must be 18 or older to redeem. One prize per person. Subject to',
+    // Already won
+    holdUp: 'Hold Up!',
+    alreadyWon: 'You already won a prize',
+    alreadyWonSub: "Nice try, but it's one prize per person. Here's what you won:",
+    showServer: 'Show this screen to your server',
+    // Rules
+    rulesTitle: 'Rules & Terms',
+    rule18: 'You must be 18 years or older to play.',
+    rule1: '1. One prize per person. Duplicate entries will show your existing prize.',
+    rule2: '2. Prizes must be redeemed in-store at BigBamBoo An Phu, Saigon.',
+    rule3: '3. Prizes are non-transferable and have no cash value.',
+    rule4: '4. Show your QR code or screenshot to staff at the bar to redeem.',
+    rule5: '5. Management reserves the right to refuse or withdraw any prize at their discretion.',
+    rule6: '6. Your phone number or email is collected solely to verify your prize claim. If you opt in to marketing, we may send you promotions and event updates from BigBamBoo.',
+    rule7: '7. BigBamBoo reserves the right to modify or end this promotion at any time.',
+    gotIt: 'Got it',
+  },
+  vi: {
+    loading: 'Dang tai...',
+    // Landing
+    tagline: 'Scan. Tap. Win.',
+    taglineVi: 'Quet. Cham. Trung.',
+    subtitle: 'Dap do uong. Quay vong quay. Ai choi cung trung thuong.',
+    tapToPlay: 'Cham de choi',
+    ageConfirm: 'Khi tham gia, ban xac nhan tren 18 tuoi va dong y voi',
+    rulesLink: 'the le & dieu khoan',
+    // Countdown
+    go: 'BAT DAU!',
+    // HUD
+    score: 'DIEM',
+    time: 'THOI GIAN',
+    // Reel
+    yourScore: 'Diem cua ban:',
+    mixing: 'Dang tron giai thuong...',
+    slowing: 'Dang cham lai...',
+    // Reveal
+    claimCodeLabel: 'MA NHAN THUONG',
+    enterPhone: 'Nhap so dien thoai de nhan giai thuong',
+    enterEmail: 'Nhap email de nhan giai thuong',
+    phonePlaceholder: '+84 xxx xxx xxxx',
+    emailPlaceholder: 'you@example.com',
+    useEmail: 'Dung email thay the',
+    usePhone: 'Dung so dien thoai thay the',
+    errPhone: 'Vui long nhap so dien thoai hop le',
+    errEmail: 'Vui long nhap email hop le',
+    optIn: 'Gui cho toi uu dai, su kien & khuyen mai tu BigBamBoo',
+    privacyNote: 'Thong tin cua ban chi duoc dung de xac minh giai thuong.',
+    seeRules: 'Xem the le & dieu khoan',
+    checking: 'Dang kiem tra...',
+    getMyPrize: 'Nhan Giai Thuong',
+    // Claim
+    active: 'DANG HOAT DONG',
+    winner: 'TRUNG THUONG',
+    showToServer: 'Cho nhan vien xem man hinh nay de nhan thuong',
+    status: 'Trang thai',
+    statusActive: 'Dang hoat dong',
+    issued: 'Ngay cap',
+    expires: 'Het han',
+    location: 'Dia diem',
+    locationVal: 'BigBamBoo, An Phu',
+    screenshotTip: 'Chup man hinh de luu giai thuong cua ban',
+    ageRedeem: 'Phai tu 18 tuoi tro len de nhan thuong. Moi nguoi mot giai. Theo',
+    // Already won
+    holdUp: 'Khoan Da!',
+    alreadyWon: 'Ban da trung thuong roi',
+    alreadyWonSub: 'Moi nguoi chi duoc mot giai thuong. Day la giai cua ban:',
+    showServer: 'Cho nhan vien xem man hinh nay',
+    // Rules
+    rulesTitle: 'The Le & Dieu Khoan',
+    rule18: 'Ban phai tu 18 tuoi tro len de tham gia.',
+    rule1: '1. Moi nguoi mot giai. Dang ky trung se hien thi giai hien co.',
+    rule2: '2. Giai thuong phai duoc nhan tai BigBamBoo An Phu, Sai Gon.',
+    rule3: '3. Giai thuong khong duoc chuyen nhuong va khong co gia tri quy doi.',
+    rule4: '4. Cho nhan vien xem ma QR hoac anh chup man hinh de nhan thuong.',
+    rule5: '5. Ban quan ly co quyen tu choi hoac thu hoi bat ky giai thuong nao.',
+    rule6: '6. So dien thoai hoac email chi duoc thu thap de xac minh giai thuong. Neu ban dong y nhan tin, chung toi co the gui khuyen mai va su kien tu BigBamBoo.',
+    rule7: '7. BigBamBoo co quyen thay doi hoac ket thuc chuong trinh bat ky luc nao.',
+    gotIt: 'Da hieu',
+  },
+};
+
+function detectLang(): Lang {
+  if (typeof navigator === 'undefined') return 'en';
+  const lang = navigator.language || (navigator as any).userLanguage || 'en';
+  return lang.toLowerCase().startsWith('vi') ? 'vi' : 'en';
+}
+
 // ─── Font Shortcuts ───
 const F = {
   display: { fontFamily: "'Sigmar', cursive", letterSpacing: "0.02em", lineHeight: 1.1 } as const,
@@ -242,6 +378,11 @@ function Screen({ active, children, scrollable }: { active: boolean; children: R
 
 // ─── Main Game Component ───
 export default function PlayPage() {
+  // ─── Language ───
+  const [lang, setLang] = useState<Lang>('en');
+  useEffect(() => { setLang(detectLang()); }, []);
+  const t = (key: string) => T[lang][key] || T['en'][key] || key;
+
   // ─── State ───
   const [screen, setScreen] = useState<'landing' | 'countdown' | 'playing' | 'reel' | 'reveal' | 'claim'>('landing');
   const [prizes, setPrizes] = useState<Prize[]>([]);
@@ -492,7 +633,7 @@ export default function PlayPage() {
   // ─── Prize Reel ───
   function startReel(prize: Prize) {
     setReelLanded(false);
-    setReelStatus('Mixing your prizes...');
+    setReelStatus(T[lang].mixing);
 
     // Build reel items from prizes
     const reelItems = [...prizes.map(p => p.label)];
@@ -538,7 +679,7 @@ export default function PlayPage() {
           if (++vibCount > 30) clearInterval(vibInterval);
         }, 100);
 
-        setTimeout(() => setReelStatus('Slowing down...'), duration * 0.5);
+        setTimeout(() => setReelStatus(T[lang].slowing), duration * 0.5);
 
         setTimeout(() => {
           clearInterval(vibInterval);
@@ -577,12 +718,12 @@ export default function PlayPage() {
 
     if (contactMode === 'phone') {
       if (val.replace(/\D/g, '').length < 8) {
-        setContactError('Please enter a valid phone number');
+        setContactError(T[lang].errPhone);
         return;
       }
     } else {
       if (!val || !val.includes('@') || !val.includes('.')) {
-        setContactError('Please enter a valid email');
+        setContactError(T[lang].errEmail);
         return;
       }
     }
@@ -648,7 +789,7 @@ export default function PlayPage() {
       <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: B.bg, fontFamily: "'DM Sans', sans-serif" }}>
         <div style={{ textAlign: "center" }}>
           <div style={{ width: 48, height: 48, borderRadius: "50%", border: `3px solid ${B.tealBright}`, borderTopColor: "transparent", margin: "0 auto 20px", animation: "spin 0.8s linear infinite" }} />
-          <div style={{ ...F.body, color: B.creamMuted }}>Loading...</div>
+          <div style={{ ...F.body, color: B.creamMuted }}>{t('loading')}</div>
         </div>
         <style>{`@keyframes spin { from{transform:rotate(0)} to{transform:rotate(360deg)} }`}</style>
       </div>
@@ -675,22 +816,27 @@ export default function PlayPage() {
         <div style={{ ...F.display, fontSize: "clamp(32px,8vw,48px)", color: B.gold,
           textAlign: "center", lineHeight: 1.05, marginBottom: 8,
           textShadow: `0 4px 24px ${B.goldGlow}, 0 2px 40px rgba(0,0,0,0.5)` }}>
-          Scan. Tap. Win.
+          {t('tagline')}
+        </div>
+        <div style={{ ...F.display, fontSize: "clamp(14px,3.8vw,20px)", color: "rgba(255,255,255,0.45)",
+          textAlign: "center", lineHeight: 1.1, marginBottom: 12,
+          textShadow: "0 2px 12px rgba(0,0,0,0.3)" }}>
+          {t('taglineVi')}
         </div>
         <div style={{ ...F.body, fontSize: "clamp(13px,3.2vw,16px)", color: "rgba(255,255,255,0.55)",
           textAlign: "center", lineHeight: 1.5, maxWidth: 320, marginBottom: 32 }}>
-          Whack the drinks. Spin the reel. Every player wins something.
+          {t('subtitle')}
         </div>
         <button onClick={beginGame} style={{
           ...S.btnPrimary, borderRadius: 20, padding: "20px 44px",
           fontSize: "clamp(16px,4vw,20px)", animation: "ctaPulse 2s ease-in-out infinite",
         }}>
-          Tap to play
+          {t('tapToPlay')}
         </button>
         <div style={{ marginTop: 12, fontSize: 11, color: "rgba(255,255,255,0.3)", textAlign: "center", lineHeight: 1.5 }}>
-          By playing you confirm you are 18+ and agree to the{' '}
+          {t('ageConfirm')}{' '}
           <span onClick={() => setShowRules(true)} style={{ textDecoration: "underline", cursor: "pointer", color: "rgba(255,255,255,0.45)" }}>
-            rules &amp; terms
+            {t('rulesLink')}
           </span>
         </div>
         <div style={{ position: "absolute", bottom: 16, fontSize: 9, color: "rgba(255,255,255,0.15)",
@@ -705,7 +851,7 @@ export default function PlayPage() {
           textShadow: `0 4px 40px ${B.goldGlow}, 0 8px 60px rgba(0,0,0,0.5)`,
           animation: "countIn 0.6s cubic-bezier(0.34,1.56,0.64,1)",
         }} key={countdownNum}>
-          {countdownNum > 0 ? countdownNum : 'GO!'}
+          {countdownNum > 0 ? countdownNum : t('go')}
         </div>
       </Screen>
 
@@ -715,12 +861,12 @@ export default function PlayPage() {
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center",
           width: "100%", maxWidth: 360, marginBottom: 12, padding: "0 4px" }}>
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
-            <div style={{ ...F.label, fontSize: 9, color: "rgba(255,255,255,0.3)" }}>SCORE</div>
+            <div style={{ ...F.label, fontSize: 9, color: "rgba(255,255,255,0.3)" }}>{t('score')}</div>
             <div style={{ ...F.display, fontSize: "clamp(22px,5vw,28px)", color: B.gold,
               textShadow: `0 2px 12px ${B.goldGlow}` }}>{score}</div>
           </div>
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
-            <div style={{ ...F.label, fontSize: 9, color: "rgba(255,255,255,0.3)" }}>TIME</div>
+            <div style={{ ...F.label, fontSize: 9, color: "rgba(255,255,255,0.3)" }}>{t('time')}</div>
             <div style={{ ...F.display, fontSize: "clamp(22px,5vw,28px)",
               color: isWarning ? "#f08060" : B.tealBright,
               textShadow: isWarning ? "0 2px 12px rgba(240,80,80,0.3)" : `0 2px 12px ${B.tealGlow}`,
@@ -806,7 +952,7 @@ export default function PlayPage() {
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: "100%", gap: 20 }}>
           <div style={{ ...F.display, fontSize: "clamp(18px,5vw,24px)", color: B.cream,
             marginBottom: 8, textAlign: "center" }}>
-            Your Score: <span style={{ color: B.gold }}>{score}</span>
+            {t('yourScore')} <span style={{ color: B.gold }}>{score}</span>
           </div>
 
           {/* Slot window */}
@@ -869,7 +1015,7 @@ export default function PlayPage() {
                   background: `${B.gold}12`, border: `1px dashed ${B.gold}40`,
                   borderRadius: 14, padding: "12px 20px", marginBottom: 16,
                 }}>
-                  <div style={{ ...F.label, fontSize: 9, color: B.creamMuted, marginBottom: 6 }}>YOUR CLAIM CODE</div>
+                  <div style={{ ...F.label, fontSize: 9, color: B.creamMuted, marginBottom: 6 }}>{t('claimCodeLabel')}</div>
                   <div style={{ ...F.mono, fontSize: 26, color: B.gold, fontWeight: 700, letterSpacing: "0.1em" }}>{claimCode}</div>
                 </div>
               )}
@@ -881,12 +1027,12 @@ export default function PlayPage() {
                   borderRadius: 20, padding: 20, textAlign: "left",
                 }}>
                   <div style={{ ...F.body, fontSize: 14, fontWeight: 600, color: "rgba(255,255,255,0.7)", marginBottom: 12 }}>
-                    {contactMode === 'phone' ? 'Enter your phone to claim your prize' : 'Enter your email to claim your prize'}
+                    {contactMode === 'phone' ? t('enterPhone') : t('enterEmail')}
                   </div>
                   <input
                     type={contactMode === 'phone' ? 'tel' : 'email'}
                     inputMode={contactMode === 'phone' ? 'tel' : 'email'}
-                    placeholder={contactMode === 'phone' ? '+84 xxx xxx xxxx' : 'you@example.com'}
+                    placeholder={contactMode === 'phone' ? t('phonePlaceholder') : t('emailPlaceholder')}
                     value={contactValue}
                     onChange={e => { setContactValue(e.target.value); setContactError(''); }}
                     style={{
@@ -902,7 +1048,7 @@ export default function PlayPage() {
                       display: "inline-block", border: "none", background: "none",
                       fontFamily: "'DM Sans', sans-serif", textDecoration: "underline",
                       textUnderlineOffset: 2 }}>
-                    {contactMode === 'phone' ? 'Use email instead' : 'Use phone instead'}
+                    {contactMode === 'phone' ? t('useEmail') : t('usePhone')}
                   </button>
 
                   {contactError && (
@@ -915,14 +1061,14 @@ export default function PlayPage() {
                       style={{ width: 18, height: 18, marginTop: 1, accentColor: B.gold, flexShrink: 0, cursor: "pointer" }} />
                     <label style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", lineHeight: 1.4, cursor: "pointer" }}
                       onClick={() => setMarketingOptIn(v => !v)}>
-                      Send me deals, events & happy hour alerts from BigBamBoo
+                      {t('optIn')}
                     </label>
                   </div>
 
                   <div style={{ fontSize: 10, color: "rgba(255,255,255,0.25)", marginTop: 10, lineHeight: 1.5 }}>
-                    Your info is only used to verify your prize.{' '}
+                    {t('privacyNote')}{' '}
                     <span onClick={() => setShowRules(true)} style={{ textDecoration: "underline", cursor: "pointer" }}>
-                      See rules &amp; terms
+                      {t('seeRules')}
                     </span>
                   </div>
 
@@ -935,7 +1081,7 @@ export default function PlayPage() {
                       boxShadow: "0 6px 24px rgba(232,120,48,0.35)",
                       opacity: checkingContact ? 0.5 : 1,
                     }}>
-                    {checkingContact ? 'Checking...' : 'Get My Prize'}
+                    {checkingContact ? t('checking') : t('getMyPrize')}
                   </button>
                 </div>
               )}
@@ -958,7 +1104,7 @@ export default function PlayPage() {
                 width: 8, height: 8, borderRadius: "50%", background: B.tealBright,
                 animation: "livePulse 1.5s ease-in-out infinite",
               }} />
-              ACTIVE
+              {t('active')}
             </div>
 
             {/* Badge */}
@@ -968,7 +1114,7 @@ export default function PlayPage() {
               border: "1px solid rgba(74,170,144,0.2)",
               ...F.label, fontSize: 11, marginBottom: 12,
             }}>
-              WINNER
+              {t('winner')}
             </div>
 
             {/* Prize name */}
@@ -1005,7 +1151,7 @@ export default function PlayPage() {
                 {claimCode}
               </div>
               <div style={{ fontSize: 12, color: "rgba(255,255,255,0.5)", lineHeight: 1.4 }}>
-                Show this screen to your server to redeem
+                {t('showToServer')}
               </div>
             </div>
 
@@ -1015,10 +1161,10 @@ export default function PlayPage() {
               borderRadius: 16, padding: 16, textAlign: "left", marginBottom: 16,
             }}>
               {[
-                ['Status', 'Active'],
-                ['Issued', new Date().toLocaleDateString()],
-                ['Expires', new Date(Date.now() + 14 * 86400000).toLocaleDateString()],
-                ['Location', 'BigBamBoo, An Phu'],
+                [t('status'), t('statusActive')],
+                [t('issued'), new Date().toLocaleDateString()],
+                [t('expires'), new Date(Date.now() + 14 * 86400000).toLocaleDateString()],
+                [t('location'), t('locationVal')],
               ].map(([label, value], i) => (
                 <div key={i} style={{
                   display: "flex", justifyContent: "space-between", padding: "8px 0",
@@ -1034,7 +1180,7 @@ export default function PlayPage() {
             {/* Tip */}
             <div style={{ fontSize: 12, color: "rgba(255,255,255,0.35)",
               fontWeight: 500, letterSpacing: "0.02em", marginBottom: 16 }}>
-              Take a screenshot to save your prize
+              {t('screenshotTip')}
             </div>
 
             {/* 18+ warning */}
@@ -1042,9 +1188,9 @@ export default function PlayPage() {
               fontSize: 11, color: "rgba(255,255,255,0.35)", lineHeight: 1.5,
               marginBottom: 40, padding: "0 12px",
             }}>
-              Must be 18 or older to redeem. One prize per person. Subject to{' '}
+              {t('ageRedeem')}{' '}
               <span onClick={() => setShowRules(true)} style={{ textDecoration: "underline", cursor: "pointer", color: "rgba(255,255,255,0.45)" }}>
-                rules &amp; terms
+                {t('rulesLink')}
               </span>.
             </div>
           </div>
@@ -1080,19 +1226,19 @@ export default function PlayPage() {
             marginBottom: 6, lineHeight: 1,
             textShadow: "0 4px 30px rgba(0,0,0,0.5)",
           }}>
-            Hold Up!
+            {t('holdUp')}
           </div>
           <div style={{
             ...F.display, fontSize: "clamp(20px,5.5vw,28px)", color: B.orange,
             marginBottom: 20, lineHeight: 1.2,
           }}>
-            You already won a prize
+            {t('alreadyWon')}
           </div>
           <div style={{
             ...F.body, fontSize: "clamp(14px,3.5vw,16px)", color: "rgba(255,255,255,0.45)",
             maxWidth: 300, lineHeight: 1.5, marginBottom: 28,
           }}>
-            Nice try, but it's one prize per person. Here's what you won:
+            {t('alreadyWonSub')}
           </div>
 
           {/* Prize card */}
@@ -1115,7 +1261,7 @@ export default function PlayPage() {
               background: "rgba(0,0,0,0.3)", border: `2px dashed ${B.gold}60`,
               borderRadius: 16, padding: "16px 24px",
             }}>
-              <div style={{ ...F.label, fontSize: 10, color: "rgba(255,255,255,0.4)", marginBottom: 6, letterSpacing: "0.12em" }}>YOUR CLAIM CODE</div>
+              <div style={{ ...F.label, fontSize: 10, color: "rgba(255,255,255,0.4)", marginBottom: 6, letterSpacing: "0.12em" }}>{t('claimCodeLabel')}</div>
               <div style={{ ...F.mono, fontSize: "clamp(28px,8vw,36px)", color: B.gold, fontWeight: 700, letterSpacing: "0.12em" }}>
                 {existingClaim.claim_code}
               </div>
@@ -1128,7 +1274,7 @@ export default function PlayPage() {
             border: "1px solid rgba(255,255,255,0.15)",
             background: "rgba(255,255,255,0.05)",
           }}>
-            Show this screen to your server
+            {t('showServer')}
           </div>
         </div>
       )}
@@ -1149,19 +1295,19 @@ export default function PlayPage() {
           }}>
             <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 24, color: B.gold,
               letterSpacing: "0.04em", marginBottom: 16 }}>
-              Rules &amp; Terms
+              {t('rulesTitle')}
             </div>
             <div style={{ fontSize: 13, color: "rgba(245,238,216,0.7)", lineHeight: 1.7 }}>
               <p style={{ margin: "0 0 12px", fontWeight: 700, color: "#f08060" }}>
-                You must be 18 years or older to play.
+                {t('rule18')}
               </p>
-              <p style={{ margin: "0 0 10px" }}>1. One prize per person. Duplicate entries will show your existing prize.</p>
-              <p style={{ margin: "0 0 10px" }}>2. Prizes must be redeemed in-store at BigBamBoo An Phu, Saigon.</p>
-              <p style={{ margin: "0 0 10px" }}>3. Prizes are non-transferable and have no cash value.</p>
-              <p style={{ margin: "0 0 10px" }}>4. Show your QR code or screenshot to staff at the bar to redeem.</p>
-              <p style={{ margin: "0 0 10px" }}>5. Management reserves the right to refuse or withdraw any prize at their discretion.</p>
-              <p style={{ margin: "0 0 10px" }}>6. Your phone number or email is collected solely to verify your prize claim. If you opt in to marketing, we may send you promotions and event updates from BigBamBoo.</p>
-              <p style={{ margin: "0 0 0" }}>7. BigBamBoo reserves the right to modify or end this promotion at any time.</p>
+              <p style={{ margin: "0 0 10px" }}>{t('rule1')}</p>
+              <p style={{ margin: "0 0 10px" }}>{t('rule2')}</p>
+              <p style={{ margin: "0 0 10px" }}>{t('rule3')}</p>
+              <p style={{ margin: "0 0 10px" }}>{t('rule4')}</p>
+              <p style={{ margin: "0 0 10px" }}>{t('rule5')}</p>
+              <p style={{ margin: "0 0 10px" }}>{t('rule6')}</p>
+              <p style={{ margin: "0 0 0" }}>{t('rule7')}</p>
             </div>
             <button onClick={() => setShowRules(false)} style={{
               width: "100%", marginTop: 20, padding: 14, borderRadius: 14, border: "none",
@@ -1169,7 +1315,7 @@ export default function PlayPage() {
               color: "#fff", fontSize: 15, fontWeight: 700, cursor: "pointer",
               fontFamily: "'DM Sans', sans-serif",
             }}>
-              Got it
+              {t('gotIt')}
             </button>
           </div>
         </div>
