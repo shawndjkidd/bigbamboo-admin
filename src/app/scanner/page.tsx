@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useRef, useState } from 'react'
+import Script from 'next/script'
 
 /*
  * ════════════════════════════════════════════════════════════════
@@ -169,8 +170,11 @@ function ScannerInterface({ staff, onLogout }: { staff: StaffUser; onLogout: () 
   const [recentRedemptions, setRecentRedemptions] = useState<PromoClaim[]>([])
 
   const videoRef = useRef<HTMLVideoElement>(null)
+  const canvasRef = useRef<HTMLCanvasElement>(null)
   const scanIntervalRef = useRef<any>(null)
   const lastScannedRef = useRef<string>('')
+  const streamRef = useRef<MediaStream | null>(null)
+  const [jsQRReady, setJsQRReady] = useState(false)
 
   useEffect(() => {
     loadRecentRedemptions()
@@ -196,8 +200,9 @@ function ScannerInterface({ staff, onLogout }: { staff: StaffUser; onLogout: () 
     }
     setScanning(true)
     lastScannedRef.current = ''
-    navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } } })
       .then(stream => {
+        streamRef.current = stream
         if (videoRef.current) {
           videoRef.current.srcObject = stream
           videoRef.current.play()
@@ -216,9 +221,11 @@ function ScannerInterface({ staff, onLogout }: { staff: StaffUser; onLogout: () 
                   }
                 }
               } catch {}
-            }, 400)
+            }, 300)
+          } else if ((window as any).jsQR) {
+            startJsQRScan()
           } else {
-            setResult({ type: 'info', message: 'QR scanning not supported. Use Search mode.' })
+            setResult({ type: 'info', message: 'Loading scanner...' })
           }
         }
       })
@@ -228,12 +235,36 @@ function ScannerInterface({ staff, onLogout }: { staff: StaffUser; onLogout: () 
       })
   }
 
+  function startJsQRScan() {
+    const jsQR = (window as any).jsQR
+    if (!jsQR) return
+    setResult(null)
+    scanIntervalRef.current = setInterval(() => {
+      if (!videoRef.current || videoRef.current.readyState < 2 || !canvasRef.current) return
+      const video = videoRef.current
+      const canvas = canvasRef.current
+      const ctx = canvas.getContext('2d')
+      if (!ctx) return
+      canvas.width = video.videoWidth
+      canvas.height = video.videoHeight
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
+      const code = jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: 'dontInvert' })
+      if (code && code.data && code.data !== lastScannedRef.current) {
+        lastScannedRef.current = code.data
+        stopCamera()
+        handleQRData(code.data)
+      }
+    }, 250)
+  }
+
   function stopCamera() {
     if (scanIntervalRef.current) { clearInterval(scanIntervalRef.current); scanIntervalRef.current = null }
-    if (videoRef.current?.srcObject) {
-      (videoRef.current.srcObject as MediaStream).getTracks().forEach(t => t.stop())
-      videoRef.current.srcObject = null
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(t => t.stop())
+      streamRef.current = null
     }
+    if (videoRef.current) videoRef.current.srcObject = null
     setScanning(false)
   }
 
@@ -331,6 +362,7 @@ function ScannerInterface({ staff, onLogout }: { staff: StaffUser; onLogout: () 
 
   return (
     <div style={{ minHeight: '100vh', background: B.bg, fontFamily: "'DM Sans', sans-serif", padding: '0 0 40px' }}>
+      <canvas ref={canvasRef} style={{ display: 'none' }} />
       {/* Header */}
       <div style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: `1px solid ${B.creamFaint}` }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -582,5 +614,14 @@ export default function ScannerPage() {
   }
 
   if (!staff) return <LoginScreen onLogin={handleLogin} />
-  return <ScannerInterface staff={staff} onLogout={handleLogout} />
+  return (
+    <>
+      <Script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js" strategy="afterInteractive"
+        onLoad={() => {
+          // If camera is waiting for jsQR, trigger a re-render
+          setStaff(prev => prev ? { ...prev } : prev)
+        }} />
+      <ScannerInterface staff={staff} onLogout={handleLogout} />
+    </>
+  )
 }
