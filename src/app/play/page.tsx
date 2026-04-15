@@ -963,18 +963,7 @@ export default function PlayPage() {
                 </div>
               )}
             </>
-          ) : (
-            <>
-              <div style={{ ...F.display, fontSize: 44, marginBottom: 16, color: B.creamMuted }}>Better luck next round</div>
-              <div style={{ ...F.display, fontSize: 30, color: B.cream, marginBottom: 8 }}>
-                No Prize This Time!
-              </div>
-              <div style={{ ...F.body, color: B.creamSoft, marginBottom: 28 }}>
-                Better luck next time!
-              </div>
-              <button onClick={resetGame} style={S.btnPrimary}>Play Again</button>
-            </>
-          )}
+          ) : null}
         </div>
       </Screen>
 
@@ -1073,15 +1062,6 @@ export default function PlayPage() {
           </div>
         )}
 
-        {/* No prize claim screen */}
-        {!currentPrize && screen === 'claim' && (
-          <div style={{ textAlign: "center", marginTop: 60 }}>
-            <div style={{ ...F.display, fontSize: 44, marginBottom: 16, color: B.creamMuted }}>Better luck next round</div>
-            <div style={{ ...F.display, fontSize: 30, color: B.cream, marginBottom: 8 }}>No Prize This Time!</div>
-            <div style={{ ...F.body, color: B.creamSoft, marginBottom: 28 }}>Better luck next time!</div>
-            <button onClick={resetGame} style={S.btnPrimary}>Play Again</button>
-          </div>
-        )}
       </Screen>
 
       {/* ═══ RULES & TERMS POPUP ═══ */}
