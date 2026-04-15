@@ -243,7 +243,6 @@ export default function PlayPage() {
   const [decayTable, setDecayTable] = useState(DEFAULT_DECAY);
   const [existingClaim, setExistingClaim] = useState<any>(null);
   const [showRules, setShowRules] = useState(false);
-  const [lowScoreRetry, setLowScoreRetry] = useState(false);
   const [checkingContact, setCheckingContact] = useState(false);
 
   // Game state
@@ -489,13 +488,7 @@ export default function PlayPage() {
     setMoles(Array(9).fill(null));
     if (navigator.vibrate) navigator.vibrate([50, 30, 80]);
 
-    // Minimum score check — must score at least 3 to qualify
-    if (scoreRef.current < 3) {
-      setLowScoreRetry(true);
-      return;
-    }
-
-    // Pick prize
+    // Pick prize — everyone wins!
     const prize = pickPrize(prizes, playCount, decayTable);
     setCurrentPrize(prize);
     setReelPrize(prize);
@@ -629,6 +622,7 @@ export default function PlayPage() {
           contact_type: contactMode,
           contact_value: val,
           marketing_opt_in: marketingOptIn,
+          club_opt_in: marketingOptIn,
         },
       });
     }
@@ -808,31 +802,6 @@ export default function PlayPage() {
           ))}
         </div>
       </Screen>
-
-      {/* ═══ LOW SCORE RETRY ═══ */}
-      {lowScoreRetry && (
-        <div style={{
-          position: "fixed", inset: 0, zIndex: 9999,
-          background: "rgba(14,40,32,0.92)", backdropFilter: "blur(8px)",
-          display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-          padding: 32, textAlign: "center",
-        }}>
-          <div style={{ fontSize: 56, marginBottom: 16 }}>😅</div>
-          <div style={{ ...F.display, fontSize: "clamp(24px,7vw,34px)", color: B.cream, marginBottom: 8 }}>
-            Almost!
-          </div>
-          <div style={{ ...F.body, fontSize: "clamp(14px,3.5vw,16px)", color: "rgba(255,255,255,0.5)",
-            maxWidth: 300, lineHeight: 1.5, marginBottom: 32 }}>
-            You need at least 3 points to qualify for a prize. Let's try again!
-          </div>
-          <button onClick={() => { setLowScoreRetry(false); beginGame(); }} style={{
-            ...S.btnPrimary, borderRadius: 20, padding: "18px 44px",
-            fontSize: "clamp(16px,4vw,20px)",
-          }}>
-            Try Again
-          </button>
-        </div>
-      )}
 
       {/* ═══ SLOT MACHINE REEL ═══ */}
       <Screen active={screen === 'reel'}>
