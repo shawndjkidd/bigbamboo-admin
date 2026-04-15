@@ -328,30 +328,12 @@ export default function PlayPage() {
 
   // ─── Record play & create claim ───
   async function recordPlay(won: boolean, prize: Prize | null) {
+    // Only record the game play — claim is created later when contact info is collected
     const code = won && prize ? generateClaimCode() : null;
-    const val = contactValue.trim();
     await sbFetch('game_plays', {
       method: 'POST',
       body: { session_id: sessionId.current, won, prize_id: prize?.prize_id || null, claim_code: code },
     });
-    if (won && prize && code) {
-      const expiresAt = new Date();
-      expiresAt.setDate(expiresAt.getDate() + 14);
-      await sbFetch('promo_claims', {
-        method: 'POST',
-        body: {
-          claim_code: code, source_code: 'SCAN_TAP_WIN',
-          contact_type: val ? contactMode : 'anonymous',
-          contact_value: val || sessionId.current,
-          marketing_opt_in: marketingOptIn,
-          prize_type: prize.prize_type === 'discount' ? 'discount' : 'freebie',
-          prize_label: prize.label, prize_item_ref: prize.prize_id,
-          discount_percent: prize.discount_pct || null,
-          max_discount_vnd: prize.max_discount || null,
-          status: 'active', expires_at: expiresAt.toISOString(),
-        },
-      });
-    }
     return code;
   }
 
@@ -619,16 +601,26 @@ export default function PlayPage() {
       return; // Stay on reveal screen, shows "You already have a prize" message
     }
 
-    // No duplicate — save contact to this claim and proceed
-    if (claimCode) {
+    // No duplicate — create the claim now with contact info included
+    if (claimCode && currentPrize) {
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + 14);
       await sbFetch('promo_claims', {
-        method: 'PATCH',
-        query: `?claim_code=eq.${claimCode}`,
+        method: 'POST',
         body: {
+          claim_code: claimCode,
+          source_code: 'SCAN_TAP_WIN',
           contact_type: contactMode,
           contact_value: val,
           marketing_opt_in: marketingOptIn,
           club_opt_in: marketingOptIn,
+          prize_type: currentPrize.prize_type === 'discount' ? 'discount' : 'freebie',
+          prize_label: currentPrize.label,
+          prize_item_ref: currentPrize.prize_id,
+          discount_percent: currentPrize.discount_pct || null,
+          max_discount_vnd: currentPrize.max_discount || null,
+          status: 'active',
+          expires_at: expiresAt.toISOString(),
         },
       });
     }
