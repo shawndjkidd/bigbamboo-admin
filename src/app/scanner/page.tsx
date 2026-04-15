@@ -327,7 +327,7 @@ function ScannerInterface({ staff, onLogout }: { staff: StaffUser; onLogout: () 
 
   const status = claim ? getStatus(claim) : null
   const isExpired = claim ? new Date(claim.expires_at) < new Date() : false
-  const canRedeem = claim?.status === 'active' && !isExpired
+  const canRedeem = claim?.status === 'active'
 
   return (
     <div style={{ minHeight: '100vh', background: B.bg, fontFamily: "'DM Sans', sans-serif", padding: '0 0 40px' }}>
@@ -430,25 +430,26 @@ function ScannerInterface({ staff, onLogout }: { staff: StaffUser; onLogout: () 
 
             <div style={{ padding: '16px 24px 24px', display: 'flex', gap: 10 }}>
               {canRedeem && (
-                <button onClick={redeemClaim} disabled={redeeming}
-                  style={{ flex: 1, padding: '15px', borderRadius: 12, fontSize: 16, fontWeight: 700, cursor: 'pointer',
-                    border: 'none', background: B.green, color: '#fff', opacity: redeeming ? 0.6 : 1,
-                    fontFamily: "'Bebas Neue', sans-serif", letterSpacing: '0.06em' }}>
-                  {redeeming ? 'Redeeming...' : 'Redeem Prize'}
-                </button>
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {isExpired && (
+                    <div style={{ fontSize: 11, color: B.orange, fontWeight: 600, textAlign: 'center',
+                      letterSpacing: '0.04em' }}>
+                      Technically expired — but still redeemable
+                    </div>
+                  )}
+                  <button onClick={redeemClaim} disabled={redeeming}
+                    style={{ width: '100%', padding: '15px', borderRadius: 12, fontSize: 16, fontWeight: 700, cursor: 'pointer',
+                      border: 'none', background: B.green, color: '#fff', opacity: redeeming ? 0.6 : 1,
+                      fontFamily: "'Bebas Neue', sans-serif", letterSpacing: '0.06em' }}>
+                    {redeeming ? 'Redeeming...' : 'Redeem Prize'}
+                  </button>
+                </div>
               )}
               {claim.status === 'redeemed' && (
                 <div style={{ flex: 1, padding: '15px', borderRadius: 12, fontSize: 16, fontWeight: 700, textAlign: 'center',
                   background: 'rgba(0,177,79,0.1)', color: B.green, border: `1px solid rgba(0,177,79,0.25)`,
                   fontFamily: "'Bebas Neue', sans-serif", letterSpacing: '0.06em' }}>
                   Already Redeemed
-                </div>
-              )}
-              {isExpired && claim.status !== 'redeemed' && (
-                <div style={{ flex: 1, padding: '15px', borderRadius: 12, fontSize: 16, fontWeight: 700, textAlign: 'center',
-                  background: 'rgba(239,68,68,0.1)', color: B.red, border: '1px solid rgba(239,68,68,0.25)',
-                  fontFamily: "'Bebas Neue', sans-serif", letterSpacing: '0.06em' }}>
-                  Expired
                 </div>
               )}
               <button onClick={dismissClaim}
