@@ -1014,13 +1014,11 @@ export default function PlayPage() {
               ))}
             </div>
 
-            {/* Screenshot warning */}
-            <div style={{ fontSize: 12, color: "rgba(240,80,80,0.6)",
-              fontWeight: 700, letterSpacing: "0.04em", marginBottom: 20 }}>
-              Screenshots will not be accepted
+            {/* Tip */}
+            <div style={{ fontSize: 12, color: "rgba(255,255,255,0.35)",
+              fontWeight: 500, letterSpacing: "0.02em", marginBottom: 40 }}>
+              Take a screenshot to save your prize
             </div>
-
-            <button onClick={resetGame} style={{ ...S.btnGhost, marginBottom: 40 }}>Play Again</button>
           </div>
         )}
 
