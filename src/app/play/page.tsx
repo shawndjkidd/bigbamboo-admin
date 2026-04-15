@@ -878,54 +878,78 @@ export default function PlayPage() {
               {existingClaim ? (
                 <div style={{
                   position: "fixed", inset: 0, zIndex: 10000,
-                  background: `linear-gradient(170deg, ${B.bgDeep}, ${B.bg})`,
+                  background: `radial-gradient(ellipse at 50% 30%, rgba(240,160,50,0.15) 0%, ${B.bgDeep} 60%)`,
                   display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
                   padding: 32, textAlign: "center",
+                  animation: "alreadyWonIn 0.4s ease-out",
                 }}>
+                  {/* Big stop hand */}
                   <div style={{
-                    ...F.display, fontSize: "clamp(32px,9vw,48px)", color: B.gold,
-                    marginBottom: 12, lineHeight: 1.1,
-                    textShadow: `0 4px 30px ${B.goldGlow}`,
+                    width: 80, height: 80, borderRadius: "50%",
+                    background: "linear-gradient(135deg, #e84830, #c0392b)",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    marginBottom: 20,
+                    boxShadow: "0 8px 40px rgba(232,72,48,0.4), 0 0 80px rgba(232,72,48,0.15)",
+                    animation: "pulseStop 1.5s ease-in-out infinite",
                   }}>
-                    You Already Won!
-                  </div>
-                  <div style={{
-                    ...F.body, fontSize: "clamp(14px,3.5vw,17px)", color: "rgba(255,255,255,0.55)",
-                    maxWidth: 320, lineHeight: 1.5, marginBottom: 28,
-                  }}>
-                    One prize per person. Show this to your server to redeem your prize.
+                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M18 6L6 18M6 6l12 12"/>
+                    </svg>
                   </div>
 
-                  {/* Prize card */}
                   <div style={{
-                    width: "85vw", maxWidth: 360,
-                    background: `linear-gradient(170deg, rgba(240,160,50,0.12), rgba(26,74,58,0.3))`,
-                    border: `1px solid rgba(240,160,50,0.2)`,
-                    borderRadius: 24, padding: 28,
-                    boxShadow: `0 16px 50px rgba(0,0,0,0.3), 0 0 60px rgba(240,160,50,0.06)`,
-                    marginBottom: 24,
+                    ...F.display, fontSize: "clamp(36px,10vw,56px)", color: "#fff",
+                    marginBottom: 4, lineHeight: 1,
+                    textShadow: "0 4px 30px rgba(0,0,0,0.5)",
                   }}>
-                    <div style={{ ...F.label, fontSize: 10, color: B.tealBright, marginBottom: 10, letterSpacing: "0.12em" }}>
-                      YOUR PRIZE
-                    </div>
+                    Hold Up!
+                  </div>
+                  <div style={{
+                    ...F.display, fontSize: "clamp(18px,5vw,26px)", color: B.orange,
+                    marginBottom: 20, lineHeight: 1.2,
+                  }}>
+                    You already won a prize
+                  </div>
+                  <div style={{
+                    ...F.body, fontSize: "clamp(13px,3.5vw,16px)", color: "rgba(255,255,255,0.45)",
+                    maxWidth: 300, lineHeight: 1.5, marginBottom: 28,
+                  }}>
+                    Nice try, but it's one prize per person. Here's what you won:
+                  </div>
+
+                  {/* Prize card — big and bold */}
+                  <div style={{
+                    width: "90vw", maxWidth: 380,
+                    background: `linear-gradient(170deg, rgba(240,160,50,0.18), rgba(26,74,58,0.4))`,
+                    border: `2px solid rgba(240,160,50,0.35)`,
+                    borderRadius: 24, padding: "28px 24px",
+                    boxShadow: `0 20px 60px rgba(0,0,0,0.4), 0 0 80px rgba(240,160,50,0.08)`,
+                    marginBottom: 28,
+                  }}>
                     <div style={{
-                      ...F.display, fontSize: "clamp(22px,6vw,30px)", color: "#fff",
-                      marginBottom: 14, lineHeight: 1.1,
+                      ...F.display, fontSize: "clamp(24px,7vw,34px)", color: B.gold,
+                      marginBottom: 16, lineHeight: 1.1,
+                      textShadow: `0 4px 24px ${B.goldGlow}`,
                     }}>
                       {existingClaim.prize_label}
                     </div>
                     <div style={{
-                      background: `${B.gold}12`, border: `1px dashed ${B.gold}40`,
-                      borderRadius: 14, padding: "12px 20px",
+                      background: "rgba(0,0,0,0.3)", border: `2px dashed ${B.gold}60`,
+                      borderRadius: 16, padding: "16px 24px",
                     }}>
-                      <div style={{ ...F.label, fontSize: 9, color: B.creamMuted, marginBottom: 4 }}>CLAIM CODE</div>
-                      <div style={{ ...F.mono, fontSize: 24, color: B.gold, fontWeight: 700, letterSpacing: "0.1em" }}>
+                      <div style={{ ...F.label, fontSize: 10, color: "rgba(255,255,255,0.4)", marginBottom: 6, letterSpacing: "0.12em" }}>YOUR CLAIM CODE</div>
+                      <div style={{ ...F.mono, fontSize: "clamp(26px,7vw,34px)", color: B.gold, fontWeight: 700, letterSpacing: "0.12em" }}>
                         {existingClaim.claim_code}
                       </div>
                     </div>
                   </div>
 
-                  <div style={{ fontSize: 12, color: "rgba(255,255,255,0.3)", marginBottom: 20 }}>
+                  <div style={{
+                    ...F.body, fontSize: 14, fontWeight: 600, color: "rgba(255,255,255,0.5)",
+                    padding: "12px 28px", borderRadius: 100,
+                    border: "1px solid rgba(255,255,255,0.15)",
+                    background: "rgba(255,255,255,0.05)",
+                  }}>
                     Show this screen to your server
                   </div>
                 </div>
@@ -1162,6 +1186,8 @@ export default function PlayPage() {
         @keyframes livePulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.4;transform:scale(0.8)} }
         @keyframes prizePop { 0%{transform:scale(0) rotate(-10deg)} 60%{transform:scale(1.2) rotate(3deg)} 100%{transform:scale(1) rotate(0)} }
         @keyframes fadeInUp { from{opacity:0;transform:translateY(24px)} to{opacity:1;transform:translateY(0)} }
+        @keyframes alreadyWonIn { 0%{opacity:0;transform:scale(1.1)} 100%{opacity:1;transform:scale(1)} }
+        @keyframes pulseStop { 0%,100%{transform:scale(1);box-shadow:0 8px 40px rgba(232,72,48,0.4),0 0 80px rgba(232,72,48,0.15)} 50%{transform:scale(1.08);box-shadow:0 8px 50px rgba(232,72,48,0.5),0 0 100px rgba(232,72,48,0.25)} }
       `}</style>
     </div>
   );
