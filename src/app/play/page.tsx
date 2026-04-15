@@ -839,6 +839,20 @@ export default function PlayPage() {
             {t('rulesLink')}
           </span>
         </div>
+        <div style={{ position: "absolute", bottom: 38, display: "flex", gap: 0, borderRadius: 100,
+          overflow: "hidden", border: "1px solid rgba(255,255,255,0.1)" }}>
+          {(['en', 'vi'] as Lang[]).map(l => (
+            <button key={l} onClick={() => setLang(l)} style={{
+              padding: "6px 16px", fontSize: 11, fontWeight: 600, letterSpacing: "0.08em",
+              textTransform: "uppercase", border: "none", cursor: "pointer",
+              fontFamily: "'DM Sans', sans-serif",
+              background: lang === l ? "rgba(255,255,255,0.12)" : "transparent",
+              color: lang === l ? "rgba(255,255,255,0.7)" : "rgba(255,255,255,0.25)",
+            }}>
+              {l === 'en' ? 'EN' : 'VN'}
+            </button>
+          ))}
+        </div>
         <div style={{ position: "absolute", bottom: 16, fontSize: 9, color: "rgba(255,255,255,0.15)",
           letterSpacing: "0.18em", textTransform: "uppercase", fontWeight: 600 }}>
           An Phu &middot; Saigon
