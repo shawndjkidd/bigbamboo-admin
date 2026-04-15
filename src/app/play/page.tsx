@@ -514,7 +514,7 @@ export default function PlayPage() {
 
       for (let i = 0; i < totalCells; i++) {
         const cell = document.createElement('div');
-        cell.style.cssText = `height:${cellH}px;display:flex;align-items:center;justify-content:center;font-family:'Sigmar',cursive;font-size:clamp(20px,5.5vw,28px);color:#fff;text-shadow:0 2px 12px rgba(0,0,0,0.6);padding:0 16px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;`;
+        cell.style.cssText = `height:${cellH}px;display:flex;align-items:center;justify-content:center;font-family:'Sigmar',cursive;font-size:clamp(16px,4.5vw,24px);color:#fff;text-shadow:0 2px 12px rgba(0,0,0,0.6);padding:0 20px;text-align:center;line-height:1.2;word-wrap:break-word;overflow-wrap:break-word;`;
         if (i === totalCells - 1) {
           cell.textContent = winnerLabel;
           cell.dataset.winner = 'true';
