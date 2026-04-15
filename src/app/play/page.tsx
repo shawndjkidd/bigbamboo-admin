@@ -242,6 +242,7 @@ export default function PlayPage() {
   const [playCount, setPlayCount] = useState(0);
   const [decayTable, setDecayTable] = useState(DEFAULT_DECAY);
   const [existingClaim, setExistingClaim] = useState<any>(null);
+  const [showRules, setShowRules] = useState(false);
   const [checkingContact, setCheckingContact] = useState(false);
 
   // Game state
@@ -685,6 +686,12 @@ export default function PlayPage() {
         }}>
           Tap to play
         </button>
+        <div style={{ marginTop: 12, fontSize: 11, color: "rgba(255,255,255,0.3)", textAlign: "center", lineHeight: 1.5 }}>
+          By playing you confirm you are 18+ and agree to the{' '}
+          <span onClick={() => setShowRules(true)} style={{ textDecoration: "underline", cursor: "pointer", color: "rgba(255,255,255,0.45)" }}>
+            rules &amp; terms
+          </span>
+        </div>
         <div style={{ position: "absolute", bottom: 16, fontSize: 9, color: "rgba(255,255,255,0.15)",
           letterSpacing: "0.18em", textTransform: "uppercase", fontWeight: 600 }}>
           An Phu &middot; Saigon
@@ -926,6 +933,13 @@ export default function PlayPage() {
                     </label>
                   </div>
 
+                  <div style={{ fontSize: 10, color: "rgba(255,255,255,0.25)", marginTop: 10, lineHeight: 1.5 }}>
+                    Your info is only used to verify your prize.{' '}
+                    <span onClick={() => setShowRules(true)} style={{ textDecoration: "underline", cursor: "pointer" }}>
+                      See rules &amp; terms
+                    </span>
+                  </div>
+
                   <button onClick={checkAndClaim} disabled={checkingContact}
                     style={{
                       width: "100%", marginTop: 16, padding: 17, borderRadius: 16, border: "none",
@@ -1060,6 +1074,48 @@ export default function PlayPage() {
           </div>
         )}
       </Screen>
+
+      {/* ═══ RULES & TERMS POPUP ═══ */}
+      {showRules && (
+        <div style={{
+          position: "fixed", inset: 0, zIndex: 10000,
+          background: "rgba(0,0,0,0.85)", backdropFilter: "blur(8px)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          padding: 20,
+        }} onClick={() => setShowRules(false)}>
+          <div onClick={e => e.stopPropagation()} style={{
+            background: "#1a3a38", borderRadius: 20, padding: "28px 24px",
+            maxWidth: 400, width: "100%", maxHeight: "80vh", overflowY: "auto",
+            border: "1px solid rgba(245,238,216,0.1)",
+            boxShadow: "0 20px 60px rgba(0,0,0,0.5)",
+          }}>
+            <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 24, color: B.gold,
+              letterSpacing: "0.04em", marginBottom: 16 }}>
+              Rules &amp; Terms
+            </div>
+            <div style={{ fontSize: 13, color: "rgba(245,238,216,0.7)", lineHeight: 1.7 }}>
+              <p style={{ margin: "0 0 12px", fontWeight: 700, color: "#f08060" }}>
+                You must be 18 years or older to play.
+              </p>
+              <p style={{ margin: "0 0 10px" }}>1. One prize per person. Duplicate entries will show your existing prize.</p>
+              <p style={{ margin: "0 0 10px" }}>2. Prizes must be redeemed in-store at BigBamBoo An Phu, Saigon.</p>
+              <p style={{ margin: "0 0 10px" }}>3. Prizes are non-transferable and have no cash value.</p>
+              <p style={{ margin: "0 0 10px" }}>4. Show your QR code or screenshot to staff at the bar to redeem.</p>
+              <p style={{ margin: "0 0 10px" }}>5. Management reserves the right to refuse or withdraw any prize at their discretion.</p>
+              <p style={{ margin: "0 0 10px" }}>6. Your phone number or email is collected solely to verify your prize claim. If you opt in to marketing, we may send you promotions and event updates from BigBamBoo.</p>
+              <p style={{ margin: "0 0 0" }}>7. BigBamBoo reserves the right to modify or end this promotion at any time.</p>
+            </div>
+            <button onClick={() => setShowRules(false)} style={{
+              width: "100%", marginTop: 20, padding: 14, borderRadius: 14, border: "none",
+              background: `linear-gradient(135deg, ${B.teal}, ${B.tealBright})`,
+              color: "#fff", fontSize: 15, fontWeight: 700, cursor: "pointer",
+              fontFamily: "'DM Sans', sans-serif",
+            }}>
+              Got it
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ═══ GLOBAL STYLES ═══ */}
       <style>{`
