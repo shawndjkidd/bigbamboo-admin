@@ -828,8 +828,8 @@ export default function PlayPage() {
           {t('subtitle')}
         </div>
         <button onClick={beginGame} style={{
-          ...S.btnPrimary, borderRadius: 20, padding: "20px 44px",
-          fontSize: "clamp(16px,4vw,20px)", animation: "ctaPulse 2s ease-in-out infinite",
+          ...S.btnPrimary, ...F.display, borderRadius: 20, padding: "20px 44px",
+          fontSize: "clamp(18px,4.5vw,22px)", animation: "ctaPulse 2s ease-in-out infinite",
         }}>
           {t('tapToPlay')}
         </button>
