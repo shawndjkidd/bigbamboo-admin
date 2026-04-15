@@ -1056,7 +1056,7 @@ export default function PlayPage() {
       {existingClaim && (
         <div style={{
           position: "fixed", inset: 0, zIndex: 10000,
-          background: `radial-gradient(ellipse at 50% 30%, rgba(240,160,50,0.15) 0%, ${B.bgDeep} 60%)`,
+          background: `radial-gradient(ellipse at 50% 30%, rgba(240,160,50,0.15) 0%, ${B.bg} 60%)`,
           display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
           padding: 32, textAlign: "center",
           animation: "alreadyWonIn 0.4s ease-out",
