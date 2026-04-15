@@ -12,6 +12,7 @@ const NAV = [
   { href: '/dashboard/hours', label: 'Hours & Location' },
   { href: '/dashboard/loyalty', label: 'Drinks Club' },
   { href: '/dashboard/game', label: 'Game Control' },
+  { href: '/dashboard/claims', label: 'Claims & Contacts' },
   { href: '/dashboard/settings', label: 'Settings', adminOnly: true },
 ]
 

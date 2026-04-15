@@ -241,6 +241,8 @@ export default function PlayPage() {
   const [loading, setLoading] = useState(true);
   const [playCount, setPlayCount] = useState(0);
   const [decayTable, setDecayTable] = useState(DEFAULT_DECAY);
+  const [existingClaim, setExistingClaim] = useState<any>(null);
+  const [checkingContact, setCheckingContact] = useState(false);
 
   // Game state
   const [score, setScore] = useState(0);
@@ -318,6 +320,7 @@ export default function PlayPage() {
   // ─── Record play & create claim ───
   async function recordPlay(won: boolean, prize: Prize | null) {
     const code = won && prize ? generateClaimCode() : null;
+    const val = contactValue.trim();
     await sbFetch('game_plays', {
       method: 'POST',
       body: { session_id: sessionId.current, won, prize_id: prize?.prize_id || null, claim_code: code },
@@ -329,7 +332,9 @@ export default function PlayPage() {
         method: 'POST',
         body: {
           claim_code: code, source_code: 'SCAN_TAP_WIN',
-          contact_type: 'anonymous', contact_value: sessionId.current,
+          contact_type: val ? contactMode : 'anonymous',
+          contact_value: val || sessionId.current,
+          marketing_opt_in: marketingOptIn,
           prize_type: prize.prize_type === 'discount' ? 'discount' : 'freebie',
           prize_label: prize.label, prize_item_ref: prize.prize_id,
           discount_percent: prize.discount_pct || null,
@@ -574,8 +579,8 @@ export default function PlayPage() {
     }, 200);
   }
 
-  // ─── Lock Prize (contact capture) ───
-  async function lockPrize() {
+  // ─── Check contact & claim prize (after game) ───
+  async function checkAndClaim() {
     setContactError('');
     const val = contactValue.trim();
 
@@ -591,9 +596,21 @@ export default function PlayPage() {
       }
     }
 
-    setSubmitting(true);
+    setCheckingContact(true);
 
-    // Update the claim with contact info
+    // Check if this contact already has a claim from the game
+    const existing = await sbFetch('promo_claims', {
+      query: `?contact_value=eq.${encodeURIComponent(val)}&source_code=eq.SCAN_TAP_WIN&select=*&order=issued_at.desc&limit=1`
+    });
+
+    if (existing && existing.length > 0) {
+      // They already played before — show their existing claim instead
+      setExistingClaim(existing[0]);
+      setCheckingContact(false);
+      return; // Stay on reveal screen, shows "You already have a prize" message
+    }
+
+    // No duplicate — save contact to this claim and proceed
     if (claimCode) {
       await sbFetch('promo_claims', {
         method: 'PATCH',
@@ -606,7 +623,7 @@ export default function PlayPage() {
       });
     }
 
-    setSubmitting(false);
+    setCheckingContact(false);
     setScreen('claim');
   }
 
@@ -818,7 +835,7 @@ export default function PlayPage() {
         </div>
       </Screen>
 
-      {/* ═══ PRIZE REVEAL + CONTACT ═══ */}
+      {/* ═══ PRIZE REVEAL + CONTACT GATE ═══ */}
       <Screen active={screen === 'reveal'} scrollable>
         <div style={{ textAlign: "center", width: "100%", maxWidth: 380 }}>
           {currentPrize ? (
@@ -849,68 +866,79 @@ export default function PlayPage() {
                 </div>
               )}
 
-              {/* Contact box */}
-              <div style={{
-                background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)",
-                borderRadius: 20, padding: 20, textAlign: "left",
-              }}>
-                <div style={{ ...F.body, fontSize: 14, fontWeight: 600, color: "rgba(255,255,255,0.7)", marginBottom: 12 }}>
-                  {contactMode === 'phone' ? 'Enter your phone to claim your prize' : 'Enter your email to claim your prize'}
+              {/* Contact gate — required to claim */}
+              {existingClaim ? (
+                <div style={{
+                  background: "rgba(74,170,144,0.08)", border: "1px solid rgba(74,170,144,0.2)",
+                  borderRadius: 16, padding: 20, marginBottom: 16,
+                }}>
+                  <div style={{ ...F.body, fontSize: 14, fontWeight: 600, color: B.tealBright, marginBottom: 6 }}>
+                    You already have a prize!
+                  </div>
+                  <div style={{ ...F.body, fontSize: 13, color: "rgba(255,255,255,0.5)" }}>
+                    Your existing prize: {existingClaim.prize_label}
+                  </div>
+                  <div style={{ ...F.mono, fontSize: 18, color: B.gold, fontWeight: 700, marginTop: 8 }}>
+                    {existingClaim.claim_code}
+                  </div>
                 </div>
-                <input
-                  type={contactMode === 'phone' ? 'tel' : 'email'}
-                  inputMode={contactMode === 'phone' ? 'tel' : 'email'}
-                  placeholder={contactMode === 'phone' ? '+84 xxx xxx xxxx' : 'you@example.com'}
-                  value={contactValue}
-                  onChange={e => { setContactValue(e.target.value); setContactError(''); }}
-                  style={{
-                    width: "100%", padding: 16, borderRadius: 14,
-                    border: "1px solid rgba(255,255,255,0.12)",
-                    background: "rgba(255,255,255,0.06)",
-                    color: "#fff", fontSize: 16, fontFamily: "'DM Sans', sans-serif",
-                    outline: "none", boxSizing: "border-box",
-                  }}
-                />
-                <button onClick={() => { setContactMode(m => m === 'phone' ? 'email' : 'phone'); setContactValue(''); setContactError(''); }}
-                  style={{ fontSize: 12, color: `${B.gold}aa`, cursor: "pointer", marginTop: 8,
-                    display: "inline-block", border: "none", background: "none",
-                    fontFamily: "'DM Sans', sans-serif", textDecoration: "underline",
-                    textUnderlineOffset: 2 }}>
-                  {contactMode === 'phone' ? 'Use email instead' : 'Use phone instead'}
-                </button>
+              ) : (
+                <div style={{
+                  background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)",
+                  borderRadius: 20, padding: 20, textAlign: "left",
+                }}>
+                  <div style={{ ...F.body, fontSize: 14, fontWeight: 600, color: "rgba(255,255,255,0.7)", marginBottom: 12 }}>
+                    {contactMode === 'phone' ? 'Enter your phone to claim your prize' : 'Enter your email to claim your prize'}
+                  </div>
+                  <input
+                    type={contactMode === 'phone' ? 'tel' : 'email'}
+                    inputMode={contactMode === 'phone' ? 'tel' : 'email'}
+                    placeholder={contactMode === 'phone' ? '+84 xxx xxx xxxx' : 'you@example.com'}
+                    value={contactValue}
+                    onChange={e => { setContactValue(e.target.value); setContactError(''); }}
+                    style={{
+                      width: "100%", padding: 16, borderRadius: 14,
+                      border: "1px solid rgba(255,255,255,0.12)",
+                      background: "rgba(255,255,255,0.06)",
+                      color: "#fff", fontSize: 16, fontFamily: "'DM Sans', sans-serif",
+                      outline: "none", boxSizing: "border-box",
+                    }}
+                  />
+                  <button onClick={() => { setContactMode(m => m === 'phone' ? 'email' : 'phone'); setContactValue(''); setContactError(''); }}
+                    style={{ fontSize: 12, color: `${B.gold}aa`, cursor: "pointer", marginTop: 8,
+                      display: "inline-block", border: "none", background: "none",
+                      fontFamily: "'DM Sans', sans-serif", textDecoration: "underline",
+                      textUnderlineOffset: 2 }}>
+                    {contactMode === 'phone' ? 'Use email instead' : 'Use phone instead'}
+                  </button>
 
-                {contactError && (
-                  <div style={{ fontSize: 12, color: "#f08060", marginTop: 8 }}>{contactError}</div>
-                )}
+                  {contactError && (
+                    <div style={{ fontSize: 12, color: "#f08060", marginTop: 8 }}>{contactError}</div>
+                  )}
 
-                <div style={{ display: "flex", alignItems: "flex-start", gap: 10, marginTop: 14 }}>
-                  <input type="checkbox" checked={marketingOptIn}
-                    onChange={e => setMarketingOptIn(e.target.checked)}
-                    style={{ width: 18, height: 18, marginTop: 1, accentColor: B.gold, flexShrink: 0, cursor: "pointer" }} />
-                  <label style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", lineHeight: 1.4, cursor: "pointer" }}
-                    onClick={() => setMarketingOptIn(v => !v)}>
-                    Send me deals, events & happy hour alerts from BigBamBoo
-                  </label>
+                  <div style={{ display: "flex", alignItems: "flex-start", gap: 10, marginTop: 14 }}>
+                    <input type="checkbox" checked={marketingOptIn}
+                      onChange={e => setMarketingOptIn(e.target.checked)}
+                      style={{ width: 18, height: 18, marginTop: 1, accentColor: B.gold, flexShrink: 0, cursor: "pointer" }} />
+                    <label style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", lineHeight: 1.4, cursor: "pointer" }}
+                      onClick={() => setMarketingOptIn(v => !v)}>
+                      Send me deals, events & happy hour alerts from BigBamBoo
+                    </label>
+                  </div>
+
+                  <button onClick={checkAndClaim} disabled={checkingContact}
+                    style={{
+                      width: "100%", marginTop: 16, padding: 17, borderRadius: 16, border: "none",
+                      background: `linear-gradient(135deg, ${B.orange}, ${B.orangeDeep})`,
+                      color: "#fff", fontSize: 16, fontWeight: 700, cursor: "pointer",
+                      fontFamily: "'DM Sans', sans-serif",
+                      boxShadow: "0 6px 24px rgba(232,120,48,0.35)",
+                      opacity: checkingContact ? 0.5 : 1,
+                    }}>
+                    {checkingContact ? 'Checking...' : 'Get My Prize'}
+                  </button>
                 </div>
-
-                <button onClick={lockPrize} disabled={submitting}
-                  style={{
-                    width: "100%", marginTop: 16, padding: 17, borderRadius: 16, border: "none",
-                    background: `linear-gradient(135deg, ${B.orange}, ${B.orangeDeep})`,
-                    color: "#fff", fontSize: 16, fontWeight: 700, cursor: "pointer",
-                    fontFamily: "'DM Sans', sans-serif",
-                    boxShadow: "0 6px 24px rgba(232,120,48,0.35)",
-                    opacity: submitting ? 0.5 : 1,
-                  }}>
-                  {submitting ? 'Saving...' : 'Get My Prize'}
-                </button>
-              </div>
-
-              {/* Skip contact */}
-              <button onClick={() => setScreen('claim')}
-                style={{ ...S.btnGhost, marginTop: 16, fontSize: 13 }}>
-                Skip &mdash; just show me the code
-              </button>
+              )}
             </>
           ) : (
             <>
