@@ -1056,8 +1056,19 @@ export default function PlayPage() {
 
             {/* Tip */}
             <div style={{ fontSize: 12, color: "rgba(255,255,255,0.35)",
-              fontWeight: 500, letterSpacing: "0.02em", marginBottom: 40 }}>
+              fontWeight: 500, letterSpacing: "0.02em", marginBottom: 16 }}>
               Take a screenshot to save your prize
+            </div>
+
+            {/* 18+ warning */}
+            <div style={{
+              fontSize: 11, color: "rgba(255,255,255,0.35)", lineHeight: 1.5,
+              marginBottom: 40, padding: "0 12px",
+            }}>
+              Must be 18 or older to redeem. One prize per person. Subject to{' '}
+              <span onClick={() => setShowRules(true)} style={{ textDecoration: "underline", cursor: "pointer", color: "rgba(255,255,255,0.45)" }}>
+                rules &amp; terms
+              </span>.
             </div>
           </div>
         )}
