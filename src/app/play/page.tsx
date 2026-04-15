@@ -139,17 +139,24 @@ const DEFAULT_DECAY = [
   { big: 0, medium: 2, small: 13, none: 85 },    // 4th+:    15% win
 ];
 
-function pickPrize(prizes: Prize[], playCount: number, decayTable: typeof DEFAULT_DECAY): Prize | null {
+function pickPrize(prizes: Prize[], playCount: number, decayTable: typeof DEFAULT_DECAY): Prize {
   const decay = decayTable[Math.min(playCount, decayTable.length - 1)];
   const roll = Math.random() * 100;
   const { big, medium, small } = decay;
   let tier: string;
   if (roll < big) tier = "big";
   else if (roll < big + medium) tier = "medium";
-  else if (roll < big + medium + small) tier = "small";
-  else return null;
+  else tier = "small"; // Everyone wins — no "none" outcome
   const pool = prizes.filter((p) => p.tier === tier);
-  if (pool.length === 0) return null;
+  if (pool.length === 0) {
+    // Fallback: if tier pool is empty, pick from small, then any
+    const fallback = prizes.filter((p) => p.tier === "small");
+    const any = fallback.length > 0 ? fallback : prizes;
+    const tw = any.reduce((s, p) => s + p.weight, 0);
+    let w = Math.random() * tw;
+    for (const p of any) { w -= p.weight; if (w <= 0) return p; }
+    return any[any.length - 1];
+  }
   const tw = pool.reduce((s, p) => s + p.weight, 0);
   let w = Math.random() * tw;
   for (const p of pool) { w -= p.weight; if (w <= 0) return p; }
@@ -501,14 +508,13 @@ export default function PlayPage() {
   }
 
   // ─── Prize Reel ───
-  function startReel(prize: Prize | null) {
+  function startReel(prize: Prize) {
     setReelLanded(false);
     setReelStatus('Mixing your prizes...');
 
-    // Build reel items from prizes + no-prize
+    // Build reel items from prizes
     const reelItems = [...prizes.map(p => p.label)];
-    if (!prize) reelItems.push('No Prize This Time');
-    const winnerLabel = prize ? prize.label : 'No Prize This Time';
+    const winnerLabel = prize.label;
 
     // We'll animate by manipulating the strip ref directly
     setTimeout(() => {
