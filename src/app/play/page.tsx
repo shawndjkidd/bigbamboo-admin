@@ -877,17 +877,56 @@ export default function PlayPage() {
               {/* Contact gate — required to claim */}
               {existingClaim ? (
                 <div style={{
-                  background: "rgba(74,170,144,0.08)", border: "1px solid rgba(74,170,144,0.2)",
-                  borderRadius: 16, padding: 20, marginBottom: 16,
+                  position: "fixed", inset: 0, zIndex: 10000,
+                  background: `linear-gradient(170deg, ${B.bgDeep}, ${B.bg})`,
+                  display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+                  padding: 32, textAlign: "center",
                 }}>
-                  <div style={{ ...F.body, fontSize: 14, fontWeight: 600, color: B.tealBright, marginBottom: 6 }}>
-                    You already have a prize!
+                  <div style={{
+                    ...F.display, fontSize: "clamp(32px,9vw,48px)", color: B.gold,
+                    marginBottom: 12, lineHeight: 1.1,
+                    textShadow: `0 4px 30px ${B.goldGlow}`,
+                  }}>
+                    You Already Won!
                   </div>
-                  <div style={{ ...F.body, fontSize: 13, color: "rgba(255,255,255,0.5)" }}>
-                    Your existing prize: {existingClaim.prize_label}
+                  <div style={{
+                    ...F.body, fontSize: "clamp(14px,3.5vw,17px)", color: "rgba(255,255,255,0.55)",
+                    maxWidth: 320, lineHeight: 1.5, marginBottom: 28,
+                  }}>
+                    One prize per person. Show this to your server to redeem your prize.
                   </div>
-                  <div style={{ ...F.mono, fontSize: 18, color: B.gold, fontWeight: 700, marginTop: 8 }}>
-                    {existingClaim.claim_code}
+
+                  {/* Prize card */}
+                  <div style={{
+                    width: "85vw", maxWidth: 360,
+                    background: `linear-gradient(170deg, rgba(240,160,50,0.12), rgba(26,74,58,0.3))`,
+                    border: `1px solid rgba(240,160,50,0.2)`,
+                    borderRadius: 24, padding: 28,
+                    boxShadow: `0 16px 50px rgba(0,0,0,0.3), 0 0 60px rgba(240,160,50,0.06)`,
+                    marginBottom: 24,
+                  }}>
+                    <div style={{ ...F.label, fontSize: 10, color: B.tealBright, marginBottom: 10, letterSpacing: "0.12em" }}>
+                      YOUR PRIZE
+                    </div>
+                    <div style={{
+                      ...F.display, fontSize: "clamp(22px,6vw,30px)", color: "#fff",
+                      marginBottom: 14, lineHeight: 1.1,
+                    }}>
+                      {existingClaim.prize_label}
+                    </div>
+                    <div style={{
+                      background: `${B.gold}12`, border: `1px dashed ${B.gold}40`,
+                      borderRadius: 14, padding: "12px 20px",
+                    }}>
+                      <div style={{ ...F.label, fontSize: 9, color: B.creamMuted, marginBottom: 4 }}>CLAIM CODE</div>
+                      <div style={{ ...F.mono, fontSize: 24, color: B.gold, fontWeight: 700, letterSpacing: "0.1em" }}>
+                        {existingClaim.claim_code}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style={{ fontSize: 12, color: "rgba(255,255,255,0.3)", marginBottom: 20 }}>
+                    Show this screen to your server
                   </div>
                 </div>
               ) : (
