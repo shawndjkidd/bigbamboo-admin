@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Script from 'next/script'
 import { supabase } from '@/lib/supabase'
 
 export default function DoorPage() {
@@ -12,9 +13,12 @@ export default function DoorPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [result, setResult] = useState<{ type: 'success' | 'error' | 'info', message: string } | null>(null)
   const [scanning, setScanning] = useState(false)
+  const [jsQRLoaded, setJsQRLoaded] = useState(false)
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const scanIntervalRef = useRef<any>(null)
+  const lastScannedRef = useRef<string>('')
+  const streamRef = useRef<MediaStream | null>(null)
 
   useEffect(() => {
     loadEvents()
@@ -29,6 +33,13 @@ export default function DoorPage() {
     else stopCamera()
     return () => stopCamera()
   }, [mode, selectedEvent])
+
+  // When jsQR loads and camera is waiting, start the jsQR scan loop
+  useEffect(() => {
+    if (jsQRLoaded && scanning && !scanIntervalRef.current && (window as any).jsQR) {
+      startJsQRScan()
+    }
+  }, [jsQRLoaded])
 
   async function loadEvents() {
     const { data } = await supabase.from('events').select('id, title, event_date').eq('is_published', true).order('event_date', { ascending: false })
@@ -91,12 +102,14 @@ export default function DoorPage() {
       return
     }
     setScanning(true)
-    navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+    lastScannedRef.current = ''
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } } })
       .then(stream => {
+        streamRef.current = stream
         if (videoRef.current) {
           videoRef.current.srcObject = stream
           videoRef.current.play()
-          // Start scanning with BarcodeDetector if available
+          // Use BarcodeDetector if available (Chrome Android), otherwise jsQR fallback
           if ('BarcodeDetector' in window) {
             const detector = new (window as any).BarcodeDetector({ formats: ['qr_code'] })
             scanIntervalRef.current = setInterval(async () => {
@@ -105,17 +118,19 @@ export default function DoorPage() {
                 const barcodes = await detector.detect(videoRef.current)
                 if (barcodes.length > 0) {
                   const value = barcodes[0].rawValue
-                  if (value) {
+                  if (value && value !== lastScannedRef.current) {
+                    lastScannedRef.current = value
                     stopCamera()
                     await handleQRData(value)
-                    // Restart camera after a brief pause
                     setTimeout(() => { if (mode === 'scan') startCamera() }, 2000)
                   }
                 }
               } catch {}
-            }, 500)
+            }, 300)
+          } else if ((window as any).jsQR) {
+            startJsQRScan()
           } else {
-            setResult({ type: 'info', message: 'QR scanning not supported on this browser. Use manual search instead.' })
+            setResult({ type: 'info', message: 'Loading scanner...' })
           }
         }
       })
@@ -125,12 +140,37 @@ export default function DoorPage() {
       })
   }
 
+  function startJsQRScan() {
+    const jsQR = (window as any).jsQR
+    if (!jsQR) return
+    setResult(null)
+    scanIntervalRef.current = setInterval(() => {
+      if (!videoRef.current || videoRef.current.readyState < 2 || !canvasRef.current) return
+      const video = videoRef.current
+      const canvas = canvasRef.current
+      const ctx = canvas.getContext('2d')
+      if (!ctx) return
+      canvas.width = video.videoWidth
+      canvas.height = video.videoHeight
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
+      const code = jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: 'dontInvert' })
+      if (code && code.data && code.data !== lastScannedRef.current) {
+        lastScannedRef.current = code.data
+        stopCamera()
+        handleQRData(code.data)
+        setTimeout(() => { if (mode === 'scan') startCamera() }, 2000)
+      }
+    }, 250)
+  }
+
   function stopCamera() {
     if (scanIntervalRef.current) { clearInterval(scanIntervalRef.current); scanIntervalRef.current = null }
-    if (videoRef.current?.srcObject) {
-      (videoRef.current.srcObject as MediaStream).getTracks().forEach(t => t.stop())
-      videoRef.current.srcObject = null
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(t => t.stop())
+      streamRef.current = null
     }
+    if (videoRef.current) videoRef.current.srcObject = null
     setScanning(false)
   }
 
@@ -143,6 +183,9 @@ export default function DoorPage() {
   const checkedInCount = orders.filter(o => o.checked_in).length
 
   return (
+    <>
+    <Script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js" strategy="afterInteractive"
+      onLoad={() => setJsQRLoaded(true)} />
     <div style={{ minHeight: '100vh', background: '#0d0d0d', color: '#fff', fontFamily: '-apple-system, system-ui, sans-serif' }}>
       {/* Header */}
       <div style={{ padding: '16px 20px', borderBottom: '1px solid rgba(255,255,255,0.1)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -240,5 +283,6 @@ export default function DoorPage() {
         </>
       )}
     </div>
+    </>
   )
 }
