@@ -106,51 +106,51 @@ function LoginScreen({ onLogin }: { onLogin: (user: StaffUser) => void }) {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: `radial-gradient(ellipse at 50% 20%, rgba(42,138,106,0.12) 0%, ${B.bg} 70%)`, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, fontFamily: "'DM Sans', sans-serif" }}>
-      <div style={{ width: '100%', maxWidth: 360, textAlign: 'center' }}>
+    <div style={{ minHeight: '100vh', background: B.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, fontFamily: "'DM Sans', sans-serif" }}>
+      <div style={{ width: '100%', maxWidth: 340, textAlign: 'center' }}>
+        {/* Logo — centered */}
         <img src="https://bigbamboo.app/images/bbb-img-5.png" alt="BigBamBoo"
-          style={{ width: 140, height: 140, borderRadius: 32, objectFit: 'cover', marginBottom: 28,
-            boxShadow: '0 8px 40px rgba(0,0,0,0.5), 0 0 60px rgba(42,138,106,0.1)',
+          style={{ display: 'block', margin: '0 auto 24px', width: 120, height: 120, borderRadius: 28, objectFit: 'cover',
+            boxShadow: '0 4px 24px rgba(0,0,0,0.4)',
             border: `2px solid ${B.creamFaint}` }} />
 
-        <div style={{ fontFamily: "'Sigmar', cursive", fontSize: 'clamp(20px,5vw,26px)', color: B.gold,
-          letterSpacing: '0.02em', marginBottom: 4, lineHeight: 1.1,
-          textShadow: '0 2px 16px rgba(232,168,32,0.25)' }}>
+        <div style={{ fontFamily: "'Sigmar', cursive", fontSize: 24, color: B.gold,
+          letterSpacing: '0.02em', marginBottom: 6, lineHeight: 1.1 }}>
           Staff Scanner
         </div>
-        <div style={{ fontSize: 13, color: B.creamMuted, marginBottom: 36 }}>Enter your name &amp; PIN to continue</div>
+        <div style={{ fontSize: 13, color: B.creamMuted, marginBottom: 32 }}>Enter your name &amp; PIN to continue</div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 20 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 20 }}>
           <input type="text" value={name} onChange={e => setName(e.target.value)}
             placeholder="Your name" onKeyDown={e => e.key === 'Enter' && handleLogin()}
-            style={{ padding: '16px 20px', borderRadius: 14, fontSize: 16, border: `1px solid ${B.creamFaint}`,
-              background: 'rgba(255,255,255,0.04)', color: B.cream, outline: 'none',
+            style={{ padding: '15px 18px', borderRadius: 12, fontSize: 16, border: `1px solid ${B.creamFaint}`,
+              background: B.bgCard, color: B.cream, outline: 'none', textAlign: 'center',
               fontFamily: "'DM Sans', sans-serif", boxSizing: 'border-box', width: '100%' }} />
           <input type="password" inputMode="numeric" maxLength={4} value={pin}
             onChange={e => setPin(e.target.value.replace(/\D/g, '').slice(0, 4))}
             placeholder="4-digit PIN" onKeyDown={e => e.key === 'Enter' && handleLogin()}
-            style={{ padding: '16px 20px', borderRadius: 14, fontSize: 20, border: `1px solid ${B.creamFaint}`,
-              background: 'rgba(255,255,255,0.04)', color: B.cream, outline: 'none',
-              fontFamily: "'DM Mono', monospace", letterSpacing: '0.35em', textAlign: 'center',
+            style={{ padding: '15px 18px', borderRadius: 12, fontSize: 20, border: `1px solid ${B.creamFaint}`,
+              background: B.bgCard, color: B.cream, outline: 'none', textAlign: 'center',
+              fontFamily: "'DM Mono', monospace", letterSpacing: '0.3em',
               boxSizing: 'border-box', width: '100%' }} />
         </div>
 
         {error && (
-          <div style={{ padding: '12px 16px', borderRadius: 12, background: 'rgba(239,68,68,0.1)', color: '#f08060', fontSize: 13, fontWeight: 600, marginBottom: 16, border: '1px solid rgba(239,68,68,0.2)' }}>
+          <div style={{ padding: '12px 16px', borderRadius: 10, background: 'rgba(239,68,68,0.1)', color: '#f08060', fontSize: 13, fontWeight: 600, marginBottom: 16, border: '1px solid rgba(239,68,68,0.2)' }}>
             {error}
           </div>
         )}
 
         <button onClick={handleLogin} disabled={loading}
-          style={{ width: '100%', padding: '17px', borderRadius: 16, fontSize: 17, fontWeight: 700,
+          style={{ width: '100%', padding: '16px', borderRadius: 14, fontSize: 16, fontWeight: 700,
             border: 'none', cursor: 'pointer', fontFamily: "'DM Sans', sans-serif",
-            background: `linear-gradient(135deg, ${B.orange}, #f09050)`, color: '#fff',
-            boxShadow: '0 8px 32px rgba(232,120,48,0.35), inset 0 1px 0 rgba(255,255,255,0.15)',
+            background: B.orange, color: '#fff',
+            boxShadow: '0 4px 20px rgba(232,120,48,0.3)',
             opacity: loading ? 0.6 : 1 }}>
           {loading ? 'Checking...' : 'Log In'}
         </button>
 
-        <div style={{ marginTop: 24, fontSize: 11, color: 'rgba(255,255,255,0.15)', letterSpacing: '0.12em', textTransform: 'uppercase' }}>
+        <div style={{ marginTop: 28, fontSize: 11, color: 'rgba(255,255,255,0.12)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
           BigBamBoo · An Phu
         </div>
       </div>
