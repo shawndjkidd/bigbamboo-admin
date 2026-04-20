@@ -61,41 +61,16 @@ interface PromoClaim {
 
 // ─── Login Screen ───
 function LoginScreen({ onLogin }: { onLogin: (user: StaffUser) => void }) {
-  const [email, setEmail] = useState('')
+  const [name, setName] = useState('')
   const [pin, setPin] = useState('')
   const [error, setError] = useState('')
-  const [loading, setLoading] = useState(false)
 
-  async function handleLogin() {
+  function handleLogin() {
     setError('')
-    if (!email.trim() || !pin.trim()) { setError('Enter email and PIN'); return }
-    setLoading(true)
+    if (!name.trim()) { setError('Enter your name'); return }
+    if (pin !== '1234') { setError('Incorrect PIN'); return }
 
-    const data = await sbFetch('staff_users', {
-      query: `?email=eq.${encodeURIComponent(email.trim().toLowerCase())}&active=eq.true&select=*`
-    })
-
-    if (!data || data.length === 0) {
-      setError('Account not found or inactive')
-      setLoading(false)
-      return
-    }
-
-    const user = data[0]
-    if (user.pin !== pin) {
-      setError('Incorrect PIN')
-      setLoading(false)
-      return
-    }
-
-    // Update last_login
-    await sbFetch('staff_users', {
-      method: 'PATCH',
-      query: `?id=eq.${user.id}`,
-      body: { last_login: new Date().toISOString() },
-    })
-
-    onLogin(user)
+    onLogin({ id: 'staff-' + Date.now(), email: '', name: name.trim(), role: 'staff', pin })
   }
 
   return (
@@ -107,10 +82,10 @@ function LoginScreen({ onLogin }: { onLogin: (user: StaffUser) => void }) {
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 20 }}>
           <input
-            type="email"
-            value={email}
-            onChange={e => setEmail(e.target.value)}
-            placeholder="Email address"
+            type="text"
+            value={name}
+            onChange={e => setName(e.target.value)}
+            placeholder="Your name"
             onKeyDown={e => e.key === 'Enter' && handleLogin()}
             style={{
               padding: '14px 18px', borderRadius: 12, fontSize: 15, border: `1px solid ${B.creamFaint}`,
@@ -139,16 +114,16 @@ function LoginScreen({ onLogin }: { onLogin: (user: StaffUser) => void }) {
           </div>
         )}
 
-        <button onClick={handleLogin} disabled={loading}
+        <button onClick={handleLogin}
           style={{
             width: '100%', padding: '15px', borderRadius: 14, fontSize: 16, fontWeight: 700,
             border: 'none', cursor: 'pointer', fontFamily: "'Bebas Neue', sans-serif",
             letterSpacing: '0.08em',
             background: `linear-gradient(135deg, ${B.teal}, ${B.tealBright})`,
-            color: B.cream, opacity: loading ? 0.6 : 1,
+            color: B.cream,
             boxShadow: `0 6px 24px ${B.tealGlow}`,
           }}>
-          {loading ? 'Logging in...' : 'Login'}
+          Login
         </button>
       </div>
 
@@ -372,9 +347,14 @@ function ScannerInterface({ staff, onLogout }: { staff: StaffUser; onLogout: () 
             <div style={{ fontSize: 11, color: B.creamMuted }}>{staff.name} · {staff.role}</div>
           </div>
         </div>
-        <button onClick={onLogout} style={{ padding: '8px 16px', borderRadius: 8, fontSize: 12, fontWeight: 600, border: `1px solid ${B.creamFaint}`, background: 'transparent', color: B.creamMuted, cursor: 'pointer' }}>
-          Logout
-        </button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <a href="/dashboard" style={{ padding: '8px 16px', borderRadius: 8, fontSize: 12, fontWeight: 600, border: `1px solid ${B.creamFaint}`, background: 'transparent', color: B.creamMuted, cursor: 'pointer', textDecoration: 'none' }}>
+            Dashboard
+          </a>
+          <button onClick={onLogout} style={{ padding: '8px 16px', borderRadius: 8, fontSize: 12, fontWeight: 600, border: `1px solid ${B.creamFaint}`, background: 'transparent', color: B.creamMuted, cursor: 'pointer' }}>
+            Logout
+          </button>
+        </div>
       </div>
 
       <div style={{ maxWidth: 420, margin: '0 auto', padding: '20px 20px' }}>

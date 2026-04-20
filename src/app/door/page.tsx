@@ -1,8 +1,10 @@
 'use client'
 import { useEffect, useRef, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 
 export default function DoorPage() {
+  const router = useRouter()
   const [mode, setMode] = useState<'scan' | 'search'>('scan')
   const [events, setEvents] = useState<any[]>([])
   const [selectedEvent, setSelectedEvent] = useState('')
@@ -144,9 +146,12 @@ export default function DoorPage() {
     <div style={{ minHeight: '100vh', background: '#0d0d0d', color: '#fff', fontFamily: '-apple-system, system-ui, sans-serif' }}>
       {/* Header */}
       <div style={{ padding: '16px 20px', borderBottom: '1px solid rgba(255,255,255,0.1)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div>
-          <div style={{ fontFamily: 'Bebas Neue, sans-serif', fontSize: 24, letterSpacing: '0.04em', color: '#e8772e' }}>BigBamBoo</div>
-          <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)' }}>Door Check-In</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <button onClick={() => { stopCamera(); router.push('/dashboard'); }} style={{ background: 'rgba(255,255,255,0.08)', border: 'none', borderRadius: 8, width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'rgba(255,255,255,0.6)', fontSize: 18 }}>←</button>
+          <div>
+            <div style={{ fontFamily: 'Bebas Neue, sans-serif', fontSize: 24, letterSpacing: '0.04em', color: '#e8772e' }}>BigBamBoo</div>
+            <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)' }}>Door Check-In</div>
+          </div>
         </div>
         <div style={{ textAlign: 'right' }}>
           <div style={{ fontSize: 24, fontWeight: 700, color: '#e8772e' }}>{checkedInCount}</div>
