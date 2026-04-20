@@ -74,13 +74,22 @@ function LoginScreen({ onLogin }: { onLogin: (user: StaffUser) => void }) {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: B.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, fontFamily: "'DM Sans', sans-serif" }}>
-      <div style={{ width: '100%', maxWidth: 380, textAlign: 'center' }}>
-        <img src="https://bigbamboo.app/images/bbb-img-5.png" alt="BigBamBoo" style={{ width: 80, height: 80, borderRadius: 20, objectFit: 'cover', marginBottom: 20, boxShadow: '0 4px 20px rgba(0,0,0,0.4)' }} />
-        <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 28, color: B.cream, letterSpacing: '0.06em', marginBottom: 6 }}>Event Scanner</div>
-        <div style={{ fontSize: 13, color: B.creamMuted, marginBottom: 32 }}>Staff login required</div>
+    <div style={{ minHeight: '100vh', background: `radial-gradient(ellipse at 50% 20%, rgba(42,138,106,0.12) 0%, ${B.bg} 70%)`, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, fontFamily: "'DM Sans', sans-serif" }}>
+      <div style={{ width: '100%', maxWidth: 360, textAlign: 'center' }}>
+        {/* Logo — big and centered */}
+        <img src="https://bigbamboo.app/images/bbb-img-5.png" alt="BigBamBoo"
+          style={{ width: 140, height: 140, borderRadius: 32, objectFit: 'cover', marginBottom: 28,
+            boxShadow: '0 8px 40px rgba(0,0,0,0.5), 0 0 60px rgba(42,138,106,0.1)',
+            border: `2px solid ${B.creamFaint}` }} />
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 20 }}>
+        <div style={{ fontFamily: "'Sigmar', cursive", fontSize: 'clamp(20px,5vw,26px)', color: B.gold,
+          letterSpacing: '0.02em', marginBottom: 4, lineHeight: 1.1,
+          textShadow: `0 2px 16px rgba(232,168,32,0.25)` }}>
+          Staff Scanner
+        </div>
+        <div style={{ fontSize: 13, color: B.creamMuted, marginBottom: 36 }}>Enter your name &amp; PIN to continue</div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 20 }}>
           <input
             type="text"
             value={name}
@@ -88,8 +97,9 @@ function LoginScreen({ onLogin }: { onLogin: (user: StaffUser) => void }) {
             placeholder="Your name"
             onKeyDown={e => e.key === 'Enter' && handleLogin()}
             style={{
-              padding: '14px 18px', borderRadius: 12, fontSize: 15, border: `1px solid ${B.creamFaint}`,
-              background: B.bgCard, color: B.cream, outline: 'none', fontFamily: "'DM Sans', sans-serif",
+              padding: '16px 20px', borderRadius: 14, fontSize: 16, border: `1px solid ${B.creamFaint}`,
+              background: 'rgba(255,255,255,0.04)', color: B.cream, outline: 'none',
+              fontFamily: "'DM Sans', sans-serif", boxSizing: 'border-box', width: '100%',
             }}
           />
           <input
@@ -101,33 +111,37 @@ function LoginScreen({ onLogin }: { onLogin: (user: StaffUser) => void }) {
             placeholder="4-digit PIN"
             onKeyDown={e => e.key === 'Enter' && handleLogin()}
             style={{
-              padding: '14px 18px', borderRadius: 12, fontSize: 15, border: `1px solid ${B.creamFaint}`,
-              background: B.bgCard, color: B.cream, outline: 'none', fontFamily: "'DM Sans', sans-serif",
-              letterSpacing: '0.3em', textAlign: 'center',
+              padding: '16px 20px', borderRadius: 14, fontSize: 20, border: `1px solid ${B.creamFaint}`,
+              background: 'rgba(255,255,255,0.04)', color: B.cream, outline: 'none',
+              fontFamily: "'DM Mono', monospace", letterSpacing: '0.35em', textAlign: 'center',
+              boxSizing: 'border-box', width: '100%',
             }}
           />
         </div>
 
         {error && (
-          <div style={{ padding: '10px 16px', borderRadius: 10, background: 'rgba(239,68,68,0.12)', color: B.red, fontSize: 13, fontWeight: 600, marginBottom: 16, border: '1px solid rgba(239,68,68,0.25)' }}>
+          <div style={{ padding: '12px 16px', borderRadius: 12, background: 'rgba(239,68,68,0.1)', color: '#f08060', fontSize: 13, fontWeight: 600, marginBottom: 16, border: '1px solid rgba(239,68,68,0.2)' }}>
             {error}
           </div>
         )}
 
         <button onClick={handleLogin}
           style={{
-            width: '100%', padding: '15px', borderRadius: 14, fontSize: 16, fontWeight: 700,
-            border: 'none', cursor: 'pointer', fontFamily: "'Bebas Neue', sans-serif",
-            letterSpacing: '0.08em',
-            background: `linear-gradient(135deg, ${B.teal}, ${B.tealBright})`,
-            color: B.cream,
-            boxShadow: `0 6px 24px ${B.tealGlow}`,
+            width: '100%', padding: '17px', borderRadius: 16, fontSize: 17, fontWeight: 700,
+            border: 'none', cursor: 'pointer', fontFamily: "'DM Sans', sans-serif",
+            background: `linear-gradient(135deg, ${B.orange}, #f09050)`,
+            color: '#fff',
+            boxShadow: '0 8px 32px rgba(232,120,48,0.35), inset 0 1px 0 rgba(255,255,255,0.15)',
           }}>
-          Login
+          Log In
         </button>
+
+        <div style={{ marginTop: 24, fontSize: 11, color: 'rgba(255,255,255,0.15)', letterSpacing: '0.12em', textTransform: 'uppercase' }}>
+          BigBamBoo · An Phu
+        </div>
       </div>
 
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600;700&display=swap');`}</style>
+      <style>{`@import url('https://fonts.googleapis.com/css2?family=Sigmar&family=Bebas+Neue&family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap');`}</style>
     </div>
   )
 }
@@ -343,7 +357,7 @@ function ScannerInterface({ staff, onLogout }: { staff: StaffUser; onLogout: () 
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <img src="https://bigbamboo.app/images/bbb-img-5.png" alt="" style={{ width: 36, height: 36, borderRadius: 10, objectFit: 'cover' }} />
           <div>
-            <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 18, color: B.cream, letterSpacing: '0.04em' }}>Event Scanner</div>
+            <div style={{ fontFamily: "'Sigmar', cursive", fontSize: 16, color: B.gold, letterSpacing: '0.02em' }}>Staff Scanner</div>
             <div style={{ fontSize: 11, color: B.creamMuted }}>{staff.name} · {staff.role}</div>
           </div>
         </div>
