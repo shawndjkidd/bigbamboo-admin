@@ -69,24 +69,29 @@ export default function DoorPage() {
   }
 
   async function handleQRData(data: string) {
+    // QR data might be URL-encoded from QR generator
+    let decoded = data
+    try { decoded = decodeURIComponent(data) } catch {}
+
     // QR format: BBQ-{id8}|{name}|{event_title}
-    if (!data.startsWith('BBQ-')) {
+    if (!decoded.startsWith('BBQ-')) {
       setResult({ type: 'error', message: 'Invalid QR code' })
       setTimeout(() => setResult(null), 2000)
       return
     }
-    const parts = data.split('|')
+    const parts = decoded.split('|')
     // QR stores uppercase ID fragment, but Supabase UUIDs are lowercase
     const idFragment = parts[0].replace('BBQ-', '').toLowerCase()
     const name = parts[1] || 'Guest'
 
-    // Find matching order by ID prefix
-    const match = orders.find(o => o.id.startsWith(idFragment))
+    // Find matching order by ID prefix (in-memory search — reliable for UUIDs)
+    const match = orders.find(o => o.id.toLowerCase().startsWith(idFragment))
     if (!match) {
-      // Try broader search across all confirmed orders for this event
-      const { data: found } = await supabase.from('ticket_orders').select('*').eq('event_id', selectedEvent).like('id', idFragment + '%').single()
-      if (found) {
-        await checkInGuest(found.id, found.name)
+      // Reload orders and try again
+      const { data: freshOrders } = await supabase.from('ticket_orders').select('*').eq('event_id', selectedEvent).eq('status', 'confirmed')
+      const freshMatch = freshOrders?.find((o: any) => o.id.toLowerCase().startsWith(idFragment))
+      if (freshMatch) {
+        await checkInGuest(freshMatch.id, freshMatch.name)
         loadOrders()
         return
       }

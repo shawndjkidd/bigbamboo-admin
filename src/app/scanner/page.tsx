@@ -294,21 +294,25 @@ function ScannerInterface({ staff, onLogout }: { staff: StaffUser; onLogout: () 
 
   // ─── QR Handler — auto-detects type, respects role ───
   async function handleQRData(raw: string) {
+    // Try URL-decoding in case QR data was encoded
+    let decoded = raw
+    try { decoded = decodeURIComponent(raw) } catch {}
+
     // Ticket QR: BBQ-{id8}|{name}|{event_title}
-    if (raw.startsWith('BBQ-')) {
+    if (decoded.startsWith('BBQ-')) {
       if (staff.role === 'bar_staff') {
         setResult({ type: 'error', message: 'Ticket check-in not available for bar staff' })
         setTimeout(() => { setResult(null); if (mode === 'scan') startCamera() }, 2500)
         return
       }
-      await handleTicketQR(raw)
+      await handleTicketQR(decoded)
       return
     }
 
     // Prize QR: BB-xxx or JSON { code: "BB-xxx" }
     let code = ''
-    try { const parsed = JSON.parse(raw); code = parsed.code || '' }
-    catch { if (raw.startsWith('BB-')) code = raw }
+    try { const parsed = JSON.parse(decoded); code = parsed.code || '' }
+    catch { if (decoded.startsWith('BB-')) code = decoded }
 
     if (code && code.startsWith('BB-')) {
       if (staff.role === 'door_staff') {
@@ -327,35 +331,51 @@ function ScannerInterface({ staff, onLogout }: { staff: StaffUser; onLogout: () 
 
   // ─── Ticket Check-In ───
   async function handleTicketQR(data: string) {
-    const parts = data.split('|')
+    // QR data might be URL-encoded from the QR generator
+    let decoded = data
+    try { decoded = decodeURIComponent(data) } catch {}
+
+    const parts = decoded.split('|')
     // QR stores uppercase ID fragment, but Supabase UUIDs are lowercase
     const idFragment = parts[0].replace('BBQ-', '').toLowerCase()
     const guestName = parts[1] || 'Guest'
 
     setResult({ type: 'info', message: 'Looking up ticket...' })
 
-    // Try to find by ID prefix (with selected event first)
-    const found = selectedEvent
-      ? await sbFetch('ticket_orders', {
-          query: `?id=like.${idFragment}*&event_id=eq.${selectedEvent}&select=*`
-        })
-      : null
-
-    if (found && found.length > 0) {
+    // First: check in-memory guest list (already loaded for selected event)
+    const localMatch = guestOrders.find(o => o.id.toLowerCase().startsWith(idFragment))
+    if (localMatch) {
       setResult(null)
-      setTicketOrder(found[0])
+      setTicketOrder(localMatch)
       return
     }
 
-    // Try broader: any event
-    const broader = await sbFetch('ticket_orders', {
-      query: `?id=like.${idFragment}*&select=*`
-    })
+    // Fallback: fetch all confirmed orders for this event and search
+    if (selectedEvent) {
+      const allOrders = await sbFetch('ticket_orders', {
+        query: `?event_id=eq.${selectedEvent}&status=eq.confirmed&select=*`
+      })
+      if (allOrders) {
+        const match = allOrders.find((o: any) => o.id.toLowerCase().startsWith(idFragment))
+        if (match) {
+          setResult(null)
+          setTicketOrder(match)
+          return
+        }
+      }
+    }
 
-    if (broader && broader.length > 0) {
-      setResult(null)
-      setTicketOrder(broader[0])
-      return
+    // Last resort: fetch ALL orders across events
+    const all = await sbFetch('ticket_orders', {
+      query: `?status=eq.confirmed&select=*`
+    })
+    if (all) {
+      const match = all.find((o: any) => o.id.toLowerCase().startsWith(idFragment))
+      if (match) {
+        setResult(null)
+        setTicketOrder(match)
+        return
+      }
     }
 
     setResult({ type: 'error', message: `Ticket not found for "${guestName}"` })
