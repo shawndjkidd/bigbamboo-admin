@@ -8,7 +8,9 @@ const NAV = [
   { href: '/dashboard/menu', label: 'Menu' },
   { href: '/dashboard/events', label: 'Events' },
   { href: '/dashboard/tickets', label: 'Ticket Sales' },
-  { href: '/dashboard/scan', label: 'Scanner' },
+  { href: '/dashboard/scan', label: 'Prize Scanner' },
+  { href: '/door', label: 'Door Check-In' },
+  { href: '/scanner', label: 'Staff Scanner' },
   { href: '/dashboard/hours', label: 'Hours & Location' },
   { href: '/dashboard/loyalty', label: 'Drinks Club' },
   { href: '/dashboard/game', label: 'Game Control' },
@@ -17,7 +19,9 @@ const NAV = [
 ]
 
 const SCANNER_NAV = [
-  { href: '/dashboard/scan', label: 'Scanner' },
+  { href: '/dashboard/scan', label: 'Prize Scanner' },
+  { href: '/door', label: 'Door Check-In' },
+  { href: '/scanner', label: 'Staff Scanner' },
 ]
 
 export default function Sidebar({ role }: { role: string }) {
