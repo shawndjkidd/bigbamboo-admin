@@ -4,8 +4,9 @@ import Script from 'next/script'
 
 /*
  * ════════════════════════════════════════════════════════════════
- *  BIGBAMBOO EVENT SCANNER
- *  Standalone scanner page with PIN login for event staff.
+ *  BIGBAMBOO UNIFIED STAFF SCANNER
+ *  Handles both ticket check-ins (BBQ-) and prize redemptions (BB-)
+ *  Auto-detects QR type. Staff PIN login — no dashboard access.
  *  Access: admin.bigbamboo.app/scanner
  * ════════════════════════════════════════════════════════════════
  */
@@ -50,13 +51,18 @@ const B = {
   red: '#ef4444',
 }
 
-interface StaffUser { id: string; email: string; name: string; role: string; pin: string }
+interface StaffUser { id: string; name: string; role: string; pin: string }
 interface PromoClaim {
   id: string; claim_code: string; prize_type: string; prize_label: string;
   contact_type: string; contact_value: string; status: string;
   issued_at: string; expires_at: string; redeemed_at: string | null;
   redeemed_by: string | null; discount_percent: number | null; max_discount_vnd: number | null;
   source_code: string;
+}
+interface TicketOrder {
+  id: string; name: string; email: string; phone: string;
+  event_id: string; event_title: string; quantity: number;
+  status: string; checked_in: boolean; checked_in_at: string | null;
 }
 
 // ─── Login Screen ───
@@ -69,14 +75,12 @@ function LoginScreen({ onLogin }: { onLogin: (user: StaffUser) => void }) {
     setError('')
     if (!name.trim()) { setError('Enter your name'); return }
     if (pin !== '1234') { setError('Incorrect PIN'); return }
-
-    onLogin({ id: 'staff-' + Date.now(), email: '', name: name.trim(), role: 'staff', pin })
+    onLogin({ id: 'staff-' + Date.now(), name: name.trim(), role: 'staff', pin })
   }
 
   return (
     <div style={{ minHeight: '100vh', background: `radial-gradient(ellipse at 50% 20%, rgba(42,138,106,0.12) 0%, ${B.bg} 70%)`, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, fontFamily: "'DM Sans', sans-serif" }}>
       <div style={{ width: '100%', maxWidth: 360, textAlign: 'center' }}>
-        {/* Logo — big and centered */}
         <img src="https://bigbamboo.app/images/bbb-img-5.png" alt="BigBamBoo"
           style={{ width: 140, height: 140, borderRadius: 32, objectFit: 'cover', marginBottom: 28,
             boxShadow: '0 8px 40px rgba(0,0,0,0.5), 0 0 60px rgba(42,138,106,0.1)',
@@ -84,39 +88,24 @@ function LoginScreen({ onLogin }: { onLogin: (user: StaffUser) => void }) {
 
         <div style={{ fontFamily: "'Sigmar', cursive", fontSize: 'clamp(20px,5vw,26px)', color: B.gold,
           letterSpacing: '0.02em', marginBottom: 4, lineHeight: 1.1,
-          textShadow: `0 2px 16px rgba(232,168,32,0.25)` }}>
+          textShadow: '0 2px 16px rgba(232,168,32,0.25)' }}>
           Staff Scanner
         </div>
         <div style={{ fontSize: 13, color: B.creamMuted, marginBottom: 36 }}>Enter your name &amp; PIN to continue</div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 20 }}>
-          <input
-            type="text"
-            value={name}
-            onChange={e => setName(e.target.value)}
-            placeholder="Your name"
-            onKeyDown={e => e.key === 'Enter' && handleLogin()}
-            style={{
-              padding: '16px 20px', borderRadius: 14, fontSize: 16, border: `1px solid ${B.creamFaint}`,
+          <input type="text" value={name} onChange={e => setName(e.target.value)}
+            placeholder="Your name" onKeyDown={e => e.key === 'Enter' && handleLogin()}
+            style={{ padding: '16px 20px', borderRadius: 14, fontSize: 16, border: `1px solid ${B.creamFaint}`,
               background: 'rgba(255,255,255,0.04)', color: B.cream, outline: 'none',
-              fontFamily: "'DM Sans', sans-serif", boxSizing: 'border-box', width: '100%',
-            }}
-          />
-          <input
-            type="password"
-            inputMode="numeric"
-            maxLength={4}
-            value={pin}
+              fontFamily: "'DM Sans', sans-serif", boxSizing: 'border-box', width: '100%' }} />
+          <input type="password" inputMode="numeric" maxLength={4} value={pin}
             onChange={e => setPin(e.target.value.replace(/\D/g, '').slice(0, 4))}
-            placeholder="4-digit PIN"
-            onKeyDown={e => e.key === 'Enter' && handleLogin()}
-            style={{
-              padding: '16px 20px', borderRadius: 14, fontSize: 20, border: `1px solid ${B.creamFaint}`,
+            placeholder="4-digit PIN" onKeyDown={e => e.key === 'Enter' && handleLogin()}
+            style={{ padding: '16px 20px', borderRadius: 14, fontSize: 20, border: `1px solid ${B.creamFaint}`,
               background: 'rgba(255,255,255,0.04)', color: B.cream, outline: 'none',
               fontFamily: "'DM Mono', monospace", letterSpacing: '0.35em', textAlign: 'center',
-              boxSizing: 'border-box', width: '100%',
-            }}
-          />
+              boxSizing: 'border-box', width: '100%' }} />
         </div>
 
         {error && (
@@ -126,13 +115,10 @@ function LoginScreen({ onLogin }: { onLogin: (user: StaffUser) => void }) {
         )}
 
         <button onClick={handleLogin}
-          style={{
-            width: '100%', padding: '17px', borderRadius: 16, fontSize: 17, fontWeight: 700,
+          style={{ width: '100%', padding: '17px', borderRadius: 16, fontSize: 17, fontWeight: 700,
             border: 'none', cursor: 'pointer', fontFamily: "'DM Sans', sans-serif",
-            background: `linear-gradient(135deg, ${B.orange}, #f09050)`,
-            color: '#fff',
-            boxShadow: '0 8px 32px rgba(232,120,48,0.35), inset 0 1px 0 rgba(255,255,255,0.15)',
-          }}>
+            background: `linear-gradient(135deg, ${B.orange}, #f09050)`, color: '#fff',
+            boxShadow: '0 8px 32px rgba(232,120,48,0.35), inset 0 1px 0 rgba(255,255,255,0.15)' }}>
           Log In
         </button>
 
@@ -146,42 +132,66 @@ function LoginScreen({ onLogin }: { onLogin: (user: StaffUser) => void }) {
   )
 }
 
-// ─── Scanner Interface ───
+// ─── Unified Scanner Interface ───
 function ScannerInterface({ staff, onLogout }: { staff: StaffUser; onLogout: () => void }) {
-  const [mode, setMode] = useState<'scan' | 'search'>('scan')
+  const [mode, setMode] = useState<'scan' | 'guests' | 'prizes'>('scan')
   const [result, setResult] = useState<{ type: 'success' | 'error' | 'info'; message: string } | null>(null)
+  const [scanning, setScanning] = useState(false)
+
+  // Prize state
   const [claim, setClaim] = useState<PromoClaim | null>(null)
   const [redeeming, setRedeeming] = useState(false)
+
+  // Ticket/door state
+  const [ticketOrder, setTicketOrder] = useState<TicketOrder | null>(null)
+  const [events, setEvents] = useState<any[]>([])
+  const [selectedEvent, setSelectedEvent] = useState('')
+  const [guestOrders, setGuestOrders] = useState<TicketOrder[]>([])
+  const [guestSearch, setGuestSearch] = useState('')
+
+  // Search state (for prize manual lookup)
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState<PromoClaim[]>([])
   const [searching, setSearching] = useState(false)
-  const [scanning, setScanning] = useState(false)
-  const [recentRedemptions, setRecentRedemptions] = useState<PromoClaim[]>([])
 
+  // Camera refs
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const scanIntervalRef = useRef<any>(null)
   const lastScannedRef = useRef<string>('')
   const streamRef = useRef<MediaStream | null>(null)
-  const [jsQRReady, setJsQRReady] = useState(false)
+
+  // Recent activity
+  const [recentActivity, setRecentActivity] = useState<{ type: string; label: string; time: string }[]>([])
 
   useEffect(() => {
-    loadRecentRedemptions()
+    loadEvents()
   }, [])
 
   useEffect(() => {
-    if (mode === 'scan' && !claim) startCamera()
+    if (selectedEvent) loadGuestOrders()
+  }, [selectedEvent])
+
+  useEffect(() => {
+    if (mode === 'scan' && !claim && !ticketOrder) startCamera()
     else stopCamera()
     return () => stopCamera()
-  }, [mode, claim])
+  }, [mode, claim, ticketOrder])
 
-  async function loadRecentRedemptions() {
-    const data = await sbFetch('promo_claims', {
-      query: '?status=eq.redeemed&order=redeemed_at.desc&limit=10&select=*'
-    })
-    setRecentRedemptions(data || [])
+  async function loadEvents() {
+    const data = await sbFetch('events', { query: '?is_published=eq.true&order=event_date.desc&select=id,title,event_date' })
+    setEvents(data || [])
+    if (data && data.length > 0) setSelectedEvent(data[0].id)
   }
 
+  async function loadGuestOrders() {
+    const data = await sbFetch('ticket_orders', {
+      query: `?event_id=eq.${selectedEvent}&status=eq.confirmed&order=name&select=*`
+    })
+    setGuestOrders(data || [])
+  }
+
+  // ─── Camera / QR Scanning ───
   function startCamera() {
     if (!navigator.mediaDevices) {
       setResult({ type: 'error', message: 'Camera not available' })
@@ -249,29 +259,95 @@ function ScannerInterface({ staff, onLogout }: { staff: StaffUser; onLogout: () 
 
   function stopCamera() {
     if (scanIntervalRef.current) { clearInterval(scanIntervalRef.current); scanIntervalRef.current = null }
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(t => t.stop())
-      streamRef.current = null
-    }
+    if (streamRef.current) { streamRef.current.getTracks().forEach(t => t.stop()); streamRef.current = null }
     if (videoRef.current) videoRef.current.srcObject = null
     setScanning(false)
   }
 
+  // ─── QR Handler — auto-detects type ───
   async function handleQRData(raw: string) {
+    // Ticket QR: BBQ-{id8}|{name}|{event_title}
+    if (raw.startsWith('BBQ-')) {
+      await handleTicketQR(raw)
+      return
+    }
+
+    // Prize QR: BB-xxx or JSON { code: "BB-xxx" }
     let code = ''
     try { const parsed = JSON.parse(raw); code = parsed.code || '' }
     catch { if (raw.startsWith('BB-')) code = raw }
 
-    if (!code || !code.startsWith('BB-')) {
-      setResult({ type: 'error', message: 'Not a valid promo QR code' })
-      setTimeout(() => { setResult(null); if (mode === 'scan') startCamera() }, 2500)
+    if (code && code.startsWith('BB-')) {
+      await handlePrizeQR(code)
       return
     }
-    await lookupClaim(code)
+
+    // Unknown QR
+    setResult({ type: 'error', message: 'Unknown QR code format' })
+    setTimeout(() => { setResult(null); if (mode === 'scan') startCamera() }, 2500)
   }
 
-  async function lookupClaim(code: string) {
-    setClaim(null)
+  // ─── Ticket Check-In ───
+  async function handleTicketQR(data: string) {
+    const parts = data.split('|')
+    const idFragment = parts[0].replace('BBQ-', '')
+    const guestName = parts[1] || 'Guest'
+
+    setResult({ type: 'info', message: 'Looking up ticket...' })
+
+    // Try to find by ID prefix
+    const found = await sbFetch('ticket_orders', {
+      query: `?id=like.${idFragment}*&event_id=eq.${selectedEvent}&select=*`
+    })
+
+    if (found && found.length > 0) {
+      const order = found[0]
+      setResult(null)
+      setTicketOrder(order)
+      return
+    }
+
+    // Try broader: any event
+    const broader = await sbFetch('ticket_orders', {
+      query: `?id=like.${idFragment}*&select=*`
+    })
+
+    if (broader && broader.length > 0) {
+      setResult(null)
+      setTicketOrder(broader[0])
+      return
+    }
+
+    setResult({ type: 'error', message: `Ticket not found for "${guestName}"` })
+    setTimeout(() => { setResult(null); if (mode === 'scan') startCamera() }, 3000)
+  }
+
+  async function checkInGuest(order: TicketOrder) {
+    if (order.checked_in) {
+      setResult({ type: 'info', message: order.name + ' is already checked in' })
+      return
+    }
+
+    const res = await fetch(`${SB_URL}/rest/v1/ticket_orders?id=eq.${order.id}`, {
+      method: 'PATCH',
+      headers: { ...SB_HEADERS, Prefer: 'return=representation' },
+      body: JSON.stringify({ checked_in: true, checked_in_at: new Date().toISOString() }),
+    })
+
+    if (!res.ok) {
+      setResult({ type: 'error', message: 'Check-in failed' })
+      return
+    }
+
+    const updated = { ...order, checked_in: true, checked_in_at: new Date().toISOString() }
+    setTicketOrder(updated)
+    setGuestOrders(prev => prev.map(o => o.id === order.id ? updated : o))
+    setResult({ type: 'success', message: '✓ ' + order.name + ' checked in!' })
+    addActivity('check-in', order.name)
+  }
+
+  // ─── Prize Redemption ───
+  async function handlePrizeQR(code: string) {
     setResult({ type: 'info', message: 'Looking up ' + code + '...' })
 
     const data = await sbFetch('promo_claims', {
@@ -279,7 +355,7 @@ function ScannerInterface({ staff, onLogout }: { staff: StaffUser; onLogout: () 
     })
 
     if (!data || data.length === 0) {
-      setResult({ type: 'error', message: 'Claim not found: ' + code })
+      setResult({ type: 'error', message: 'Prize not found: ' + code })
       setTimeout(() => { setResult(null); if (mode === 'scan') startCamera() }, 3000)
       return
     }
@@ -298,7 +374,7 @@ function ScannerInterface({ staff, onLogout }: { staff: StaffUser; onLogout: () 
       body: JSON.stringify({
         status: 'redeemed',
         redeemed_at: new Date().toISOString(),
-        redeemed_by: staff.email,
+        redeemed_by: staff.name,
       }),
     })
 
@@ -308,18 +384,14 @@ function ScannerInterface({ staff, onLogout }: { staff: StaffUser; onLogout: () 
       return
     }
 
-    setClaim({ ...claim, status: 'redeemed', redeemed_at: new Date().toISOString(), redeemed_by: staff.email })
+    setClaim({ ...claim, status: 'redeemed', redeemed_at: new Date().toISOString(), redeemed_by: staff.name })
     setResult({ type: 'success', message: 'Prize redeemed!' })
-    loadRecentRedemptions()
+    addActivity('redeem', claim.prize_label)
     setRedeeming(false)
   }
 
-  function dismissClaim() {
-    setClaim(null); setResult(null); lastScannedRef.current = ''
-    if (mode === 'scan') startCamera()
-  }
-
-  async function handleSearch() {
+  // ─── Manual Prize Search ───
+  async function handlePrizeSearch() {
     if (!searchQuery.trim()) return
     setSearching(true); setSearchResults([])
     const q = searchQuery.trim().toUpperCase()
@@ -334,7 +406,17 @@ function ScannerInterface({ staff, onLogout }: { staff: StaffUser; onLogout: () 
     setSearching(false)
   }
 
-  function getStatus(c: PromoClaim) {
+  // ─── Helpers ───
+  function dismissResult() {
+    setClaim(null); setTicketOrder(null); setResult(null); lastScannedRef.current = ''
+    if (mode === 'scan') startCamera()
+  }
+
+  function addActivity(type: string, label: string) {
+    setRecentActivity(prev => [{ type, label, time: new Date().toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit' }) }, ...prev].slice(0, 15))
+  }
+
+  function getClaimStatus(c: PromoClaim) {
     const expired = new Date(c.expires_at) < new Date()
     if (c.status === 'redeemed') return { label: 'Redeemed', color: B.green, bg: 'rgba(0,177,79,0.12)', border: 'rgba(0,177,79,0.3)' }
     if (expired) return { label: 'Expired', color: B.red, bg: 'rgba(239,68,68,0.12)', border: 'rgba(239,68,68,0.3)' }
@@ -345,60 +427,144 @@ function ScannerInterface({ staff, onLogout }: { staff: StaffUser; onLogout: () 
     return new Date(d).toLocaleDateString('en-US', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
   }
 
-  const status = claim ? getStatus(claim) : null
+  const filteredGuests = guestOrders.filter(o => {
+    if (!guestSearch) return true
+    const q = guestSearch.toLowerCase()
+    return o.name?.toLowerCase().includes(q) || o.email?.toLowerCase().includes(q) || o.phone?.toLowerCase().includes(q)
+  })
+
+  const checkedInCount = guestOrders.filter(o => o.checked_in).length
+  const claimStatus = claim ? getClaimStatus(claim) : null
   const isExpired = claim ? new Date(claim.expires_at) < new Date() : false
   const canRedeem = claim?.status === 'active'
 
   return (
     <div style={{ minHeight: '100vh', background: B.bg, fontFamily: "'DM Sans', sans-serif", padding: '0 0 40px' }}>
       <canvas ref={canvasRef} style={{ display: 'none' }} />
-      {/* Header */}
-      <div style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: `1px solid ${B.creamFaint}` }}>
+
+      {/* ─── Header ─── */}
+      <div style={{ padding: '14px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: `1px solid ${B.creamFaint}` }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <img src="https://bigbamboo.app/images/bbb-img-5.png" alt="" style={{ width: 36, height: 36, borderRadius: 10, objectFit: 'cover' }} />
           <div>
             <div style={{ fontFamily: "'Sigmar', cursive", fontSize: 16, color: B.gold, letterSpacing: '0.02em' }}>Staff Scanner</div>
-            <div style={{ fontSize: 11, color: B.creamMuted }}>{staff.name} · {staff.role}</div>
+            <div style={{ fontSize: 11, color: B.creamMuted }}>{staff.name}</div>
           </div>
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <a href="/dashboard" style={{ padding: '8px 16px', borderRadius: 8, fontSize: 12, fontWeight: 600, border: `1px solid ${B.creamFaint}`, background: 'transparent', color: B.creamMuted, cursor: 'pointer', textDecoration: 'none' }}>
-            Dashboard
-          </a>
-          <button onClick={onLogout} style={{ padding: '8px 16px', borderRadius: 8, fontSize: 12, fontWeight: 600, border: `1px solid ${B.creamFaint}`, background: 'transparent', color: B.creamMuted, cursor: 'pointer' }}>
-            Logout
-          </button>
-        </div>
+        <button onClick={onLogout} style={{ padding: '8px 16px', borderRadius: 8, fontSize: 12, fontWeight: 600,
+          border: `1px solid ${B.creamFaint}`, background: 'transparent', color: B.creamMuted, cursor: 'pointer' }}>
+          Logout
+        </button>
       </div>
 
-      <div style={{ maxWidth: 420, margin: '0 auto', padding: '20px 20px' }}>
-        {/* Mode toggle */}
-        <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
-          <button onClick={() => { setMode('scan'); setClaim(null); setResult(null) }}
-            style={{ flex: 1, padding: '12px', borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: 'pointer', border: 'none',
-              background: mode === 'scan' ? `${B.teal}25` : B.bgCard,
-              color: mode === 'scan' ? B.tealBright : B.creamMuted, fontFamily: "'DM Sans', sans-serif" }}>
-            Scan QR
-          </button>
-          <button onClick={() => { setMode('search'); setClaim(null); setResult(null); stopCamera() }}
-            style={{ flex: 1, padding: '12px', borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: 'pointer', border: 'none',
-              background: mode === 'search' ? `${B.teal}25` : B.bgCard,
-              color: mode === 'search' ? B.tealBright : B.creamMuted, fontFamily: "'DM Sans', sans-serif" }}>
-            Manual Search
-          </button>
+      <div style={{ maxWidth: 420, margin: '0 auto', padding: '16px 20px' }}>
+
+        {/* ─── Mode Tabs ─── */}
+        <div style={{ display: 'flex', gap: 6, marginBottom: 16 }}>
+          {[
+            { key: 'scan', label: 'Scan QR' },
+            { key: 'guests', label: 'Guest List' },
+            { key: 'prizes', label: 'Prize Search' },
+          ].map(tab => (
+            <button key={tab.key}
+              onClick={() => { setMode(tab.key as any); setClaim(null); setTicketOrder(null); setResult(null) }}
+              style={{ flex: 1, padding: '11px 8px', borderRadius: 10, fontSize: 13, fontWeight: 600, cursor: 'pointer', border: 'none',
+                background: mode === tab.key ? `${B.teal}25` : B.bgCard,
+                color: mode === tab.key ? B.tealBright : B.creamMuted, fontFamily: "'DM Sans', sans-serif" }}>
+              {tab.label}
+            </button>
+          ))}
         </div>
 
-        {/* Result banner */}
+        {/* ─── Event Selector (shown in scan & guests modes) ─── */}
+        {(mode === 'scan' || mode === 'guests') && (
+          <select value={selectedEvent} onChange={e => setSelectedEvent(e.target.value)}
+            style={{ width: '100%', padding: '12px 16px', background: B.bgCard, color: B.cream,
+              border: `1px solid ${B.creamFaint}`, borderRadius: 10, fontSize: 14, marginBottom: 14,
+              fontFamily: "'DM Sans', sans-serif", outline: 'none' }}>
+            <option value="">Select Event</option>
+            {events.map(ev => <option key={ev.id} value={ev.id}>{ev.title}</option>)}
+          </select>
+        )}
+
+        {/* ─── Result Banner ─── */}
         {result && (
-          <div style={{ marginBottom: 16, padding: '14px 18px', borderRadius: 10, fontSize: 14, fontWeight: 600, textAlign: 'center',
+          <div style={{ marginBottom: 14, padding: '14px 18px', borderRadius: 10, fontSize: 14, fontWeight: 600, textAlign: 'center',
             background: result.type === 'success' ? 'rgba(0,177,79,0.12)' : result.type === 'error' ? 'rgba(239,68,68,0.12)' : `${B.teal}15`,
             color: result.type === 'success' ? B.green : result.type === 'error' ? B.red : B.tealBright,
-            border: `1px solid ${result.type === 'success' ? 'rgba(0,177,79,0.3)' : result.type === 'error' ? 'rgba(239,68,68,0.3)' : `${B.teal}30`}` }}>
+            border: `1px solid ${result.type === 'success' ? 'rgba(0,177,79,0.3)' : result.type === 'error' ? 'rgba(239,68,68,0.3)' : B.teal + '30'}` }}>
             {result.message}
           </div>
         )}
 
-        {/* Claim detail card */}
+        {/* ═══════════════════════════════════════════════
+            TICKET CHECK-IN CARD (from QR scan)
+            ═══════════════════════════════════════════════ */}
+        {ticketOrder && (
+          <div style={{ background: B.bgCard, borderRadius: 16, border: `1px solid ${B.creamFaint}`, overflow: 'hidden', marginBottom: 20 }}>
+            <div style={{ padding: '24px 24px 16px', borderBottom: `1px solid ${B.creamFaint}`, textAlign: 'center' }}>
+              <div style={{ fontSize: 40, marginBottom: 8 }}>{ticketOrder.checked_in ? '✅' : '🎟️'}</div>
+              <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 24, letterSpacing: '0.03em', color: B.cream }}>
+                {ticketOrder.name}
+              </div>
+              <div style={{ fontSize: 13, color: B.creamMuted, marginTop: 4 }}>
+                {ticketOrder.event_title || 'Event'} · {ticketOrder.quantity || 1} ticket{(ticketOrder.quantity || 1) > 1 ? 's' : ''}
+              </div>
+              <div style={{ marginTop: 8 }}>
+                <span style={{ display: 'inline-block', padding: '4px 14px', borderRadius: 50, fontSize: 12, fontWeight: 700,
+                  background: ticketOrder.checked_in ? 'rgba(0,177,79,0.12)' : 'rgba(250,131,46,0.12)',
+                  color: ticketOrder.checked_in ? B.green : B.orange,
+                  border: `1px solid ${ticketOrder.checked_in ? 'rgba(0,177,79,0.3)' : 'rgba(250,131,46,0.3)'}`,
+                  letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                  {ticketOrder.checked_in ? 'Checked In' : 'Not Checked In'}
+                </span>
+              </div>
+            </div>
+
+            <div style={{ padding: '16px 24px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 24px', fontSize: 13 }}>
+                {ticketOrder.email && (
+                  <div>
+                    <div style={{ color: B.creamMuted, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 2 }}>Email</div>
+                    <div style={{ color: B.cream }}>{ticketOrder.email}</div>
+                  </div>
+                )}
+                {ticketOrder.phone && (
+                  <div>
+                    <div style={{ color: B.creamMuted, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 2 }}>Phone</div>
+                    <div style={{ color: B.cream }}>{ticketOrder.phone}</div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div style={{ padding: '16px 24px 24px', display: 'flex', gap: 10 }}>
+              {!ticketOrder.checked_in ? (
+                <button onClick={() => checkInGuest(ticketOrder)}
+                  style={{ flex: 1, padding: '15px', borderRadius: 12, fontSize: 16, fontWeight: 700, cursor: 'pointer',
+                    border: 'none', background: B.green, color: '#fff',
+                    fontFamily: "'Bebas Neue', sans-serif", letterSpacing: '0.06em' }}>
+                  Check In Guest
+                </button>
+              ) : (
+                <div style={{ flex: 1, padding: '15px', borderRadius: 12, fontSize: 16, fontWeight: 700, textAlign: 'center',
+                  background: 'rgba(0,177,79,0.1)', color: B.green, border: '1px solid rgba(0,177,79,0.25)',
+                  fontFamily: "'Bebas Neue', sans-serif", letterSpacing: '0.06em' }}>
+                  Already Checked In
+                </div>
+              )}
+              <button onClick={dismissResult}
+                style={{ padding: '15px 20px', borderRadius: 12, fontSize: 14, fontWeight: 600, cursor: 'pointer',
+                  border: `1px solid ${B.creamFaint}`, background: 'transparent', color: B.creamMuted, fontFamily: "'DM Sans', sans-serif" }}>
+                Scan Next
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ═══════════════════════════════════════════════
+            PRIZE CLAIM CARD (from QR scan or search)
+            ═══════════════════════════════════════════════ */}
         {claim && (
           <div style={{ background: B.bgCard, borderRadius: 16, border: `1px solid ${B.creamFaint}`, overflow: 'hidden', marginBottom: 20 }}>
             <div style={{ padding: '24px 24px 16px', borderBottom: `1px solid ${B.creamFaint}`, textAlign: 'center' }}>
@@ -408,9 +574,9 @@ function ScannerInterface({ staff, onLogout }: { staff: StaffUser; onLogout: () 
               </div>
               <div style={{ marginTop: 8 }}>
                 <span style={{ display: 'inline-block', padding: '4px 14px', borderRadius: 50, fontSize: 12, fontWeight: 700,
-                  background: status?.bg, color: status?.color, border: `1px solid ${status?.border}`,
+                  background: claimStatus?.bg, color: claimStatus?.color, border: `1px solid ${claimStatus?.border}`,
                   letterSpacing: '0.06em', textTransform: 'uppercase' }}>
-                  {status?.label}
+                  {claimStatus?.label}
                 </span>
               </div>
             </div>
@@ -458,8 +624,7 @@ function ScannerInterface({ staff, onLogout }: { staff: StaffUser; onLogout: () 
               {canRedeem && (
                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
                   {isExpired && (
-                    <div style={{ fontSize: 11, color: B.orange, fontWeight: 600, textAlign: 'center',
-                      letterSpacing: '0.04em' }}>
+                    <div style={{ fontSize: 11, color: B.orange, fontWeight: 600, textAlign: 'center', letterSpacing: '0.04em' }}>
                       Technically expired — but still redeemable
                     </div>
                   )}
@@ -473,12 +638,12 @@ function ScannerInterface({ staff, onLogout }: { staff: StaffUser; onLogout: () 
               )}
               {claim.status === 'redeemed' && (
                 <div style={{ flex: 1, padding: '15px', borderRadius: 12, fontSize: 16, fontWeight: 700, textAlign: 'center',
-                  background: 'rgba(0,177,79,0.1)', color: B.green, border: `1px solid rgba(0,177,79,0.25)`,
+                  background: 'rgba(0,177,79,0.1)', color: B.green, border: '1px solid rgba(0,177,79,0.25)',
                   fontFamily: "'Bebas Neue', sans-serif", letterSpacing: '0.06em' }}>
                   Already Redeemed
                 </div>
               )}
-              <button onClick={dismissClaim}
+              <button onClick={dismissResult}
                 style={{ padding: '15px 20px', borderRadius: 12, fontSize: 14, fontWeight: 600, cursor: 'pointer',
                   border: `1px solid ${B.creamFaint}`, background: 'transparent', color: B.creamMuted, fontFamily: "'DM Sans', sans-serif" }}>
                 {mode === 'scan' ? 'Scan Next' : 'Back'}
@@ -487,8 +652,10 @@ function ScannerInterface({ staff, onLogout }: { staff: StaffUser; onLogout: () 
           </div>
         )}
 
-        {/* Scan mode: camera */}
-        {mode === 'scan' && !claim && (
+        {/* ═══════════════════════════════════════════════
+            SCAN MODE — Camera
+            ═══════════════════════════════════════════════ */}
+        {mode === 'scan' && !claim && !ticketOrder && (
           <div>
             <div style={{ position: 'relative', width: '100%', aspectRatio: '1', borderRadius: 16, overflow: 'hidden',
               background: '#000', border: `2px solid ${B.teal}30` }}>
@@ -502,21 +669,83 @@ function ScannerInterface({ staff, onLogout }: { staff: StaffUser; onLogout: () 
               )}
             </div>
             <div style={{ textAlign: 'center', marginTop: 14, fontSize: 13, color: B.creamMuted }}>
-              Point camera at customer's prize QR code
+              Scan any QR — tickets & prizes detected automatically
             </div>
           </div>
         )}
 
-        {/* Search mode */}
-        {mode === 'search' && !claim && (
+        {/* ═══════════════════════════════════════════════
+            GUEST LIST MODE — Ticket check-in by name
+            ═══════════════════════════════════════════════ */}
+        {mode === 'guests' && !ticketOrder && (
+          <div>
+            {/* Stats bar */}
+            <div style={{ display: 'flex', gap: 10, marginBottom: 14 }}>
+              <div style={{ flex: 1, padding: '12px 16px', background: B.bgCard, borderRadius: 10, border: `1px solid ${B.creamFaint}`, textAlign: 'center' }}>
+                <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 28, color: B.cream, lineHeight: 1 }}>{guestOrders.length}</div>
+                <div style={{ fontSize: 11, color: B.creamMuted, marginTop: 2 }}>Total</div>
+              </div>
+              <div style={{ flex: 1, padding: '12px 16px', background: B.bgCard, borderRadius: 10, border: `1px solid ${B.creamFaint}`, textAlign: 'center' }}>
+                <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 28, color: B.green, lineHeight: 1 }}>{checkedInCount}</div>
+                <div style={{ fontSize: 11, color: B.creamMuted, marginTop: 2 }}>Checked In</div>
+              </div>
+              <div style={{ flex: 1, padding: '12px 16px', background: B.bgCard, borderRadius: 10, border: `1px solid ${B.creamFaint}`, textAlign: 'center' }}>
+                <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 28, color: B.orange, lineHeight: 1 }}>{guestOrders.length - checkedInCount}</div>
+                <div style={{ fontSize: 11, color: B.creamMuted, marginTop: 2 }}>Remaining</div>
+              </div>
+            </div>
+
+            {/* Search */}
+            <input value={guestSearch} onChange={e => setGuestSearch(e.target.value)}
+              placeholder="Search by name, email, or phone..."
+              style={{ width: '100%', padding: '14px 18px', background: B.bgCard, color: B.cream,
+                border: `1px solid ${B.creamFaint}`, borderRadius: 10, fontSize: 14, marginBottom: 12,
+                boxSizing: 'border-box', fontFamily: "'DM Sans', sans-serif", outline: 'none' }} autoFocus />
+
+            {/* Guest list */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {filteredGuests.map(o => (
+                <div key={o.id} onClick={() => !o.checked_in ? checkInGuest(o) : setTicketOrder(o)}
+                  style={{ padding: '14px 18px', background: o.checked_in ? 'rgba(0,177,79,0.06)' : B.bgCard,
+                    border: `1px solid ${o.checked_in ? 'rgba(0,177,79,0.15)' : B.creamFaint}`,
+                    borderRadius: 10, cursor: 'pointer' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                      <div style={{ fontWeight: 600, fontSize: 15, color: B.cream }}>{o.name}</div>
+                      <div style={{ fontSize: 12, color: B.creamMuted, marginTop: 2 }}>
+                        {o.email || o.phone || ''}{(o.quantity || 1) > 1 ? ` · ${o.quantity} tickets` : ''}
+                      </div>
+                    </div>
+                    <div style={{ padding: '6px 14px', borderRadius: 50, fontSize: 12, fontWeight: 600,
+                      background: o.checked_in ? 'rgba(0,177,79,0.15)' : B.orange,
+                      color: o.checked_in ? B.green : '#fff' }}>
+                      {o.checked_in ? 'Checked In' : 'Check In'}
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {filteredGuests.length === 0 && (
+                <div style={{ textAlign: 'center', padding: 30, color: B.creamMuted, fontSize: 14 }}>
+                  {guestSearch ? 'No guests found' : 'No confirmed guests for this event'}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ═══════════════════════════════════════════════
+            PRIZE SEARCH MODE — Manual code/phone lookup
+            ═══════════════════════════════════════════════ */}
+        {mode === 'prizes' && !claim && (
           <div>
             <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
               <input value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && handleSearch()}
+                onKeyDown={e => e.key === 'Enter' && handlePrizeSearch()}
                 placeholder="Code (BB-...) or phone/email..."
                 style={{ flex: 1, padding: '14px 18px', background: B.bgCard, color: B.cream,
-                  border: `1px solid ${B.creamFaint}`, borderRadius: 10, fontSize: 14, fontFamily: "'DM Sans', sans-serif", outline: 'none' }} autoFocus />
-              <button onClick={handleSearch} disabled={searching}
+                  border: `1px solid ${B.creamFaint}`, borderRadius: 10, fontSize: 14,
+                  fontFamily: "'DM Sans', sans-serif", outline: 'none' }} autoFocus />
+              <button onClick={handlePrizeSearch} disabled={searching}
                 style={{ padding: '14px 20px', borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: 'pointer',
                   border: 'none', background: B.teal, color: B.cream, fontFamily: "'DM Sans', sans-serif" }}>
                 {searching ? '...' : 'Search'}
@@ -526,9 +755,9 @@ function ScannerInterface({ staff, onLogout }: { staff: StaffUser; onLogout: () 
             {searchResults.length > 0 && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {searchResults.map(c => {
-                  const s = getStatus(c)
+                  const s = getClaimStatus(c)
                   return (
-                    <div key={c.id} onClick={() => { setClaim(c); stopCamera() }}
+                    <div key={c.id} onClick={() => setClaim(c)}
                       style={{ padding: '14px 18px', background: B.bgCard, border: `1px solid ${B.creamFaint}`,
                         borderRadius: 10, cursor: 'pointer' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -550,29 +779,27 @@ function ScannerInterface({ staff, onLogout }: { staff: StaffUser; onLogout: () 
             )}
 
             {searchResults.length === 0 && searchQuery && !searching && (
-              <div style={{ textAlign: 'center', padding: 30, color: B.creamMuted, fontSize: 14 }}>No claims found</div>
+              <div style={{ textAlign: 'center', padding: 30, color: B.creamMuted, fontSize: 14 }}>No prizes found</div>
             )}
           </div>
         )}
 
-        {/* Recent redemptions */}
-        {!claim && recentRedemptions.length > 0 && (
-          <div style={{ marginTop: 32 }}>
-            <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 18, letterSpacing: '0.04em', color: B.cream, marginBottom: 12 }}>
-              Recent Redemptions
+        {/* ─── Recent Activity ─── */}
+        {!claim && !ticketOrder && recentActivity.length > 0 && (
+          <div style={{ marginTop: 28 }}>
+            <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 18, letterSpacing: '0.04em', color: B.cream, marginBottom: 10 }}>
+              Recent Activity
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {recentRedemptions.map(c => (
-                <div key={c.id} onClick={() => setClaim(c)}
-                  style={{ padding: '10px 14px', background: B.bgCard, border: `1px solid ${B.creamFaint}`,
-                    borderRadius: 8, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10, fontSize: 13 }}>
-                  <span>🎁</span>
-                  <span style={{ fontWeight: 600, color: B.cream }}>{c.prize_label}</span>
-                  <span style={{ color: B.creamMuted }}>·</span>
-                  <span style={{ color: B.creamMuted, fontSize: 12 }}>{c.claim_code}</span>
-                  <span style={{ marginLeft: 'auto', color: B.creamMuted, fontSize: 12 }}>
-                    {c.redeemed_at ? fmtDate(c.redeemed_at) : ''}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              {recentActivity.map((a, i) => (
+                <div key={i} style={{ padding: '8px 14px', background: B.bgCard, border: `1px solid ${B.creamFaint}`,
+                  borderRadius: 8, display: 'flex', alignItems: 'center', gap: 10, fontSize: 13 }}>
+                  <span>{a.type === 'check-in' ? '🎟️' : '🎁'}</span>
+                  <span style={{ fontWeight: 600, color: B.cream }}>{a.label}</span>
+                  <span style={{ color: B.creamMuted, fontSize: 11 }}>
+                    {a.type === 'check-in' ? 'checked in' : 'redeemed'}
                   </span>
+                  <span style={{ marginLeft: 'auto', color: B.creamMuted, fontSize: 12 }}>{a.time}</span>
                 </div>
               ))}
             </div>
@@ -580,7 +807,7 @@ function ScannerInterface({ staff, onLogout }: { staff: StaffUser; onLogout: () 
         )}
       </div>
 
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600;700&display=swap');`}</style>
+      <style>{`@import url('https://fonts.googleapis.com/css2?family=Sigmar&family=Bebas+Neue&family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap');`}</style>
     </div>
   )
 }
@@ -588,9 +815,9 @@ function ScannerInterface({ staff, onLogout }: { staff: StaffUser; onLogout: () 
 // ─── Main Page ───
 export default function ScannerPage() {
   const [staff, setStaff] = useState<StaffUser | null>(null)
+  const [jsQRLoaded, setJsQRLoaded] = useState(false)
 
   useEffect(() => {
-    // Check for existing session
     const saved = sessionStorage.getItem('bb_scanner_staff')
     if (saved) {
       try { setStaff(JSON.parse(saved)) } catch {}
@@ -612,7 +839,8 @@ export default function ScannerPage() {
     <>
       <Script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js" strategy="afterInteractive"
         onLoad={() => {
-          // If camera is waiting for jsQR, trigger a re-render
+          setJsQRLoaded(true)
+          // Trigger re-render so camera picks up jsQR
           setStaff(prev => prev ? { ...prev } : prev)
         }} />
       <ScannerInterface staff={staff} onLogout={handleLogout} />
