@@ -15,6 +15,7 @@ const NAV = [
   { href: '/dashboard/loyalty', label: 'Drinks Club' },
   { href: '/dashboard/game', label: 'Game Control' },
   { href: '/dashboard/claims', label: 'Claims & Contacts' },
+  { href: '/dashboard/staff', label: 'Staff Logins', adminOnly: true },
   { href: '/dashboard/settings', label: 'Settings', adminOnly: true },
 ]
 

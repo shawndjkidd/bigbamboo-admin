@@ -51,7 +51,7 @@ const B = {
   red: '#ef4444',
 }
 
-interface StaffUser { id: string; name: string; role: string; pin: string }
+interface StaffUser { id: string; name: string; role: 'door_staff' | 'bar_staff' | 'manager'; pin: string }
 interface PromoClaim {
   id: string; claim_code: string; prize_type: string; prize_label: string;
   contact_type: string; contact_value: string; status: string;
@@ -70,12 +70,39 @@ function LoginScreen({ onLogin }: { onLogin: (user: StaffUser) => void }) {
   const [name, setName] = useState('')
   const [pin, setPin] = useState('')
   const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
 
-  function handleLogin() {
+  async function handleLogin() {
     setError('')
     if (!name.trim()) { setError('Enter your name'); return }
-    if (pin !== '1234') { setError('Incorrect PIN'); return }
-    onLogin({ id: 'staff-' + Date.now(), name: name.trim(), role: 'staff', pin })
+    if (!pin || pin.length < 4) { setError('Enter your 4-digit PIN'); return }
+
+    setLoading(true)
+    // Look up staff login by name (case-insensitive) and PIN
+    const data = await sbFetch('staff_logins', {
+      query: `?name=ilike.${encodeURIComponent(name.trim())}&pin=eq.${encodeURIComponent(pin)}&is_active=eq.true&select=*`
+    })
+
+    if (!data || data.length === 0) {
+      // Fallback: check if ANY active login matches just the PIN (in case name is slightly different)
+      const byPin = await sbFetch('staff_logins', {
+        query: `?pin=eq.${encodeURIComponent(pin)}&is_active=eq.true&select=*`
+      })
+      if (byPin && byPin.length === 1) {
+        // Single match by PIN — use it
+        const staff = byPin[0]
+        setLoading(false)
+        onLogin({ id: staff.id, name: staff.name, role: staff.role, pin: staff.pin })
+        return
+      }
+      setLoading(false)
+      setError('Invalid name or PIN')
+      return
+    }
+
+    const staff = data[0]
+    setLoading(false)
+    onLogin({ id: staff.id, name: staff.name, role: staff.role, pin: staff.pin })
   }
 
   return (
@@ -114,12 +141,13 @@ function LoginScreen({ onLogin }: { onLogin: (user: StaffUser) => void }) {
           </div>
         )}
 
-        <button onClick={handleLogin}
+        <button onClick={handleLogin} disabled={loading}
           style={{ width: '100%', padding: '17px', borderRadius: 16, fontSize: 17, fontWeight: 700,
             border: 'none', cursor: 'pointer', fontFamily: "'DM Sans', sans-serif",
             background: `linear-gradient(135deg, ${B.orange}, #f09050)`, color: '#fff',
-            boxShadow: '0 8px 32px rgba(232,120,48,0.35), inset 0 1px 0 rgba(255,255,255,0.15)' }}>
-          Log In
+            boxShadow: '0 8px 32px rgba(232,120,48,0.35), inset 0 1px 0 rgba(255,255,255,0.15)',
+            opacity: loading ? 0.6 : 1 }}>
+          {loading ? 'Checking...' : 'Log In'}
         </button>
 
         <div style={{ marginTop: 24, fontSize: 11, color: 'rgba(255,255,255,0.15)', letterSpacing: '0.12em', textTransform: 'uppercase' }}>
@@ -264,10 +292,15 @@ function ScannerInterface({ staff, onLogout }: { staff: StaffUser; onLogout: () 
     setScanning(false)
   }
 
-  // ─── QR Handler — auto-detects type ───
+  // ─── QR Handler — auto-detects type, respects role ───
   async function handleQRData(raw: string) {
     // Ticket QR: BBQ-{id8}|{name}|{event_title}
     if (raw.startsWith('BBQ-')) {
+      if (staff.role === 'bar_staff') {
+        setResult({ type: 'error', message: 'Ticket check-in not available for bar staff' })
+        setTimeout(() => { setResult(null); if (mode === 'scan') startCamera() }, 2500)
+        return
+      }
       await handleTicketQR(raw)
       return
     }
@@ -278,6 +311,11 @@ function ScannerInterface({ staff, onLogout }: { staff: StaffUser; onLogout: () 
     catch { if (raw.startsWith('BB-')) code = raw }
 
     if (code && code.startsWith('BB-')) {
+      if (staff.role === 'door_staff') {
+        setResult({ type: 'error', message: 'Prize redemption not available for door staff' })
+        setTimeout(() => { setResult(null); if (mode === 'scan') startCamera() }, 2500)
+        return
+      }
       await handlePrizeQR(code)
       return
     }
@@ -448,7 +486,7 @@ function ScannerInterface({ staff, onLogout }: { staff: StaffUser; onLogout: () 
           <img src="https://bigbamboo.app/images/bbb-img-5.png" alt="" style={{ width: 36, height: 36, borderRadius: 10, objectFit: 'cover' }} />
           <div>
             <div style={{ fontFamily: "'Sigmar', cursive", fontSize: 16, color: B.gold, letterSpacing: '0.02em' }}>Staff Scanner</div>
-            <div style={{ fontSize: 11, color: B.creamMuted }}>{staff.name}</div>
+            <div style={{ fontSize: 11, color: B.creamMuted }}>{staff.name} · {staff.role === 'door_staff' ? 'Door' : staff.role === 'bar_staff' ? 'Bar' : 'Manager'}</div>
           </div>
         </div>
         <button onClick={onLogout} style={{ padding: '8px 16px', borderRadius: 8, fontSize: 12, fontWeight: 600,
@@ -459,13 +497,13 @@ function ScannerInterface({ staff, onLogout }: { staff: StaffUser; onLogout: () 
 
       <div style={{ maxWidth: 420, margin: '0 auto', padding: '16px 20px' }}>
 
-        {/* ─── Mode Tabs ─── */}
+        {/* ─── Mode Tabs (filtered by role) ─── */}
         <div style={{ display: 'flex', gap: 6, marginBottom: 16 }}>
           {[
-            { key: 'scan', label: 'Scan QR' },
-            { key: 'guests', label: 'Guest List' },
-            { key: 'prizes', label: 'Prize Search' },
-          ].map(tab => (
+            { key: 'scan', label: 'Scan QR', roles: ['door_staff', 'bar_staff', 'manager'] },
+            { key: 'guests', label: 'Guest List', roles: ['door_staff', 'manager'] },
+            { key: 'prizes', label: 'Prize Search', roles: ['bar_staff', 'manager'] },
+          ].filter(tab => tab.roles.includes(staff.role)).map(tab => (
             <button key={tab.key}
               onClick={() => { setMode(tab.key as any); setClaim(null); setTicketOrder(null); setResult(null) }}
               style={{ flex: 1, padding: '11px 8px', borderRadius: 10, fontSize: 13, fontWeight: 600, cursor: 'pointer', border: 'none',
@@ -669,7 +707,9 @@ function ScannerInterface({ staff, onLogout }: { staff: StaffUser; onLogout: () 
               )}
             </div>
             <div style={{ textAlign: 'center', marginTop: 14, fontSize: 13, color: B.creamMuted }}>
-              Scan any QR — tickets & prizes detected automatically
+              {staff.role === 'door_staff' ? 'Scan ticket QR to check in guests' :
+               staff.role === 'bar_staff' ? 'Scan prize QR to redeem' :
+               'Scan any QR — tickets & prizes detected automatically'}
             </div>
           </div>
         )}
