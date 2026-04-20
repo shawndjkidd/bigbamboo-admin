@@ -76,7 +76,8 @@ export default function DoorPage() {
       return
     }
     const parts = data.split('|')
-    const idFragment = parts[0].replace('BBQ-', '')
+    // QR stores uppercase ID fragment, but Supabase UUIDs are lowercase
+    const idFragment = parts[0].replace('BBQ-', '').toLowerCase()
     const name = parts[1] || 'Guest'
 
     // Find matching order by ID prefix

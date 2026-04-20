@@ -328,20 +328,22 @@ function ScannerInterface({ staff, onLogout }: { staff: StaffUser; onLogout: () 
   // ─── Ticket Check-In ───
   async function handleTicketQR(data: string) {
     const parts = data.split('|')
-    const idFragment = parts[0].replace('BBQ-', '')
+    // QR stores uppercase ID fragment, but Supabase UUIDs are lowercase
+    const idFragment = parts[0].replace('BBQ-', '').toLowerCase()
     const guestName = parts[1] || 'Guest'
 
     setResult({ type: 'info', message: 'Looking up ticket...' })
 
-    // Try to find by ID prefix
-    const found = await sbFetch('ticket_orders', {
-      query: `?id=like.${idFragment}*&event_id=eq.${selectedEvent}&select=*`
-    })
+    // Try to find by ID prefix (with selected event first)
+    const found = selectedEvent
+      ? await sbFetch('ticket_orders', {
+          query: `?id=like.${idFragment}*&event_id=eq.${selectedEvent}&select=*`
+        })
+      : null
 
     if (found && found.length > 0) {
-      const order = found[0]
       setResult(null)
-      setTicketOrder(order)
+      setTicketOrder(found[0])
       return
     }
 
