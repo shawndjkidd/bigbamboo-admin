@@ -52,6 +52,9 @@ async function getAppToken(): Promise<ProviderResult<string>> {
     return { ok: false, error: { kind: 'network_error', message: String(e) } };
   }
   if (res.ok === false) {
+    let body = '';
+    try { body = (await res.text()).slice(0, 500); } catch {}
+    console.error('[spotify.token] http', res.status, 'body:', body);
     if (res.status === 429) {
       const retry = Number(res.headers.get('retry-after')) || 30;
       return { ok: false, error: { kind: 'rate_limited', retryAfterSec: retry } };
@@ -162,6 +165,9 @@ export class SpotifyProvider implements PlaybackProvider {
       return { ok: false, error: { kind: 'network_error', message: String(e) } };
     }
     if (res.ok === false) {
+      let body = '';
+      try { body = (await res.text()).slice(0, 500); } catch {}
+      console.error('[spotify.search] http', res.status, 'url:', url, 'body:', body);
       return { ok: false, error: mapHttpError(res.status, res.headers.get('retry-after')) };
     }
     const json = (await res.json()) as { tracks?: { items?: SpotifyTrackJson[] } };
@@ -187,6 +193,9 @@ export class SpotifyProvider implements PlaybackProvider {
       return { ok: false, error: { kind: 'network_error', message: String(e) } };
     }
     if (res.ok === false) {
+      let body = '';
+      try { body = (await res.text()).slice(0, 500); } catch {}
+      console.error('[spotify.getTrack] http', res.status, 'id:', trackId, 'body:', body);
       return { ok: false, error: mapHttpError(res.status, res.headers.get('retry-after')) };
     }
     const json = (await res.json()) as SpotifyTrackJson;
