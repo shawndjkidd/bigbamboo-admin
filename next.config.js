@@ -17,33 +17,30 @@ const nextConfig = {
   // while admin.bigbamboo.app keeps the full /jukebox/* paths.
   async rewrites() {
     const jukeHost = { type: 'host', value: 'jukebox.bigbamboo.app' }
-    return [
-      // Root → guest jukebox page
-      {
-        source: '/',
-        has: [jukeHost],
-        destination: '/jukebox',
-      },
-      // /admin → staff admin
-      {
-        source: '/admin',
-        has: [jukeHost],
-        destination: '/jukebox/admin',
-      },
-      {
-        source: '/admin/:path*',
-        has: [jukeHost],
-        destination: '/jukebox/admin/:path*',
-      },
-      // /display → kiosk
-      {
-        source: '/display',
-        has: [jukeHost],
-        destination: '/jukebox/display',
-      },
-      // Keep the API surface usable from the subdomain too — same paths,
-      // since the routes are already namespaced under /api/jukebox/*.
-    ]
+    return {
+      beforeFiles: [
+        {
+          source: '/',
+          has: [jukeHost],
+          destination: '/jukebox',
+        },
+        {
+          source: '/admin',
+          has: [jukeHost],
+          destination: '/jukebox/admin',
+        },
+        {
+          source: '/admin/:path*',
+          has: [jukeHost],
+          destination: '/jukebox/admin/:path*',
+        },
+        {
+          source: '/display',
+          has: [jukeHost],
+          destination: '/jukebox/display',
+        },
+      ],
+    }
   },
 }
 
