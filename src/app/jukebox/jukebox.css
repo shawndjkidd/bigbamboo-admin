@@ -1,0 +1,166 @@
+/* ═══════════════════════════════════════════════════════════════
+    Jukebox-scoped styles. Mirrors a subset of the redesign's
+    globals.css. Self-contained so /jukebox/* renders correctly
+    even if the project's globals.css hasn't been wired into the
+    root layout yet. Drop this file once globals.css is loaded.
+   ═══════════════════════════════════════════════════════════════ */
+
+:root {
+  --bg: #ffffff;
+  --bg-card: #ffffff;
+  --bg-input: #f3f4f6;
+  --bg-hover: #f9fafb;
+  --bg-active: rgba(234,88,12,0.06);
+  --bg-subtle: #f9fafb;
+  --text: #1a1a1a;
+  --text-secondary: #6b7280;
+  --text-muted: #9ca3af;
+  --border: #e5e7eb;
+  --accent: #ea580c;
+  --accent-hover: #dc4a04;
+  --accent-light: rgba(234,88,12,0.1);
+  --green: #16a34a;
+  --red: #dc2626;
+  --blue: #2563eb;
+  --badge-green-bg: rgba(22,163,74,0.1);
+  --badge-green-text: #16a34a;
+  --badge-green-border: rgba(22,163,74,0.2);
+  --badge-red-bg: rgba(220,38,38,0.1);
+  --badge-red-text: #dc2626;
+  --badge-red-border: rgba(220,38,38,0.2);
+  --badge-orange-bg: rgba(234,88,12,0.1);
+  --badge-orange-text: #ea580c;
+  --badge-orange-border: rgba(234,88,12,0.2);
+  --badge-gray-bg: rgba(107,114,128,0.1);
+  --badge-gray-text: #6b7280;
+  --badge-gray-border: rgba(107,114,128,0.2);
+  --badge-blue-bg: rgba(37,99,235,0.1);
+  --badge-blue-text: #2563eb;
+  --badge-blue-border: rgba(37,99,235,0.2);
+  --shadow: 0 1px 3px rgba(0,0,0,0.08);
+  --shadow-lg: 0 4px 12px rgba(0,0,0,0.08);
+}
+
+[data-theme="dark"] {
+  --bg: #111113;
+  --bg-card: #1c1c20;
+  --bg-input: #27272a;
+  --bg-hover: #2e2e33;
+  --bg-active: rgba(234,88,12,0.12);
+  --bg-subtle: #18181b;
+  --text: #f4f4f5;
+  --text-secondary: #a1a1aa;
+  --text-muted: #71717a;
+  --border: #2e2e33;
+  --accent: #ea580c;
+  --accent-hover: #f97316;
+  --accent-light: rgba(234,88,12,0.15);
+  --green: #22c55e;
+  --red: #ef4444;
+  --blue: #3b82f6;
+  --shadow: 0 1px 3px rgba(0,0,0,0.4);
+  --shadow-lg: 0 4px 12px rgba(0,0,0,0.3);
+}
+
+.jukebox-root,
+.jukebox-root * { box-sizing: border-box; }
+
+.jukebox-root {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'DM Sans', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  min-height: 100vh;
+}
+
+.jukebox-root .card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+}
+
+.jukebox-root .input {
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 14px;
+  color: var(--text);
+  font-size: 14px;
+  width: 100%;
+  transition: border-color 0.15s;
+  font-family: inherit;
+}
+.jukebox-root .input:focus { border-color: var(--accent); outline: none; box-shadow: 0 0 0 3px var(--accent-light); }
+.jukebox-root .input::placeholder { color: var(--text-muted); }
+.jukebox-root select.input {
+  cursor: pointer; appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%239ca3af' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 12px center; padding-right: 32px;
+}
+
+.jukebox-root .btn-accent {
+  background: var(--accent); color: #fff; font-weight: 600;
+  padding: 10px 20px; border-radius: 8px; border: none;
+  cursor: pointer; font-size: 14px; transition: background 0.15s;
+  font-family: inherit;
+}
+.jukebox-root .btn-accent:hover { background: var(--accent-hover); }
+.jukebox-root .btn-accent:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.jukebox-root .btn-outline {
+  background: transparent; border: 1px solid var(--border);
+  color: var(--text-secondary); padding: 9px 16px;
+  border-radius: 8px; cursor: pointer; font-size: 13px;
+  transition: all 0.15s; font-family: inherit;
+}
+.jukebox-root .btn-outline:hover { border-color: var(--text-muted); color: var(--text); background: var(--bg-hover); }
+
+.jukebox-root .btn-red {
+  background: var(--badge-red-bg); color: var(--badge-red-text);
+  border: 1px solid var(--badge-red-border);
+  padding: 8px 14px; border-radius: 8px; cursor: pointer;
+  font-size: 13px; font-weight: 500; font-family: inherit;
+}
+.jukebox-root .btn-green {
+  background: var(--badge-green-bg); color: var(--badge-green-text);
+  border: 1px solid var(--badge-green-border);
+  padding: 8px 14px; border-radius: 8px; cursor: pointer;
+  font-size: 13px; font-weight: 500; font-family: inherit;
+}
+
+.jukebox-root .label {
+  font-size: 12px; font-weight: 500; letter-spacing: 0.04em;
+  text-transform: uppercase; color: var(--text-muted);
+  margin-bottom: 6px; display: block;
+}
+
+.jukebox-root .badge {
+  font-size: 11px; font-weight: 500; letter-spacing: 0.04em;
+  text-transform: uppercase; padding: 3px 10px;
+  border-radius: 100px; display: inline-flex; align-items: center;
+}
+.jukebox-root .badge-orange { background: var(--badge-orange-bg); color: var(--badge-orange-text); border: 1px solid var(--badge-orange-border); }
+.jukebox-root .badge-green  { background: var(--badge-green-bg);  color: var(--badge-green-text);  border: 1px solid var(--badge-green-border); }
+.jukebox-root .badge-red    { background: var(--badge-red-bg);    color: var(--badge-red-text);    border: 1px solid var(--badge-red-border); }
+.jukebox-root .badge-gray   { background: var(--badge-gray-bg);   color: var(--badge-gray-text);   border: 1px solid var(--badge-gray-border); }
+.jukebox-root .badge-blue   { background: var(--badge-blue-bg);   color: var(--badge-blue-text);   border: 1px solid var(--badge-blue-border); }
+
+.jukebox-root .section-title {
+  font-size: 12px; font-weight: 600; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--text-muted);
+}
+
+.jukebox-root .page-title {
+  font-family: 'Bebas Neue', sans-serif; font-size: 32px;
+  letter-spacing: 0.04em; color: var(--text); line-height: 1;
+}
+
+.jukebox-root .toast {
+  position: fixed; bottom: 24px; right: 24px;
+  background: var(--green); color: #fff;
+  padding: 12px 22px; border-radius: 10px;
+  font-size: 13px; font-weight: 500;
+  z-index: 9999; box-shadow: var(--shadow-lg);
+}

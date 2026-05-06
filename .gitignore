@@ -16,3 +16,4 @@ out/
 # misc
 .DS_Store
 *.pem
+.vercel-import.env

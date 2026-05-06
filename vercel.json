@@ -1,0 +1,9 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "crons": [
+    {
+      "path": "/api/admin/jukebox/cron/expire",
+      "schedule": "*/15 * * * *"
+    }
+  ]
+}
