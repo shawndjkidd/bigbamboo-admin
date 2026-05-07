@@ -1,5 +1,6 @@
 'use client'
-// Polls /api/jukebox/queue every 12s and renders the NOW PLAYING + UP NEXT list.
+// Polls /api/jukebox/queue every 12s and renders Now Playing + Up Next,
+// styled to match the tropical/tiki cabinet on the display kiosk.
 
 import { useEffect, useState } from 'react'
 
@@ -18,7 +19,10 @@ interface NowPlaying {
   track_name: string
   artist_name: string
   album_art_url: string | null
-  played_at: string
+  duration_ms: number
+  requested_by: string
+  played_at: string | null
+  is_fallback: boolean
 }
 
 function fmtDuration(ms: number): string {
@@ -53,108 +57,99 @@ export default function DisplayClient() {
     return () => { alive = false; clearInterval(t) }
   }, [])
 
+  // When we're showing the queue head as a "Now Playing" fallback,
+  // hide it from the Up Next list to avoid showing the same song twice.
+  const upNext = (nowPlaying?.is_fallback && items.length > 0)
+    ? items.slice(1)
+    : items
+
   return (
-    <div>
-      {nowPlaying && (
-        <div className="on-air-card">
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12 }}>
-            <span className="on-air-dot" />
-            <span style={{
-              fontFamily: 'Sigmar, Bebas Neue, sans-serif',
-              fontSize: 13,
-              letterSpacing: '0.22em',
-              textTransform: 'uppercase',
-              color: 'var(--bbb-coral)',
-            }}>
-              On Air
-            </span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-            <div style={{
-              width: 88, height: 88,
-              borderRadius: 10, overflow: 'hidden', flexShrink: 0,
-              background: 'var(--bbb-wood-dark)',
-              border: '3px solid var(--bbb-coral)',
-              boxShadow: '0 4px 12px rgba(0,0,0,0.35)',
-            }}>
-              {nowPlaying.album_art_url ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={nowPlaying.album_art_url} alt="" width={88} height={88} style={{ display: 'block', objectFit: 'cover' }} />
-              ) : null}
-            </div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{
-                fontFamily: 'Sigmar, sans-serif',
-                fontSize: 26,
-                color: 'var(--bbb-wood-dark)',
-                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                lineHeight: 1.1,
-              }}>
-                {nowPlaying.track_name}
-              </div>
-              <div style={{
-                fontSize: 18,
-                color: 'var(--bbb-wood)',
-                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                marginTop: 4,
-              }}>
-                {nowPlaying.artist_name}
-              </div>
-            </div>
-          </div>
-        </div>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
+      {nowPlaying ? (
+        <NowPlayingCard now={nowPlaying} />
+      ) : null}
+
+      {nowPlaying ? (
+        <div className="jukebox-up-next-divider"><span>UP NEXT</span></div>
+      ) : (
+        <div className="section-title" style={{ marginBottom: 10, fontSize: 15 }}>UP NEXT</div>
       )}
 
-      {items.length === 0 && !nowPlaying ? (
-        <div style={{ padding: '40px 0', textAlign: 'center', color: 'var(--bbb-wood-light)', fontSize: 18 }}>
-          Nothing queued yet — be the first to scan.
-        </div>
-      ) : items.length === 0 ? (
-        <div style={{ padding: '16px 0', textAlign: 'center', color: 'var(--bbb-wood-light)', fontSize: 15 }}>
-          Queue is empty.
-        </div>
-      ) : (
-        <>
+      <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', paddingRight: 4 }}>
+        {empty ? (
           <div style={{
-            fontFamily: 'Sigmar, sans-serif',
-            fontSize: 13, letterSpacing: '0.18em', textTransform: 'uppercase',
-            color: 'var(--bbb-wood-light)', marginBottom: 12,
+            padding: '20px 0', textAlign: 'center',
+            color: 'var(--bbb-wood)', fontSize: 16, fontStyle: 'italic',
           }}>
-            Up Next
+            Nothing queued yet — be the first to scan.
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {items.map((it) => (
-              <div key={it.id} style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                <div style={{
-                  fontFamily: 'Bebas Neue, sans-serif', fontSize: 36,
-                  color: 'var(--bbb-orange)', width: 44, textAlign: 'center', flexShrink: 0,
-                  lineHeight: 1,
-                }}>
-                  {it.position}
+        ) : upNext.length === 0 ? (
+          <div style={{
+            padding: '14px 0', textAlign: 'center',
+            color: 'var(--bbb-wood)', fontSize: 14, fontStyle: 'italic',
+          }}>
+            One song queued. Tap scan to add the next.
+          </div>
+        ) : (
+          upNext.map((it) => (
+            <div key={it.id} className="jukebox-strip" style={{ padding: '8px 4px' }}>
+              <div className="jukebox-slot" style={{ fontSize: 18, width: 30 }}>
+                {it.position}
+              </div>
+              <div className="jukebox-art" style={{ width: 48, height: 48 }}>
+                {it.album_art_url ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={it.album_art_url} alt="" />
+                ) : null}
+              </div>
+              <div className="jukebox-strip-meta">
+                <div className="jukebox-strip-title" style={{ fontSize: 15 }}>
+                  {it.track_name}
                 </div>
-                <div style={{ width: 64, height: 64, borderRadius: 8, overflow: 'hidden', background: 'var(--bbb-wood-dark)', flexShrink: 0, border: '2px solid var(--bbb-wood)' }}>
-                  {it.album_art_url ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={it.album_art_url} alt="" width={64} height={64} style={{ display: 'block', objectFit: 'cover' }} />
-                  ) : null}
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--bbb-wood-dark)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {it.track_name}
-                  </div>
-                  <div style={{ fontSize: 16, color: 'var(--bbb-wood)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {it.artist_name}
-                  </div>
-                </div>
-                <div style={{ fontSize: 14, color: 'var(--bbb-wood-light)', whiteSpace: 'nowrap', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
-                  <span style={{ fontFeatureSettings: '"tnum"' }}>{fmtDuration(it.duration_ms)}</span>
-                  <span style={{ fontStyle: 'italic' }}>— {it.requested_by}</span>
+                <div className="jukebox-strip-sub" style={{ fontSize: 12 }}>
+                  {it.artist_name}
                 </div>
               </div>
-            ))}
-          </div>
-        </>
-      )}
+              <div style={{
+                display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2,
+                color: 'var(--bbb-wood)', fontSize: 11, whiteSpace: 'nowrap',
+              }}>
+                <span style={{ fontFeatureSettings: '"tnum"' }}>{fmtDuration(it.duration_ms)}</span>
+                <span style={{ fontStyle: 'italic' }}>— {it.requested_by}</span>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ── Now Playing card ──────────────────────────────────────────
+function NowPlayingCard({ now }: { now: NowPlaying }) {
+  // is_fallback means staff hasn't marked anything played yet — we're showing
+  // the head of the queue. Use a softer label so we're not lying to guests.
+  const label = now.is_fallback
+    ? 'COMING UP'
+    : 'NOW PLAYING · ON AIR'
+  return (
+    <div className="jukebox-now-playing">
+      <div className="jukebox-now-playing-art">
+        {now.album_art_url ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={now.album_art_url} alt="" />
+        ) : null}
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div className="jukebox-now-playing-label">
+          <span className="jukebox-on-air-dot" /> {label}
+        </div>
+        <div className="jukebox-now-playing-title">{now.track_name}</div>
+        <div className="jukebox-now-playing-sub">{now.artist_name}</div>
+        {now.requested_by && now.requested_by !== 'anonymous' && (
+          <div className="jukebox-now-playing-req">requested by {now.requested_by}</div>
+        )}
+      </div>
     </div>
   )
 }

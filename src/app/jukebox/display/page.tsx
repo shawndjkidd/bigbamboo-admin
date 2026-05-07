@@ -1,5 +1,6 @@
 // ═══════════════════════════════════════════════════════════════
 //  /jukebox/display?token=... — Kiosk view (server component)
+//  Tropical/tiki design matching the guest page.
 //  Token is checked server-side against jukebox_settings.display_token.
 //  The polling list is in DisplayClient (client component).
 // ═══════════════════════════════════════════════════════════════
@@ -24,42 +25,45 @@ export default async function DisplayPage({
   const sb = getServiceClient()
   const { data: settings } = await sb
     .from('jukebox_settings')
-    .select('display_token, is_active, mode')
+    .select('display_token, is_active, mode, curated_mode_enabled, curated_playlist_name')
     .eq('venue_id', venueId)
     .maybeSingle()
 
   if (!settings || settings.display_token !== token) notFound()
 
+  // Build the absolute URL for the QR (point at jukebox.bigbamboo.app/ if env hint set).
   const base = process.env.APP_BASE_URL?.replace(/\/$/, '') || ''
   const isSubdomain = /^https?:\/\/jukebox\./i.test(base)
   const guestUrl = base ? (isSubdomain ? base : `${base}/jukebox`) : '/jukebox'
-  const qr = qrImageUrl(guestUrl, { size: 600, dark: '2c1810', light: 'f4e8d0' })
+  const qr = qrImageUrl(guestUrl, { size: 600, dark: '2c1810', light: 'fff8e7' })
 
   return (
-    <div className="jukebox-root display-page">
-      <header className="display-header">
+    <div style={pageWrap}>
+      <header style={headerWrap}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          className="bbb-logo"
           src="https://bigbamboo.app/images/bbb-img-5.png"
-          alt="BIG BAM BOO"
-          style={{ maxWidth: 320, marginBottom: 0 }}
+          alt="BigBamBoo"
+          className="bbb-logo"
+          style={{ maxWidth: 240 }}
         />
-        <div className="jukebox-wordmark" style={{ marginTop: '-48px', textAlign: 'center' }}>
-          JUKEBOX
+        <div className="jukebox-wordmark" style={{ fontSize: 64, marginTop: -40 }}>JUKEBOX</div>
+        <div className="jukebox-tagline" style={{ fontSize: 22 }}>
+          Scan. <span className="jukebox-tagline-accent">Pick a song.</span>{' '}
+          Don&apos;t kill the vibe.
         </div>
       </header>
 
-      <section className="display-two-col">
-        <div className="card" style={{ padding: 24, minHeight: 600 }}>
+      <section style={twoCol}>
+        <div className="jukebox-cabinet" style={leftCabinet}>
           <DisplayClient />
         </div>
 
-        <div className="card" style={{ padding: 24, position: 'sticky', top: 24 }}>
+        <div className="jukebox-cabinet" style={rightCabinet}>
           <div style={{
-            fontFamily: 'Sigmar, sans-serif',
-            fontSize: 13, letterSpacing: '0.18em', textTransform: 'uppercase',
-            color: 'var(--bbb-wood-light)', textAlign: 'center', marginBottom: 14,
+            fontFamily: 'Sigmar, sans-serif', fontSize: 14, color: 'var(--bbb-wood)',
+            textAlign: 'center', letterSpacing: '0.14em', textTransform: 'uppercase',
+            marginBottom: 10,
           }}>
             Scan to request a song
           </div>
@@ -67,27 +71,85 @@ export default async function DisplayPage({
           <img
             src={qr}
             alt="QR code"
-            width={600}
-            height={600}
-            style={{ width: '100%', height: 'auto', display: 'block', borderRadius: 12, border: '3px solid var(--bbb-wood)' }}
+            style={{
+              width: '100%', maxWidth: 320, height: 'auto', display: 'block',
+              margin: '0 auto',
+              borderRadius: 10, border: '3px solid var(--bbb-wood)',
+              background: 'var(--bbb-cream-light)',
+            }}
           />
-          <div style={{ marginTop: 10, fontSize: 13, fontFamily: 'monospace', color: 'var(--bbb-wood-light)', textAlign: 'center', wordBreak: 'break-all' }}>
+          <div style={{
+            marginTop: 10, fontSize: 11, fontFamily: 'monospace',
+            color: 'var(--bbb-wood)', textAlign: 'center', wordBreak: 'break-all',
+          }}>
             {guestUrl}
           </div>
-          <div className="jukebox-rules" style={{ color: 'var(--bbb-wood)', textShadow: 'none', marginTop: 16 }}>
-            <div>{copy.rules.cooldownLine}</div>
-            <div>{copy.rules.staffLine}</div>
-            <div>{copy.rules.rewardsLine}</div>
-          </div>
+
+          {settings.curated_mode_enabled && settings.curated_playlist_name && (
+            <div style={{
+              marginTop: 10, padding: '6px 10px', textAlign: 'center',
+              background: 'rgba(232,118,42,0.15)',
+              border: '1px solid rgba(232,118,42,0.4)', borderRadius: 8,
+              fontFamily: 'Sigmar, sans-serif', fontSize: 12, letterSpacing: '0.08em',
+              color: 'var(--bbb-wood-dark)',
+            }}>
+              TONIGHT: <span style={{ color: 'var(--bbb-coral)' }}>{settings.curated_playlist_name}</span>
+            </div>
+          )}
         </div>
       </section>
 
       {!settings.is_active && (
-        <div className="display-paused-banner">{copy.guest.requestsPaused}</div>
+        <div style={pausedBanner}>{copy.guest.requestsPaused}</div>
       )}
       {settings.is_active && settings.mode === 'locked' && (
-        <div className="display-paused-banner">{copy.guest.requestsLocked}</div>
+        <div style={pausedBanner}>{copy.guest.requestsLocked}</div>
       )}
     </div>
   )
+}
+
+// Page is sized to fit a 1080p TV viewport without scrolling.
+// Heights are capped via flex; the queue list inside DisplayClient
+// scrolls internally if it exceeds available vertical space.
+const pageWrap: React.CSSProperties = {
+  padding: '14px 28px 18px',
+  height: '100vh',
+  color: 'var(--bbb-cream-light)',
+  display: 'flex',
+  flexDirection: 'column',
+  overflow: 'hidden',
+}
+const headerWrap: React.CSSProperties = {
+  textAlign: 'center',
+  padding: '4px 0 8px',
+  flexShrink: 0,
+}
+const twoCol: React.CSSProperties = {
+  display: 'grid',
+  gridTemplateColumns: 'minmax(0, 1.7fr) minmax(0, 1fr)',
+  gap: 22,
+  alignItems: 'stretch',
+  flex: 1,
+  minHeight: 0,
+}
+const leftCabinet: React.CSSProperties = {
+  padding: 16,
+  display: 'flex',
+  flexDirection: 'column',
+  minHeight: 0,
+  overflow: 'hidden',
+}
+const rightCabinet: React.CSSProperties = {
+  padding: 16,
+  display: 'flex',
+  flexDirection: 'column',
+}
+const pausedBanner: React.CSSProperties = {
+  position: 'fixed', bottom: 18, left: '50%', transform: 'translateX(-50%)',
+  background: 'var(--bbb-coral)', color: 'var(--bbb-cream-light)',
+  border: '2px solid var(--bbb-wood)',
+  padding: '10px 26px', borderRadius: 100, fontSize: 16,
+  fontFamily: 'Sigmar, sans-serif', letterSpacing: '0.04em',
+  boxShadow: '0 4px 0 var(--bbb-wood), 0 10px 22px rgba(0,0,0,0.45)',
 }

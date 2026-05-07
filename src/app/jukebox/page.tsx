@@ -32,10 +32,7 @@ interface PublicSettings {
 
 const DEVICE_KEY = 'bbb_jukebox_device_id'
 const NICK_KEY = 'bbb_jukebox_nickname'
-const FIRST_SUBMITTED_KEY = 'bbb_jukebox_first_submitted'
 const NEXT_AVAILABLE_KEY = 'bbb_jukebox_next_available_at'
-
-
 
 function getOrCreateDeviceId(): string {
   if (typeof window === 'undefined') return ''
@@ -88,7 +85,6 @@ export default function JukeboxGuestPage() {
   const [submitOk, setSubmitOk] = useState<{ position: number | null; mode: PublicSettings['mode']; status: string } | null>(null)
 
   const [now, setNow] = useState(Date.now())
-  const [showLoyalty, setShowLoyalty] = useState(false)
   const debounceRef = useRef<number | null>(null)
 
   useEffect(() => {
@@ -175,12 +171,6 @@ export default function JukeboxGuestPage() {
       const next = j.data.next_request_available_in_sec || 0
       if (next > 0) localStorage.setItem(NEXT_AVAILABLE_KEY, String(Date.now() + next * 1000))
 
-      const firstTime = !localStorage.getItem(FIRST_SUBMITTED_KEY)
-      if (firstTime) {
-        localStorage.setItem(FIRST_SUBMITTED_KEY, '1')
-        setShowLoyalty(true)
-      }
-
       setSubmitOk({ position: j.data.queue_position ?? null, mode: settings?.mode ?? 'approval', status: j.data.status })
       setPicked(null)
       setQuery('')
@@ -197,7 +187,7 @@ export default function JukeboxGuestPage() {
     <div style={pageWrap}>
 
       {/* Brand logo from bigbamboo.app */}
-      <header style={{ textAlign: 'center', padding: '8px 0 24px' }}>
+      <header style={{ textAlign: 'center', padding: '4px 0 8px' }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src="https://bigbamboo.app/images/bbb-img-5.png"
@@ -366,41 +356,6 @@ export default function JukeboxGuestPage() {
         </div>
       )}
 
-      {/* Rules */}
-      <div className="jukebox-rules">
-        <div>{copy.rules.cooldownLine}</div>
-        <div>{copy.rules.staffLine}</div>
-        <div>{copy.rules.rewardsLine}</div>
-      </div>
-
-      {/* Soft loyalty modal */}
-      {showLoyalty && (
-        <div role="dialog" aria-modal="true" style={modalBackdrop} onClick={() => setShowLoyalty(false)}>
-          <div className="jukebox-cabinet" style={modalCard} onClick={(e) => e.stopPropagation()}>
-            <div style={{ fontFamily: 'Sigmar, sans-serif', fontSize: 24, color: 'var(--bbb-orange)', letterSpacing: '0.02em', marginBottom: 6 }}>
-              {copy.guest.loyaltyHook}
-            </div>
-            <div style={{ fontSize: 14, color: 'var(--bbb-wood)', marginBottom: 18, lineHeight: 1.5 }}>
-              {copy.guest.loyaltyPitch}
-            </div>
-            <div style={{ display: 'flex', gap: 10 }}>
-              <button className="btn-outline" onClick={() => setShowLoyalty(false)} style={{ flex: 1 }}>
-                {copy.guest.loyaltyNo}
-              </button>
-              <button
-                className="btn-accent"
-                onClick={() => {
-                  setShowLoyalty(false)
-                  window.location.href = '/play'
-                }}
-                style={{ flex: 1 }}
-              >
-                {copy.guest.loyaltyYes}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }
@@ -420,13 +375,6 @@ const errorHint: React.CSSProperties = {
   fontSize: 13, color: 'var(--badge-red-text)',
   marginTop: 8, marginBottom: 6, textAlign: 'left',
 }
-const modalBackdrop: React.CSSProperties = {
-  position: 'fixed', inset: 0, background: 'rgba(13,61,44,0.7)',
-  display: 'flex', alignItems: 'center', justifyContent: 'center',
-  padding: 16, zIndex: 100,
-}
-const modalCard: React.CSSProperties = { padding: 24, maxWidth: 380, width: '100%' }
-
 function Banner({ kind, children }: { kind: 'info' | 'warn'; children: React.ReactNode }) {
   const styles = kind === 'warn'
     ? { bg: 'rgba(216,90,48,0.18)', border: 'rgba(216,90,48,0.45)', color: '#fff8e7' }

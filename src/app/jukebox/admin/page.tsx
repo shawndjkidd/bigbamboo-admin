@@ -4,7 +4,7 @@
 //  Tabs: Pending · Up Next · History · Blocklist · Settings
 // ═══════════════════════════════════════════════════════════════
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { copy } from '@/lib/jukebox/copy'
@@ -37,19 +37,6 @@ interface Settings {
   curated_playlist_error?: string | null
 }
 
-interface Preset {
-  id: string
-  name: string
-  playlist_id: string
-  playlist_url: string
-  playlist_name: string | null
-  playlist_owner: string | null
-  playlist_image_url: string | null
-  track_count: number | null
-  is_active: boolean
-  created_at: string
-}
-
 interface ReqRow {
   id: string
   status: string
@@ -80,6 +67,19 @@ interface BlockEntry {
 
 type Tab = 'pending' | 'queue' | 'history' | 'blocklist' | 'settings'
 
+interface PlaylistPreset {
+  id: string
+  name: string
+  playlist_url: string
+  playlist_id: string
+  playlist_name: string | null
+  playlist_owner: string | null
+  playlist_image_url: string | null
+  playlist_track_count: number
+  last_synced_at: string | null
+  created_at: string
+}
+
 export default function JukeboxAdminPage() {
   const router = useRouter()
   const [staff, setStaff] = useState<{ id: string; role: string } | null>(null)
@@ -87,6 +87,12 @@ export default function JukeboxAdminPage() {
   const [tab, setTab] = useState<Tab>('pending')
   const [toast, setToast] = useState('')
   const tokenRef = useRef<string | null>(null)
+
+  // Settings + presets are prefetched on mount so the Settings tab paints
+  // instantly when the user clicks it (instead of triggering 2 cold-start
+  // API calls only after the click).
+  const [settings, setSettings] = useState<Settings | null>(null)
+  const [presets, setPresets] = useState<PlaylistPreset[] | null>(null)
 
   useEffect(() => {
     async function init() {
@@ -121,6 +127,33 @@ export default function JukeboxAdminPage() {
     return res.json()
   }, [])
 
+  // Prefetch settings + presets the moment we have a valid staff session.
+  // Both run in parallel — no point waiting on one before kicking off the other.
+  useEffect(() => {
+    if (!staff) return
+    let alive = true
+    void (async () => {
+      const [s, p] = await Promise.all([
+        apiFetch('/api/admin/jukebox/settings'),
+        apiFetch('/api/admin/jukebox/playlists'),
+      ])
+      if (!alive) return
+      if (s.ok) setSettings(s.data as Settings)
+      if (p.ok) setPresets((p.data as { presets: PlaylistPreset[] }).presets)
+    })()
+    return () => { alive = false }
+  }, [staff, apiFetch])
+
+  const refreshSettings = useCallback(async () => {
+    const j = await apiFetch('/api/admin/jukebox/settings')
+    if (j.ok) setSettings(j.data as Settings)
+  }, [apiFetch])
+
+  const refreshPresets = useCallback(async () => {
+    const j = await apiFetch('/api/admin/jukebox/playlists')
+    if (j.ok) setPresets((j.data as { presets: PlaylistPreset[] }).presets)
+  }, [apiFetch])
+
   function showToast(msg: string) {
     setToast(msg)
     setTimeout(() => setToast(''), 2400)
@@ -128,7 +161,7 @@ export default function JukeboxAdminPage() {
 
   if (loading) {
     return (
-      <div style={{ padding: 40, textAlign: 'center', color: 'var(--bbb-cream-light)' }}>
+      <div style={{ padding: 40, textAlign: 'center', color: 'var(--bbb-cream-light)', fontSize: 16 }}>
         Loading…
       </div>
     )
@@ -153,7 +186,17 @@ export default function JukeboxAdminPage() {
       {tab === 'queue' && <QueueTab apiFetch={apiFetch} onAction={showToast} />}
       {tab === 'history' && <HistoryTab apiFetch={apiFetch} />}
       {tab === 'blocklist' && <BlocklistTab apiFetch={apiFetch} onAction={showToast} />}
-      {tab === 'settings' && <SettingsTab apiFetch={apiFetch} onAction={showToast} />}
+      {tab === 'settings' && (
+        <SettingsTab
+          apiFetch={apiFetch}
+          onAction={showToast}
+          settings={settings}
+          presets={presets}
+          setSettings={setSettings}
+          refreshSettings={refreshSettings}
+          refreshPresets={refreshPresets}
+        />
+      )}
 
       {toast && <div className="toast">{toast}</div>}
     </div>
@@ -430,18 +473,30 @@ function BlocklistTab({
 }
 
 // ── Settings ───────────────────────────────────────────────────
+interface SettingsTabProps {
+  apiFetch: (p: string, i?: RequestInit) => Promise<{ ok: boolean; data?: unknown; error?: { message: string } }>
+  onAction: (m: string) => void
+  settings: Settings | null
+  presets: PlaylistPreset[] | null
+  setSettings: (s: Settings) => void
+  refreshSettings: () => Promise<void>
+  refreshPresets: () => Promise<void>
+}
+
 function SettingsTab({
   apiFetch,
   onAction,
-}: { apiFetch: (p: string, i?: RequestInit) => Promise<{ ok: boolean; data?: unknown; error?: { message: string } }>; onAction: (m: string) => void }) {
-  const [s, setS] = useState<Settings | null>(null)
+  settings: s,
+  presets,
+  setSettings,
+  refreshSettings,
+  refreshPresets,
+}: SettingsTabProps) {
   const [saving, setSaving] = useState(false)
-
-  const load = useCallback(async () => {
-    const j = await apiFetch('/api/admin/jukebox/settings')
-    if (j.ok) setS(j.data as Settings)
-  }, [apiFetch])
-  useEffect(() => { load() }, [load])
+  const [newUrl, setNewUrl] = useState('')
+  const [newName, setNewName] = useState('')
+  const [addBusy, setAddBusy] = useState(false)
+  const [rowBusy, setRowBusy] = useState<string | null>(null)
 
   async function patch(patchBody: Partial<Settings>) {
     setSaving(true)
@@ -450,25 +505,83 @@ function SettingsTab({
       body: JSON.stringify(patchBody),
     })
     setSaving(false)
-    if (j.ok) { setS(j.data as Settings); onAction('Saved') }
+    if (j.ok) { setSettings(j.data as Settings); onAction('Saved') }
     else onAction(j.error?.message || 'Save failed')
   }
 
   async function rotateToken() {
     const j = await apiFetch('/api/admin/jukebox/settings/rotate-display-token', { method: 'POST', body: '{}' })
-    if (j.ok) { onAction('Display token rotated'); load() }
+    if (j.ok) { onAction('Display token rotated'); refreshSettings() }
     else onAction(j.error?.message || 'Rotate failed')
   }
 
-  async function syncPlaylist() {
-    onAction('Syncing playlist…')
-    const j = await apiFetch('/api/admin/jukebox/settings/sync-playlist', { method: 'POST', body: '{}' })
-    if (j.ok) { onAction(`Synced ${(j.data as { count: number }).count} tracks`); load() }
-    else onAction(j.error?.message || 'Sync failed')
+  async function addPreset() {
+    const url = newUrl.trim()
+    if (!url) return
+    setAddBusy(true)
+    const j = await apiFetch('/api/admin/jukebox/playlists', {
+      method: 'POST',
+      body: JSON.stringify({ url, name: newName.trim() || undefined }),
+    })
+    setAddBusy(false)
+    if (j.ok) {
+      setNewUrl(''); setNewName('')
+      onAction('Playlist saved')
+      refreshPresets()
+    } else {
+      onAction(j.error?.message || 'Could not save playlist')
+    }
   }
 
-  if (!s) return <div style={{ color: 'var(--bbb-cream-light)', padding: 16 }}>Loading…</div>
+  async function activatePreset(p: PlaylistPreset) {
+    setRowBusy(p.id + ':activate')
+    onAction('Syncing tracks…')
+    const j = await apiFetch(`/api/admin/jukebox/playlists/${p.id}/activate`, { method: 'POST', body: '{}' })
+    setRowBusy(null)
+    if (j.ok) {
+      onAction(`Activated · ${(j.data as { track_count: number }).track_count} tracks`)
+      await Promise.all([refreshSettings(), refreshPresets()])
+    } else {
+      onAction(j.error?.message || 'Activate failed')
+    }
+  }
 
+  async function renamePreset(p: PlaylistPreset) {
+    const next = window.prompt('Rename playlist preset:', p.name)
+    if (next == null) return
+    const name = next.trim()
+    if (!name || name === p.name) return
+    setRowBusy(p.id + ':rename')
+    const j = await apiFetch(`/api/admin/jukebox/playlists/${p.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ name }),
+    })
+    setRowBusy(null)
+    if (j.ok) { onAction('Renamed'); refreshPresets() }
+    else onAction(j.error?.message || 'Rename failed')
+  }
+
+  async function removePreset(p: PlaylistPreset) {
+    if (!window.confirm(`Remove "${p.name}" from your saved playlists?`)) return
+    setRowBusy(p.id + ':delete')
+    const j = await apiFetch(`/api/admin/jukebox/playlists/${p.id}`, { method: 'DELETE' })
+    setRowBusy(null)
+    if (j.ok) {
+      onAction('Removed')
+      await Promise.all([refreshSettings(), refreshPresets()])
+    } else {
+      onAction(j.error?.message || 'Remove failed')
+    }
+  }
+
+  // Show skeleton cards while the prefetch is in flight — feels much faster
+  // than a single "Loading…" text, especially during a Vercel cold start.
+  if (!s) return <SettingsSkeleton />
+  const presetsLoaded = presets !== null
+  const presetList = presets ?? []
+
+  // Always show the friendlier subdomain URL when the public base hint is set;
+  // fall back to the current origin so admin-on-localhost still works in dev.
   const publicBase = (process.env.NEXT_PUBLIC_JUKEBOX_PUBLIC_URL || '').replace(/\/$/, '')
   const isSubdomain = /^https?:\/\/jukebox\./i.test(publicBase)
   const displayBase =
@@ -477,17 +590,13 @@ function SettingsTab({
     ? (isSubdomain ? `${displayBase}/display?token=${s.display_token}` : `${displayBase}/jukebox/display?token=${s.display_token}`)
     : ''
 
-  const modeDescriptions: Record<string, string> = {
-    approval: 'Staff reviews each request before it joins the queue.',
-    open: 'Requests go straight to the queue — no staff review.',
-    locked: 'The jukebox is closed. No new requests accepted.',
-  }
+  const activeId = s.curated_playlist_id || null
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <div className="card" style={{ padding: 18 }}>
         <div className="section-title" style={{ marginBottom: 12 }}>State</div>
-        <div style={{ display: 'flex', gap: 10, marginBottom: 10, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: 10, marginBottom: 12, flexWrap: 'wrap' }}>
           <ToggleChip
             on={s.is_active}
             label={s.is_active ? copy.admin.statusActive : copy.admin.statusPaused}
@@ -505,53 +614,135 @@ function SettingsTab({
           ))}
         </div>
         <div style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.5 }}>
-          <strong>Active</strong> — jukebox is on and accepting requests. &nbsp;
-          <strong>Approval</strong> — {modeDescriptions.approval} &nbsp;
-          <strong>Open</strong> — {modeDescriptions.open} &nbsp;
-          <strong>Locked</strong> — {modeDescriptions.locked}
+          <div><b style={{ color: 'var(--text-secondary)' }}>Active / Paused</b> — master switch. Paused hides the request button on the guest page.</div>
+          <div><b style={{ color: 'var(--text-secondary)' }}>Approval</b> — guests submit, you tap Approve in Pending before it joins the queue.</div>
+          <div><b style={{ color: 'var(--text-secondary)' }}>Open</b> — approved tracks skip the queue and go straight to Up Next (no manual approval).</div>
+          <div><b style={{ color: 'var(--text-secondary)' }}>Locked</b> — read-only. Guests see the queue but can&apos;t request anything.</div>
         </div>
       </div>
 
-      <PresetsSection apiFetch={apiFetch} onAction={onAction} />
-
       <div className="card" style={{ padding: 18 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-          <div className="section-title">Curated mode</div>
+          <div className="section-title">Curated playlists</div>
           <ToggleChip
             on={!!s.curated_mode_enabled}
-            label={s.curated_mode_enabled ? 'On' : 'Off'}
+            label={s.curated_mode_enabled ? 'Curated mode: On' : 'Curated mode: Off'}
             onClick={() => patch({ curated_mode_enabled: !s.curated_mode_enabled } as Partial<Settings>)}
             disabled={saving}
           />
         </div>
-        <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 10 }}>
-          When on, only tracks from the active playlist can be requested.
-          Activate a playlist from the library above.
+        <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 14 }}>
+          Save your favourite Spotify playlists below — then tap <b>Activate</b> to make one tonight&apos;s allowed list.
+          Curated mode must be On for this to gate guest requests. Make sure each playlist is public on Spotify.
         </div>
-        {s.curated_playlist_id && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', background: 'var(--bg-input)', borderRadius: 8 }}>
-            {s.curated_playlist_image_url && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={s.curated_playlist_image_url} alt="" width={44} height={44} style={{ borderRadius: 4, objectFit: 'cover' }} />
-            )}
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>
-                {s.curated_playlist_name || 'Playlist'}
-              </div>
-              <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-                {s.curated_playlist_track_count || 0} tracks
-                {s.curated_playlist_owner ? ` · by ${s.curated_playlist_owner}` : ''}
-                {s.curated_playlist_synced_at ? ` · synced ${new Date(s.curated_playlist_synced_at).toLocaleString()}` : ''}
-              </div>
-            </div>
-            <button className="btn-outline" onClick={syncPlaylist} disabled={saving}>Sync now</button>
+
+        {!presetsLoaded ? (
+          <div style={{ color: 'var(--text-muted)', fontSize: 13, padding: '12px 0' }}>Loading playlists…</div>
+        ) : presetList.length === 0 ? (
+          <div style={{
+            padding: '14px 16px', background: 'var(--bg-input)', borderRadius: 8,
+            color: 'var(--text-muted)', fontSize: 13, marginBottom: 14,
+          }}>
+            No saved playlists yet. Add one below to get started.
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 14 }}>
+            {presetList.map((p) => {
+              const isActive = activeId === p.playlist_id
+              return (
+                <div
+                  key={p.id}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px',
+                    background: 'var(--bg-input)',
+                    border: isActive ? '2px solid var(--accent)' : '1px solid var(--border)',
+                    borderRadius: 8,
+                  }}
+                >
+                  {p.playlist_image_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={p.playlist_image_url} alt="" width={44} height={44} style={{ borderRadius: 4, objectFit: 'cover', flexShrink: 0 }} />
+                  ) : (
+                    <div style={{ width: 44, height: 44, background: 'var(--bg-subtle)', borderRadius: 4, flexShrink: 0 }} />
+                  )}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</span>
+                      {isActive && <span className="badge badge-green" style={{ fontSize: 10 }}>ACTIVE</span>}
+                    </div>
+                    <div style={{ fontSize: 12, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {p.playlist_track_count || 0} tracks
+                      {p.playlist_owner ? ` · by ${p.playlist_owner}` : ''}
+                      {p.last_synced_at ? ` · synced ${new Date(p.last_synced_at).toLocaleDateString()}` : ' · not yet synced'}
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                    <button
+                      className="btn-outline"
+                      onClick={() => renamePreset(p)}
+                      disabled={!!rowBusy}
+                      style={{ fontSize: 12, padding: '6px 10px' }}
+                    >
+                      Rename
+                    </button>
+                    <button
+                      className="btn-red"
+                      onClick={() => removePreset(p)}
+                      disabled={!!rowBusy}
+                      style={{ fontSize: 12, padding: '6px 10px' }}
+                    >
+                      Remove
+                    </button>
+                    <button
+                      className="btn-accent"
+                      onClick={() => activatePreset(p)}
+                      disabled={!!rowBusy}
+                      style={{ fontSize: 12, padding: '6px 14px', whiteSpace: 'nowrap' }}
+                    >
+                      {rowBusy === p.id + ':activate' ? '…' : isActive ? 'Re-sync' : 'Activate'}
+                    </button>
+                  </div>
+                </div>
+              )
+            })}
           </div>
         )}
+
         {s.curated_playlist_error && (
-          <div style={{ marginTop: 10, padding: '8px 12px', background: 'var(--badge-red-bg)', color: 'var(--badge-red-text)', border: '1px solid var(--badge-red-border)', borderRadius: 8, fontSize: 12 }}>
+          <div style={{ marginBottom: 14, padding: '8px 12px', background: 'var(--badge-red-bg)', color: 'var(--badge-red-text)', border: '1px solid var(--badge-red-border)', borderRadius: 8, fontSize: 12 }}>
             Last sync error: <span style={{ fontFamily: 'monospace' }}>{s.curated_playlist_error}</span>
           </div>
         )}
+
+        <div style={{ borderTop: '1px solid var(--border)', paddingTop: 14 }}>
+          <div className="label" style={{ marginBottom: 8 }}>Add a Spotify playlist</div>
+          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr auto', gap: 8 }}>
+            <input
+              className="input"
+              placeholder="https://open.spotify.com/playlist/..."
+              value={newUrl}
+              onChange={(e) => setNewUrl(e.target.value)}
+              style={{ fontFamily: 'monospace', fontSize: 12 }}
+            />
+            <input
+              className="input"
+              placeholder="Friendly name (optional)"
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+            />
+            <button
+              className="btn-accent"
+              onClick={addPreset}
+              disabled={addBusy || !newUrl.trim()}
+              style={{ whiteSpace: 'nowrap' }}
+            >
+              {addBusy ? 'Saving…' : 'Save'}
+            </button>
+          </div>
+          <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 6 }}>
+            We&apos;ll fetch the playlist info now. Tracks sync when you tap Activate.
+          </div>
+        </div>
       </div>
 
       <div className="card" style={{ padding: 18 }}>
@@ -579,154 +770,6 @@ function SettingsTab({
           <input className="input" readOnly value={displayUrl} style={{ fontFamily: 'monospace', fontSize: 12 }} />
           <button className="btn-outline" onClick={() => navigator.clipboard?.writeText(displayUrl).then(() => onAction('Copied'))}>Copy</button>
           <button className="btn-red" onClick={rotateToken}>{copy.admin.rotateDisplayToken}</button>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// ── Presets library ────────────────────────────────────────────
-function PresetsSection({
-  apiFetch,
-  onAction,
-}: { apiFetch: (p: string, i?: RequestInit) => Promise<{ ok: boolean; data?: unknown; error?: { message: string } }>; onAction: (m: string) => void }) {
-  const [presets, setPresets] = useState<Preset[]>([])
-  const [busy, setBusy] = useState<string | null>(null)
-  const [renaming, setRenaming] = useState<string | null>(null)
-  const [renameDraft, setRenameDraft] = useState('')
-  const [addName, setAddName] = useState('')
-  const [addUrl, setAddUrl] = useState('')
-  const [adding, setAdding] = useState(false)
-
-  const loadPresets = useCallback(async () => {
-    const j = await apiFetch('/api/admin/jukebox/playlists')
-    if (j.ok) setPresets((j.data as { presets: Preset[] }).presets)
-  }, [apiFetch])
-  useEffect(() => { loadPresets() }, [loadPresets])
-
-  async function activate(id: string) {
-    setBusy(id + ':activate')
-    const j = await apiFetch(`/api/admin/jukebox/playlists/${id}/activate`, { method: 'POST', body: '{}' })
-    setBusy(null)
-    if (j.ok) { setPresets((j.data as { presets: Preset[] }).presets); onAction('Playlist activated') }
-    else onAction(j.error?.message || 'Activate failed')
-  }
-
-  async function startRename(p: Preset) {
-    setRenaming(p.id); setRenameDraft(p.name)
-  }
-
-  async function commitRename(id: string) {
-    const name = renameDraft.trim()
-    if (!name) { setRenaming(null); return }
-    setBusy(id + ':rename')
-    const j = await apiFetch(`/api/admin/jukebox/playlists/${id}`, {
-      method: 'PATCH',
-      body: JSON.stringify({ name }),
-    })
-    setBusy(null); setRenaming(null)
-    if (j.ok) loadPresets()
-    else onAction(j.error?.message || 'Rename failed')
-  }
-
-  async function remove(id: string) {
-    setBusy(id + ':remove')
-    const j = await apiFetch(`/api/admin/jukebox/playlists/${id}`, { method: 'DELETE' })
-    setBusy(null)
-    if (j.ok) setPresets((p) => p.filter((x) => x.id !== id))
-    else onAction(j.error?.message || 'Remove failed')
-  }
-
-  async function addPreset() {
-    if (!addName.trim() || !addUrl.trim()) return
-    setAdding(true)
-    const j = await apiFetch('/api/admin/jukebox/playlists', {
-      method: 'POST',
-      body: JSON.stringify({ name: addName.trim(), playlist_url: addUrl.trim() }),
-    })
-    setAdding(false)
-    if (j.ok) { setAddName(''); setAddUrl(''); loadPresets(); onAction('Playlist added') }
-    else onAction(j.error?.message || 'Add failed')
-  }
-
-  return (
-    <div className="card" style={{ padding: 18 }}>
-      <div className="section-title" style={{ marginBottom: 4 }}>Playlist library</div>
-      <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 14 }}>
-        Add Spotify playlists here. Activate one to enable curated mode.
-      </div>
-
-      {presets.length === 0 ? (
-        <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 14, fontStyle: 'italic' }}>No playlists yet.</div>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
-          {presets.map((p) => (
-            <div key={p.id} style={{
-              display: 'flex', alignItems: 'center', gap: 10,
-              padding: '10px 12px',
-              background: p.is_active ? 'var(--bg-active)' : 'var(--bg-input)',
-              borderRadius: 8,
-              border: p.is_active ? '1px solid var(--accent)' : '1px solid var(--border)',
-            }}>
-              {p.playlist_image_url ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={p.playlist_image_url} alt="" width={40} height={40} style={{ borderRadius: 4, objectFit: 'cover', flexShrink: 0 }} />
-              ) : (
-                <div style={{ width: 40, height: 40, borderRadius: 4, background: 'var(--bg-subtle)', flexShrink: 0 }} />
-              )}
-              <div style={{ flex: 1, minWidth: 0 }}>
-                {renaming === p.id ? (
-                  <input
-                    className="input"
-                    autoFocus
-                    value={renameDraft}
-                    onChange={(e) => setRenameDraft(e.target.value)}
-                    onBlur={() => commitRename(p.id)}
-                    onKeyDown={(e) => { if (e.key === 'Enter') commitRename(p.id); if (e.key === 'Escape') setRenaming(null) }}
-                    style={{ fontSize: 13, padding: '4px 8px' }}
-                  />
-                ) : (
-                  <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {p.is_active && <span className="badge badge-green" style={{ marginRight: 6, fontSize: 10 }}>Active</span>}
-                    {p.name}
-                  </div>
-                )}
-                <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-                  {p.playlist_name || '—'}
-                  {p.track_count ? ` · ${p.track_count} tracks` : ''}
-                  {p.playlist_owner ? ` · by ${p.playlist_owner}` : ''}
-                </div>
-              </div>
-              <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-                {!p.is_active && (
-                  <button className="btn-green" disabled={!!busy} onClick={() => activate(p.id)}>
-                    {busy === p.id + ':activate' ? '…' : 'Activate'}
-                  </button>
-                )}
-                <button className="btn-outline" disabled={!!busy} onClick={() => startRename(p)}>Rename</button>
-                <button className="btn-red" disabled={!!busy} onClick={() => remove(p.id)}>
-                  {busy === p.id + ':remove' ? '…' : 'Remove'}
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      <div style={{ borderTop: '1px solid var(--border)', paddingTop: 14 }}>
-        <div className="label" style={{ marginBottom: 8 }}>Add playlist</div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr auto', gap: 8, alignItems: 'end' }}>
-          <div>
-            <label className="label" style={{ fontSize: 11 }}>Name</label>
-            <input className="input" placeholder="e.g. Tropical Vibes" value={addName} onChange={(e) => setAddName(e.target.value)} />
-          </div>
-          <div>
-            <label className="label" style={{ fontSize: 11 }}>Spotify playlist URL</label>
-            <input className="input" placeholder="https://open.spotify.com/playlist/..." value={addUrl} onChange={(e) => setAddUrl(e.target.value)} style={{ fontFamily: 'monospace', fontSize: 12 }} />
-          </div>
-          <button className="btn-accent" onClick={addPreset} disabled={adding || !addName.trim() || !addUrl.trim()}>
-            {adding ? '…' : 'Add'}
-          </button>
         </div>
       </div>
     </div>
@@ -820,6 +863,49 @@ function EmptyCard({ title, sub }: { title: string; sub: string }) {
       <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--text)', marginBottom: 6 }}>{title}</div>
       <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>{sub}</div>
     </div>
+  )
+}
+
+// Skeleton placeholder shown while settings + presets are still in flight.
+// Mimics the real layout (4 cards) so the click-to-Settings transition feels
+// instant instead of "blank page → loading text → content".
+function SettingsSkeleton() {
+  const bar = (w: string, h = 14) => (
+    <div style={{
+      width: w, height: h, borderRadius: 4,
+      background: 'rgba(0,0,0,0.08)',
+      animation: 'bbb-skel 1.4s ease-in-out infinite',
+    }} />
+  )
+  const card = (children: React.ReactNode) => (
+    <div className="card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 10 }}>
+      {children}
+    </div>
+  )
+  return (
+    <>
+      <style>{`@keyframes bbb-skel{0%,100%{opacity:.6}50%{opacity:.95}}`}</style>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        {card(<>
+          {bar('40%', 16)}
+          <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
+            {bar('80px', 32)}{bar('92px', 32)}{bar('70px', 32)}{bar('80px', 32)}
+          </div>
+        </>)}
+        {card(<>
+          {bar('46%', 16)}
+          {bar('100%', 56)}
+          {bar('100%', 56)}
+        </>)}
+        {card(<>
+          {bar('44%', 16)}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            {bar('100%', 38)}{bar('100%', 38)}{bar('100%', 38)}{bar('100%', 38)}
+          </div>
+        </>)}
+        {card(<>{bar('30%', 16)}{bar('100%', 38)}</>)}
+      </div>
+    </>
   )
 }
 
