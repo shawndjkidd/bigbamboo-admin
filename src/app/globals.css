@@ -111,7 +111,10 @@ select.input { cursor: pointer; appearance: none; background-image: url("data:im
 .badge-gray { background: var(--badge-gray-bg); color: var(--badge-gray-text); border: 1px solid var(--badge-gray-border); }
 .badge-blue { background: var(--badge-blue-bg); color: var(--badge-blue-text); border: 1px solid var(--badge-blue-border); }
 .section-title { font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted); }
-.page-title { font-family: 'Bebas Neue', sans-serif; font-size: 32px; letter-spacing: 0.04em; color: var(--text); line-height: 1; }
+.page-title { font-family: 'Bebas Neue', sans-serif; font-size: 32px; letter-spacing: 0.04em; color: var(--bbb-yellow); line-height: 1; text-shadow: 0 3px 10px rgba(0,0,0,0.7); }
+.menu-pill-active { background: var(--accent); color: #fff; border: 1.5px solid var(--accent); }
+.menu-pill-inactive { background: rgba(255,248,231,0.08); color: var(--bbb-cream-light); border: 1.5px solid var(--bbb-cream-light); }
+.menu-pill-inactive:hover { background: rgba(255,248,231,0.18); }
 .toast { position: fixed; bottom: 24px; right: 24px; background: var(--green); color: #fff; padding: 12px 22px; border-radius: 10px; font-size: 13px; font-weight: 500; z-index: 9999; box-shadow: var(--shadow-lg); }
 .kpi-card { padding: 20px 24px; }
 .kpi-label { font-size: 13px; font-weight: 500; color: var(--text-secondary); margin-bottom: 8px; }

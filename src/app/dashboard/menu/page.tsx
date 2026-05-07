@@ -272,12 +272,10 @@ export default function MenuPage() {
                 background: 'transparent', color: 'var(--text-muted)', border: 'none', borderRadius: 4,
               }}
             >◀</button>
-            <button onClick={() => { setSection(s.key); setShowAddSection(false) }} style={{
-              padding: '10px 18px', borderRadius: 100, fontSize: 14, fontWeight: 500, cursor: 'pointer', transition: 'all 0.15s',
-              background: section === s.key ? 'var(--accent)' : 'transparent',
-              color: section === s.key ? '#fff' : 'var(--text-secondary)',
-              border: `1px solid ${section === s.key ? 'var(--accent)' : 'var(--border)'}`,
-            }}>
+            <button onClick={() => { setSection(s.key); setShowAddSection(false) }}
+              className={section === s.key ? 'menu-pill-active' : 'menu-pill-inactive'}
+              style={{ padding: '10px 18px', borderRadius: 100, fontSize: 14, fontWeight: 500, cursor: 'pointer', transition: 'all 0.15s' }}
+            >
               {s.label}
             </button>
             <button
@@ -311,7 +309,7 @@ export default function MenuPage() {
         ) : (
           <button onClick={() => setShowAddSection(true)} style={{
             padding: '10px 16px', borderRadius: 100, fontSize: 13, fontWeight: 500, cursor: 'pointer',
-            background: 'transparent', color: 'var(--text-muted)', border: '1px dashed var(--border)',
+            background: 'transparent', color: 'rgba(255,248,231,0.55)', border: '1px dashed rgba(255,248,231,0.35)',
             transition: 'all 0.15s',
           }}>
             + Add Section

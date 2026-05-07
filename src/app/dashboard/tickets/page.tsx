@@ -7,7 +7,7 @@ const BLANK_TICKET = { name: '', email: '', phone: '', event_id: '', quantity: 1
 export default function TicketsPage() {
   const [orders, setOrders] = useState<any[]>([])
   const [events, setEvents] = useState<any[]>([])
-  const [selectedEvent, setSelectedEvent] = useState('all')
+  const [selectedEvent, setSelectedEvent] = useState('')
   const [selectedStatus, setSelectedStatus] = useState('all')
   const [searchQuery, setSearchQuery] = useState('')
   const [loading, setLoading] = useState(true)
@@ -145,7 +145,9 @@ export default function TicketsPage() {
     events.filter(e => e.event_date && e.event_date < today).map(e => e.id)
   )
 
-  const filtered = orders.filter(o => {
+  const eventSelected = selectedEvent !== ''
+
+  const filtered = !eventSelected ? [] : orders.filter(o => {
     if (selectedEvent !== 'all' && o.event_id !== selectedEvent) return false
     if (selectedStatus !== 'all' && o.status !== selectedStatus) return false
     if (searchQuery) {
@@ -224,31 +226,35 @@ export default function TicketsPage() {
       )}
 
       {/* Stats Toggle + Cards */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-        <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>
-          {showPastInStats ? 'All Events' : 'Upcoming Events Only'}
-        </div>
-        <button
-          className="btn-outline"
-          style={{ fontSize: 12, padding: '5px 14px' }}
-          onClick={() => setShowPastInStats(p => !p)}
-        >
-          {showPastInStats ? 'Hide Past Events' : 'Include Past Events'}
-        </button>
-      </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 24 }}>
-        {[
-          { label: 'Total Orders', value: statsFiltered.length },
-          { label: 'Total Tickets', value: totalTickets },
-          { label: 'Pending Payment', value: pending, highlight: pending > 0 },
-          { label: 'Checked In', value: checkedIn },
-        ].map(s => (
-          <div key={s.label} className="card" style={{ padding: '18px 20px' }}>
-            <div style={{ fontFamily: 'Bebas Neue', fontSize: 36, color: s.highlight ? 'var(--accent)' : 'var(--text)', letterSpacing: '0.02em', lineHeight: 1 }}>{s.value}</div>
-            <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 6 }}>{s.label}</div>
+      {eventSelected && (
+        <>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+            <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>
+              {showPastInStats ? 'All Events' : 'Upcoming Events Only'}
+            </div>
+            <button
+              className="btn-outline"
+              style={{ fontSize: 12, padding: '5px 14px' }}
+              onClick={() => setShowPastInStats(p => !p)}
+            >
+              {showPastInStats ? 'Hide Past Events' : 'Include Past Events'}
+            </button>
           </div>
-        ))}
-      </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 24 }}>
+            {[
+              { label: 'Total Orders', value: statsFiltered.length },
+              { label: 'Total Tickets', value: totalTickets },
+              { label: 'Pending Payment', value: pending, highlight: pending > 0 },
+              { label: 'Checked In', value: checkedIn },
+            ].map(s => (
+              <div key={s.label} className="card" style={{ padding: '18px 20px' }}>
+                <div style={{ fontFamily: 'Bebas Neue', fontSize: 36, color: s.highlight ? 'var(--accent)' : 'var(--text)', letterSpacing: '0.02em', lineHeight: 1 }}>{s.value}</div>
+                <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 6 }}>{s.label}</div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
 
       {/* Filters */}
       <div style={{ display: 'flex', gap: 10, marginBottom: 20, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -260,6 +266,7 @@ export default function TicketsPage() {
           style={{ width: 280, fontSize: 14 }}
         />
         <select className="input" value={selectedEvent} onChange={e => setSelectedEvent(e.target.value)} style={{ width: 200 }}>
+          <option value="">— Choose an event —</option>
           <option value="all">All Events</option>
           {events.map(ev => (
             <option key={ev.id} value={ev.id}>
@@ -273,15 +280,19 @@ export default function TicketsPage() {
           <option value="confirmed">Confirmed</option>
           <option value="cancelled">Cancelled</option>
         </select>
-        <div style={{ fontSize: 13, color: 'var(--text-muted)', marginLeft: 'auto' }}>{filtered.length} order{filtered.length !== 1 ? 's' : ''}</div>
+        {eventSelected && <div style={{ fontSize: 13, color: 'var(--text-muted)', marginLeft: 'auto' }}>{filtered.length} order{filtered.length !== 1 ? 's' : ''}</div>}
       </div>
 
       {/* Table */}
       {loading ? (
         <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>Loading orders...</div>
+      ) : !eventSelected ? (
+        <div className="card" style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)', fontSize: 14 }}>
+          Pick an event above to see its orders.
+        </div>
       ) : filtered.length === 0 ? (
         <div className="card" style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)', fontSize: 14 }}>
-          {searchQuery || selectedEvent !== 'all' || selectedStatus !== 'all' ? 'No orders match your filters' : 'No ticket orders yet'}
+          {searchQuery || selectedStatus !== 'all' ? 'No orders match your filters' : 'No ticket orders for this event'}
         </div>
       ) : (
         <div className="card" style={{ overflow: 'hidden' }}>

@@ -82,7 +82,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Quick Actions */}
-      <div className="section-title" style={{ marginBottom: 14 }}>Quick Actions</div>
+      <div className="section-title" style={{ marginBottom: 14, color: 'var(--bbb-yellow)', fontWeight: 700 }}>Quick Actions</div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 10, marginBottom: 28 }}>
         {quickActions.map(a => (
           <Link key={a.label} href={a.href} style={{ textDecoration: 'none' }}>
@@ -98,7 +98,7 @@ export default function DashboardPage() {
       {gameStats.claims > 0 && (
         <>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-            <div className="section-title">Scan.Tap.Win</div>
+            <div className="section-title" style={{ color: 'var(--bbb-yellow)', fontWeight: 700 }}>Scan.Tap.Win</div>
             <Link href="/dashboard/claims" style={{ fontSize: 12, color: 'var(--accent)', textDecoration: 'none', fontWeight: 500 }}>
               View all claims &rarr;
             </Link>

@@ -61,7 +61,7 @@ export default function Sidebar({ role }: { role: string }) {
       {/* Logo */}
       <div style={{ padding: '24px 20px 20px' }}>
         <div style={{ fontFamily: 'Bebas Neue', fontSize: 22, letterSpacing: '0.06em', color: 'var(--accent)', lineHeight: 1 }}>BigBamBoo</div>
-        <div style={{ fontSize: 11, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)', marginTop: 4 }}>
+        <div style={{ fontSize: 11, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--bbb-yellow)', marginTop: 4 }}>
           {role === 'super_admin' ? 'Super Admin' : role === 'scanner' ? 'Door Staff' : 'Manager'}
         </div>
       </div>
@@ -69,13 +69,20 @@ export default function Sidebar({ role }: { role: string }) {
       {/* Nav */}
       <nav style={{ flex: 1, overflowY: 'auto', padding: '4px 0' }}>
         {navItems.filter(item => !(item as any).adminOnly || role === 'super_admin').map(item => {
+          if ((item as any).section) {
+            return (
+              <div key={item.href} style={{ padding: '14px 20px 3px', fontSize: 10, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--bbb-yellow)', borderTop: '1px solid rgba(255,248,231,0.1)', marginTop: 6 }}>
+                {item.label}
+              </div>
+            )
+          }
           const active = item.href === '/dashboard' ? pathname === '/dashboard' : pathname.startsWith(item.href)
           return (
             <Link key={item.href} href={item.href} style={{
               display: 'block',
               padding: '10px 20px',
-              color: active ? 'var(--text)' : 'var(--text-secondary)',
-              background: active ? 'var(--bg-active)' : 'transparent',
+              color: active ? 'var(--bbb-cream-light)' : 'rgba(255,248,231,0.85)',
+              background: active ? 'rgba(232,118,42,0.28)' : 'transparent',
               fontSize: 14,
               fontWeight: active ? 600 : 400,
               textDecoration: 'none',
@@ -89,21 +96,21 @@ export default function Sidebar({ role }: { role: string }) {
       </nav>
 
       {/* Footer */}
-      <div style={{ padding: '14px 20px', borderTop: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <div style={{ padding: '14px 20px', borderTop: '1px solid rgba(255,248,231,0.1)', display: 'flex', flexDirection: 'column', gap: 8 }}>
         <Link href="/dashboard/profile" style={{
-          fontSize: 13, color: 'var(--text-secondary)', textDecoration: 'none', fontWeight: 400,
+          fontSize: 13, color: 'rgba(255,248,231,0.7)', textDecoration: 'none', fontWeight: 400,
         }}>
           Profile
         </Link>
         <button onClick={toggleTheme} style={{
-          color: 'var(--text-muted)', fontSize: 13, fontWeight: 400,
+          color: 'rgba(255,248,231,0.5)', fontSize: 13, fontWeight: 400,
           background: 'none', border: 'none', cursor: 'pointer', padding: 0,
           textAlign: 'left',
         }}>
           Toggle theme
         </button>
         <button onClick={handleSignOut} style={{
-          fontSize: 13, color: 'var(--text-muted)', background: 'none',
+          fontSize: 13, color: 'rgba(255,248,231,0.7)', background: 'none',
           border: 'none', cursor: 'pointer', padding: 0, textAlign: 'left',
           fontWeight: 400,
         }}>
