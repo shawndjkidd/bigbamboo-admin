@@ -328,29 +328,71 @@
   font-style: italic;
 }
 
-/* ── Wooden floor footer plank ────────────────────────── */
-.jukebox-floor {
-  height: 24px;
-  background: linear-gradient(180deg, var(--bbb-wood-light) 0%, var(--bbb-wood) 100%);
-  position: relative;
-  margin-top: 16px;
-  overflow: hidden;
+/* ── Brand logo image (header) ────────────────────────── */
+.jukebox-root .bbb-logo {
+  display: inline-block;
+  width: 320px;
+  max-width: 82%;
+  height: auto;
+  filter: drop-shadow(0 8px 18px rgba(0,0,0,0.6));
 }
-.jukebox-floor::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background-image: repeating-linear-gradient(90deg, transparent 0px, transparent 38px, rgba(0,0,0,0.18) 38px, rgba(0,0,0,0.18) 40px);
-  opacity: 0.55;
+
+/* ── Admin header backing panel ───────────────────────── */
+/* Sits over the tropical bg so title + tabs are readable. */
+.jukebox-admin-header {
+  background: linear-gradient(180deg, rgba(10,40,32,0.85) 0%, rgba(10,40,32,0.78) 100%);
+  border: 1px solid rgba(255,248,231,0.08);
+  border-radius: 14px;
+  padding: 16px 20px;
+  margin-bottom: 18px;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  box-shadow: 0 6px 18px rgba(0,0,0,0.35);
+}
+.jukebox-admin-header .page-title { color: var(--bbb-cream-light); }
+.jukebox-admin-header .jukebox-admin-sub {
+  color: rgba(255,248,231,0.8);
+  font-size: 13px;
+  margin-top: 4px;
+  font-style: italic;
+}
+.jukebox-admin-tabs {
+  display: flex;
+  gap: 4px;
+  margin-top: 14px;
+  border-top: 1px solid rgba(255,248,231,0.12);
+  padding-top: 10px;
+  overflow-x: auto;
+}
+.jukebox-admin-tab {
+  border: none;
+  cursor: pointer;
+  background: transparent;
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  color: rgba(255,248,231,0.72);
+  font-family: inherit;
+  white-space: nowrap;
+}
+.jukebox-admin-tab:hover { color: var(--bbb-cream-light); background: rgba(255,255,255,0.06); }
+.jukebox-admin-tab.is-active {
+  color: var(--bbb-cream-light);
+  background: rgba(232,118,42,0.22);
+  font-weight: 600;
 }
 
 /* ── Tagline (split with yellow accent like the website) */
 .jukebox-tagline {
   font-family: 'Sigmar', 'Bebas Neue', sans-serif;
-  font-size: 18px;
-  letter-spacing: 0.04em;
+  font-size: 30px;
+  letter-spacing: 0.02em;
   color: var(--bbb-cream-light);
-  line-height: 1.1;
-  text-shadow: 0 2px 6px rgba(0,0,0,0.7);
+  line-height: 1.08;
+  text-shadow: 0 3px 10px rgba(0,0,0,0.75);
 }
 .jukebox-tagline-accent { color: var(--bbb-yellow); }
+@media (min-width: 600px) {
+  .jukebox-tagline { font-size: 36px; }
+}

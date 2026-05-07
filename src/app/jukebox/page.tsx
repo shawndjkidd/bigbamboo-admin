@@ -198,26 +198,15 @@ export default function JukeboxGuestPage() {
   return (
     <div style={pageWrap}>
 
-      {/* BIG BAM BOO mark */}
-      <header style={{ textAlign: 'center', padding: '16px 0 14px' }}>
-        <div className="bbb-mark" aria-label="BigBamBoo">
-          <div className="bbb-mark-row bbb-mark-row--big">
-            <span className="bbb-mark-cell">B</span>
-            <span className="bbb-mark-cell">i</span>
-            <span className="bbb-mark-cell">G</span>
-          </div>
-          <div className="bbb-mark-row bbb-mark-row--bam">
-            <span className="bbb-mark-cell">B</span>
-            <span className="bbb-mark-cell">a</span>
-            <span className="bbb-mark-cell">M</span>
-          </div>
-          <div className="bbb-mark-row bbb-mark-row--boo">
-            <span className="bbb-mark-cell">B</span>
-            <span className="bbb-mark-cell">o</span>
-            <span className="bbb-mark-cell">o</span>
-          </div>
-        </div>
-        <div className="jukebox-tagline" style={{ marginTop: 18 }}>
+      {/* Brand logo from bigbamboo.app */}
+      <header style={{ textAlign: 'center', padding: '8px 0 24px' }}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="https://bigbamboo.app/images/bbb-img-5.png"
+          alt="BigBamBoo"
+          className="bbb-logo"
+        />
+        <div className="jukebox-tagline" style={{ marginTop: 22 }}>
           Scan. <span className="jukebox-tagline-accent">Pick a song.</span><br/>
           Don&apos;t kill the vibe.
         </div>
@@ -385,9 +374,6 @@ export default function JukeboxGuestPage() {
         <div>{copy.rules.rewardsLine}</div>
       </div>
 
-      {/* Wooden plank floor */}
-      <div className="jukebox-floor"></div>
-
       {/* Soft loyalty modal */}
       {showLoyalty && (
         <div role="dialog" aria-modal="true" style={modalBackdrop} onClick={() => setShowLoyalty(false)}>
@@ -422,9 +408,9 @@ export default function JukeboxGuestPage() {
 
 // ── Inline styles ──────────────────────────────────────────────
 const pageWrap: React.CSSProperties = {
-  maxWidth: 540,
+  maxWidth: 620,
   margin: '0 auto',
-  padding: '12px 16px 0',
+  padding: '24px 18px 32px',
   minHeight: '100vh',
 }
 const hint: React.CSSProperties = {

@@ -123,17 +123,18 @@ export default function JukeboxAdminPage() {
 
   return (
     <div style={{ maxWidth: 960, margin: '0 auto', padding: '24px 24px 60px' }}>
-      <header style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 18 }}>
-        <div>
-          <div className="page-title">Jukebox</div>
-          <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 4 }}>
-            Approve, queue, and tune the room.
+      <div className="jukebox-admin-header">
+        <header style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
+          <div>
+            <div className="page-title">Jukebox</div>
+            <div className="jukebox-admin-sub">
+              Approve, queue, and tune the room.
+            </div>
           </div>
-        </div>
-        <button className="btn-outline" onClick={() => router.push('/dashboard')}>← Dashboard</button>
-      </header>
-
-      <Tabs tab={tab} onChange={setTab} />
+          <button className="btn-outline" onClick={() => router.push('/dashboard')}>← Dashboard</button>
+        </header>
+        <Tabs tab={tab} onChange={setTab} />
+      </div>
 
       {tab === 'pending' && <PendingTab apiFetch={apiFetch} onAction={showToast} />}
       {tab === 'queue' && <QueueTab apiFetch={apiFetch} onAction={showToast} />}
@@ -156,22 +157,12 @@ function Tabs({ tab, onChange }: { tab: Tab; onChange: (t: Tab) => void }) {
     { id: 'settings', label: copy.admin.settingsTab },
   ]
   return (
-    <nav style={{
-      display: 'flex', gap: 6, marginBottom: 18,
-      borderBottom: '1px solid var(--border)', paddingBottom: 6, overflowX: 'auto',
-    }}>
+    <nav className="jukebox-admin-tabs">
       {items.map((i) => (
         <button
           key={i.id}
           onClick={() => onChange(i.id)}
-          style={{
-            border: 'none', cursor: 'pointer',
-            padding: '8px 14px', borderRadius: 8,
-            fontSize: 14,
-            fontWeight: tab === i.id ? 600 : 500,
-            color: tab === i.id ? 'var(--accent)' : 'var(--text-secondary)',
-            background: tab === i.id ? 'var(--bg-active)' : 'transparent',
-          }}
+          className={`jukebox-admin-tab ${tab === i.id ? 'is-active' : ''}`}
         >
           {i.label}
         </button>
@@ -507,23 +498,6 @@ function SettingsTab({
       </div>
 
       <div className="card" style={{ padding: 18 }}>
-        <div className="section-title" style={{ marginBottom: 12 }}>Cooldowns &amp; rules</div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
-          <NumberField label="Guest cooldown (min)" value={s.guest_cooldown_minutes} onSave={(v) => patch({ guest_cooldown_minutes: v })} />
-          <NumberField label="Member cooldown (min)" value={s.member_cooldown_minutes} onSave={(v) => patch({ member_cooldown_minutes: v })} />
-          <NumberField label="Max song length (s)" value={s.max_song_length_seconds} onSave={(v) => patch({ max_song_length_seconds: v })} />
-          <NumberField label="Duplicate window (min)" value={s.duplicate_cooldown_minutes} onSave={(v) => patch({ duplicate_cooldown_minutes: v })} />
-          <NumberField label="Same-artist window (min)" value={s.same_artist_cooldown_minutes} onSave={(v) => patch({ same_artist_cooldown_minutes: v })} />
-          <NumberField label="Max queue length" value={s.max_queue_length} onSave={(v) => patch({ max_queue_length: v })} />
-          <NumberField label="Pending TTL (min)" value={s.pending_request_ttl_minutes} onSave={(v) => patch({ pending_request_ttl_minutes: v })} />
-        </div>
-        <div style={{ marginTop: 14, display: 'flex', gap: 10, alignItems: 'center' }}>
-          <ToggleChip on={s.allow_explicit} label="Allow explicit" onClick={() => patch({ allow_explicit: !s.allow_explicit })} disabled={saving} />
-          <ToggleChip on={s.auto_add_to_provider} label="Auto-add to Spotify (Phase 2)" onClick={() => patch({ auto_add_to_provider: !s.auto_add_to_provider })} disabled={saving} />
-        </div>
-      </div>
-
-      <div className="card" style={{ padding: 18 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
           <div className="section-title">Curated playlist</div>
           <ToggleChip
@@ -574,10 +548,27 @@ function SettingsTab({
           </div>
         )}
         {s.curated_playlist_error && (
-          <div style={{ padding: '8px 12px', borderRadius: 4, background: 'var(--error-bg)', color: 'var(--error-text)', fontSize: 12 }}>
-            {s.curated_playlist_error}
+          <div style={{ marginTop: 10, padding: '8px 12px', background: 'var(--badge-red-bg)', color: 'var(--badge-red-text)', border: '1px solid var(--badge-red-border)', borderRadius: 8, fontSize: 12 }}>
+            Last sync error: <span style={{ fontFamily: 'monospace' }}>{s.curated_playlist_error}</span>
           </div>
         )}
+      </div>
+
+      <div className="card" style={{ padding: 18 }}>
+        <div className="section-title" style={{ marginBottom: 12 }}>Cooldowns &amp; rules</div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
+          <NumberField label="Guest cooldown (min)" value={s.guest_cooldown_minutes} onSave={(v) => patch({ guest_cooldown_minutes: v })} />
+          <NumberField label="Member cooldown (min)" value={s.member_cooldown_minutes} onSave={(v) => patch({ member_cooldown_minutes: v })} />
+          <NumberField label="Max song length (s)" value={s.max_song_length_seconds} onSave={(v) => patch({ max_song_length_seconds: v })} />
+          <NumberField label="Duplicate window (min)" value={s.duplicate_cooldown_minutes} onSave={(v) => patch({ duplicate_cooldown_minutes: v })} />
+          <NumberField label="Same-artist window (min)" value={s.same_artist_cooldown_minutes} onSave={(v) => patch({ same_artist_cooldown_minutes: v })} />
+          <NumberField label="Max queue length" value={s.max_queue_length} onSave={(v) => patch({ max_queue_length: v })} />
+          <NumberField label="Pending TTL (min)" value={s.pending_request_ttl_minutes} onSave={(v) => patch({ pending_request_ttl_minutes: v })} />
+        </div>
+        <div style={{ marginTop: 14, display: 'flex', gap: 10, alignItems: 'center' }}>
+          <ToggleChip on={s.allow_explicit} label="Allow explicit" onClick={() => patch({ allow_explicit: !s.allow_explicit })} disabled={saving} />
+          <ToggleChip on={s.auto_add_to_provider} label="Auto-add to Spotify (Phase 2)" onClick={() => patch({ auto_add_to_provider: !s.auto_add_to_provider })} disabled={saving} />
+        </div>
       </div>
 
       <div className="card" style={{ padding: 18 }}>
