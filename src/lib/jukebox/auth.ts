@@ -10,8 +10,8 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { getServiceClient } from '@/lib/supabase';
 
-const SUPABASE_URL =
-  process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+const SUPABASE_ANON = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 
 export interface StaffSession {
   id: string;
@@ -59,15 +59,17 @@ export async function requireStaff(
 ): Promise<{ staff: StaffSession } | { error: NextResponse }> {
   const jwt = readJwt(req);
   if (!jwt) return { error: unauthorized('missing token') };
-  if (!SUPABASE_URL) return { error: unauthorized('server misconfigured') };
+  if (!SUPABASE_URL || !SUPABASE_ANON) return { error: unauthorized('server misconfigured') };
 
-  // Use a dedicated client that just verifies the JWT.
-  const verifier = createClient(SUPABASE_URL, jwt, {
-    global: { headers: { Authorization: `Bearer ${jwt}` } },
+  // Verify the JWT against Supabase auth. The client must be created with
+  // the project's anon key as the apikey — using the JWT here causes
+  // auth.getUser() to fail with a 401 on every request.
+  const verifier = createClient(SUPABASE_URL, SUPABASE_ANON, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
   const { data: userRes, error: userErr } = await verifier.auth.getUser(jwt);
   if (userErr || !userRes?.user?.email) {
+    console.error('[requireStaff] auth.getUser failed:', userErr?.message);
     return { error: unauthorized('invalid token') };
   }
   const email = userRes.user.email.toLowerCase();
