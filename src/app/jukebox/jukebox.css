@@ -56,6 +56,24 @@
   --badge-blue-border: rgba(37,99,235,0.3);
   --shadow: 0 4px 12px rgba(0,0,0,0.25);
   --shadow-lg: 0 12px 40px rgba(0,0,0,0.45);
+
+  /* Theme tokens — kiosk + guest pages read from these. Today they alias the
+     BigBamBoo brand palette above. In Phase 1 (multi-tenant), these get
+     server-injected from the venue's row in venue_themes, so the same UI
+     code renders any venue's theme without modification. */
+  --theme-primary:    var(--bbb-orange);
+  --theme-accent:     var(--bbb-yellow);
+  --theme-coral:      var(--bbb-coral);
+  --theme-bg:         var(--bbb-bg-deep);
+  --theme-card:       var(--bbb-cream);
+  --theme-card-light: var(--bbb-cream-light);
+  --theme-card-edge:  var(--bbb-cream-edge);
+  --theme-card-text:  var(--bbb-wood-dark);
+  --theme-card-text-muted: var(--bbb-wood);
+  --theme-text:       var(--bbb-cream-light);
+  --theme-text-muted: rgba(255,248,231,0.75);
+  --theme-display-font: 'Sigmar', 'Bebas Neue', sans-serif;
+  --theme-body-font:    'DM Sans', system-ui, sans-serif;
 }
 
 .jukebox-root,
@@ -187,7 +205,7 @@
   font-size: 13px; font-weight: 600; font-family: inherit;
 }
 
-/* ── PLAY pill on each search result row, color cycles ── */
+/* ── PLAY pill on each search result row ─────────────── */
 .jukebox-root .btn-play {
   font-family: 'Sigmar', sans-serif;
   font-size: 14px;
@@ -335,6 +353,7 @@
 }
 
 /* ── Brand logo image (header) ────────────────────────── */
+/* Sized to roughly match the tagline width edge-to-edge. */
 .jukebox-root .bbb-logo {
   display: block;
   width: 100%;
@@ -345,20 +364,20 @@
 }
 
 /* ── Admin header backing panel ───────────────────────── */
-/* Sits over the tropical bg so title + tabs are readable. */
+/* Solid teal backing so title + tabs read crisply against the jungle. */
 .jukebox-admin-header {
   background: var(--bbb-bg-deep);
-  border: 1px solid rgba(255,248,231,0.08);
+  border: 1px solid rgba(255,248,231,0.12);
   border-radius: 14px;
-  padding: 16px 20px;
+  padding: 18px 22px;
   margin-bottom: 18px;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.55);
+  box-shadow: 0 8px 22px rgba(0,0,0,0.45);
 }
 .jukebox-admin-header .page-title { color: var(--bbb-cream-light); }
 .jukebox-admin-header .jukebox-admin-sub {
-  color: var(--bbb-cream-light);
+  color: rgba(255,248,231,0.85);
   font-size: 14px;
-  margin-top: 4px;
+  margin-top: 6px;
 }
 .jukebox-admin-tabs {
   display: flex;
@@ -380,13 +399,15 @@
   font-family: inherit;
   white-space: nowrap;
 }
-.jukebox-admin-tab:hover { background: rgba(255,255,255,0.06); }
+.jukebox-admin-tab:hover { color: var(--bbb-cream-light); background: rgba(255,255,255,0.06); }
 .jukebox-admin-tab.is-active {
   color: var(--bbb-cream-light);
   background: rgba(232,118,42,0.22);
+  font-weight: 600;
 }
 
-/* ── JUKEBOX wordmark + tagline ───────────────────────── */
+/* ── JUKEBOX wordmark (sits between logo and tagline) ── */
+/* Big negative margin pulls it up into the bbb-img-5 transparent padding. */
 .jukebox-wordmark {
   font-family: 'Sigmar', 'Bebas Neue', sans-serif;
   font-size: 56px;
@@ -396,11 +417,14 @@
   text-shadow: 0 4px 14px rgba(0,0,0,0.75);
   margin-top: -56px;
   margin-bottom: 6px;
+  position: relative;
+  z-index: 2;
 }
 @media (min-width: 600px) {
   .jukebox-wordmark { font-size: 72px; margin-top: -72px; }
 }
 
+/* ── Tagline (split with yellow accent like the website) */
 .jukebox-tagline {
   font-family: 'Sigmar', 'Bebas Neue', sans-serif;
   font-size: 26px;
@@ -414,66 +438,469 @@
   .jukebox-tagline { font-size: 30px; }
 }
 
-/* ── Display kiosk: ON AIR card ───────────────────────── */
-@keyframes coral-pulse {
-  0%, 100% { box-shadow: 0 6px 16px rgba(0,0,0,0.4), inset 0 2px 0 var(--bbb-cream-light), inset 0 -2px 0 var(--bbb-cream-edge), 0 0 0 3px rgba(232,93,74,0.7), 0 0 22px rgba(232,93,74,0.35); }
-  50%       { box-shadow: 0 6px 16px rgba(0,0,0,0.4), inset 0 2px 0 var(--bbb-cream-light), inset 0 -2px 0 var(--bbb-cream-edge), 0 0 0 6px rgba(232,93,74,0.2), 0 0 44px rgba(232,93,74,0.15); }
-}
-
-@keyframes on-air-blink {
-  0%, 49% { opacity: 1; }
-  50%, 100% { opacity: 0; }
-}
-
-.on-air-card {
-  border: 3px solid var(--bbb-coral);
+/* ── NOW PLAYING / ON AIR card (display kiosk only) ───── */
+.jukebox-now-playing {
+  display: flex;
+  gap: 18px;
+  align-items: center;
+  padding: 16px 18px;
+  margin: -4px -4px 16px;
   border-radius: 14px;
-  padding: 16px 20px;
-  margin-bottom: 20px;
-  animation: coral-pulse 2s ease-in-out infinite;
-  background: linear-gradient(180deg, var(--bbb-cream) 0%, var(--bbb-cream-dark) 100%);
-  color: var(--bbb-wood-dark);
+  background:
+    linear-gradient(135deg, rgba(232,93,74,0.18) 0%, rgba(245,184,32,0.14) 100%),
+    var(--bbb-cream-light);
+  border: 3px solid var(--bbb-coral);
+  box-shadow:
+    0 0 0 4px rgba(245,184,32,0.18),
+    0 8px 24px rgba(0,0,0,0.35);
+  position: relative;
+  overflow: hidden;
 }
-
-.on-air-dot {
-  width: 10px;
-  height: 10px;
+.jukebox-now-playing::before {
+  /* Subtle pulsing ring around the card */
+  content: '';
+  position: absolute; inset: -3px;
+  border-radius: 14px;
+  border: 3px solid var(--bbb-coral);
+  opacity: 0.6;
+  animation: bbb-on-air-pulse 2.4s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes bbb-on-air-pulse {
+  0%, 100% { opacity: 0.25; transform: scale(1); }
+  50%      { opacity: 0.85; transform: scale(1.012); }
+}
+.jukebox-now-playing-art {
+  width: 96px; height: 96px;
+  flex-shrink: 0;
+  border-radius: 8px;
+  border: 3px solid var(--bbb-wood);
+  background: var(--bbb-wood-dark);
+  overflow: hidden;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.4);
+}
+.jukebox-now-playing-art img {
+  width: 100%; height: 100%;
+  display: block; object-fit: cover;
+}
+.jukebox-now-playing-label {
+  display: flex; align-items: center; gap: 8px;
+  font-family: 'Sigmar', sans-serif;
+  font-size: 13px;
+  letter-spacing: 0.18em;
+  color: var(--bbb-coral);
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+.jukebox-on-air-dot {
+  width: 12px; height: 12px;
   border-radius: 50%;
   background: var(--bbb-coral);
-  display: inline-block;
-  animation: on-air-blink 1s step-start infinite;
+  box-shadow: 0 0 0 4px rgba(232,93,74,0.25);
+  animation: bbb-on-air-blink 1.2s ease-in-out infinite;
   flex-shrink: 0;
 }
-
-/* ── Display kiosk page layout ────────────────────────── */
-.display-page {
-  padding: 32px 32px 24px;
-  min-height: 100vh;
+@keyframes bbb-on-air-blink {
+  0%, 100% { opacity: 1;   transform: scale(1); }
+  50%      { opacity: 0.4; transform: scale(0.85); }
 }
-
-.display-header {
-  text-align: center;
-  margin-bottom: 28px;
+.jukebox-now-playing-title {
+  font-family: 'Sigmar', sans-serif;
+  font-size: 26px;
+  line-height: 1.15;
+  color: var(--bbb-wood-dark);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-
-.display-two-col {
-  display: grid;
-  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
-  gap: 24px;
-  align-items: start;
-}
-
-.display-paused-banner {
-  position: fixed;
-  bottom: 24px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: var(--badge-orange-bg);
-  border: 1px solid var(--badge-orange-border);
-  color: var(--badge-orange-text);
-  padding: 14px 28px;
-  border-radius: 12px;
+.jukebox-now-playing-sub {
   font-size: 16px;
-  font-weight: 600;
+  color: var(--bbb-wood);
+  font-style: italic;
+  margin-top: 2px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.jukebox-now-playing-req {
+  font-size: 12px;
+  color: var(--bbb-wood);
+  margin-top: 4px;
+  opacity: 0.8;
+}
+@media (min-width: 600px) {
+  .jukebox-now-playing-art { width: 120px; height: 120px; }
+  .jukebox-now-playing-title { font-size: 32px; }
+  .jukebox-now-playing-sub { font-size: 18px; }
+  .jukebox-now-playing-label { font-size: 14px; }
+}
+
+/* Divider between Now Playing card and the Up Next list */
+.jukebox-up-next-divider {
+  display: flex; align-items: center; gap: 12px;
+  margin: 4px 0 10px;
+  font-family: var(--theme-display-font);
+  font-size: 14px;
+  letter-spacing: 0.14em;
+  color: var(--theme-card-text-muted);
+  text-transform: uppercase;
+}
+.jukebox-up-next-divider::before,
+.jukebox-up-next-divider::after {
+  content: '';
+  flex: 1;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--theme-card-edge), transparent);
+}
+.jukebox-up-next-divider span { flex-shrink: 0; }
+
+/* ════════════════════════════════════════════════════════
+   Kiosk redesign — theme-aware. The CSS variables --theme-*
+   default to BigBamBoo's palette today; in Phase 1 they will
+   be server-injected per-venue from venue_themes.
+   ════════════════════════════════════════════════════════ */
+
+/* Page wrapper is the host's responsibility; these classes
+   handle the in-page layout. */
+
+.kiosk-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 4px 6px 0;
+  flex-shrink: 0;
+}
+.kiosk-header-brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.kiosk-header-logo {
+  height: 56px;
+  width: auto;
+  display: block;
+  filter: drop-shadow(0 4px 10px rgba(0,0,0,0.45));
+}
+.kiosk-header-wordmark {
+  font-family: var(--theme-display-font);
+  font-size: 38px;
+  letter-spacing: 0.05em;
+  color: var(--theme-text);
+  text-shadow: 0 3px 10px rgba(0,0,0,0.7);
+  line-height: 1;
+}
+.kiosk-tonight-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: rgba(232,118,42,0.18);
+  border: 1.5px solid var(--theme-primary);
+  border-radius: 100px;
+  color: var(--theme-text);
+  font-family: var(--theme-display-font);
+  font-size: 13px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.kiosk-tonight-pill-name {
+  color: var(--theme-accent);
+  font-weight: 500;
+}
+
+/* Now Playing hero — bigger than the strip-mode now-playing card */
+.kiosk-now-playing-hero {
+  display: flex;
+  gap: 22px;
+  align-items: center;
+  padding: 18px 22px;
+  border-radius: 14px;
+  background:
+    linear-gradient(135deg, rgba(232,93,74,0.18) 0%, rgba(245,184,32,0.14) 100%),
+    var(--theme-card-light);
+  border: 3px solid var(--theme-coral);
+  box-shadow:
+    0 0 0 4px rgba(245,184,32,0.18),
+    0 8px 24px rgba(0,0,0,0.35);
+  position: relative;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.kiosk-now-playing-hero::before {
+  content: '';
+  position: absolute; inset: -3px;
+  border-radius: 14px;
+  border: 3px solid var(--theme-coral);
+  opacity: 0.6;
+  animation: bbb-on-air-pulse 2.4s ease-in-out infinite;
+  pointer-events: none;
+}
+.kiosk-now-playing-hero-art {
+  width: 140px; height: 140px;
+  flex-shrink: 0;
+  border-radius: 10px;
+  border: 3px solid var(--bbb-wood);
+  background: var(--bbb-wood-dark);
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+}
+.kiosk-now-playing-hero-art img {
+  width: 100%; height: 100%; display: block; object-fit: cover;
+}
+.kiosk-now-playing-hero-meta {
+  flex: 1; min-width: 0;
+}
+.kiosk-now-playing-hero-label {
+  display: flex; align-items: center; gap: 8px;
+  font-family: var(--theme-display-font);
+  font-size: 14px;
+  letter-spacing: 0.18em;
+  color: var(--theme-coral);
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+.kiosk-now-playing-hero-title {
+  font-family: var(--theme-display-font);
+  font-size: 38px;
+  line-height: 1.05;
+  color: var(--theme-card-text);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.kiosk-now-playing-hero-artist {
+  font-size: 20px;
+  color: var(--theme-card-text-muted);
+  font-style: italic;
+  margin-top: 4px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.kiosk-now-playing-hero-req {
+  font-size: 13px;
+  color: var(--theme-card-text-muted);
+  margin-top: 6px;
+  opacity: 0.85;
+}
+
+/* Up Next dense list — kiosk-specific compact rows */
+.kiosk-up-next {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.kiosk-up-next-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+.kiosk-up-next-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 6px;
+  border-bottom: 1px dashed var(--theme-card-edge);
+}
+.kiosk-up-next-row:last-of-type { border-bottom: none; }
+.kiosk-up-next-pos {
+  font-family: var(--theme-display-font);
+  font-size: 18px;
+  color: var(--theme-primary);
+  width: 28px;
+  text-align: center;
+  flex-shrink: 0;
+}
+.kiosk-up-next-art {
+  width: 44px; height: 44px;
+  border-radius: 5px;
+  border: 2px solid var(--bbb-wood);
+  background: var(--bbb-wood-dark);
+  flex-shrink: 0;
+  overflow: hidden;
+}
+.kiosk-up-next-art img {
+  width: 100%; height: 100%; display: block; object-fit: cover;
+}
+.kiosk-up-next-meta {
+  flex: 1;
+  min-width: 0;
+}
+.kiosk-up-next-title {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--theme-card-text);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.kiosk-up-next-artist {
+  font-size: 12px;
+  color: var(--theme-card-text-muted);
+  font-style: italic;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.kiosk-up-next-side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.kiosk-up-next-duration {
+  font-size: 11px;
+  color: var(--theme-card-text-muted);
+  font-feature-settings: 'tnum';
+}
+.kiosk-up-next-req {
+  font-size: 11px;
+  color: var(--theme-card-text-muted);
+  font-style: italic;
+}
+
+/* Right column: SCAN block, JUST PLAYED pill, counter */
+.kiosk-scan-block {
+  text-align: center;
+}
+.kiosk-scan-label {
+  font-family: var(--theme-display-font);
+  font-size: 14px;
+  letter-spacing: 0.16em;
+  color: var(--theme-card-text-muted);
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+.kiosk-qr {
+  width: 100%;
+  max-width: 240px;
+  height: auto;
+  display: block;
+  margin: 0 auto;
+  border-radius: 10px;
+  border: 3px solid var(--bbb-wood);
+  background: var(--theme-card-light);
+}
+.kiosk-qr-url {
+  margin-top: 8px;
+  font-size: 11px;
+  font-family: monospace;
+  color: var(--theme-card-text-muted);
+  word-break: break-all;
+}
+
+.kiosk-just-played {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: rgba(245,184,32,0.15);
+  border: 1px solid var(--theme-accent);
+  border-radius: 10px;
+}
+.kiosk-just-played-art {
+  width: 42px; height: 42px;
+  border-radius: 5px;
+  border: 2px solid var(--bbb-wood);
+  background: var(--bbb-wood-dark);
+  flex-shrink: 0;
+  overflow: hidden;
+}
+.kiosk-just-played-art img {
+  width: 100%; height: 100%; display: block; object-fit: cover;
+}
+.kiosk-just-played-meta { flex: 1; min-width: 0; }
+.kiosk-just-played-label {
+  font-family: var(--theme-display-font);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  color: var(--theme-accent);
+  text-transform: uppercase;
+  margin-bottom: 2px;
+}
+.kiosk-just-played-title {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--theme-text);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.kiosk-just-played-artist {
+  font-size: 11px;
+  color: var(--theme-text-muted);
+  font-style: italic;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+.kiosk-counter {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: rgba(74,170,144,0.18);
+  border: 1px solid var(--bbb-teal-light);
+  border-radius: 10px;
+  text-align: center;
+}
+.kiosk-counter-num {
+  font-family: var(--theme-display-font);
+  font-size: 28px;
+  color: var(--theme-text);
+  line-height: 1;
+}
+.kiosk-counter-label {
+  font-size: 11px;
+  color: var(--theme-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+/* Empty state — big animated arrow toward the QR */
+.kiosk-empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 24px;
+  text-align: center;
+  gap: 16px;
+}
+.kiosk-empty-arrow {
+  font-family: var(--theme-display-font);
+  font-size: 96px;
+  line-height: 1;
+  color: var(--theme-primary);
+  text-shadow: 0 3px 10px rgba(0,0,0,0.4);
+  animation: kiosk-arrow-bounce 1.6s ease-in-out infinite;
+}
+@keyframes kiosk-arrow-bounce {
+  0%, 100% { transform: translateX(0); }
+  50%      { transform: translateX(18px); }
+}
+.kiosk-empty-cta {
+  font-family: var(--theme-display-font);
+  font-size: 36px;
   letter-spacing: 0.04em;
+  color: var(--theme-text);
+  text-shadow: 0 3px 10px rgba(0,0,0,0.65);
+  line-height: 1.1;
+}
+.kiosk-empty-sub {
+  font-size: 14px;
+  color: var(--theme-text-muted);
+  max-width: 320px;
+}
+
+/* Portrait fallback — when iPad is rotated */
+@media (orientation: portrait) {
+  .kiosk-twocol {
+    grid-template-columns: 1fr !important;
+    grid-template-rows: auto auto auto;
+  }
+  .kiosk-now-playing-hero-title { font-size: 28px; }
+  .kiosk-now-playing-hero-art { width: 110px; height: 110px; }
+  .kiosk-header-wordmark { font-size: 28px; }
+  .kiosk-header-logo { height: 44px; }
+  .kiosk-empty-arrow {
+    font-size: 80px;
+    animation: kiosk-arrow-bounce-down 1.6s ease-in-out infinite;
+  }
+  @keyframes kiosk-arrow-bounce-down {
+    0%, 100% { transform: translateY(0); }
+    50%      { transform: translateY(18px); }
+  }
 }
