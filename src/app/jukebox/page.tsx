@@ -204,7 +204,8 @@ export default function JukeboxGuestPage() {
           alt="BigBamBoo"
           className="bbb-logo"
         />
-        <div className="jukebox-tagline" style={{ marginTop: 22 }}>
+        <div className="jukebox-wordmark">JUKEBOX</div>
+        <div className="jukebox-tagline">
           Scan. <span className="jukebox-tagline-accent">Pick a song.</span><br/>
           Don&apos;t kill the vibe.
         </div>
