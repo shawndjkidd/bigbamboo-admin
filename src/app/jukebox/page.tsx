@@ -1,7 +1,8 @@
 'use client'
 // ═══════════════════════════════════════════════════════════════
 //  /jukebox — Guest page (no auth)
-//  Scan QR → search → pick → nickname → submit. That's it.
+//  Tropical/tiki redesign matching the bigbamboo.app website hero.
+//  Same logic as before — search → pick → nickname → submit.
 // ═══════════════════════════════════════════════════════════════
 
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -34,6 +35,10 @@ const NICK_KEY = 'bbb_jukebox_nickname'
 const FIRST_SUBMITTED_KEY = 'bbb_jukebox_first_submitted'
 const NEXT_AVAILABLE_KEY = 'bbb_jukebox_next_available_at'
 
+// Cycle PLAY button color through the brand palette so the
+// list feels like the multi-color pill nav on bigbamboo.app.
+const PLAY_VARIANTS = ['btn-play--yellow', 'btn-play--teal', 'btn-play--coral'] as const
+
 function getOrCreateDeviceId(): string {
   if (typeof window === 'undefined') return ''
   let id = localStorage.getItem(DEVICE_KEY)
@@ -61,6 +66,13 @@ function fmtMmSs(ms: number): string {
   return `${mm}:${ss}`
 }
 
+function slotLabel(i: number): string {
+  // Jukebox-style A1, A2, ... B1, B2, ... — purely cosmetic
+  const row = String.fromCharCode(65 + Math.floor(i / 9))
+  const col = (i % 9) + 1
+  return `${row}${col}`
+}
+
 export default function JukeboxGuestPage() {
   const [deviceId, setDeviceId] = useState('')
   const [settings, setSettings] = useState<PublicSettings | null>(null)
@@ -81,7 +93,6 @@ export default function JukeboxGuestPage() {
   const [showLoyalty, setShowLoyalty] = useState(false)
   const debounceRef = useRef<number | null>(null)
 
-  // Hydrate device + saved nickname + cooldown
   useEffect(() => {
     setDeviceId(getOrCreateDeviceId())
     setNickname(localStorage.getItem(NICK_KEY) || '')
@@ -89,7 +100,6 @@ export default function JukeboxGuestPage() {
     return () => clearInterval(tick)
   }, [])
 
-  // Load public settings
   useEffect(() => {
     let alive = true
     fetch('/api/jukebox/settings', { cache: 'no-store' })
@@ -103,7 +113,6 @@ export default function JukeboxGuestPage() {
     return () => { alive = false }
   }, [])
 
-  // Debounced search
   useEffect(() => {
     if (!deviceId) return
     if (debounceRef.current) window.clearTimeout(debounceRef.current)
@@ -156,7 +165,7 @@ export default function JukeboxGuestPage() {
         }),
       })
       const j = await r.json()
-      if (j.ok === false) {
+      if (!j.ok) {
         const retry = j.error?.meta?.retryAfterSec
         if (retry && typeof retry === 'number') {
           localStorage.setItem(NEXT_AVAILABLE_KEY, String(Date.now() + retry * 1000))
@@ -164,7 +173,6 @@ export default function JukeboxGuestPage() {
         setSubmitErr(j.error?.message || 'Request failed.')
         return
       }
-      // Success
       localStorage.setItem(NICK_KEY, nickname.trim())
       const next = j.data.next_request_available_in_sec || 0
       if (next > 0) localStorage.setItem(NEXT_AVAILABLE_KEY, String(Date.now() + next * 1000))
@@ -189,10 +197,30 @@ export default function JukeboxGuestPage() {
   // ── Render ────────────────────────────────────────────────
   return (
     <div style={pageWrap}>
-      {/* Brand */}
-      <header style={{ textAlign: 'center', marginBottom: 22 }}>
-        <div style={brandKicker}>{copy.brand.title.toUpperCase()}</div>
-        <div style={brandTagline}>{copy.brand.tagline}</div>
+
+      {/* BIG BAM BOO mark */}
+      <header style={{ textAlign: 'center', padding: '16px 0 14px' }}>
+        <div className="bbb-mark" aria-label="BigBamBoo">
+          <div className="bbb-mark-row bbb-mark-row--big">
+            <span className="bbb-mark-cell">B</span>
+            <span className="bbb-mark-cell">i</span>
+            <span className="bbb-mark-cell">G</span>
+          </div>
+          <div className="bbb-mark-row bbb-mark-row--bam">
+            <span className="bbb-mark-cell">B</span>
+            <span className="bbb-mark-cell">a</span>
+            <span className="bbb-mark-cell">M</span>
+          </div>
+          <div className="bbb-mark-row bbb-mark-row--boo">
+            <span className="bbb-mark-cell">B</span>
+            <span className="bbb-mark-cell">o</span>
+            <span className="bbb-mark-cell">o</span>
+          </div>
+        </div>
+        <div className="jukebox-tagline" style={{ marginTop: 18 }}>
+          Scan. <span className="jukebox-tagline-accent">Pick a song.</span><br/>
+          Don&apos;t kill the vibe.
+        </div>
       </header>
 
       {/* System state banners */}
@@ -204,15 +232,17 @@ export default function JukeboxGuestPage() {
       {settings && settings.curated_mode_enabled && settings.curated_playlist_name && (
         <div style={{
           padding: '8px 14px', borderRadius: 10,
-          border: '1px solid var(--badge-orange-border)',
-          background: 'var(--badge-orange-bg)', color: 'var(--badge-orange-text)',
-          fontSize: 12, marginBottom: 12, textAlign: 'center', letterSpacing: '0.02em',
+          border: '1px solid rgba(245,184,32,0.4)',
+          background: 'rgba(245,184,32,0.18)', color: '#fff8e7',
+          fontFamily: 'Sigmar, sans-serif', fontSize: 11, letterSpacing: '0.16em',
+          marginBottom: 12, textAlign: 'center', textTransform: 'uppercase',
         }}>
-          <span style={{ opacity: 0.8 }}>{copy.curated.bannerPrefix}</span>{' '}
-          <span style={{ fontWeight: 600 }}>{settings.curated_playlist_name}</span>
+          — {copy.curated.bannerPrefix}{' '}
+          <span style={{ color: '#f5b820' }}>{settings.curated_playlist_name}</span>
           {typeof settings.curated_playlist_track_count === 'number' && settings.curated_playlist_track_count > 0 && (
-            <span style={{ opacity: 0.6 }}> · {settings.curated_playlist_track_count} tracks</span>
+            <span style={{ opacity: 0.75 }}> · {settings.curated_playlist_track_count} tracks</span>
           )}
+          {' '}—
         </div>
       )}
 
@@ -223,91 +253,100 @@ export default function JukeboxGuestPage() {
 
       {/* Just submitted */}
       {submitOk && (
-        <div className="card" style={{ padding: 18, marginBottom: 14 }}>
-          <div style={{ fontSize: 13, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>
+        <div className="jukebox-cabinet" style={{ marginBottom: 14 }}>
+          <div className="section-title" style={{ marginBottom: 6 }}>
             {submitOk.status === 'pending' ? 'Pending staff approval' : 'In the queue'}
           </div>
-          <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text)' }}>
+          <div style={{ fontFamily: 'Sigmar, sans-serif', fontSize: 22, color: 'var(--bbb-wood-dark)' }}>
             {copy.guest.submitConfirm}
           </div>
           {submitOk.position && (
-            <div style={{ fontSize: 14, color: 'var(--text-secondary)', marginTop: 4 }}>
+            <div style={{ fontSize: 14, color: 'var(--bbb-wood)', marginTop: 4, fontStyle: 'italic' }}>
               {copy.guest.queuePositionLine(submitOk.position)}
             </div>
           )}
         </div>
       )}
 
-      {/* Search */}
+      {/* Search + results — wrapped in cabinet when there's something to show */}
       {settings && settings.is_active && settings.mode !== 'locked' && cooldownMs === 0 && !picked && (
-        <>
-          <input
-            className="input"
-            type="search"
-            placeholder={copy.guest.searchPlaceholder}
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            style={{ fontSize: 16, padding: '14px 16px' }}
-            autoFocus
-          />
+        <div className="jukebox-cabinet">
+          <div style={{ position: 'relative' }}>
+            <input
+              className="input"
+              type="search"
+              placeholder={copy.guest.searchPlaceholder}
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              autoFocus
+            />
+          </div>
 
           {searching && <div style={hint}>Searching…</div>}
           {searchErr && <div style={errorHint}>{searchErr}</div>}
 
           {!searching && !searchErr && query.trim().length >= 2 && results.length === 0 && (
             <div style={hint}>
-              {settings?.curated_mode_enabled
-                ? copy.curated.emptyResults
-                : copy.guest.emptyResults}
+              {settings?.curated_mode_enabled ? copy.curated.emptyResults : copy.guest.emptyResults}
             </div>
           )}
 
-          <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {results.map((t) => (
-              <button
-                key={t.id}
-                onClick={() => setPicked(t)}
-                style={resultRow}
-                aria-label={`Pick ${t.name} by ${t.artists[0]?.name}`}
-              >
-                <div style={{ width: 56, height: 56, flexShrink: 0, borderRadius: 6, overflow: 'hidden', background: 'var(--bg-input)' }}>
-                  {t.album.artUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={t.album.artUrl} alt="" width={56} height={56} style={{ display: 'block', objectFit: 'cover' }} />
-                  ) : null}
-                </div>
-                <div style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
-                  <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {t.name}
+          {results.length > 0 && (
+            <div style={{ marginTop: 10 }}>
+              {results.map((t, i) => (
+                <div key={t.id} className="jukebox-strip">
+                  <div className="jukebox-slot">{slotLabel(i)}</div>
+                  <div className="jukebox-art">
+                    {t.album.artUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={t.album.artUrl} alt="" />
+                    ) : null}
                   </div>
-                  <div style={{ fontSize: 13, color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {t.artists.map(a => a.name).join(', ')}
+                  <div className="jukebox-strip-meta">
+                    <div className="jukebox-strip-title">
+                      {t.name}
+                      {t.explicit && <span className="badge badge-gray" style={{ marginLeft: 6, fontSize: 9 }}>E</span>}
+                    </div>
+                    <div className="jukebox-strip-sub">
+                      {t.artists.map(a => a.name).join(', ')} · {fmtDuration(t.durationMs)}
+                    </div>
                   </div>
+                  <button
+                    className={`btn-play ${PLAY_VARIANTS[i % PLAY_VARIANTS.length]}`}
+                    onClick={() => setPicked(t)}
+                    aria-label={`Pick ${t.name} by ${t.artists[0]?.name}`}
+                  >
+                    Play
+                  </button>
                 </div>
-                <div style={{ flexShrink: 0, fontSize: 12, color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
-                  <span style={{ fontFeatureSettings: '"tnum"' }}>{fmtDuration(t.durationMs)}</span>
-                  {t.explicit && <span className="badge badge-gray">{copy.guest.explicitTag}</span>}
-                </div>
-              </button>
-            ))}
+              ))}
+            </div>
+          )}
+
+          <div className="jukebox-marquee">
+            {settings?.curated_mode_enabled && settings.curated_playlist_name
+              ? <>— Tonight&apos;s playlist: {settings.curated_playlist_name} —</>
+              : <>— Pick a tune. We&apos;ll spin it up —</>}
           </div>
-        </>
+        </div>
       )}
 
       {/* Picked → confirm */}
       {picked && (
-        <div className="card" style={{ padding: 18 }}>
+        <div className="jukebox-cabinet">
           <div style={{ display: 'flex', gap: 14, alignItems: 'center', marginBottom: 16 }}>
-            <div style={{ width: 64, height: 64, flexShrink: 0, borderRadius: 8, overflow: 'hidden', background: 'var(--bg-input)' }}>
+            <div className="jukebox-art jukebox-art--hero" style={{ width: 112, height: 112 }}>
               {picked.album.artUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={picked.album.artUrl} alt="" width={64} height={64} style={{ display: 'block', objectFit: 'cover' }} />
+                <img src={picked.album.artUrl} alt="" />
               ) : null}
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{picked.name}</div>
-              <div style={{ fontSize: 14, color: 'var(--text-secondary)' }}>{picked.artists.map(a => a.name).join(', ')}</div>
-              <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{fmtDuration(picked.durationMs)}{picked.explicit ? ' · explicit' : ''}</div>
+              <div className="jukebox-strip-title" style={{ fontSize: 16 }}>{picked.name}</div>
+              <div className="jukebox-strip-sub" style={{ fontSize: 13 }}>{picked.artists.map(a => a.name).join(', ')}</div>
+              <div style={{ fontSize: 12, color: 'var(--bbb-wood-light)', marginTop: 4 }}>
+                {fmtDuration(picked.durationMs)}{picked.explicit ? ' · explicit' : ''}
+              </div>
             </div>
           </div>
 
@@ -340,20 +379,23 @@ export default function JukeboxGuestPage() {
       )}
 
       {/* Rules */}
-      <footer style={{ marginTop: 28, fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.6, textAlign: 'center' }}>
+      <div className="jukebox-rules">
         <div>{copy.rules.cooldownLine}</div>
         <div>{copy.rules.staffLine}</div>
         <div>{copy.rules.rewardsLine}</div>
-      </footer>
+      </div>
+
+      {/* Wooden plank floor */}
+      <div className="jukebox-floor"></div>
 
       {/* Soft loyalty modal */}
       {showLoyalty && (
         <div role="dialog" aria-modal="true" style={modalBackdrop} onClick={() => setShowLoyalty(false)}>
-          <div className="card" style={modalCard} onClick={(e) => e.stopPropagation()}>
-            <div style={{ fontFamily: 'Bebas Neue, sans-serif', fontSize: 28, color: 'var(--accent)', letterSpacing: '0.04em', marginBottom: 6 }}>
+          <div className="jukebox-cabinet" style={modalCard} onClick={(e) => e.stopPropagation()}>
+            <div style={{ fontFamily: 'Sigmar, sans-serif', fontSize: 24, color: 'var(--bbb-orange)', letterSpacing: '0.02em', marginBottom: 6 }}>
               {copy.guest.loyaltyHook}
             </div>
-            <div style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 18, lineHeight: 1.5 }}>
+            <div style={{ fontSize: 14, color: 'var(--bbb-wood)', marginBottom: 18, lineHeight: 1.5 }}>
               {copy.guest.loyaltyPitch}
             </div>
             <div style={{ display: 'flex', gap: 10 }}>
@@ -364,7 +406,6 @@ export default function JukeboxGuestPage() {
                 className="btn-accent"
                 onClick={() => {
                   setShowLoyalty(false)
-                  // Wallet pass is the loyalty front door — point at the existing scan/play entry.
                   window.location.href = '/play'
                 }}
                 style={{ flex: 1 }}
@@ -381,49 +422,35 @@ export default function JukeboxGuestPage() {
 
 // ── Inline styles ──────────────────────────────────────────────
 const pageWrap: React.CSSProperties = {
-  maxWidth: 520,
+  maxWidth: 540,
   margin: '0 auto',
-  padding: '24px 20px 40px',
+  padding: '12px 16px 0',
   minHeight: '100vh',
-  background: 'var(--bg)',
-  color: 'var(--text)',
 }
-const brandKicker: React.CSSProperties = {
-  fontSize: 12,
-  fontWeight: 700,
-  letterSpacing: '0.18em',
-  color: 'var(--accent)',
-  marginBottom: 6,
+const hint: React.CSSProperties = {
+  fontSize: 13, color: 'var(--bbb-wood-light)', marginTop: 12,
+  textAlign: 'center', fontStyle: 'italic',
 }
-const brandTagline: React.CSSProperties = {
-  fontFamily: 'Bebas Neue, sans-serif',
-  fontSize: 26,
-  letterSpacing: '0.04em',
-  color: 'var(--text)',
-  lineHeight: 1.1,
-}
-const hint: React.CSSProperties = { fontSize: 13, color: 'var(--text-muted)', marginTop: 12, textAlign: 'center' }
-const errorHint: React.CSSProperties = { fontSize: 13, color: 'var(--badge-red-text)', marginTop: 8, marginBottom: 6, textAlign: 'left' }
-const resultRow: React.CSSProperties = {
-  display: 'flex', alignItems: 'center', gap: 12, padding: 10,
-  background: 'var(--bg-card)', border: '1px solid var(--border)',
-  borderRadius: 10, cursor: 'pointer', textAlign: 'left',
+const errorHint: React.CSSProperties = {
+  fontSize: 13, color: 'var(--badge-red-text)',
+  marginTop: 8, marginBottom: 6, textAlign: 'left',
 }
 const modalBackdrop: React.CSSProperties = {
-  position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)',
+  position: 'fixed', inset: 0, background: 'rgba(13,61,44,0.7)',
   display: 'flex', alignItems: 'center', justifyContent: 'center',
   padding: 16, zIndex: 100,
 }
 const modalCard: React.CSSProperties = { padding: 24, maxWidth: 380, width: '100%' }
 
 function Banner({ kind, children }: { kind: 'info' | 'warn'; children: React.ReactNode }) {
-  const bg = kind === 'warn' ? 'var(--badge-orange-bg)' : 'var(--badge-blue-bg)'
-  const border = kind === 'warn' ? 'var(--badge-orange-border)' : 'var(--badge-blue-border)'
-  const color = kind === 'warn' ? 'var(--badge-orange-text)' : 'var(--badge-blue-text)'
+  const styles = kind === 'warn'
+    ? { bg: 'rgba(216,90,48,0.18)', border: 'rgba(216,90,48,0.45)', color: '#fff8e7' }
+    : { bg: 'rgba(74,170,144,0.18)', border: 'rgba(74,170,144,0.45)', color: '#fff8e7' }
   return (
     <div style={{
-      padding: '10px 14px', borderRadius: 10, border: `1px solid ${border}`,
-      background: bg, color, fontSize: 13, marginBottom: 12, textAlign: 'center',
+      padding: '10px 14px', borderRadius: 10, border: `1px solid ${styles.border}`,
+      background: styles.bg, color: styles.color, fontSize: 13,
+      marginBottom: 12, textAlign: 'center', fontStyle: 'italic',
     }}>
       {children}
     </div>

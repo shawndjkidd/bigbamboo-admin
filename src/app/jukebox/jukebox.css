@@ -1,145 +1,231 @@
 /* ═══════════════════════════════════════════════════════════════
-    Jukebox-scoped styles. Mirrors a subset of the redesign's
-    globals.css. Self-contained so /jukebox/* renders correctly
-    even if the project's globals.css hasn't been wired into the
-    root layout yet. Drop this file once globals.css is loaded.
+    Jukebox-scoped styles — tropical/tiki redesign matching the
+    bigbamboo.app website hero. Painted-jungle background,
+    BIG BAM BOO blocky mark, cream cabinet panel, brand-palette
+    pill buttons, wood plank floor.
    ═══════════════════════════════════════════════════════════════ */
 
 :root {
-  --bg: #ffffff;
-  --bg-card: #ffffff;
-  --bg-input: #f3f4f6;
-  --bg-hover: #f9fafb;
-  --bg-active: rgba(234,88,12,0.06);
-  --bg-subtle: #f9fafb;
-  --text: #1a1a1a;
-  --text-secondary: #6b7280;
-  --text-muted: #9ca3af;
-  --border: #e5e7eb;
-  --accent: #ea580c;
-  --accent-hover: #dc4a04;
-  --accent-light: rgba(234,88,12,0.1);
-  --green: #16a34a;
-  --red: #dc2626;
-  --blue: #2563eb;
-  --badge-green-bg: rgba(22,163,74,0.1);
-  --badge-green-text: #16a34a;
-  --badge-green-border: rgba(22,163,74,0.2);
-  --badge-red-bg: rgba(220,38,38,0.1);
-  --badge-red-text: #dc2626;
-  --badge-red-border: rgba(220,38,38,0.2);
-  --badge-orange-bg: rgba(234,88,12,0.1);
-  --badge-orange-text: #ea580c;
-  --badge-orange-border: rgba(234,88,12,0.2);
-  --badge-gray-bg: rgba(107,114,128,0.1);
-  --badge-gray-text: #6b7280;
-  --badge-gray-border: rgba(107,114,128,0.2);
-  --badge-blue-bg: rgba(37,99,235,0.1);
-  --badge-blue-text: #2563eb;
-  --badge-blue-border: rgba(37,99,235,0.2);
-  --shadow: 0 1px 3px rgba(0,0,0,0.08);
-  --shadow-lg: 0 4px 12px rgba(0,0,0,0.08);
-}
+  /* Brand palette pulled from bigbamboo.app */
+  --bbb-bg: #0d3d2c;
+  --bbb-bg-deep: #0a2820;
+  --bbb-teal: #387668;
+  --bbb-teal-light: #4aaa90;
+  --bbb-cream: #f4e8d0;
+  --bbb-cream-light: #fff8e7;
+  --bbb-cream-dark: #ead8b0;
+  --bbb-cream-edge: #c9b890;
+  --bbb-wood: #6b4226;
+  --bbb-wood-light: #8b6f47;
+  --bbb-wood-dark: #2c1810;
+  --bbb-yellow: #f5b820;
+  --bbb-orange: #e8762a;
+  --bbb-coral: #e85d4a;
 
-[data-theme="dark"] {
-  --bg: #111113;
-  --bg-card: #1c1c20;
-  --bg-input: #27272a;
-  --bg-hover: #2e2e33;
-  --bg-active: rgba(234,88,12,0.12);
-  --bg-subtle: #18181b;
-  --text: #f4f4f5;
-  --text-secondary: #a1a1aa;
-  --text-muted: #71717a;
-  --border: #2e2e33;
-  --accent: #ea580c;
-  --accent-hover: #f97316;
-  --accent-light: rgba(234,88,12,0.15);
-  --green: #22c55e;
-  --red: #ef4444;
-  --blue: #3b82f6;
-  --shadow: 0 1px 3px rgba(0,0,0,0.4);
-  --shadow-lg: 0 4px 12px rgba(0,0,0,0.3);
+  /* Mapped tokens so existing utility classes still work */
+  --bg: var(--bbb-bg-deep);
+  --bg-card: var(--bbb-cream);
+  --bg-input: var(--bbb-cream-light);
+  --bg-hover: rgba(255,255,255,0.04);
+  --bg-active: rgba(232,118,42,0.18);
+  --bg-subtle: rgba(255,248,231,0.04);
+  --text: var(--bbb-wood-dark);
+  --text-secondary: var(--bbb-wood);
+  --text-muted: var(--bbb-wood-light);
+  --border: var(--bbb-cream-edge);
+  --accent: var(--bbb-orange);
+  --accent-hover: var(--bbb-yellow);
+  --accent-light: rgba(232,118,42,0.12);
+  --green: var(--bbb-teal-light);
+  --red: #b73a3a;
+  --blue: #2563eb;
+  --badge-green-bg: rgba(74,170,144,0.15);
+  --badge-green-text: #2d6f5b;
+  --badge-green-border: rgba(74,170,144,0.35);
+  --badge-red-bg: rgba(183,58,58,0.15);
+  --badge-red-text: #8a1f1f;
+  --badge-red-border: rgba(183,58,58,0.35);
+  --badge-orange-bg: rgba(232,118,42,0.18);
+  --badge-orange-text: #8a3416;
+  --badge-orange-border: rgba(232,118,42,0.35);
+  --badge-gray-bg: rgba(107,66,38,0.12);
+  --badge-gray-text: var(--bbb-wood);
+  --badge-gray-border: rgba(107,66,38,0.25);
+  --badge-blue-bg: rgba(37,99,235,0.12);
+  --badge-blue-text: #1a3f8c;
+  --badge-blue-border: rgba(37,99,235,0.3);
+  --shadow: 0 4px 12px rgba(0,0,0,0.25);
+  --shadow-lg: 0 12px 40px rgba(0,0,0,0.45);
 }
 
 .jukebox-root,
 .jukebox-root * { box-sizing: border-box; }
 
 .jukebox-root {
-  background: var(--bg);
-  color: var(--text);
+  min-height: 100vh;
+  color: var(--bbb-cream-light);
   font-family: 'DM Sans', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  min-height: 100vh;
+  background-color: var(--bbb-bg-deep);
+  background-image:
+    linear-gradient(180deg, rgba(13,61,44,0.15) 0%, rgba(13,61,44,0.5) 60%, rgba(13,61,44,0.7) 100%),
+    url('https://bigbamboo.app/images/bbb-img-1.png');
+  background-size: cover;
+  background-position: center top;
+  background-attachment: fixed;
 }
 
+/* ── BIG BAM BOO mark ─────────────────────────────────── */
+.bbb-mark {
+  display: inline-block;
+  line-height: 0;
+}
+.bbb-mark-row {
+  display: flex;
+  gap: 4px;
+  justify-content: center;
+}
+.bbb-mark-row + .bbb-mark-row { margin-top: 4px; }
+.bbb-mark-cell {
+  font-family: 'Sigmar', 'Bebas Neue', sans-serif;
+  font-size: 38px;
+  line-height: 1;
+  padding: 6px 12px 4px;
+  color: #1a1a1a;
+  border-radius: 4px;
+  box-shadow: 0 3px 0 rgba(0,0,0,0.3);
+  min-width: 38px;
+  text-align: center;
+}
+.bbb-mark-row--big .bbb-mark-cell  { background: var(--bbb-yellow); }
+.bbb-mark-row--bam .bbb-mark-cell  { background: var(--bbb-orange); }
+.bbb-mark-row--boo .bbb-mark-cell  { background: var(--bbb-coral); }
+
+/* ── Cabinet (cream wood-strip surface) ───────────────── */
+.jukebox-cabinet,
 .jukebox-root .card {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  box-shadow: var(--shadow);
+  background: linear-gradient(180deg, var(--bbb-cream) 0%, var(--bbb-cream-dark) 100%);
+  border-radius: 14px;
+  padding: 14px;
+  box-shadow: 0 6px 16px rgba(0,0,0,0.4),
+              inset 0 2px 0 var(--bbb-cream-light),
+              inset 0 -2px 0 var(--bbb-cream-edge);
+  color: var(--bbb-wood-dark);
+  border: none;
 }
 
+/* ── Inputs (jukebox letter-slot style) ───────────────── */
 .jukebox-root .input {
-  background: var(--bg-input);
-  border: 1px solid var(--border);
+  background: var(--bbb-cream-light);
+  border: 2px solid var(--bbb-wood);
   border-radius: 8px;
-  padding: 10px 14px;
-  color: var(--text);
+  padding: 11px 14px;
+  color: var(--bbb-wood-dark);
   font-size: 14px;
   width: 100%;
-  transition: border-color 0.15s;
   font-family: inherit;
+  font-style: italic;
+  box-shadow: inset 0 2px 3px rgba(107,66,38,0.15);
+  transition: border-color 0.12s, box-shadow 0.12s;
 }
-.jukebox-root .input:focus { border-color: var(--accent); outline: none; box-shadow: 0 0 0 3px var(--accent-light); }
-.jukebox-root .input::placeholder { color: var(--text-muted); }
+.jukebox-root .input:focus {
+  outline: none;
+  border-color: var(--bbb-orange);
+  box-shadow: inset 0 2px 3px rgba(107,66,38,0.15), 0 0 0 3px rgba(232,118,42,0.22);
+}
+.jukebox-root .input::placeholder { color: var(--bbb-wood-light); font-style: italic; }
 .jukebox-root select.input {
-  cursor: pointer; appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%239ca3af' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+  cursor: pointer; appearance: none; font-style: normal;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236b4226' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
   background-repeat: no-repeat; background-position: right 12px center; padding-right: 32px;
 }
 
+/* ── Chunky physical buttons ──────────────────────────── */
 .jukebox-root .btn-accent {
-  background: var(--accent); color: #fff; font-weight: 600;
-  padding: 10px 20px; border-radius: 8px; border: none;
-  cursor: pointer; font-size: 14px; transition: background 0.15s;
-  font-family: inherit;
+  background: var(--bbb-orange);
+  color: var(--bbb-cream-light);
+  font-family: 'Sigmar', sans-serif;
+  font-weight: 400;
+  letter-spacing: 0.04em;
+  padding: 11px 20px;
+  border-radius: 100px;
+  border: 2px solid var(--bbb-wood);
+  cursor: pointer;
+  font-size: 18px;
+  box-shadow: 0 3px 0 var(--bbb-wood);
+  transition: transform 0.08s, box-shadow 0.08s, background 0.12s;
 }
-.jukebox-root .btn-accent:hover { background: var(--accent-hover); }
-.jukebox-root .btn-accent:disabled { opacity: 0.5; cursor: not-allowed; }
+.jukebox-root .btn-accent:hover { background: var(--bbb-yellow); color: var(--bbb-wood-dark); }
+.jukebox-root .btn-accent:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--bbb-wood); }
+.jukebox-root .btn-accent:disabled { opacity: 0.55; cursor: not-allowed; transform: none; box-shadow: 0 3px 0 var(--bbb-wood); }
 
 .jukebox-root .btn-outline {
-  background: transparent; border: 1px solid var(--border);
-  color: var(--text-secondary); padding: 9px 16px;
-  border-radius: 8px; cursor: pointer; font-size: 13px;
-  transition: all 0.15s; font-family: inherit;
+  background: transparent;
+  border: 2px solid var(--bbb-wood);
+  color: var(--bbb-wood);
+  padding: 9px 18px;
+  border-radius: 100px;
+  cursor: pointer;
+  font-size: 14px;
+  font-family: inherit;
+  font-weight: 600;
+  transition: background 0.12s;
 }
-.jukebox-root .btn-outline:hover { border-color: var(--text-muted); color: var(--text); background: var(--bg-hover); }
+.jukebox-root .btn-outline:hover { background: rgba(107,66,38,0.08); }
 
 .jukebox-root .btn-red {
   background: var(--badge-red-bg); color: var(--badge-red-text);
-  border: 1px solid var(--badge-red-border);
-  padding: 8px 14px; border-radius: 8px; cursor: pointer;
-  font-size: 13px; font-weight: 500; font-family: inherit;
+  border: 2px solid var(--badge-red-border);
+  padding: 8px 14px; border-radius: 6px; cursor: pointer;
+  font-size: 13px; font-weight: 600; font-family: inherit;
 }
 .jukebox-root .btn-green {
   background: var(--badge-green-bg); color: var(--badge-green-text);
-  border: 1px solid var(--badge-green-border);
-  padding: 8px 14px; border-radius: 8px; cursor: pointer;
-  font-size: 13px; font-weight: 500; font-family: inherit;
+  border: 2px solid var(--badge-green-border);
+  padding: 8px 14px; border-radius: 6px; cursor: pointer;
+  font-size: 13px; font-weight: 600; font-family: inherit;
 }
 
+/* ── PLAY pill on each search result row, color cycles ── */
+.jukebox-root .btn-play {
+  font-family: 'Sigmar', sans-serif;
+  font-size: 14px;
+  letter-spacing: 0.02em;
+  padding: 7px 18px;
+  border: 2px solid var(--bbb-wood);
+  border-radius: 100px;
+  cursor: pointer;
+  box-shadow: 0 2px 0 var(--bbb-wood);
+  flex-shrink: 0;
+  transition: transform 0.08s, box-shadow 0.08s, filter 0.12s;
+  color: var(--bbb-wood-dark);
+  background: var(--bbb-yellow);
+}
+.jukebox-root .btn-play:hover { filter: brightness(1.06); }
+.jukebox-root .btn-play:active { transform: translateY(2px); box-shadow: 0 0 0 var(--bbb-wood); }
+.jukebox-root .btn-play--yellow { background: var(--bbb-yellow); color: var(--bbb-wood-dark); }
+.jukebox-root .btn-play--teal   { background: var(--bbb-teal-light); color: var(--bbb-cream-light); }
+.jukebox-root .btn-play--coral  { background: var(--bbb-coral); color: var(--bbb-cream-light); }
+
+/* ── Labels ───────────────────────────────────────────── */
 .jukebox-root .label {
-  font-size: 12px; font-weight: 500; letter-spacing: 0.04em;
-  text-transform: uppercase; color: var(--text-muted);
-  margin-bottom: 6px; display: block;
+  font-family: 'Sigmar', sans-serif;
+  font-size: 13px;
+  font-weight: 400;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--bbb-wood);
+  margin-bottom: 6px;
+  display: block;
 }
 
+/* ── Badges ───────────────────────────────────────────── */
 .jukebox-root .badge {
-  font-size: 11px; font-weight: 500; letter-spacing: 0.04em;
+  font-size: 11px; font-weight: 600; letter-spacing: 0.04em;
   text-transform: uppercase; padding: 3px 10px;
   border-radius: 100px; display: inline-flex; align-items: center;
+  font-family: inherit;
 }
 .jukebox-root .badge-orange { background: var(--badge-orange-bg); color: var(--badge-orange-text); border: 1px solid var(--badge-orange-border); }
 .jukebox-root .badge-green  { background: var(--badge-green-bg);  color: var(--badge-green-text);  border: 1px solid var(--badge-green-border); }
@@ -147,20 +233,124 @@
 .jukebox-root .badge-gray   { background: var(--badge-gray-bg);   color: var(--badge-gray-text);   border: 1px solid var(--badge-gray-border); }
 .jukebox-root .badge-blue   { background: var(--badge-blue-bg);   color: var(--badge-blue-text);   border: 1px solid var(--badge-blue-border); }
 
+/* ── Section / page titles ────────────────────────────── */
 .jukebox-root .section-title {
-  font-size: 12px; font-weight: 600; letter-spacing: 0.08em;
-  text-transform: uppercase; color: var(--text-muted);
+  font-family: 'Sigmar', sans-serif;
+  font-size: 13px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--bbb-wood-light);
 }
-
 .jukebox-root .page-title {
-  font-family: 'Bebas Neue', sans-serif; font-size: 32px;
-  letter-spacing: 0.04em; color: var(--text); line-height: 1;
+  font-family: 'Sigmar', 'Bebas Neue', sans-serif;
+  font-size: 40px;
+  letter-spacing: 0.02em;
+  color: var(--bbb-cream-light);
+  line-height: 1;
+  text-shadow: 0 2px 6px rgba(0,0,0,0.5);
 }
 
+/* ── Toast ────────────────────────────────────────────── */
 .jukebox-root .toast {
   position: fixed; bottom: 24px; right: 24px;
-  background: var(--green); color: #fff;
-  padding: 12px 22px; border-radius: 10px;
+  background: var(--bbb-orange); color: var(--bbb-cream-light);
+  padding: 12px 22px; border-radius: 100px;
   font-size: 13px; font-weight: 500;
   z-index: 9999; box-shadow: var(--shadow-lg);
+  border: 2px solid var(--bbb-wood);
 }
+
+/* ── Tropical jukebox-specific bits ───────────────────── */
+.jukebox-strip {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 4px;
+  border-bottom: 1px dashed var(--bbb-cream-edge);
+}
+.jukebox-strip:last-of-type { border-bottom: none; }
+
+.jukebox-slot {
+  font-family: 'Sigmar', sans-serif;
+  font-size: 16px;
+  color: var(--bbb-orange);
+  width: 26px;
+  text-align: center;
+  flex-shrink: 0;
+  letter-spacing: 0.02em;
+}
+
+.jukebox-art {
+  width: 56px; height: 56px;
+  border-radius: 6px; flex-shrink: 0;
+  background: var(--bbb-wood-dark);
+  border: 2px solid var(--bbb-wood);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.25);
+  overflow: hidden;
+}
+.jukebox-art img { width: 100%; height: 100%; display: block; object-fit: cover; }
+
+.jukebox-art--hero {
+  width: 160px; height: 160px;
+  border-radius: 10px;
+  border-width: 3px;
+  box-shadow: 0 6px 16px rgba(0,0,0,0.4);
+}
+
+.jukebox-strip-meta { flex: 1; min-width: 0; }
+.jukebox-strip-title {
+  font-size: 14px; font-weight: 700;
+  color: var(--bbb-wood-dark);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.jukebox-strip-sub {
+  font-size: 12px;
+  color: var(--bbb-wood);
+  font-style: italic;
+}
+
+.jukebox-marquee {
+  text-align: center;
+  margin: 8px -4px 0;
+  padding: 6px 0 2px;
+  font-family: 'Sigmar', sans-serif;
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  color: var(--bbb-wood-light);
+}
+
+.jukebox-rules {
+  text-align: center;
+  margin-top: 14px;
+  font-size: 11px;
+  color: rgba(255,248,231,0.92);
+  line-height: 1.6;
+  font-style: italic;
+}
+
+/* ── Wooden floor footer plank ────────────────────────── */
+.jukebox-floor {
+  height: 24px;
+  background: linear-gradient(180deg, var(--bbb-wood-light) 0%, var(--bbb-wood) 100%);
+  position: relative;
+  margin-top: 16px;
+  overflow: hidden;
+}
+.jukebox-floor::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: repeating-linear-gradient(90deg, transparent 0px, transparent 38px, rgba(0,0,0,0.18) 38px, rgba(0,0,0,0.18) 40px);
+  opacity: 0.55;
+}
+
+/* ── Tagline (split with yellow accent like the website) */
+.jukebox-tagline {
+  font-family: 'Sigmar', 'Bebas Neue', sans-serif;
+  font-size: 18px;
+  letter-spacing: 0.04em;
+  color: var(--bbb-cream-light);
+  line-height: 1.1;
+  text-shadow: 0 2px 6px rgba(0,0,0,0.7);
+}
+.jukebox-tagline-accent { color: var(--bbb-yellow); }
