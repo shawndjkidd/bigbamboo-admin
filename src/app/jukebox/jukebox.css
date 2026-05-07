@@ -199,14 +199,11 @@
   box-shadow: 0 2px 0 var(--bbb-wood);
   flex-shrink: 0;
   transition: transform 0.08s, box-shadow 0.08s, filter 0.12s;
-  color: var(--bbb-wood-dark);
-  background: var(--bbb-yellow);
+  background: var(--bbb-coral);
+  color: var(--bbb-cream-light);
 }
 .jukebox-root .btn-play:hover { filter: brightness(1.06); }
 .jukebox-root .btn-play:active { transform: translateY(2px); box-shadow: 0 0 0 var(--bbb-wood); }
-.jukebox-root .btn-play--yellow { background: var(--bbb-yellow); color: var(--bbb-wood-dark); }
-.jukebox-root .btn-play--teal   { background: var(--bbb-teal-light); color: var(--bbb-cream-light); }
-.jukebox-root .btn-play--coral  { background: var(--bbb-coral); color: var(--bbb-cream-light); }
 
 /* ── Labels ───────────────────────────────────────────── */
 .jukebox-root .label {

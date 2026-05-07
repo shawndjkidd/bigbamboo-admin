@@ -35,9 +35,7 @@ const NICK_KEY = 'bbb_jukebox_nickname'
 const FIRST_SUBMITTED_KEY = 'bbb_jukebox_first_submitted'
 const NEXT_AVAILABLE_KEY = 'bbb_jukebox_next_available_at'
 
-// Cycle PLAY button color through the brand palette so the
-// list feels like the multi-color pill nav on bigbamboo.app.
-const PLAY_VARIANTS = ['btn-play--yellow', 'btn-play--teal', 'btn-play--coral'] as const
+
 
 function getOrCreateDeviceId(): string {
   if (typeof window === 'undefined') return ''
@@ -301,7 +299,7 @@ export default function JukeboxGuestPage() {
                     </div>
                   </div>
                   <button
-                    className={`btn-play ${PLAY_VARIANTS[i % PLAY_VARIANTS.length]}`}
+                    className="btn-play"
                     onClick={() => setPicked(t)}
                     aria-label={`Pick ${t.name} by ${t.artists[0]?.name}`}
                   >
