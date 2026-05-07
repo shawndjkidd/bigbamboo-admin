@@ -318,11 +318,17 @@
 
 .jukebox-rules {
   text-align: center;
-  margin-top: 14px;
-  font-size: 11px;
-  color: rgba(255,248,231,0.92);
-  line-height: 1.6;
-  font-style: italic;
+  margin-top: 22px;
+  padding: 0 8px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--bbb-cream-light);
+  line-height: 1.7;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.7);
+}
+.jukebox-rules > div + div { margin-top: 4px; }
+@media (min-width: 600px) {
+  .jukebox-rules { font-size: 15px; }
 }
 
 /* ── Brand logo image (header) ────────────────────────── */
