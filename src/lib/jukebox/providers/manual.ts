@@ -9,6 +9,7 @@ import type {
   NowPlaying,
   PlaybackProvider,
   PlaylistFetchResult,
+  PlaylistMeta,
   ProviderResult,
   Track,
 } from './types';
@@ -44,6 +45,12 @@ export class ManualProvider implements PlaybackProvider {
     return { ok: true, value: undefined };
   }
   async getPlaylistTracks(): Promise<ProviderResult<PlaylistFetchResult>> {
+    return {
+      ok: false,
+      error: { kind: 'unknown', message: 'manual provider has no playlist support' },
+    };
+  }
+  async getPlaylistMeta(): Promise<ProviderResult<PlaylistMeta>> {
     return {
       ok: false,
       error: { kind: 'unknown', message: 'manual provider has no playlist support' },

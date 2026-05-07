@@ -98,12 +98,7 @@ export async function validateRequest(
     }
   }
 
-  // 4. Length cap
-  if (track.durationMs > settings.max_song_length_seconds * 1000) {
-    return reject('too_long', 'This track is too long for regular jukebox mode.');
-  }
-
-  // 5. Explicit
+  // 4. Explicit
   if (track.explicit && !settings.allow_explicit) {
     return reject('explicit', "Explicit tracks aren't allowed tonight.");
   }

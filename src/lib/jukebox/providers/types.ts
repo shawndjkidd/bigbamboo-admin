@@ -41,6 +41,13 @@ export interface PlaylistFetchResult {
   meta: { name: string; owner: string; image: string | null };
 }
 
+export interface PlaylistMeta {
+  name: string;
+  owner: string;
+  image: string | null;
+  trackCount?: number;
+}
+
 export interface PlaybackProvider {
   searchTracks(
     query: string,
@@ -56,4 +63,6 @@ export interface PlaybackProvider {
   refreshAuthIfNeeded(): Promise<ProviderResult<void>>;
   /** Fetch all tracks of a public playlist (paginated internally). */
   getPlaylistTracks(playlistId: string): Promise<ProviderResult<PlaylistFetchResult>>;
+  /** Fetch playlist name/owner/image with a single API call — no track pagination. */
+  getPlaylistMeta(playlistId: string): Promise<ProviderResult<PlaylistMeta>>;
 }

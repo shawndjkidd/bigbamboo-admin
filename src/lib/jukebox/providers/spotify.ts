@@ -10,6 +10,7 @@ import type {
   NowPlaying,
   PlaybackProvider,
   PlaylistFetchResult,
+  PlaylistMeta,
   ProviderError,
   ProviderResult,
   Track,
@@ -270,6 +271,46 @@ export class SpotifyProvider implements PlaybackProvider {
     }
 
     return { ok: true, value: { tracks, meta: { name, owner, image } } };
+  }
+
+  // ── Playlist meta (single call, no track pagination) ─────────
+  async getPlaylistMeta(playlistId: string): Promise<ProviderResult<PlaylistMeta>> {
+    if (!playlistId || !/^[A-Za-z0-9]{16,40}$/.test(playlistId)) {
+      return { ok: false, error: { kind: 'unknown', message: 'invalid playlist id' } };
+    }
+    const tok = await getAppToken();
+    if (tok.ok === false) return { ok: false, error: tok.error };
+
+    let res: Response;
+    try {
+      res = await fetch(
+        `${SPOTIFY_API}/playlists/${playlistId}?fields=name,owner(display_name,id),images(url,width),tracks(total)`,
+        { headers: { Authorization: `Bearer ${tok.value}` }, cache: 'no-store' },
+      );
+    } catch (e: unknown) {
+      return { ok: false, error: { kind: 'network_error', message: String(e) } };
+    }
+    if (!res.ok) {
+      let body = '';
+      try { body = (await res.text()).slice(0, 500); } catch { /* ignore */ }
+      console.error('[spotify.getPlaylistMeta] http', res.status, 'id:', playlistId, 'body:', body);
+      return { ok: false, error: mapHttpError(res.status, res.headers.get('retry-after')) };
+    }
+    const json = (await res.json()) as {
+      name?: string;
+      owner?: { display_name?: string; id?: string };
+      images?: { url: string; width?: number }[];
+      tracks?: { total?: number };
+    };
+    return {
+      ok: true,
+      value: {
+        name: json.name || '(untitled)',
+        owner: json.owner?.display_name || json.owner?.id || '',
+        image: pickArt(json.images),
+        trackCount: json.tracks?.total,
+      },
+    };
   }
 
   // ── Phase 2 stubs ─────────────────────────────────────────────

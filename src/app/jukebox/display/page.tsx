@@ -30,38 +30,51 @@ export default async function DisplayPage({
 
   if (!settings || settings.display_token !== token) notFound()
 
-  // Build the absolute URL for the QR.
-  // - If APP_BASE_URL is the subdomain (jukebox.bigbamboo.app), point at the root —
-  //   the host-based rewrite in next.config.js maps / → /jukebox.
-  // - Otherwise, point at /jukebox so admin-domain hits still land correctly.
   const base = process.env.APP_BASE_URL?.replace(/\/$/, '') || ''
   const isSubdomain = /^https?:\/\/jukebox\./i.test(base)
   const guestUrl = base ? (isSubdomain ? base : `${base}/jukebox`) : '/jukebox'
-  const qr = qrImageUrl(guestUrl, { size: 480, dark: '111111', light: 'ffffff' })
+  const qr = qrImageUrl(guestUrl, { size: 600, dark: '2c1810', light: 'f4e8d0' })
 
   return (
-    <div style={pageWrap}>
-      <header style={{ textAlign: 'center', marginBottom: 24 }}>
-        <div style={kicker}>{copy.brand.title.toUpperCase()}</div>
-        <div style={tagline}>{copy.brand.tagline}</div>
+    <div className="jukebox-root display-page">
+      <header className="display-header">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          className="bbb-logo"
+          src="https://bigbamboo.app/images/bbb-img-5.png"
+          alt="BIG BAM BOO"
+          style={{ maxWidth: 320, marginBottom: 0 }}
+        />
+        <div className="jukebox-wordmark" style={{ marginTop: '-48px', textAlign: 'center' }}>
+          JUKEBOX
+        </div>
       </header>
 
-      <section style={twoCol}>
-        <div className="card" style={leftCard}>
-          <div className="section-title" style={{ marginBottom: 16 }}>UP NEXT</div>
+      <section className="display-two-col">
+        <div className="card" style={{ padding: 24, minHeight: 600 }}>
           <DisplayClient />
         </div>
 
-        <div className="card" style={rightCard}>
-          <div style={{ fontSize: 14, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 16, textAlign: 'center' }}>
+        <div className="card" style={{ padding: 24, position: 'sticky', top: 24 }}>
+          <div style={{
+            fontFamily: 'Sigmar, sans-serif',
+            fontSize: 13, letterSpacing: '0.18em', textTransform: 'uppercase',
+            color: 'var(--bbb-wood-light)', textAlign: 'center', marginBottom: 14,
+          }}>
             Scan to request a song
           </div>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={qr} alt="QR code" width={480} height={480} style={{ width: '100%', height: 'auto', display: 'block', borderRadius: 12 }} />
-          <div style={{ marginTop: 12, fontSize: 13, fontFamily: 'monospace', color: 'var(--text-muted)', textAlign: 'center', wordBreak: 'break-all' }}>
+          <img
+            src={qr}
+            alt="QR code"
+            width={600}
+            height={600}
+            style={{ width: '100%', height: 'auto', display: 'block', borderRadius: 12, border: '3px solid var(--bbb-wood)' }}
+          />
+          <div style={{ marginTop: 10, fontSize: 13, fontFamily: 'monospace', color: 'var(--bbb-wood-light)', textAlign: 'center', wordBreak: 'break-all' }}>
             {guestUrl}
           </div>
-          <div style={{ marginTop: 18, fontSize: 13, color: 'var(--text-secondary)', textAlign: 'center', lineHeight: 1.6 }}>
+          <div className="jukebox-rules" style={{ color: 'var(--bbb-wood)', textShadow: 'none', marginTop: 16 }}>
             <div>{copy.rules.cooldownLine}</div>
             <div>{copy.rules.staffLine}</div>
             <div>{copy.rules.rewardsLine}</div>
@@ -70,41 +83,11 @@ export default async function DisplayPage({
       </section>
 
       {!settings.is_active && (
-        <div style={pausedBanner}>{copy.guest.requestsPaused}</div>
+        <div className="display-paused-banner">{copy.guest.requestsPaused}</div>
       )}
       {settings.is_active && settings.mode === 'locked' && (
-        <div style={pausedBanner}>{copy.guest.requestsLocked}</div>
+        <div className="display-paused-banner">{copy.guest.requestsLocked}</div>
       )}
     </div>
   )
-}
-
-const pageWrap: React.CSSProperties = {
-  padding: '36px 36px 24px',
-  minHeight: '100vh',
-  background: 'var(--bg)',
-  color: 'var(--text)',
-}
-const kicker: React.CSSProperties = {
-  fontSize: 14, fontWeight: 700, letterSpacing: '0.2em',
-  color: 'var(--accent)', marginBottom: 8,
-}
-const tagline: React.CSSProperties = {
-  fontFamily: 'Bebas Neue, sans-serif', fontSize: 56,
-  letterSpacing: '0.04em', color: 'var(--text)', lineHeight: 1.05,
-}
-const twoCol: React.CSSProperties = {
-  display: 'grid',
-  gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr)',
-  gap: 24,
-  alignItems: 'start',
-}
-const leftCard: React.CSSProperties = { padding: 24, minHeight: 600 }
-const rightCard: React.CSSProperties = { padding: 24, position: 'sticky', top: 24 }
-const pausedBanner: React.CSSProperties = {
-  position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)',
-  background: 'var(--badge-orange-bg)', border: '1px solid var(--badge-orange-border)',
-  color: 'var(--badge-orange-text)',
-  padding: '14px 28px', borderRadius: 12, fontSize: 16, fontWeight: 600,
-  letterSpacing: '0.04em',
 }
