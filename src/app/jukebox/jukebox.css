@@ -327,9 +327,10 @@
 
 /* ── Brand logo image (header) ────────────────────────── */
 .jukebox-root .bbb-logo {
-  display: inline-block;
-  width: 320px;
-  max-width: 82%;
+  display: block;
+  width: 100%;
+  max-width: 440px;
+  margin: 0 auto;
   height: auto;
   filter: drop-shadow(0 8px 18px rgba(0,0,0,0.6));
 }
