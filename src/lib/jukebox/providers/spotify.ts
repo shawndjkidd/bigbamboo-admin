@@ -141,20 +141,18 @@ export class SpotifyProvider implements PlaybackProvider {
     const q = (query || '').trim();
     if (!q) return { ok: true, value: [] };
     const market = opts?.market || 'VN';
-    const limit = Math.min(Math.max(opts?.limit ?? 12, 1), 20);
+    const cap = Math.min(Math.max(opts?.limit ?? 12, 1), 20);
 
     const key = cacheKey(q, market);
     const cached = searchCache.get(key);
     if (cached && cached.expiresAt > Date.now()) {
-      return { ok: true, value: cached.tracks.slice(0, limit) };
+      return { ok: true, value: cached.tracks.slice(0, cap) };
     }
 
     const tok = await getAppToken();
     if (tok.ok === false) return { ok: false, error: tok.error };
 
-    const url = `${SPOTIFY_API}/search?type=track&limit=${limit}&market=${encodeURIComponent(
-      market,
-    )}&q=${encodeURIComponent(q)}`;
+    const url = `${SPOTIFY_API}/search?q=${encodeURIComponent(q)}&type=track&market=${encodeURIComponent(market)}`;
     let res: Response;
     try {
       res = await fetch(url, {
@@ -173,7 +171,7 @@ export class SpotifyProvider implements PlaybackProvider {
     const json = (await res.json()) as { tracks?: { items?: SpotifyTrackJson[] } };
     const items = (json.tracks?.items || []).map(mapTrack);
     searchCache.set(key, { tracks: items, expiresAt: Date.now() + SEARCH_TTL_MS });
-    return { ok: true, value: items };
+    return { ok: true, value: items.slice(0, cap) };
   }
 
   async getTrack(trackId: string): Promise<ProviderResult<Track>> {
