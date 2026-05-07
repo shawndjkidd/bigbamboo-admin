@@ -36,6 +36,11 @@ export type ProviderResult<T> =
   | { ok: true; value: T }
   | { ok: false; error: ProviderError };
 
+export interface PlaylistFetchResult {
+  tracks: Track[];
+  meta: { name: string; owner: string; image: string | null };
+}
+
 export interface PlaybackProvider {
   searchTracks(
     query: string,
@@ -49,4 +54,6 @@ export interface PlaybackProvider {
   >;
   isConnected(): Promise<boolean>;
   refreshAuthIfNeeded(): Promise<ProviderResult<void>>;
+  /** Fetch all tracks of a public playlist (paginated internally). */
+  getPlaylistTracks(playlistId: string): Promise<ProviderResult<PlaylistFetchResult>>;
 }

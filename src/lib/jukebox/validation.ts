@@ -15,6 +15,7 @@ import {
   queueAtCapacity,
   wasRecentlyRequested,
 } from './cooldowns';
+import { isTrackInCurated } from './curated';
 
 export interface ValidationContext {
   venueId: string;
@@ -80,6 +81,22 @@ export async function validateRequest(
     return reject('track_lookup', "We couldn't find that track. Try another.");
   }
   const track = trackRes.value;
+
+  // 3b. Curated playlist membership (if curated mode is on)
+  type CuratedSettings = JukeboxSettings & {
+    curated_mode_enabled?: boolean;
+    curated_playlist_id?: string | null;
+  };
+  const curated = settings as CuratedSettings;
+  if (curated.curated_mode_enabled && curated.curated_playlist_id) {
+    const inList = await isTrackInCurated(ctx.venueId, track.id);
+    if (!inList) {
+      return reject(
+        'not_in_playlist',
+        "That track isn't on tonight's list. Try another from the playlist.",
+      );
+    }
+  }
 
   // 4. Length cap
   if (track.durationMs > settings.max_song_length_seconds * 1000) {

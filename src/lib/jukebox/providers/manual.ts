@@ -8,6 +8,7 @@
 import type {
   NowPlaying,
   PlaybackProvider,
+  PlaylistFetchResult,
   ProviderResult,
   Track,
 } from './types';
@@ -41,5 +42,11 @@ export class ManualProvider implements PlaybackProvider {
   }
   async refreshAuthIfNeeded(): Promise<ProviderResult<void>> {
     return { ok: true, value: undefined };
+  }
+  async getPlaylistTracks(): Promise<ProviderResult<PlaylistFetchResult>> {
+    return {
+      ok: false,
+      error: { kind: 'unknown', message: 'manual provider has no playlist support' },
+    };
   }
 }

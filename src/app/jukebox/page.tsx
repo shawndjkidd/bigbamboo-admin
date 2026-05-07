@@ -24,6 +24,9 @@ interface PublicSettings {
   max_song_length_seconds: number
   allow_explicit: boolean
   max_queue_length: number
+  curated_mode_enabled?: boolean
+  curated_playlist_name?: string | null
+  curated_playlist_track_count?: number
 }
 
 const DEVICE_KEY = 'bbb_jukebox_device_id'
@@ -197,6 +200,22 @@ export default function JukeboxGuestPage() {
       {settings && !settings.is_active && <Banner kind="warn">{copy.guest.requestsPaused}</Banner>}
       {settings && settings.mode === 'locked' && <Banner kind="warn">{copy.guest.requestsLocked}</Banner>}
 
+      {/* Curated playlist banner */}
+      {settings && settings.curated_mode_enabled && settings.curated_playlist_name && (
+        <div style={{
+          padding: '8px 14px', borderRadius: 10,
+          border: '1px solid var(--badge-orange-border)',
+          background: 'var(--badge-orange-bg)', color: 'var(--badge-orange-text)',
+          fontSize: 12, marginBottom: 12, textAlign: 'center', letterSpacing: '0.02em',
+        }}>
+          <span style={{ opacity: 0.8 }}>{copy.curated.bannerPrefix}</span>{' '}
+          <span style={{ fontWeight: 600 }}>{settings.curated_playlist_name}</span>
+          {typeof settings.curated_playlist_track_count === 'number' && settings.curated_playlist_track_count > 0 && (
+            <span style={{ opacity: 0.6 }}> · {settings.curated_playlist_track_count} tracks</span>
+          )}
+        </div>
+      )}
+
       {/* Cooldown */}
       {cooldownMs > 0 && (
         <Banner kind="info">{copy.guest.cooldownActive(fmtMmSs(cooldownMs))}</Banner>
@@ -236,7 +255,11 @@ export default function JukeboxGuestPage() {
           {searchErr && <div style={errorHint}>{searchErr}</div>}
 
           {!searching && !searchErr && query.trim().length >= 2 && results.length === 0 && (
-            <div style={hint}>{copy.guest.emptyResults}</div>
+            <div style={hint}>
+              {settings?.curated_mode_enabled
+                ? copy.curated.emptyResults
+                : copy.guest.emptyResults}
+            </div>
           )}
 
           <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>

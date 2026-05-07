@@ -121,7 +121,8 @@ export type RejectionCode =
   | 'same_artist'
   | 'queue_full'
   | 'invalid_input'
-  | 'profanity';
+  | 'profanity'
+  | 'not_in_playlist';
 
 export interface ApiError {
   code: string;

@@ -2,6 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getProvider } from '@/lib/jukebox/providers';
 import { getRequestIp, hashIp } from '@/lib/jukebox/crypto';
 import { rateLimit, sweepRateLimit } from '@/lib/jukebox/rateLimit';
+import { getJukeboxVenueId } from '@/lib/jukebox/venue';
+import {
+  ensureCuratedFresh,
+  getCuratedSettings,
+  searchCuratedTracks,
+} from '@/lib/jukebox/curated';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -41,6 +47,16 @@ export async function GET(req: NextRequest) {
     );
   }
 
+  // Curated mode: search the local cache, not Spotify.
+  const venueId = await getJukeboxVenueId();
+  const curated = await getCuratedSettings(venueId);
+  if (curated?.curated_mode_enabled && curated.curated_playlist_id) {
+    void ensureCuratedFresh(venueId);
+    const tracks = await searchCuratedTracks(venueId, q, 12);
+    return NextResponse.json({ ok: true, data: { tracks, curated: true } });
+  }
+
+  // Free mode: hit Spotify.
   const provider = getProvider('spotify');
   const res = await provider.searchTracks(q, { limit: 12, market });
   if (res.ok === false) {
@@ -49,5 +65,5 @@ export async function GET(req: NextRequest) {
       { status: res.error.kind === 'rate_limited' ? 429 : 502 },
     );
   }
-  return NextResponse.json({ ok: true, data: { tracks: res.value } });
+  return NextResponse.json({ ok: true, data: { tracks: res.value, curated: false } });
 }

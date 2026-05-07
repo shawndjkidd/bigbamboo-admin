@@ -26,6 +26,15 @@ interface Settings {
   pending_request_ttl_minutes: number
   display_token: string
   timezone: string
+  curated_mode_enabled?: boolean
+  curated_playlist_url?: string | null
+  curated_playlist_id?: string | null
+  curated_playlist_name?: string | null
+  curated_playlist_owner?: string | null
+  curated_playlist_image_url?: string | null
+  curated_playlist_track_count?: number
+  curated_playlist_synced_at?: string | null
+  curated_playlist_error?: string | null
 }
 
 interface ReqRow {
@@ -447,6 +456,21 @@ function SettingsTab({
     else onAction(j.error?.message || 'Rotate failed')
   }
 
+  async function syncPlaylist() {
+    onAction('Syncing playlist…')
+    const j = await apiFetch('/api/admin/jukebox/settings/sync-playlist', { method: 'POST', body: '{}' })
+    if (j.ok) { onAction(`Synced ${(j.data as { count: number }).count} tracks`); load() }
+    else onAction(j.error?.message || 'Sync failed')
+  }
+
+  const [playlistDraft, setPlaylistDraft] = useState('')
+  useEffect(() => { setPlaylistDraft(s?.curated_playlist_url || '') }, [s?.curated_playlist_url])
+
+  async function savePlaylistUrl() {
+    const url = playlistDraft.trim()
+    await patch({ curated_playlist_url: url } as Partial<Settings>)
+  }
+
   if (!s) return <div style={{ color: 'var(--text-muted)', padding: 16 }}>Loading…</div>
 
   // Always show the friendlier subdomain URL when the public base hint is set;
@@ -497,6 +521,63 @@ function SettingsTab({
           <ToggleChip on={s.allow_explicit} label="Allow explicit" onClick={() => patch({ allow_explicit: !s.allow_explicit })} disabled={saving} />
           <ToggleChip on={s.auto_add_to_provider} label="Auto-add to Spotify (Phase 2)" onClick={() => patch({ auto_add_to_provider: !s.auto_add_to_provider })} disabled={saving} />
         </div>
+      </div>
+
+      <div className="card" style={{ padding: 18 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+          <div className="section-title">Curated playlist</div>
+          <ToggleChip
+            on={!!s.curated_mode_enabled}
+            label={s.curated_mode_enabled ? 'On' : 'Off'}
+            onClick={() => patch({ curated_mode_enabled: !s.curated_mode_enabled } as Partial<Settings>)}
+            disabled={saving}
+          />
+        </div>
+        <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 10 }}>
+          When on, only tracks from this Spotify playlist can be requested.
+          Make the playlist public on your Spotify, paste the share link, hit Save.
+        </div>
+        <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+          <input
+            className="input"
+            placeholder="https://open.spotify.com/playlist/..."
+            value={playlistDraft}
+            onChange={(e) => setPlaylistDraft(e.target.value)}
+            style={{ fontFamily: 'monospace', fontSize: 12 }}
+          />
+          <button
+            className="btn-accent"
+            onClick={savePlaylistUrl}
+            disabled={saving || playlistDraft.trim() === (s.curated_playlist_url || '').trim()}
+            style={{ whiteSpace: 'nowrap' }}
+          >
+            Save
+          </button>
+        </div>
+        {s.curated_playlist_id && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', background: 'var(--bg-input)', borderRadius: 8 }}>
+            {s.curated_playlist_image_url && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={s.curated_playlist_image_url} alt="" width={44} height={44} style={{ borderRadius: 4, objectFit: 'cover' }} />
+            )}
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>
+                {s.curated_playlist_name || 'Playlist'}
+              </div>
+              <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                {s.curated_playlist_track_count || 0} tracks
+                {s.curated_playlist_owner ? ` · by ${s.curated_playlist_owner}` : ''}
+                {s.curated_playlist_synced_at ? ` · synced ${new Date(s.curated_playlist_synced_at).toLocaleString()}` : ''}
+              </div>
+            </div>
+            <button className="btn-outline" onClick={syncPlaylist} disabled={saving}>Sync now</button>
+          </div>
+        )}
+        {s.curated_playlist_error && (
+          <div style={{ padding: '8px 12px', borderRadius: 4, background: 'var(--error-bg)', color: 'var(--error-text)', fontSize: 12 }}>
+            {s.curated_playlist_error}
+          </div>
+        )}
       </div>
 
       <div className="card" style={{ padding: 18 }}>

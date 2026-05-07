@@ -9,6 +9,7 @@
 import type {
   NowPlaying,
   PlaybackProvider,
+  PlaylistFetchResult,
   ProviderError,
   ProviderResult,
   Track,
@@ -199,6 +200,76 @@ export class SpotifyProvider implements PlaybackProvider {
     const json = (await res.json()) as SpotifyTrackJson;
     if (!json?.id) return { ok: false, error: { kind: 'track_unavailable' } };
     return { ok: true, value: mapTrack(json) };
+  }
+
+  // ── Curated playlist fetch (Client Credentials) ──────────────
+  async getPlaylistTracks(playlistId: string): Promise<ProviderResult<PlaylistFetchResult>> {
+    if (!playlistId || !/^[A-Za-z0-9]{16,40}$/.test(playlistId)) {
+      return { ok: false, error: { kind: 'unknown', message: 'invalid playlist id' } };
+    }
+    const tok = await getAppToken();
+    if (tok.ok === false) return { ok: false, error: tok.error };
+
+    // Fetch metadata first
+    let metaRes: Response;
+    try {
+      metaRes = await fetch(
+        `${SPOTIFY_API}/playlists/${playlistId}?fields=name,owner(display_name,id),images(url,width)`,
+        {
+          headers: { Authorization: `Bearer ${tok.value}` },
+          cache: 'no-store',
+        },
+      );
+    } catch (e: unknown) {
+      return { ok: false, error: { kind: 'network_error', message: String(e) } };
+    }
+    if (!metaRes.ok) {
+      let body = '';
+      try { body = (await metaRes.text()).slice(0, 500); } catch { /* ignore */ }
+      console.error('[spotify.getPlaylistTracks meta] http', metaRes.status, 'id:', playlistId, 'body:', body);
+      return { ok: false, error: mapHttpError(metaRes.status, metaRes.headers.get('retry-after')) };
+    }
+    const metaJson = (await metaRes.json()) as {
+      name?: string;
+      owner?: { display_name?: string; id?: string };
+      images?: { url: string; width?: number }[];
+    };
+    const name = metaJson.name || '(untitled)';
+    const owner = metaJson.owner?.display_name || metaJson.owner?.id || '';
+    const image = pickArt(metaJson.images);
+
+    // Paginate through tracks
+    const tracks: Track[] = [];
+    let next: string | null =
+      `${SPOTIFY_API}/playlists/${playlistId}/tracks?limit=100&market=VN&fields=next,items(track(id,name,duration_ms,explicit,external_urls,artists(id,name),album(name,images)))`;
+    let safety = 50; // max 5,000 tracks
+    while (next && safety-- > 0) {
+      let pageRes: Response;
+      try {
+        pageRes = await fetch(next, {
+          headers: { Authorization: `Bearer ${tok.value}` },
+          cache: 'no-store',
+        });
+      } catch (e: unknown) {
+        return { ok: false, error: { kind: 'network_error', message: String(e) } };
+      }
+      if (!pageRes.ok) {
+        let body = '';
+        try { body = (await pageRes.text()).slice(0, 500); } catch { /* ignore */ }
+        console.error('[spotify.getPlaylistTracks page] http', pageRes.status, 'url:', next, 'body:', body);
+        return { ok: false, error: mapHttpError(pageRes.status, pageRes.headers.get('retry-after')) };
+      }
+      const json = (await pageRes.json()) as {
+        next: string | null;
+        items?: { track: SpotifyTrackJson | null }[];
+      };
+      for (const item of json.items || []) {
+        if (item.track && item.track.id) tracks.push(mapTrack(item.track));
+      }
+      next = json.next;
+    }
+
+    return { ok: true, value: { tracks, meta: { name, owner, image } } };
   }
 
   // ── Phase 2 stubs ─────────────────────────────────────────────

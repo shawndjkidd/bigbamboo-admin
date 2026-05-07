@@ -47,6 +47,11 @@ export const copy = {
     invalid_input: 'Something was missing or malformed in your request.',
     profanity: 'Please pick a friendlier nickname.',
     cooldown: "You're still cooling down.",
+    not_in_playlist: "That track isn't on tonight's list. Try another from the playlist.",
+  },
+  curated: {
+    bannerPrefix: "Tonight's playlist:",
+    emptyResults: "We don't have that on tonight's list. Try another search.",
   },
   spotify: {
     no_active_device:
