@@ -53,10 +53,7 @@ async function getAppToken(): Promise<ProviderResult<string>> {
   } catch (e: unknown) {
     return { ok: false, error: { kind: 'network_error', message: String(e) } };
   }
-  if (res.ok === false) {
-    let body = '';
-    try { body = (await res.text()).slice(0, 500); } catch {}
-    console.error('[spotify.token] http', res.status, 'body:', body);
+  if (!res.ok) {
     if (res.status === 429) {
       const retry = Number(res.headers.get('retry-after')) || 30;
       return { ok: false, error: { kind: 'rate_limited', retryAfterSec: retry } };
@@ -143,6 +140,9 @@ export class SpotifyProvider implements PlaybackProvider {
     const q = (query || '').trim();
     if (!q) return { ok: true, value: [] };
     const market = opts?.market || 'VN';
+    // Spotify rejects `limit=N` for some Development-mode apps with
+    // {"error":{"status":400,"message":"Invalid limit"}} — let Spotify use
+    // its default of 20 and clamp client-side instead.
     const cap = Math.min(Math.max(opts?.limit ?? 12, 1), 20);
 
     const key = cacheKey(q, market);
@@ -154,7 +154,9 @@ export class SpotifyProvider implements PlaybackProvider {
     const tok = await getAppToken();
     if (tok.ok === false) return { ok: false, error: tok.error };
 
-    const url = `${SPOTIFY_API}/search?q=${encodeURIComponent(q)}&type=track&market=${encodeURIComponent(market)}`;
+    const url = `${SPOTIFY_API}/search?q=${encodeURIComponent(
+      q,
+    )}&type=track&market=${encodeURIComponent(market)}`;
     let res: Response;
     try {
       res = await fetch(url, {
@@ -164,9 +166,10 @@ export class SpotifyProvider implements PlaybackProvider {
     } catch (e: unknown) {
       return { ok: false, error: { kind: 'network_error', message: String(e) } };
     }
-    if (res.ok === false) {
+    if (!res.ok) {
+      // Log the actual Spotify error body so Vercel logs show the cause.
       let body = '';
-      try { body = (await res.text()).slice(0, 500); } catch {}
+      try { body = (await res.text()).slice(0, 500); } catch { /* ignore */ }
       console.error('[spotify.search] http', res.status, 'url:', url, 'body:', body);
       return { ok: false, error: mapHttpError(res.status, res.headers.get('retry-after')) };
     }
@@ -192,15 +195,55 @@ export class SpotifyProvider implements PlaybackProvider {
     } catch (e: unknown) {
       return { ok: false, error: { kind: 'network_error', message: String(e) } };
     }
-    if (res.ok === false) {
-      let body = '';
-      try { body = (await res.text()).slice(0, 500); } catch {}
-      console.error('[spotify.getTrack] http', res.status, 'id:', trackId, 'body:', body);
+    if (!res.ok) {
       return { ok: false, error: mapHttpError(res.status, res.headers.get('retry-after')) };
     }
     const json = (await res.json()) as SpotifyTrackJson;
     if (!json?.id) return { ok: false, error: { kind: 'track_unavailable' } };
     return { ok: true, value: mapTrack(json) };
+  }
+
+  // ── Playlist metadata (single cheap call) ────────────────────
+  async getPlaylistMeta(playlistId: string): Promise<ProviderResult<PlaylistMeta>> {
+    if (!playlistId || !/^[A-Za-z0-9]{16,40}$/.test(playlistId)) {
+      return { ok: false, error: { kind: 'unknown', message: 'invalid playlist id' } };
+    }
+    const tok = await getAppToken();
+    if (tok.ok === false) return { ok: false, error: tok.error };
+
+    let res: Response;
+    try {
+      res = await fetch(
+        `${SPOTIFY_API}/playlists/${playlistId}?fields=name,owner(display_name,id),images(url,width),tracks(total)`,
+        {
+          headers: { Authorization: `Bearer ${tok.value}` },
+          cache: 'no-store',
+        },
+      );
+    } catch (e: unknown) {
+      return { ok: false, error: { kind: 'network_error', message: String(e) } };
+    }
+    if (!res.ok) {
+      let body = '';
+      try { body = (await res.text()).slice(0, 500); } catch { /* ignore */ }
+      console.error('[spotify.getPlaylistMeta] http', res.status, 'id:', playlistId, 'body:', body);
+      return { ok: false, error: mapHttpError(res.status, res.headers.get('retry-after')) };
+    }
+    const json = (await res.json()) as {
+      name?: string;
+      owner?: { display_name?: string; id?: string };
+      images?: { url: string; width?: number }[];
+      tracks?: { total?: number };
+    };
+    return {
+      ok: true,
+      value: {
+        name: json.name || '(untitled)',
+        owner: json.owner?.display_name || json.owner?.id || '',
+        image: pickArt(json.images),
+        trackCount: json.tracks?.total ?? 0,
+      },
+    };
   }
 
   // ── Curated playlist fetch (Client Credentials) ──────────────
@@ -271,46 +314,6 @@ export class SpotifyProvider implements PlaybackProvider {
     }
 
     return { ok: true, value: { tracks, meta: { name, owner, image } } };
-  }
-
-  // ── Playlist meta (single call, no track pagination) ─────────
-  async getPlaylistMeta(playlistId: string): Promise<ProviderResult<PlaylistMeta>> {
-    if (!playlistId || !/^[A-Za-z0-9]{16,40}$/.test(playlistId)) {
-      return { ok: false, error: { kind: 'unknown', message: 'invalid playlist id' } };
-    }
-    const tok = await getAppToken();
-    if (tok.ok === false) return { ok: false, error: tok.error };
-
-    let res: Response;
-    try {
-      res = await fetch(
-        `${SPOTIFY_API}/playlists/${playlistId}?fields=name,owner(display_name,id),images(url,width),tracks(total)`,
-        { headers: { Authorization: `Bearer ${tok.value}` }, cache: 'no-store' },
-      );
-    } catch (e: unknown) {
-      return { ok: false, error: { kind: 'network_error', message: String(e) } };
-    }
-    if (!res.ok) {
-      let body = '';
-      try { body = (await res.text()).slice(0, 500); } catch { /* ignore */ }
-      console.error('[spotify.getPlaylistMeta] http', res.status, 'id:', playlistId, 'body:', body);
-      return { ok: false, error: mapHttpError(res.status, res.headers.get('retry-after')) };
-    }
-    const json = (await res.json()) as {
-      name?: string;
-      owner?: { display_name?: string; id?: string };
-      images?: { url: string; width?: number }[];
-      tracks?: { total?: number };
-    };
-    return {
-      ok: true,
-      value: {
-        name: json.name || '(untitled)',
-        owner: json.owner?.display_name || json.owner?.id || '',
-        image: pickArt(json.images),
-        trackCount: json.tracks?.total,
-      },
-    };
   }
 
   // ── Phase 2 stubs ─────────────────────────────────────────────

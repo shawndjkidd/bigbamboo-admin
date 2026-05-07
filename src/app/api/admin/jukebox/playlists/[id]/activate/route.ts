@@ -3,64 +3,74 @@ import { getServiceClient } from '@/lib/supabase';
 import { getJukeboxVenueId } from '@/lib/jukebox/venue';
 import { requireStaff } from '@/lib/jukebox/auth';
 import { syncCuratedPlaylist } from '@/lib/jukebox/curated';
-import { getProvider } from '@/lib/jukebox/providers';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-export async function POST(
-  req: NextRequest,
-  { params }: { params: { id: string } },
-) {
+// POST /api/admin/jukebox/playlists/[id]/activate
+// Sets this preset as the active curated playlist + triggers a track sync.
+export async function POST(req: NextRequest, ctx: { params: { id: string } }) {
   const auth = await requireStaff(req);
   if ('error' in auth) return auth.error;
 
   const venueId = await getJukeboxVenueId();
   const sb = getServiceClient();
 
-  // Fetch the preset
-  const { data: preset, error: fetchErr } = await sb
+  const { data: preset } = await sb
     .from('jukebox_playlist_presets')
     .select('*')
-    .eq('id', params.id)
+    .eq('id', ctx.params.id)
     .eq('venue_id', venueId)
-    .single();
-  if (fetchErr || !preset) {
-    return NextResponse.json({ ok: false, error: { code: 'not_found', message: 'Preset not found.' } }, { status: 404 });
+    .maybeSingle();
+  if (!preset) {
+    return NextResponse.json(
+      { ok: false, error: { code: 'not_found', message: 'Preset not found.' } },
+      { status: 404 },
+    );
   }
 
-  // Fetch fresh metadata from Spotify
-  const provider = getProvider('spotify');
-  const meta = await provider.getPlaylistMeta(preset.playlist_id);
+  // Write the active state to settings.
+  await sb
+    .from('jukebox_settings')
+    .update({
+      curated_playlist_url: preset.playlist_url,
+      curated_playlist_id: preset.playlist_id,
+      curated_playlist_name: preset.playlist_name,
+      curated_playlist_owner: preset.playlist_owner,
+      curated_playlist_image_url: preset.playlist_image_url,
+      curated_playlist_error: null,
+    })
+    .eq('venue_id', venueId);
 
-  // Update jukebox_settings with the active playlist info
-  const settingsUpdate: Record<string, unknown> = {
-    curated_mode_enabled: true,
-    curated_playlist_id: preset.playlist_id,
-    curated_playlist_url: preset.playlist_url,
-    curated_playlist_name: meta.ok ? meta.value.name : preset.playlist_name,
-    curated_playlist_owner: meta.ok ? meta.value.owner : preset.playlist_owner,
-    curated_playlist_image_url: meta.ok ? meta.value.image : preset.playlist_image_url,
-    curated_playlist_track_count: meta.ok ? (meta.value.trackCount ?? preset.track_count ?? 0) : (preset.track_count ?? 0),
-    curated_playlist_error: null,
-  };
-  await sb.from('jukebox_settings').update(settingsUpdate).eq('venue_id', venueId);
+  // Sync the tracks to the local cache.
+  const sync = await syncCuratedPlaylist(venueId, preset.playlist_id);
+  if (sync.ok === false) {
+    await sb
+      .from('jukebox_settings')
+      .update({ curated_playlist_error: sync.error })
+      .eq('venue_id', venueId);
+    return NextResponse.json(
+      { ok: false, error: { code: 'sync_failed', message: sync.error } },
+      { status: 502 },
+    );
+  }
 
-  // Mark this preset active, all others inactive
-  await sb.from('jukebox_playlist_presets').update({ is_active: false }).eq('venue_id', venueId);
-  await sb.from('jukebox_playlist_presets').update({ is_active: true }).eq('id', params.id);
-
-  // Kick off background sync (populates jukebox_curated_tracks cache)
-  void syncCuratedPlaylist(venueId, preset.playlist_id).catch((e) => {
-    console.error('[activate] background sync failed:', e);
-  });
-
-  // Return updated presets list
-  const { data: presets } = await sb
+  // Mirror updated metadata back to the preset record too.
+  await sb
     .from('jukebox_playlist_presets')
-    .select('*')
-    .eq('venue_id', venueId)
-    .order('created_at', { ascending: true });
+    .update({
+      playlist_track_count: sync.count,
+      last_synced_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', ctx.params.id);
 
-  return NextResponse.json({ ok: true, data: { presets: presets || [] } });
+  return NextResponse.json({
+    ok: true,
+    data: {
+      preset_id: ctx.params.id,
+      playlist_name: sync.meta.name,
+      track_count: sync.count,
+    },
+  });
 }

@@ -77,12 +77,13 @@ export async function validateRequest(
 
   // 3. Track lookup
   const trackRes = await ctx.provider.getTrack(input.providerTrackId);
-  if (trackRes.ok === false) {
+  if (!trackRes.ok) {
     return reject('track_lookup', "We couldn't find that track. Try another.");
   }
   const track = trackRes.value;
 
   // 3b. Curated playlist membership (if curated mode is on)
+  // Read from settings row (queried above) — the columns are present after migration.
   type CuratedSettings = JukeboxSettings & {
     curated_mode_enabled?: boolean;
     curated_playlist_id?: string | null;
@@ -98,7 +99,9 @@ export async function validateRequest(
     }
   }
 
-  // 4. Explicit
+  // 4. (max song length check removed per Shawn — every song allowed regardless of length)
+
+  // 5. Explicit
   if (track.explicit && !settings.allow_explicit) {
     return reject('explicit', "Explicit tracks aren't allowed tonight.");
   }

@@ -36,16 +36,16 @@ export type ProviderResult<T> =
   | { ok: true; value: T }
   | { ok: false; error: ProviderError };
 
-export interface PlaylistFetchResult {
-  tracks: Track[];
-  meta: { name: string; owner: string; image: string | null };
-}
-
 export interface PlaylistMeta {
   name: string;
   owner: string;
   image: string | null;
-  trackCount?: number;
+  trackCount: number;
+}
+
+export interface PlaylistFetchResult {
+  tracks: Track[];
+  meta: { name: string; owner: string; image: string | null };
 }
 
 export interface PlaybackProvider {
@@ -61,8 +61,8 @@ export interface PlaybackProvider {
   >;
   isConnected(): Promise<boolean>;
   refreshAuthIfNeeded(): Promise<ProviderResult<void>>;
+  /** Fetch metadata only (name, owner, image, total track count) — one API call. */
+  getPlaylistMeta(playlistId: string): Promise<ProviderResult<PlaylistMeta>>;
   /** Fetch all tracks of a public playlist (paginated internally). */
   getPlaylistTracks(playlistId: string): Promise<ProviderResult<PlaylistFetchResult>>;
-  /** Fetch playlist name/owner/image with a single API call — no track pagination. */
-  getPlaylistMeta(playlistId: string): Promise<ProviderResult<PlaylistMeta>>;
 }

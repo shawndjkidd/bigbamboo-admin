@@ -8,6 +8,7 @@ import { getProvider } from '@/lib/jukebox/providers';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
+// GET /api/admin/jukebox/playlists — list all saved presets for the venue
 export async function GET(req: NextRequest) {
   const auth = await requireStaff(req);
   if ('error' in auth) return auth.error;
@@ -18,24 +19,32 @@ export async function GET(req: NextRequest) {
     .from('jukebox_playlist_presets')
     .select('*')
     .eq('venue_id', venueId)
+    .order('sort_order', { ascending: true })
     .order('created_at', { ascending: true });
   return NextResponse.json({ ok: true, data: { presets: data || [] } });
 }
 
+interface AddBody {
+  url?: string;
+  name?: string;
+}
+
+// POST /api/admin/jukebox/playlists — save a new preset (fetches metadata, no track sync yet)
 export async function POST(req: NextRequest) {
   const auth = await requireStaff(req);
   if ('error' in auth) return auth.error;
 
-  let body: Record<string, unknown> = {};
-  try { body = await req.json(); } catch {
-    return NextResponse.json({ ok: false, error: { code: 'invalid_input', message: 'Body must be JSON.' } }, { status: 400 });
+  let body: AddBody;
+  try {
+    body = (await req.json()) as AddBody;
+  } catch {
+    return NextResponse.json(
+      { ok: false, error: { code: 'invalid_input', message: 'Body must be JSON.' } },
+      { status: 400 },
+    );
   }
-  const name = String(body.name || '').trim();
-  const rawUrl = String(body.playlist_url || '').trim();
-  if (!name) {
-    return NextResponse.json({ ok: false, error: { code: 'invalid_input', message: 'Name is required.' } }, { status: 400 });
-  }
-  const playlistId = extractPlaylistId(rawUrl);
+  const url = (body.url || '').trim();
+  const playlistId = extractPlaylistId(url);
   if (!playlistId) {
     return NextResponse.json(
       { ok: false, error: { code: 'invalid_input', message: "That doesn't look like a Spotify playlist link." } },
@@ -43,29 +52,42 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // Fetch playlist meta (single call, no track pagination)
   const provider = getProvider('spotify');
   const meta = await provider.getPlaylistMeta(playlistId);
+  if (meta.ok === false) {
+    return NextResponse.json(
+      { ok: false, error: { code: 'playlist_fetch_failed', message: `Could not fetch playlist (${meta.error.kind}).` } },
+      { status: 502 },
+    );
+  }
 
   const venueId = await getJukeboxVenueId();
   const sb = getServiceClient();
+  const friendlyName = (body.name || '').trim() || meta.value.name;
+
   const { data, error } = await sb
     .from('jukebox_playlist_presets')
     .insert({
       venue_id: venueId,
-      name,
+      name: friendlyName,
+      playlist_url: url,
       playlist_id: playlistId,
-      playlist_url: rawUrl,
-      playlist_name: meta.ok ? meta.value.name : null,
-      playlist_owner: meta.ok ? meta.value.owner : null,
-      playlist_image_url: meta.ok ? meta.value.image : null,
-      track_count: meta.ok ? (meta.value.trackCount ?? null) : null,
-      is_active: false,
+      playlist_name: meta.value.name,
+      playlist_owner: meta.value.owner,
+      playlist_image_url: meta.value.image,
+      playlist_track_count: meta.value.trackCount,
+      last_synced_at: null,
     })
     .select('*')
     .single();
   if (error) {
+    if (error.code === '23505') {
+      return NextResponse.json(
+        { ok: false, error: { code: 'duplicate', message: 'This playlist is already saved.' } },
+        { status: 409 },
+      );
+    }
     return NextResponse.json({ ok: false, error: { code: 'server_error', message: error.message } }, { status: 500 });
   }
-  return NextResponse.json({ ok: true, data }, { status: 201 });
+  return NextResponse.json({ ok: true, data });
 }

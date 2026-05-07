@@ -6,6 +6,9 @@ import { requireStaff } from '@/lib/jukebox/auth';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
+// Note: curated_playlist_* fields are now managed by the presets routes
+// (POST /admin/jukebox/playlists, /[id], /[id]/activate). max_song_length
+// removed per product decision — we don't gate by song length anymore.
 const ALLOWED_PATCH_FIELDS = new Set([
   'is_active',
   'mode',
@@ -61,6 +64,7 @@ export async function PATCH(req: NextRequest) {
   if (typeof update.mode === 'string' && !VALID_MODES.has(update.mode)) {
     return NextResponse.json({ ok: false, error: { code: 'invalid_input', message: 'Bad mode.' } }, { status: 400 });
   }
+
   if (Object.keys(update).length === 0) {
     return NextResponse.json({ ok: false, error: { code: 'invalid_input', message: 'No allowed fields.' } }, { status: 400 });
   }
@@ -76,5 +80,6 @@ export async function PATCH(req: NextRequest) {
   if (error) {
     return NextResponse.json({ ok: false, error: { code: 'server_error', message: error.message } }, { status: 500 });
   }
+
   return NextResponse.json({ ok: true, data });
 }
