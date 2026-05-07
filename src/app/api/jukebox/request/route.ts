@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
     );
   }
   const nick = filterNickname(nicknameRaw);
-  if (nick.ok === false) {
+  if (!nick.ok) {
     return NextResponse.json(
       { ok: false, error: { code: 'profanity', message: 'Please pick a friendlier nickname.' } },
       { status: 400 },
@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
 
   // Per-device 5/min hard cap on POST attempts (separate from cooldown).
   const devRl = rateLimit(`req:dev:${deviceId}`, 5, 60);
-  if (devRl.ok === false) {
+  if (!devRl.ok) {
     return NextResponse.json(
       { ok: false, error: { code: 'rate_limited', message: 'Too many attempts. Slow down.', retryAfterSec: devRl.retryAfterSec } },
       { status: 429, headers: { 'retry-after': String(devRl.retryAfterSec) } },
@@ -81,7 +81,11 @@ export async function POST(req: NextRequest) {
   const sb = getServiceClient();
 
   // Open mode → auto-approve. Approval/event mode → pending.
-  const autoApprove = settings.mode === 'open';
+  // Curated mode also auto-approves: the track is already vetted by being in
+  // the venue's curated playlist, so requiring staff to approve again is busy
+  // work. (Per Shawn — "if it's on the playlist, it's pre-approved.")
+  const curatedSettings = settings as typeof settings & { curated_mode_enabled?: boolean };
+  const autoApprove = settings.mode === 'open' || !!curatedSettings.curated_mode_enabled;
   const nowIso = new Date().toISOString();
 
   const insertRow = {
