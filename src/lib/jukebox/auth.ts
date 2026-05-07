@@ -73,13 +73,19 @@ export async function requireStaff(
   const email = userRes.user.email.toLowerCase();
 
   // Confirm staff_users row, active.
+  // venue_id omitted — single-tenant schema doesn't have that column;
+  // including it causes PostgREST to return null + error silently.
   const sb = getServiceClient();
-  const { data: row } = await sb
+  const { data: row, error: rowErr } = await sb
     .from('staff_users')
-    .select('id, email, role, venue_id, active')
+    .select('id, email, role, active')
     .ilike('email', email)
     .maybeSingle();
 
+  if (rowErr) {
+    console.error('[requireStaff] staff_users query error:', rowErr.message);
+    return { error: unauthorized('staff lookup failed') };
+  }
   if (!row || row.active === false) {
     return { error: unauthorized('not a staff user') };
   }
@@ -89,7 +95,7 @@ export async function requireStaff(
       id: row.id,
       email: row.email,
       role: row.role,
-      venue_id: row.venue_id ?? null,
+      venue_id: null,
     },
   };
 }
