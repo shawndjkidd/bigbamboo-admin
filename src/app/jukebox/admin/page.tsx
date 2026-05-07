@@ -115,7 +115,7 @@ export default function JukeboxAdminPage() {
 
   if (loading) {
     return (
-      <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>
+      <div style={{ padding: 40, textAlign: 'center', color: 'var(--bbb-cream-light)' }}>
         Loading…
       </div>
     )
@@ -462,7 +462,7 @@ function SettingsTab({
     await patch({ curated_playlist_url: url } as Partial<Settings>)
   }
 
-  if (!s) return <div style={{ color: 'var(--text-muted)', padding: 16 }}>Loading…</div>
+  if (!s) return <div style={{ color: 'var(--bbb-cream-light)', padding: 16 }}>Loading…</div>
 
   // Always show the friendlier subdomain URL when the public base hint is set;
   // fall back to the current origin so admin-on-localhost still works in dev.

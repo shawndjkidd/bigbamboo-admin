@@ -347,21 +347,18 @@
 /* ── Admin header backing panel ───────────────────────── */
 /* Sits over the tropical bg so title + tabs are readable. */
 .jukebox-admin-header {
-  background: linear-gradient(180deg, rgba(10,40,32,0.85) 0%, rgba(10,40,32,0.78) 100%);
+  background: var(--bbb-bg-deep);
   border: 1px solid rgba(255,248,231,0.08);
   border-radius: 14px;
   padding: 16px 20px;
   margin-bottom: 18px;
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
-  box-shadow: 0 6px 18px rgba(0,0,0,0.35);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.55);
 }
 .jukebox-admin-header .page-title { color: var(--bbb-cream-light); }
 .jukebox-admin-header .jukebox-admin-sub {
-  color: rgba(255,248,231,0.8);
-  font-size: 13px;
+  color: var(--bbb-cream-light);
+  font-size: 14px;
   margin-top: 4px;
-  font-style: italic;
 }
 .jukebox-admin-tabs {
   display: flex;
@@ -377,17 +374,16 @@
   background: transparent;
   padding: 8px 14px;
   border-radius: 8px;
-  font-size: 14px;
-  font-weight: 500;
-  color: rgba(255,248,231,0.72);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--bbb-cream-light);
   font-family: inherit;
   white-space: nowrap;
 }
-.jukebox-admin-tab:hover { color: var(--bbb-cream-light); background: rgba(255,255,255,0.06); }
+.jukebox-admin-tab:hover { background: rgba(255,255,255,0.06); }
 .jukebox-admin-tab.is-active {
   color: var(--bbb-cream-light);
   background: rgba(232,118,42,0.22);
-  font-weight: 600;
 }
 
 /* ── JUKEBOX wordmark + tagline ───────────────────────── */
@@ -398,11 +394,11 @@
   letter-spacing: 0.06em;
   color: var(--bbb-cream-light);
   text-shadow: 0 4px 14px rgba(0,0,0,0.75);
-  margin-top: -12px;
+  margin-top: -56px;
   margin-bottom: 6px;
 }
 @media (min-width: 600px) {
-  .jukebox-wordmark { font-size: 72px; }
+  .jukebox-wordmark { font-size: 72px; margin-top: -72px; }
 }
 
 .jukebox-tagline {

@@ -43,8 +43,10 @@ export async function checkCooldown(
 
   // Look up the most recent successful-ish request per identifier.
   // 'rejected' / 'expired' don't count toward cooldown.
+  // ip_hash intentionally excluded: at a venue everyone shares the same
+  // public IP, so including it would block the whole room after one request.
+  // ip_hash is still stored per-row for analytics/abuse detection.
   const ors: string[] = [`device_id.eq.${ctx.deviceId}`];
-  if (ctx.ipHash) ors.push(`ip_hash.eq.${ctx.ipHash}`);
   if (ctx.userId) ors.push(`user_id.eq.${ctx.userId}`);
 
   const { data } = await sb
