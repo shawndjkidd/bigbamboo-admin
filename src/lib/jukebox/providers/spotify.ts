@@ -492,11 +492,14 @@ export class SpotifyProvider implements PlaybackProvider {
   /** Force a refresh if the access token is near-expiry. Used by the
    *  admin "Force token refresh" button. No-op if not connected. */
   async refreshAuthIfNeeded(): Promise<ProviderResult<void>> {
+    console.log('[refreshAuthIfNeeded] entry venueId=' + this.venueId + ' (codes=' + Array.from(this.venueId).map(c => c.charCodeAt(0)).join(',') + ')');
     const status = await getSpotifyAuthStatus(this.venueId);
+    console.log('[refreshAuthIfNeeded] status:', { isConnected: status.isConnected, providerUserId: status.providerUserId });
     if (!status.isConnected) {
       return { ok: false, error: { kind: 'token_invalid' } };
     }
     const tok = await getValidAccessToken(this.venueId);
+    console.log('[refreshAuthIfNeeded] getValidAccessToken result:', tok.ok ? 'ok' : `error=${tok.error.kind}`);
     if (tok.ok === false) return { ok: false, error: tok.error };
     return { ok: true, value: undefined };
   }
