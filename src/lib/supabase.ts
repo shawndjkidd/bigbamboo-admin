@@ -1,17 +1,18 @@
 import { createBrowserClient } from '@supabase/ssr'
 import { createClient } from '@supabase/supabase-js'
 
-export const supabase = createBrowserClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
+// Trim env values defensively — Vercel's UI sometimes saves trailing newlines
+// when secrets are pasted, and Supabase JS builds URLs by string concat which
+// silently breaks read paths when the URL has a trailing \n.
+const SUPABASE_URL = (process.env.NEXT_PUBLIC_SUPABASE_URL || '').trim()
+const SUPABASE_ANON_KEY = (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '').trim()
+const SUPABASE_SERVICE_ROLE_KEY = (process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim()
+
+export const supabase = createBrowserClient(SUPABASE_URL, SUPABASE_ANON_KEY)
 
 // Server-side only — uses service role key, bypasses RLS. Never call from client components.
 export function getServiceClient() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  )
+  return createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 }
 
 export type Role = 'super_admin' | 'manager' | 'scanner'
