@@ -106,7 +106,7 @@ export async function getSpotifyAuthStatus(
   venueId: string,
 ): Promise<VenueSpotifyAuth> {
   const sb = getServiceClient();
-  const { data } = await sb
+  const { data, error } = await sb
     .from('jukebox_provider_auth')
     .select(
       'is_connected, provider_user_id, provider_display_name, scopes, token_expires_at',
@@ -115,7 +115,11 @@ export async function getSpotifyAuthStatus(
     .eq('provider', 'spotify')
     .maybeSingle();
 
+  if (error) {
+    console.error('[getSpotifyAuthStatus] query error:', { venueId, error });
+  }
   if (!data) {
+    console.log('[getSpotifyAuthStatus] no row for', { venueId, hadError: !!error });
     return {
       isConnected: false,
       providerUserId: null,
@@ -124,6 +128,7 @@ export async function getSpotifyAuthStatus(
       expiresAt: null,
     };
   }
+  console.log('[getSpotifyAuthStatus] found row', { venueId, is_connected: data.is_connected, user: data.provider_user_id });
   return {
     isConnected: !!data.is_connected,
     providerUserId: data.provider_user_id,
