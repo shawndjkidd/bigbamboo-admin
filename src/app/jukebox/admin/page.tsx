@@ -65,7 +65,7 @@ interface BlockEntry {
   created_at: string
 }
 
-type Tab = 'pending' | 'queue' | 'history' | 'blocklist' | 'settings'
+type Tab = 'pending' | 'queue' | 'history' | 'blocklist' | 'spotify' | 'settings'
 
 interface PlaylistPreset {
   id: string
@@ -186,6 +186,7 @@ export default function JukeboxAdminPage() {
       {tab === 'queue' && <QueueTab apiFetch={apiFetch} onAction={showToast} />}
       {tab === 'history' && <HistoryTab apiFetch={apiFetch} />}
       {tab === 'blocklist' && <BlocklistTab apiFetch={apiFetch} onAction={showToast} />}
+      {tab === 'spotify' && <SpotifyTab apiFetch={apiFetch} onAction={showToast} />}
       {tab === 'settings' && (
         <SettingsTab
           apiFetch={apiFetch}
@@ -210,6 +211,7 @@ function Tabs({ tab, onChange }: { tab: Tab; onChange: (t: Tab) => void }) {
     { id: 'queue', label: copy.admin.queueTab },
     { id: 'history', label: copy.admin.historyTab },
     { id: 'blocklist', label: copy.admin.blocklistTab },
+    { id: 'spotify', label: copy.admin.spotifyTab },
     { id: 'settings', label: copy.admin.settingsTab },
   ]
   return (
@@ -319,6 +321,33 @@ function QueueTab({
     }
   }
 
+  async function addToSpotify(id: string) {
+    setBusy(id + ':spotify')
+    const j = await apiFetch(`/api/admin/jukebox/requests/${id}/add-to-provider-queue`, {
+      method: 'POST',
+      body: '{}',
+    })
+    setBusy(null)
+    if (j.ok) {
+      onAction('Added to Spotify queue')
+      // Reload so the row's status flips to 'queued' and the position recomputes.
+      load()
+    } else {
+      const code = (j.error as { code?: string } | undefined)?.code || ''
+      const friendly =
+        code === 'no_active_device'
+          ? 'No active Spotify device. Open Spotify and hit play, then try again.'
+          : code === 'token_invalid' || code === 'token_expired'
+            ? 'Spotify connection expired. Reconnect on the Spotify tab.'
+            : code === 'not_premium'
+              ? 'Connected Spotify account is not Premium.'
+              : code === 'rate_limited'
+                ? 'Spotify is throttling — try again in a moment.'
+                : j.error?.message || 'Add to Spotify failed'
+      onAction(friendly)
+    }
+  }
+
   if (rows.length === 0) {
     return <EmptyCard title="Queue is empty." sub="Approved and queued requests appear here in order." />
   }
@@ -336,6 +365,16 @@ function QueueTab({
           <button className="btn-red" disabled={!!busy} onClick={() => act(r.id, 'remove')}>
             {copy.admin.remove}
           </button>
+          {r.status === 'approved' && (
+            <button
+              className="btn-outline"
+              disabled={!!busy}
+              onClick={() => addToSpotify(r.id)}
+              title="Push this song into the venue's Spotify queue"
+            >
+              {busy === r.id + ':spotify' ? '…' : copy.admin.addToSpotify}
+            </button>
+          )}
           <button className="btn-green" disabled={!!busy} onClick={() => act(r.id, 'mark-played')}>
             {copy.admin.markPlayed}
           </button>
@@ -921,4 +960,214 @@ function badgeFor(status: string): string {
   if (status === 'skipped' || status === 'expired') return 'badge-gray'
   if (status === 'rejected' || status === 'removed' || status === 'failed') return 'badge-red'
   return 'badge-orange'
+}
+
+// ── Spotify ────────────────────────────────────────────────────
+interface SpotifyStatus {
+  connected: boolean
+  provider_user_id: string | null
+  provider_display_name: string | null
+  scopes: string[]
+  expires_at: string | null
+  active_device: { id: string; name: string; is_active: boolean } | null
+  all_devices: { id: string; name: string; is_active: boolean }[]
+  devices_error: string | null
+}
+
+interface NowPlayingAdmin {
+  track: {
+    id: string
+    name: string
+    artists: { id: string; name: string }[]
+    album: { name: string; artUrl: string | null }
+    durationMs: number
+  }
+  isPlaying: boolean
+  progressMs: number
+  device?: { id: string; name: string; type: string }
+}
+
+function SpotifyTab({
+  apiFetch,
+  onAction,
+}: {
+  apiFetch: (p: string, i?: RequestInit) => Promise<{ ok: boolean; data?: unknown; error?: { message: string; code?: string } }>
+  onAction: (m: string) => void
+}) {
+  const [status, setStatus] = useState<SpotifyStatus | null>(null)
+  const [nowPlaying, setNowPlaying] = useState<NowPlayingAdmin | null>(null)
+  const [busy, setBusy] = useState<string | null>(null)
+  const [loaded, setLoaded] = useState(false)
+
+  const load = useCallback(async () => {
+    const s = await apiFetch('/api/admin/jukebox/provider/status')
+    if (s.ok) setStatus(s.data as SpotifyStatus)
+    const np = await apiFetch('/api/admin/jukebox/provider/now-playing')
+    if (np.ok) setNowPlaying((np.data as NowPlayingAdmin | null) ?? null)
+    else setNowPlaying(null)
+    setLoaded(true)
+  }, [apiFetch])
+
+  useEffect(() => {
+    load()
+    // Light polling so the active-device indicator stays fresh.
+    const t = setInterval(load, 15_000)
+    return () => clearInterval(t)
+  }, [load])
+
+  function connect() {
+    // Hard nav so the OAuth round-trip works (we need the cookie set
+    // by /connect to come back in /callback). Same-origin redirect.
+    window.location.href = '/api/admin/jukebox/provider/spotify/connect'
+  }
+
+  async function disconnect() {
+    if (!confirm('Disconnect the venue Spotify account?')) return
+    setBusy('disconnect')
+    const j = await apiFetch('/api/admin/jukebox/provider/spotify/disconnect', {
+      method: 'POST',
+      body: '{}',
+    })
+    setBusy(null)
+    if (j.ok) {
+      onAction('Disconnected.')
+      load()
+    } else {
+      onAction(j.error?.message || 'Disconnect failed')
+    }
+  }
+
+  async function refresh() {
+    setBusy('refresh')
+    const j = await apiFetch('/api/admin/jukebox/provider/refresh', {
+      method: 'POST',
+      body: '{}',
+    })
+    setBusy(null)
+    if (j.ok) {
+      onAction('Token refreshed.')
+      load()
+    } else {
+      onAction(j.error?.message || 'Refresh failed')
+    }
+  }
+
+  if (!loaded) {
+    return <EmptyCard title="Loading…" sub="" />
+  }
+
+  if (!status?.connected) {
+    return (
+      <div className="card" style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div style={{ fontWeight: 600, fontSize: 16 }}>Spotify not connected</div>
+        <div style={{ color: 'var(--text-muted)', fontSize: 13, lineHeight: 1.5 }}>
+          Connect the venue's Spotify account so approved requests can be pushed
+          into Spotify's playback queue. The account must be Premium and have
+          an active playback device (a speaker or computer playing Spotify).
+        </div>
+        <div>
+          <button className="btn-green" onClick={connect}>Connect Spotify</button>
+        </div>
+      </div>
+    )
+  }
+
+  const noDevice = !status.active_device
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div className="card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+          <div>
+            <div style={{ fontWeight: 600, fontSize: 15 }}>
+              ● Connected as {status.provider_display_name || status.provider_user_id || 'unknown'}
+            </div>
+            <div style={{ color: 'var(--text-muted)', fontSize: 12, marginTop: 4 }}>
+              Scopes: {status.scopes.join(', ') || '(none)'} · Expires{' '}
+              {status.expires_at ? new Date(status.expires_at).toLocaleString() : 'unknown'}
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button className="btn-outline" disabled={busy === 'refresh'} onClick={refresh}>
+              {busy === 'refresh' ? '…' : 'Refresh token'}
+            </button>
+            <button className="btn-outline" disabled={busy === 'disconnect'} onClick={disconnect}>
+              {busy === 'disconnect' ? '…' : 'Disconnect'}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div style={{ fontWeight: 600, fontSize: 14 }}>Active device</div>
+        {noDevice ? (
+          <div
+            style={{
+              padding: 12,
+              borderRadius: 8,
+              background: 'rgba(255,180,80,0.12)',
+              border: '1px solid rgba(255,180,80,0.4)',
+              color: 'var(--text)',
+              fontSize: 13,
+              lineHeight: 1.5,
+            }}
+          >
+            ⚠ No active Spotify device. Open Spotify on the venue computer or
+            speaker, hit play on anything for a second, then click Refresh below.
+            Spotify queue adds will fail until a device is active.
+            <div style={{ marginTop: 8 }}>
+              <button className="btn-outline" onClick={load}>Refresh devices</button>
+            </div>
+          </div>
+        ) : (
+          <div style={{ fontSize: 14 }}>
+            <span style={{ color: 'var(--bbb-bamboo)' }}>●</span>{' '}
+            <strong>{status.active_device!.name}</strong>
+            {status.all_devices.length > 1 && (
+              <span style={{ color: 'var(--text-muted)', marginLeft: 8, fontSize: 12 }}>
+                ({status.all_devices.length} devices total)
+              </span>
+            )}
+          </div>
+        )}
+        {status.devices_error && (
+          <div style={{ color: 'var(--bbb-flame)', fontSize: 12 }}>
+            Device list error: {status.devices_error}
+          </div>
+        )}
+      </div>
+
+      <div className="card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div style={{ fontWeight: 600, fontSize: 14 }}>Now playing on Spotify</div>
+        {nowPlaying ? (
+          <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+            {nowPlaying.track.album.artUrl && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={nowPlaying.track.album.artUrl}
+                alt=""
+                style={{ width: 56, height: 56, borderRadius: 6, objectFit: 'cover' }}
+              />
+            )}
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontWeight: 600, fontSize: 15, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {nowPlaying.track.name}
+              </div>
+              <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>
+                {nowPlaying.track.artists.map((a) => a.name).join(', ')}
+              </div>
+              <div style={{ color: 'var(--text-muted)', fontSize: 11, marginTop: 4 }}>
+                {nowPlaying.isPlaying ? '▶ Playing' : '❚❚ Paused'} ·{' '}
+                {Math.floor(nowPlaying.progressMs / 1000)}s of{' '}
+                {Math.floor(nowPlaying.track.durationMs / 1000)}s
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>
+            Nothing playing right now.
+          </div>
+        )}
+      </div>
+    </div>
+  )
 }

@@ -4,7 +4,10 @@
 //  plus the right-column "Just Played" pill and activity counter
 //  via React portals (mount points are rendered in the parent
 //  server component so styling/positioning is consistent).
-//  Polls /api/jukebox/queue every 12s.
+//  Polls /api/jukebox/queue every 12s for the queue,
+//  and /api/jukebox/now-playing every 8s for live Spotify state.
+//  Spotify's live track wins; queue's now_playing is a fallback
+//  for when Spotify is paused or disconnected.
 // ═══════════════════════════════════════════════════════════════
 
 import { useEffect, useState } from 'react'
@@ -29,6 +32,9 @@ interface NowPlaying {
   requested_by: string
   played_at: string | null
   is_fallback: boolean
+  // Phase-2 only — populated when Spotify provides live state.
+  progress_ms?: number
+  is_playing?: boolean
 }
 
 interface JustPlayed {
@@ -58,14 +64,24 @@ interface Props {
   guestUrl: string
 }
 
+interface SpotifyLiveNow {
+  track_name: string
+  artist_name: string
+  album_art_url: string | null
+  duration_ms: number
+  progress_ms: number
+  is_playing: boolean
+}
+
 export default function DisplayClient({ guestUrl }: Props) {
   const [data, setData] = useState<QueuePayload | null>(null)
+  const [spotifyNow, setSpotifyNow] = useState<SpotifyLiveNow | null>(null)
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
     setMounted(true)
     let alive = true
-    async function load() {
+    async function loadQueue() {
       try {
         const r = await fetch('/api/jukebox/queue', { cache: 'no-store' })
         const j = await r.json()
@@ -73,15 +89,53 @@ export default function DisplayClient({ guestUrl }: Props) {
         if (j.ok) setData(j.data as QueuePayload)
       } catch { /* ignore — next tick */ }
     }
-    load()
-    const t = setInterval(load, 12_000)
-    return () => { alive = false; clearInterval(t) }
+    async function loadSpotify() {
+      try {
+        const r = await fetch('/api/jukebox/now-playing', { cache: 'no-store' })
+        const j = await r.json()
+        if (!alive) return
+        if (j.ok) setSpotifyNow((j.data as SpotifyLiveNow | null) ?? null)
+      } catch { /* ignore — next tick */ }
+    }
+    loadQueue()
+    loadSpotify()
+    const tQueue = setInterval(loadQueue, 12_000)
+    const tSpotify = setInterval(loadSpotify, 8_000)
+    return () => {
+      alive = false
+      clearInterval(tQueue)
+      clearInterval(tSpotify)
+    }
   }, [])
 
   const items = data?.queue || []
-  const nowPlaying = data?.now_playing ?? null
+  const queueNowPlaying = data?.now_playing ?? null
   const justPlayed = data?.just_played ?? null
   const playedTodayCount = data?.played_today_count ?? 0
+
+  // Prefer Spotify's live state when present. Enrich requested_by from the
+  // queue's now_playing if it's the same track (poll cron usually keeps
+  // these in sync). When Spotify says nothing's playing, fall through to
+  // the queue endpoint's logic (mark-played stamp → queue head).
+  const nowPlaying: NowPlaying | null = spotifyNow
+    ? {
+        id: queueNowPlaying?.id || 'spotify',
+        track_name: spotifyNow.track_name,
+        artist_name: spotifyNow.artist_name,
+        album_art_url: spotifyNow.album_art_url,
+        duration_ms: spotifyNow.duration_ms,
+        requested_by:
+          queueNowPlaying &&
+          queueNowPlaying.track_name === spotifyNow.track_name &&
+          queueNowPlaying.artist_name === spotifyNow.artist_name
+            ? queueNowPlaying.requested_by
+            : '',
+        played_at: queueNowPlaying?.played_at ?? null,
+        is_fallback: false,
+        progress_ms: spotifyNow.progress_ms,
+        is_playing: spotifyNow.is_playing,
+      }
+    : queueNowPlaying
 
   // When the queue head IS the now-playing fallback, hide it from the
   // Up Next list so the same song doesn't appear twice on screen.
@@ -110,7 +164,7 @@ export default function DisplayClient({ guestUrl }: Props) {
                 One song queued. Scan the QR to add the next.
               </div>
             ) : (
-              upNext.slice(0, 8).map((it) => (
+              upNext.slice(0, 5).map((it) => (
                 <div key={it.id} className="kiosk-up-next-row">
                   <div className="kiosk-up-next-pos">{it.position}</div>
                   <div className="kiosk-up-next-art">
@@ -140,25 +194,72 @@ export default function DisplayClient({ guestUrl }: Props) {
   )
 }
 
-// ── Now Playing hero ────────────────────────────────────────────
+// ── Now Playing hero — cinematic album art, frosted glass overlay
+//    Live progress bar when Spotify provides progress_ms, else static
+//    duration pill. Falls back gracefully when no Spotify connection.
 function NowPlayingHero({ now }: { now: NowPlaying }) {
-  const label = now.is_fallback ? 'COMING UP' : 'NOW PLAYING · ON AIR'
+  const label = now.is_fallback ? 'UP FIRST' : 'NOW PLAYING'
+  const hasLiveProgress =
+    typeof now.progress_ms === 'number' && now.duration_ms > 0
+  const pct = hasLiveProgress
+    ? Math.max(0, Math.min(100, (now.progress_ms! / now.duration_ms) * 100))
+    : 0
+  const elapsed = hasLiveProgress ? fmtDuration(now.progress_ms!) : null
+  const total = fmtDuration(now.duration_ms)
+  const art = now.album_art_url
+
   return (
-    <div className="kiosk-now-playing-hero">
-      <div className="kiosk-now-playing-hero-art">
-        {now.album_art_url ? (
+    <div className="kiosk-hero" data-fallback={now.is_fallback ? '1' : '0'}>
+      {/* Ambient blurred album art behind everything */}
+      <div
+        className="kiosk-hero-ambient"
+        style={art ? { backgroundImage: `url(${art})` } : undefined}
+        aria-hidden="true"
+      />
+      <div className="kiosk-hero-vignette" aria-hidden="true" />
+
+      <div className="kiosk-hero-art">
+        {art ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={now.album_art_url} alt="" />
-        ) : null}
+          <img src={art} alt="" />
+        ) : (
+          <div className="kiosk-hero-art-empty" aria-hidden="true">♪</div>
+        )}
       </div>
-      <div className="kiosk-now-playing-hero-meta">
-        <div className="kiosk-now-playing-hero-label">
-          <span className="jukebox-on-air-dot" /> {label}
+
+      <div className="kiosk-hero-meta">
+        <div className="kiosk-hero-label">
+          <span
+            className={`kiosk-hero-dot ${
+              now.is_playing === false || now.is_fallback ? 'is-paused' : 'is-live'
+            }`}
+            aria-hidden="true"
+          />
+          {label}
+          {now.is_playing === false && !now.is_fallback && (
+            <span className="kiosk-hero-paused-tag">PAUSED</span>
+          )}
         </div>
-        <div className="kiosk-now-playing-hero-title">{now.track_name}</div>
-        <div className="kiosk-now-playing-hero-artist">{now.artist_name}</div>
+
+        <div className="kiosk-hero-title">{now.track_name}</div>
+        <div className="kiosk-hero-artist">{now.artist_name}</div>
+
+        <div className="kiosk-hero-progress">
+          <div
+            className="kiosk-hero-progress-bar"
+            style={{ width: `${hasLiveProgress ? pct : 0}%` }}
+          />
+        </div>
+        <div className="kiosk-hero-time">
+          <span>{elapsed ?? '— —'}</span>
+          <span>{total}</span>
+        </div>
+
         {now.requested_by && now.requested_by !== 'anonymous' && (
-          <div className="kiosk-now-playing-hero-req">requested by {now.requested_by}</div>
+          <div className="kiosk-hero-req">
+            <span className="kiosk-hero-req-label">requested by</span>{' '}
+            <span className="kiosk-hero-req-name">{now.requested_by}</span>
+          </div>
         )}
       </div>
     </div>

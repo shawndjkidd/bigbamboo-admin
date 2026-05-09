@@ -23,9 +23,13 @@ export const copy = {
       n === 1 ? "You're up next." : `Position #${n} in the queue.`,
     cooldownActive: (mmss: string) =>
       `You're still cooling down. Next request available in ${mmss}.`,
+    // Loyalty CTA copy. The component should hide this entire prompt
+    // unless NEXT_PUBLIC_LOYALTY_SIGNUP_URL is set in env. Wording stays
+    // generic so it works regardless of which loyalty system the URL
+    // ultimately points at (in-house rewards, CardCore, mailing list, etc).
     loyaltyHook: 'Want more jungle power?',
     loyaltyPitch:
-      'Join BigBamBoo Rewards to request more often, vote on the queue, and unlock prizes.',
+      'Join the rewards crew to request more often and unlock perks.',
     loyaltyYes: 'Unlock More',
     loyaltyNo: "Not now, I'm just vibing",
     emptyResults: 'No tracks found. Try a different search.',

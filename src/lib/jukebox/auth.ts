@@ -102,9 +102,42 @@ export async function requireStaff(
   };
 }
 
-/** Role gate — call after requireStaff. */
+/** Role gate — call after requireStaff. Privileged config (Spotify
+ *  connect/disconnect, force token refresh, settings) requires this. */
 export function hasAdminRole(role: StaffSession['role']): boolean {
   return role === 'super_admin' || role === 'admin' || role === 'manager';
+}
+
+/** Role gate for jukebox moderation actions (approve/reject/skip/etc).
+ *  Bartenders (`staff`) should be able to moderate; only `scanner`
+ *  (loyalty-card-only role) is excluded. */
+export function canModerateJukebox(role: StaffSession['role']): boolean {
+  return role !== 'scanner';
+}
+
+/** Convenience: `requireStaff` + `canModerateJukebox`. Use on mutating
+ *  jukebox request and blocklist routes. Returns either { staff } or
+ *  { error: NextResponse } the caller can return directly. */
+export async function requireModerator(
+  req: Request,
+): Promise<{ staff: StaffSession } | { error: NextResponse }> {
+  const auth = await requireStaff(req);
+  if ('error' in auth) return auth;
+  if (!canModerateJukebox(auth.staff.role)) {
+    return {
+      error: NextResponse.json(
+        {
+          ok: false,
+          error: {
+            code: 'forbidden',
+            message: 'Your role cannot moderate the jukebox.',
+          },
+        },
+        { status: 403 },
+      ),
+    };
+  }
+  return auth;
 }
 
 /** Cron secret guard for /api/admin/jukebox/cron/*.

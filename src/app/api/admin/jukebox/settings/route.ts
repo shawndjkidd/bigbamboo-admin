@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServiceClient } from '@/lib/supabase';
 import { getJukeboxVenueId } from '@/lib/jukebox/venue';
-import { requireStaff } from '@/lib/jukebox/auth';
+import { requireModerator } from '@/lib/jukebox/auth';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -28,7 +28,7 @@ const ALLOWED_PATCH_FIELDS = new Set([
 const VALID_MODES = new Set(['approval', 'open', 'locked', 'event']);
 
 export async function GET(req: NextRequest) {
-  const auth = await requireStaff(req);
+  const auth = await requireModerator(req);
   if ('error' in auth) return auth.error;
 
   const venueId = await getJukeboxVenueId();
@@ -48,7 +48,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function PATCH(req: NextRequest) {
-  const auth = await requireStaff(req);
+  const auth = await requireModerator(req);
   if ('error' in auth) return auth.error;
 
   let body: Record<string, unknown> = {};

@@ -678,7 +678,175 @@
   opacity: 0.85;
 }
 
-/* Up Next dense list — kiosk-specific compact rows */
+/* ── Premium kiosk hero ──────────────────────────────────────────
+   Cinematic album-art ambient bg + frosted glass meta panel.
+   Designed to fit ~30vh on a 1080p TV; scales gracefully on iPads.
+   The .kiosk-hero class replaces .kiosk-now-playing-hero (which is
+   kept above for backward compat in case any other consumer uses it). */
+.kiosk-hero {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(180px, 26%) 1fr;
+  gap: 28px;
+  align-items: center;
+  padding: 26px 32px;
+  border-radius: 18px;
+  overflow: hidden;
+  background: linear-gradient(135deg, rgba(20,12,6,0.55), rgba(20,12,6,0.35));
+  border: 1px solid rgba(255,255,255,0.08);
+  box-shadow:
+    0 24px 60px rgba(0,0,0,0.55),
+    inset 0 1px 0 rgba(255,255,255,0.06);
+  flex-shrink: 0;
+  isolation: isolate;
+}
+.kiosk-hero-ambient {
+  position: absolute;
+  inset: -8%;
+  background-size: cover;
+  background-position: center;
+  filter: blur(48px) saturate(1.25) brightness(0.55);
+  opacity: 0.95;
+  z-index: -2;
+  transform: scale(1.12);
+  transition: background-image 600ms ease;
+}
+.kiosk-hero-vignette {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at top right, rgba(0,0,0,0) 0%, rgba(0,0,0,0.55) 70%),
+    linear-gradient(180deg, rgba(0,0,0,0.10) 0%, rgba(0,0,0,0.55) 100%);
+  z-index: -1;
+  pointer-events: none;
+}
+.kiosk-hero-art {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  max-width: 240px;
+  border-radius: 14px;
+  overflow: hidden;
+  background: rgba(0,0,0,0.4);
+  box-shadow:
+    0 18px 36px rgba(0,0,0,0.55),
+    0 0 0 1px rgba(255,255,255,0.08);
+  position: relative;
+}
+.kiosk-hero-art img {
+  width: 100%; height: 100%; display: block; object-fit: cover;
+}
+.kiosk-hero-art-empty {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--theme-display-font);
+  font-size: 96px;
+  color: rgba(255,255,255,0.18);
+}
+.kiosk-hero-meta {
+  min-width: 0;
+  color: #fff;
+  text-shadow: 0 2px 12px rgba(0,0,0,0.7);
+}
+.kiosk-hero-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--theme-display-font);
+  font-size: 13px;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.85);
+  margin-bottom: 10px;
+}
+.kiosk-hero-dot {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  background: var(--theme-coral, #e85d4a);
+  box-shadow: 0 0 10px currentColor;
+}
+.kiosk-hero-dot.is-live {
+  animation: kiosk-hero-pulse 1.6s ease-in-out infinite;
+}
+.kiosk-hero-dot.is-paused {
+  background: rgba(255,255,255,0.4);
+  box-shadow: none;
+  animation: none;
+}
+@keyframes kiosk-hero-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%      { opacity: 0.55; transform: scale(0.85); }
+}
+.kiosk-hero-paused-tag {
+  margin-left: 6px;
+  padding: 2px 8px;
+  border-radius: 100px;
+  background: rgba(255,255,255,0.12);
+  border: 1px solid rgba(255,255,255,0.25);
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  color: rgba(255,255,255,0.85);
+}
+.kiosk-hero-title {
+  font-family: var(--theme-display-font);
+  font-size: 56px;
+  line-height: 1.02;
+  color: #fff;
+  margin-bottom: 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  letter-spacing: 0.005em;
+}
+.kiosk-hero-artist {
+  font-size: 22px;
+  font-style: italic;
+  color: rgba(255,255,255,0.75);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 18px;
+}
+.kiosk-hero-progress {
+  height: 6px;
+  width: 100%;
+  background: rgba(255,255,255,0.12);
+  border-radius: 100px;
+  overflow: hidden;
+  margin-bottom: 6px;
+}
+.kiosk-hero-progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, var(--theme-accent, #f5b820), var(--theme-coral, #e85d4a));
+  border-radius: 100px;
+  transition: width 600ms linear;
+  box-shadow: 0 0 12px rgba(245,184,32,0.5);
+}
+.kiosk-hero-time {
+  display: flex;
+  justify-content: space-between;
+  font-feature-settings: 'tnum';
+  font-size: 12px;
+  color: rgba(255,255,255,0.65);
+  letter-spacing: 0.04em;
+  margin-bottom: 14px;
+}
+.kiosk-hero-req {
+  font-size: 13px;
+  color: rgba(255,255,255,0.65);
+}
+.kiosk-hero-req-label {
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  font-size: 10px;
+  margin-right: 4px;
+}
+.kiosk-hero-req-name {
+  color: var(--theme-accent, #f5b820);
+  font-weight: 600;
+}
+
+/* Up Next dense list — kiosk-specific compact rows. Larger thumbs +
+   refined spacing for the premium look. */
 .kiosk-up-next {
   flex: 1;
   min-height: 0;
@@ -690,107 +858,127 @@
   min-height: 0;
   overflow-y: auto;
   padding-right: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 .kiosk-up-next-row {
-  display: flex;
+  display: grid;
+  grid-template-columns: 32px 56px 1fr auto;
   align-items: center;
-  gap: 10px;
-  padding: 8px 6px;
-  border-bottom: 1px dashed var(--theme-card-edge);
+  gap: 14px;
+  padding: 10px 12px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 10px;
+  transition: background 200ms ease;
 }
-.kiosk-up-next-row:last-of-type { border-bottom: none; }
+.kiosk-up-next-row:hover {
+  background: rgba(255,255,255,0.06);
+}
 .kiosk-up-next-pos {
   font-family: var(--theme-display-font);
-  font-size: 18px;
-  color: var(--theme-primary);
-  width: 28px;
+  font-size: 22px;
+  color: rgba(255,255,255,0.4);
   text-align: center;
-  flex-shrink: 0;
+  font-feature-settings: 'tnum';
 }
 .kiosk-up-next-art {
-  width: 44px; height: 44px;
-  border-radius: 5px;
-  border: 2px solid var(--bbb-wood);
-  background: var(--bbb-wood-dark);
-  flex-shrink: 0;
+  width: 56px; height: 56px;
+  border-radius: 6px;
+  background: rgba(0,0,0,0.4);
   overflow: hidden;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.45), 0 0 0 1px rgba(255,255,255,0.06);
 }
 .kiosk-up-next-art img {
   width: 100%; height: 100%; display: block; object-fit: cover;
 }
 .kiosk-up-next-meta {
-  flex: 1;
   min-width: 0;
 }
 .kiosk-up-next-title {
-  font-size: 15px;
-  font-weight: 500;
-  color: var(--theme-card-text);
+  font-size: 17px;
+  font-weight: 600;
+  color: #fff;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  letter-spacing: 0.005em;
 }
 .kiosk-up-next-artist {
-  font-size: 12px;
-  color: var(--theme-card-text-muted);
+  font-size: 13px;
+  color: rgba(255,255,255,0.6);
   font-style: italic;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  margin-top: 2px;
 }
 .kiosk-up-next-side {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 1px;
-  flex-shrink: 0;
+  gap: 2px;
   white-space: nowrap;
+  text-align: right;
 }
 .kiosk-up-next-duration {
-  font-size: 11px;
-  color: var(--theme-card-text-muted);
+  font-size: 13px;
+  color: rgba(255,255,255,0.7);
   font-feature-settings: 'tnum';
 }
 .kiosk-up-next-req {
   font-size: 11px;
-  color: var(--theme-card-text-muted);
+  color: rgba(255,255,255,0.45);
   font-style: italic;
+  text-transform: lowercase;
+  letter-spacing: 0.02em;
 }
 
-/* Right column: SCAN block, JUST PLAYED pill, counter */
+/* Right column: SCAN block, JUST PLAYED pill, counter — premium look */
 .kiosk-scan-block {
   text-align: center;
+  padding: 22px 18px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.01));
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 16px;
+  box-shadow: 0 16px 40px rgba(0,0,0,0.35);
 }
 .kiosk-scan-label {
   font-family: var(--theme-display-font);
-  font-size: 14px;
-  letter-spacing: 0.16em;
-  color: var(--theme-card-text-muted);
+  font-size: 13px;
+  letter-spacing: 0.28em;
+  color: rgba(255,255,255,0.65);
   text-transform: uppercase;
-  margin-bottom: 10px;
+  margin-bottom: 14px;
 }
 .kiosk-qr {
   width: 100%;
-  max-width: 240px;
+  max-width: 260px;
   height: auto;
   display: block;
   margin: 0 auto;
-  border-radius: 10px;
-  border: 3px solid var(--bbb-wood);
-  background: var(--theme-card-light);
+  border-radius: 12px;
+  background: #fff8e7;
+  padding: 10px;
+  box-shadow:
+    0 8px 24px rgba(0,0,0,0.4),
+    0 0 0 1px rgba(255,255,255,0.08);
 }
 .kiosk-qr-url {
-  margin-top: 8px;
+  margin-top: 12px;
   font-size: 11px;
   font-family: monospace;
-  color: var(--theme-card-text-muted);
+  color: rgba(255,255,255,0.55);
+  letter-spacing: 0.04em;
   word-break: break-all;
 }
 
 .kiosk-just-played {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
-  background: rgba(245,184,32,0.15);
-  border: 1px solid var(--theme-accent);
-  border-radius: 10px;
+  gap: 12px;
+  padding: 12px 14px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.3);
 }
 .kiosk-just-played-art {
   width: 42px; height: 42px;

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServiceClient } from '@/lib/supabase';
 import { getJukeboxVenueId } from '@/lib/jukebox/venue';
-import { requireStaff } from '@/lib/jukebox/auth';
+import { requireModerator } from '@/lib/jukebox/auth';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -19,7 +19,7 @@ const VALID = new Set([
 ]);
 
 export async function GET(req: NextRequest) {
-  const auth = await requireStaff(req);
+  const auth = await requireModerator(req);
   if ('error' in auth) return auth.error;
 
   const url = new URL(req.url);

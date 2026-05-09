@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServiceClient } from '@/lib/supabase';
 import { getJukeboxVenueId } from '@/lib/jukebox/venue';
-import { requireStaff } from '@/lib/jukebox/auth';
+import { requireModerator } from '@/lib/jukebox/auth';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest) {
-  const auth = await requireStaff(req);
+  const auth = await requireModerator(req);
   if ('error' in auth) return auth.error;
 
   const venueId = await getJukeboxVenueId();
@@ -29,7 +29,7 @@ interface AddBody {
 }
 
 export async function POST(req: NextRequest) {
-  const auth = await requireStaff(req);
+  const auth = await requireModerator(req);
   if ('error' in auth) return auth.error;
 
   let body: AddBody;

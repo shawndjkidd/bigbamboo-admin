@@ -1,9 +1,10 @@
 // ═══════════════════════════════════════════════════════════════
 //  Jukebox — Spotify provider
-//  Phase 1: searchTracks + getTrack via Client Credentials flow.
+//  Phase 1: searchTracks + getTrack + playlist metadata via
+//           Client Credentials flow (no user auth).
 //  Phase 2: addToQueue / getNowPlaying / getAvailableDevices via
-//           Authorization Code + PKCE per-venue tokens (stubbed
-//           with token_invalid until OAuth lands).
+//           Authorization Code + PKCE per-venue tokens, managed
+//           by ../spotifyAuth.ts.
 // ═══════════════════════════════════════════════════════════════
 
 import type {
@@ -15,6 +16,7 @@ import type {
   ProviderResult,
   Track,
 } from './types';
+import { getSpotifyAuthStatus, getValidAccessToken } from '../spotifyAuth';
 
 const SPOTIFY_API = 'https://api.spotify.com/v1';
 const SPOTIFY_TOKEN = 'https://accounts.spotify.com/api/token';
@@ -131,8 +133,58 @@ function mapHttpError(status: number, retryAfter?: string | null): ProviderError
   return { kind: 'unknown', message: `http ${status}` };
 }
 
+/** Like mapHttpError but inspects the response body for the few cases
+ *  Spotify only signals via the JSON payload — namely "no active device"
+ *  (404 with a specific reason) and "not premium" (403 with PREMIUM_REQUIRED).
+ *  Use for user-scoped endpoints (player/queue, player/currently-playing,
+ *  player/devices). */
+async function mapUserScopedError(res: Response): Promise<ProviderError> {
+  let body = '';
+  let parsed: { error?: { reason?: string; message?: string; status?: number } } = {};
+  try {
+    body = await res.text();
+    if (body) parsed = JSON.parse(body);
+  } catch {
+    /* body wasn't JSON; fall through */
+  }
+  const reason = parsed.error?.reason || '';
+  const message = parsed.error?.message || '';
+
+  // Spotify error reasons we care about:
+  //   NO_ACTIVE_DEVICE — needs Spotify open + playing somewhere
+  //   PREMIUM_REQUIRED — account isn't Premium
+  if (reason === 'NO_ACTIVE_DEVICE') return { kind: 'no_active_device' };
+  if (reason === 'PREMIUM_REQUIRED') return { kind: 'not_premium' };
+  if (/premium/i.test(message)) return { kind: 'not_premium' };
+  if (res.status === 401) return { kind: 'token_expired' };
+  if (res.status === 403) return { kind: 'token_invalid' };
+  if (res.status === 404) {
+    // 404 on /me/player/queue often means "no active device"; on /currently-playing
+    // it means "nothing playing", which the caller handles before we get here.
+    return { kind: 'no_active_device' };
+  }
+  if (res.status === 429) {
+    const r = Number(res.headers.get('retry-after') || '30');
+    return { kind: 'rate_limited', retryAfterSec: Number.isFinite(r) ? r : 30 };
+  }
+  console.error(
+    '[spotify] user-scoped http',
+    res.status,
+    'reason:',
+    reason,
+    'body:',
+    body.slice(0, 300),
+  );
+  return { kind: 'unknown', message: `http ${res.status}` };
+}
+
 // ── Provider ───────────────────────────────────────────────────
 export class SpotifyProvider implements PlaybackProvider {
+  /** venueId is needed for user-scoped calls (addToQueue, getNowPlaying, etc).
+   *  Search and getTrack don't use it (Client Credentials flow). Defaults
+   *  to 'default' so existing callers that pass no venueId still work. */
+  constructor(private readonly venueId: string = 'default') {}
+
   async searchTracks(
     query: string,
     opts?: { limit?: number; market?: string },
@@ -316,22 +368,124 @@ export class SpotifyProvider implements PlaybackProvider {
     return { ok: true, value: { tracks, meta: { name, owner, image } } };
   }
 
-  // ── Phase 2 stubs ─────────────────────────────────────────────
-  async addToQueue(): Promise<ProviderResult<void>> {
-    return { ok: false, error: { kind: 'token_invalid' } };
+  // ── Phase 2: user-scoped Spotify calls ────────────────────────
+
+  /** Add a track to the venue's playback queue.
+   *  Common failure: 'no_active_device' — Spotify needs SOMETHING
+   *  playing on a device before queue adds work. The route surfaces
+   *  this as a friendly "open Spotify and hit play" message. */
+  async addToQueue(trackId: string): Promise<ProviderResult<void>> {
+    if (!trackId || !/^[A-Za-z0-9]+$/.test(trackId)) {
+      return { ok: false, error: { kind: 'track_unavailable' } };
+    }
+    const tok = await getValidAccessToken(this.venueId);
+    if (tok.ok === false) return { ok: false, error: tok.error };
+
+    const uri = `spotify:track:${trackId}`;
+    const url = `${SPOTIFY_API}/me/player/queue?uri=${encodeURIComponent(uri)}`;
+    let res: Response;
+    try {
+      res = await fetch(url, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${tok.token}` },
+        cache: 'no-store',
+      });
+    } catch (e: unknown) {
+      return { ok: false, error: { kind: 'network_error', message: String(e) } };
+    }
+    if (res.status === 204 || res.status === 200) {
+      return { ok: true, value: undefined };
+    }
+    return { ok: false, error: await mapUserScopedError(res) };
   }
+
   async getNowPlaying(): Promise<ProviderResult<NowPlaying | null>> {
-    return { ok: false, error: { kind: 'token_invalid' } };
+    const tok = await getValidAccessToken(this.venueId);
+    if (tok.ok === false) return { ok: false, error: tok.error };
+
+    let res: Response;
+    try {
+      res = await fetch(`${SPOTIFY_API}/me/player/currently-playing?market=VN`, {
+        headers: { Authorization: `Bearer ${tok.token}` },
+        cache: 'no-store',
+      });
+    } catch (e: unknown) {
+      return { ok: false, error: { kind: 'network_error', message: String(e) } };
+    }
+    // 204 = nothing playing
+    if (res.status === 204) return { ok: true, value: null };
+    if (!res.ok) return { ok: false, error: await mapUserScopedError(res) };
+
+    const json = (await res.json()) as {
+      is_playing?: boolean;
+      progress_ms?: number;
+      item?: SpotifyTrackJson | null;
+      device?: { id?: string; name?: string; type?: string };
+    };
+    if (!json.item) return { ok: true, value: null };
+    return {
+      ok: true,
+      value: {
+        track: mapTrack(json.item),
+        isPlaying: !!json.is_playing,
+        progressMs: json.progress_ms ?? 0,
+        device:
+          json.device && json.device.id
+            ? {
+                id: json.device.id,
+                name: json.device.name || 'Unknown device',
+                type: json.device.type || 'unknown',
+              }
+            : undefined,
+      },
+    };
   }
+
   async getAvailableDevices(): Promise<
     ProviderResult<{ id: string; name: string; isActive: boolean }[]>
   > {
-    return { ok: false, error: { kind: 'token_invalid' } };
+    const tok = await getValidAccessToken(this.venueId);
+    if (tok.ok === false) return { ok: false, error: tok.error };
+
+    let res: Response;
+    try {
+      res = await fetch(`${SPOTIFY_API}/me/player/devices`, {
+        headers: { Authorization: `Bearer ${tok.token}` },
+        cache: 'no-store',
+      });
+    } catch (e: unknown) {
+      return { ok: false, error: { kind: 'network_error', message: String(e) } };
+    }
+    if (!res.ok) return { ok: false, error: await mapUserScopedError(res) };
+    const json = (await res.json()) as {
+      devices?: { id?: string; name?: string; is_active?: boolean }[];
+    };
+    return {
+      ok: true,
+      value: (json.devices || [])
+        .filter((d) => !!d.id)
+        .map((d) => ({
+          id: d.id!,
+          name: d.name || 'Unknown device',
+          isActive: !!d.is_active,
+        })),
+    };
   }
+
   async isConnected(): Promise<boolean> {
-    return false;
+    const status = await getSpotifyAuthStatus(this.venueId);
+    return status.isConnected;
   }
+
+  /** Force a refresh if the access token is near-expiry. Used by the
+   *  admin "Force token refresh" button. No-op if not connected. */
   async refreshAuthIfNeeded(): Promise<ProviderResult<void>> {
+    const status = await getSpotifyAuthStatus(this.venueId);
+    if (!status.isConnected) {
+      return { ok: false, error: { kind: 'token_invalid' } };
+    }
+    const tok = await getValidAccessToken(this.venueId);
+    if (tok.ok === false) return { ok: false, error: tok.error };
     return { ok: true, value: undefined };
   }
 }

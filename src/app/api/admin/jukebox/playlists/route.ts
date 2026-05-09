@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServiceClient } from '@/lib/supabase';
 import { getJukeboxVenueId } from '@/lib/jukebox/venue';
-import { requireStaff } from '@/lib/jukebox/auth';
+import { requireModerator } from '@/lib/jukebox/auth';
 import { extractPlaylistId } from '@/lib/jukebox/curated';
 import { getProvider } from '@/lib/jukebox/providers';
 
@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic';
 
 // GET /api/admin/jukebox/playlists — list all saved presets for the venue
 export async function GET(req: NextRequest) {
-  const auth = await requireStaff(req);
+  const auth = await requireModerator(req);
   if ('error' in auth) return auth.error;
 
   const venueId = await getJukeboxVenueId();
@@ -31,7 +31,7 @@ interface AddBody {
 
 // POST /api/admin/jukebox/playlists — save a new preset (fetches metadata, no track sync yet)
 export async function POST(req: NextRequest) {
-  const auth = await requireStaff(req);
+  const auth = await requireModerator(req);
   if ('error' in auth) return auth.error;
 
   let body: AddBody;

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServiceClient } from '@/lib/supabase';
 import { getJukeboxVenueId } from '@/lib/jukebox/venue';
-import { requireStaff } from '@/lib/jukebox/auth';
+import { requireModerator } from '@/lib/jukebox/auth';
 import { syncCuratedPlaylist } from '@/lib/jukebox/curated';
 
 export const runtime = 'nodejs';
@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic';
 // POST /api/admin/jukebox/playlists/[id]/activate
 // Sets this preset as the active curated playlist + triggers a track sync.
 export async function POST(req: NextRequest, ctx: { params: { id: string } }) {
-  const auth = await requireStaff(req);
+  const auth = await requireModerator(req);
   if ('error' in auth) return auth.error;
 
   const venueId = await getJukeboxVenueId();

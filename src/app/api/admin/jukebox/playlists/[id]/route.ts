@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServiceClient } from '@/lib/supabase';
 import { getJukeboxVenueId } from '@/lib/jukebox/venue';
-import { requireStaff } from '@/lib/jukebox/auth';
+import { requireModerator } from '@/lib/jukebox/auth';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -12,7 +12,7 @@ interface UpdateBody {
 
 // PATCH /api/admin/jukebox/playlists/[id] — rename a preset
 export async function PATCH(req: NextRequest, ctx: { params: { id: string } }) {
-  const auth = await requireStaff(req);
+  const auth = await requireModerator(req);
   if ('error' in auth) return auth.error;
 
   let body: UpdateBody;
@@ -42,7 +42,7 @@ export async function PATCH(req: NextRequest, ctx: { params: { id: string } }) {
 // DELETE /api/admin/jukebox/playlists/[id] — remove a preset.
 // If it was the active curated playlist, clear the active state.
 export async function DELETE(req: NextRequest, ctx: { params: { id: string } }) {
-  const auth = await requireStaff(req);
+  const auth = await requireModerator(req);
   if ('error' in auth) return auth.error;
 
   const venueId = await getJukeboxVenueId();
