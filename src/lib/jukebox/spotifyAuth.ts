@@ -101,25 +101,27 @@ export async function disconnectSpotify(venueId: string): Promise<void> {
     .eq('provider', 'spotify');
 }
 
-/** Read connection metadata only — no tokens. Safe to expose to admin UI. */
+/** Read connection metadata only — no tokens. Safe to expose to admin UI.
+ *  Two-step query: locate the row with a minimal select first (5-column
+ *  selects on this table have hit a Supabase JS parsing edge case), then
+ *  enrich by id. */
 export async function getSpotifyAuthStatus(
   venueId: string,
 ): Promise<VenueSpotifyAuth> {
   const sb = getServiceClient();
-  const { data, error } = await sb
+
+  const locate = await sb
     .from('jukebox_provider_auth')
-    .select(
-      'is_connected, provider_user_id, provider_display_name, scopes, token_expires_at',
-    )
+    .select('id, is_connected')
     .eq('venue_id', venueId)
     .eq('provider', 'spotify')
     .maybeSingle();
 
-  if (error) {
-    console.error('[getSpotifyAuthStatus] query error:', { venueId, error });
+  if (locate.error) {
+    console.error('[getSpotifyAuthStatus] locate error:', { venueId, error: locate.error });
   }
-  if (!data) {
-    console.log('[getSpotifyAuthStatus] no row for', { venueId, hadError: !!error });
+  if (!locate.data) {
+    console.log('[getSpotifyAuthStatus] locate: no row', { venueId, hadError: !!locate.error });
     return {
       isConnected: false,
       providerUserId: null,
@@ -128,13 +130,34 @@ export async function getSpotifyAuthStatus(
       expiresAt: null,
     };
   }
-  console.log('[getSpotifyAuthStatus] found row', { venueId, is_connected: data.is_connected, user: data.provider_user_id });
+
+  const enrich = await sb
+    .from('jukebox_provider_auth')
+    .select('provider_user_id, provider_display_name, scopes, token_expires_at')
+    .eq('id', locate.data.id)
+    .maybeSingle();
+
+  if (enrich.error) {
+    console.error('[getSpotifyAuthStatus] enrich error:', { rowId: locate.data.id, error: enrich.error });
+  }
+  const meta = enrich.data || {
+    provider_user_id: null,
+    provider_display_name: null,
+    scopes: null,
+    token_expires_at: null,
+  };
+  console.log('[getSpotifyAuthStatus] ok', {
+    venueId,
+    is_connected: locate.data.is_connected,
+    user: meta.provider_user_id,
+  });
+
   return {
-    isConnected: !!data.is_connected,
-    providerUserId: data.provider_user_id,
-    providerDisplayName: data.provider_display_name,
-    scopes: (data.scopes || '').split(/\s+/).filter(Boolean),
-    expiresAt: data.token_expires_at ? new Date(data.token_expires_at) : null,
+    isConnected: !!locate.data.is_connected,
+    providerUserId: meta.provider_user_id,
+    providerDisplayName: meta.provider_display_name,
+    scopes: (meta.scopes || '').split(/\s+/).filter(Boolean),
+    expiresAt: meta.token_expires_at ? new Date(meta.token_expires_at) : null,
   };
 }
 
