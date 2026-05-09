@@ -560,51 +560,64 @@
 /* Page wrapper is the host's responsibility; these classes
    handle the in-page layout. */
 
-/* Premium kiosk page — cinematic dark background, replaces the
-   cream cabinet aesthetic for the display screen only. Other pages
-   that use .jukebox-cabinet (admin, guest) keep the cream look. */
+/* Premium BigBamBoo kiosk — keeps the tropical jungle backdrop from
+   .jukebox-root and elevates the cream cabinet aesthetic. Wood-frame
+   trim, marquee accents, Sigmar wordmarks, coral live indicator.
+   Other pages (admin, guest) keep their existing cream look. */
 .kiosk-page {
-  background:
-    radial-gradient(ellipse at 30% 0%, rgba(232, 93, 74, 0.22) 0%, transparent 55%),
-    radial-gradient(ellipse at 80% 100%, rgba(245, 184, 32, 0.18) 0%, transparent 55%),
-    linear-gradient(180deg, #0e0a07 0%, #1a120c 50%, #0e0a07 100%);
-  color: #fff;
+  /* No background override — .jukebox-root carries the painted-jungle bg. */
 }
-/* Make the right-column "cabinet" transparent on the kiosk so the
-   children (scan block, just-played, counter) own their own framing. */
-.kiosk-page .jukebox-cabinet {
+/* Left column gets no extra padding from the cabinet wrapper — the
+   .kiosk-hero card owns its own framing. */
+.kiosk-page .kiosk-twocol > .jukebox-cabinet {
+  padding: 0;
   background: transparent;
   box-shadow: none;
-  color: inherit;
-  padding: 0;
 }
-/* Same trick for the left column — the hero card has its own framing
-   and we don't want a cream container around it. */
-.kiosk-page .kiosk-twocol .jukebox-cabinet {
-  padding: 0;
+/* Right column keeps a cream-cabinet feel but rendered as a single
+   continuous panel; child blocks (scan, just-played, counter) provide
+   their own layering. */
+.kiosk-page .kiosk-twocol > .jukebox-cabinet:last-child {
+  background: linear-gradient(180deg, var(--bbb-cream) 0%, var(--bbb-cream-dark) 100%);
+  box-shadow:
+    0 6px 16px rgba(0,0,0,0.45),
+    inset 0 2px 0 var(--bbb-cream-light),
+    inset 0 -2px 0 var(--bbb-cream-edge);
+  padding: 18px;
+  color: var(--bbb-wood-dark);
 }
-/* Up-next divider on dark bg — thinner, paler, premium */
+/* Up-next divider — wood-trimmed, refined */
 .kiosk-page .jukebox-up-next-divider {
-  margin: 18px 4px 10px;
-  font-size: 11px;
-  letter-spacing: 0.32em;
-  color: rgba(255,255,255,0.45);
+  margin: 14px 4px 10px;
+  font-family: var(--theme-display-font);
+  font-size: 13px;
+  letter-spacing: 0.28em;
+  color: var(--bbb-cream-light);
+  text-transform: uppercase;
+  text-shadow: 0 2px 6px rgba(0,0,0,0.55);
 }
 .kiosk-page .jukebox-up-next-divider::before,
 .kiosk-page .jukebox-up-next-divider::after {
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.12), transparent);
-  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(245,184,32,0.45), transparent);
+  height: 2px;
 }
-/* Header refinements on dark bg */
+/* Header — pop the BIG BAM BOO mark + JUKEBOX wordmark */
 .kiosk-page .kiosk-header-wordmark {
-  text-shadow: 0 4px 14px rgba(0,0,0,0.85);
-  letter-spacing: 0.08em;
+  color: var(--bbb-yellow);
+  text-shadow: 0 4px 14px rgba(0,0,0,0.85), 0 0 30px rgba(245,184,32,0.25);
+  letter-spacing: 0.06em;
 }
 .kiosk-page .kiosk-tonight-pill {
-  background: rgba(255,255,255,0.06);
-  border-color: rgba(255,255,255,0.18);
-  color: rgba(255,255,255,0.85);
-  backdrop-filter: blur(8px);
+  background: linear-gradient(135deg, rgba(232,93,74,0.85), rgba(232,118,42,0.9));
+  border-color: var(--bbb-yellow);
+  color: var(--bbb-cream-light);
+  text-shadow: 0 2px 4px rgba(0,0,0,0.4);
+  box-shadow: 0 4px 14px rgba(232,93,74,0.4), 0 0 0 2px rgba(245,184,32,0.25);
+}
+.kiosk-page .kiosk-tonight-pill-name {
+  color: var(--bbb-cream-light);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
 }
 
 .kiosk-header {
@@ -725,58 +738,74 @@
   opacity: 0.85;
 }
 
-/* ── Premium kiosk hero ──────────────────────────────────────────
-   Cinematic album-art ambient bg + frosted glass meta panel.
-   Designed to fit ~30vh on a 1080p TV; scales gracefully on iPads.
-   The .kiosk-hero class replaces .kiosk-now-playing-hero (which is
-   kept above for backward compat in case any other consumer uses it). */
+/* ── Premium BigBamBoo hero ──────────────────────────────────────
+   Cream-cabinet jukebox feel: wood-grain frame, brass/gold accents,
+   marquee bulbs, coral live glow. Cinematic album art on the left,
+   chunky Sigmar typography on the right, BBB yellow→coral progress
+   bar. Sits on the painted-jungle backdrop from .jukebox-root. */
 .kiosk-hero {
   position: relative;
   display: grid;
   grid-template-columns: minmax(180px, 26%) 1fr;
   gap: 28px;
   align-items: center;
-  padding: 26px 32px;
-  border-radius: 18px;
+  padding: 28px 32px 26px;
+  border-radius: 16px;
   overflow: hidden;
-  background: linear-gradient(135deg, rgba(20,12,6,0.55), rgba(20,12,6,0.35));
-  border: 1px solid rgba(255,255,255,0.08);
+  background:
+    linear-gradient(180deg, var(--bbb-cream-light) 0%, var(--bbb-cream) 55%, var(--bbb-cream-dark) 100%);
+  /* Wood-grain frame: outer border + inset highlight + drop shadow */
+  border: 4px solid var(--bbb-wood);
   box-shadow:
-    0 24px 60px rgba(0,0,0,0.55),
-    inset 0 1px 0 rgba(255,255,255,0.06);
+    0 0 0 2px var(--bbb-yellow),
+    0 18px 48px rgba(0,0,0,0.55),
+    inset 0 2px 0 var(--bbb-cream-light),
+    inset 0 -3px 0 var(--bbb-cream-edge);
   flex-shrink: 0;
   isolation: isolate;
 }
-.kiosk-hero-ambient {
-  position: absolute;
-  inset: -8%;
-  background-size: cover;
-  background-position: center;
-  filter: blur(48px) saturate(1.25) brightness(0.55);
-  opacity: 0.95;
-  z-index: -2;
-  transform: scale(1.12);
-  transition: background-image 600ms ease;
-}
-.kiosk-hero-vignette {
-  position: absolute;
-  inset: 0;
-  background:
-    radial-gradient(ellipse at top right, rgba(0,0,0,0) 0%, rgba(0,0,0,0.55) 70%),
-    linear-gradient(180deg, rgba(0,0,0,0.10) 0%, rgba(0,0,0,0.55) 100%);
-  z-index: -1;
+/* Coral "ON AIR" pulse ring — premium animated glow on the wood-frame */
+.kiosk-hero[data-fallback="0"]::after {
+  content: '';
+  position: absolute; inset: -4px;
+  border-radius: 16px;
+  border: 4px solid var(--bbb-coral);
+  opacity: 0.55;
+  animation: bbb-on-air-ring 2s ease-in-out infinite;
   pointer-events: none;
 }
+@keyframes bbb-on-air-ring {
+  0%, 100% { opacity: 0.25; transform: scale(1); }
+  50%      { opacity: 0.7;  transform: scale(1.005); }
+}
+/* Marquee bulbs — vintage jukebox cabinet detail along the top */
+.kiosk-hero::before {
+  content: '';
+  position: absolute;
+  top: 8px; left: 22px; right: 22px; height: 6px;
+  background:
+    radial-gradient(circle at 6px 3px, var(--bbb-yellow) 0 2.5px, transparent 3px) 0 0/22px 6px repeat-x;
+  opacity: 0.55;
+  pointer-events: none;
+  filter: drop-shadow(0 0 4px rgba(245,184,32,0.6));
+}
+/* Ambient art (kept around for graceful fallback if needed) — hidden in cream theme */
+.kiosk-hero-ambient,
+.kiosk-hero-vignette { display: none; }
+
+/* Album art with wood-frame "record sleeve" treatment */
 .kiosk-hero-art {
   width: 100%;
   aspect-ratio: 1 / 1;
   max-width: 240px;
-  border-radius: 14px;
+  border-radius: 8px;
   overflow: hidden;
-  background: rgba(0,0,0,0.4);
+  background: var(--bbb-wood-dark);
+  border: 4px solid var(--bbb-wood-dark);
   box-shadow:
-    0 18px 36px rgba(0,0,0,0.55),
-    0 0 0 1px rgba(255,255,255,0.08);
+    0 14px 28px rgba(0,0,0,0.45),
+    0 0 0 2px var(--bbb-yellow),
+    inset 0 0 0 1px rgba(0,0,0,0.4);
   position: relative;
 }
 .kiosk-hero-art img {
@@ -787,109 +816,121 @@
   display: flex; align-items: center; justify-content: center;
   font-family: var(--theme-display-font);
   font-size: 96px;
-  color: rgba(255,255,255,0.18);
+  color: var(--bbb-cream);
 }
+
 .kiosk-hero-meta {
   min-width: 0;
-  color: #fff;
-  text-shadow: 0 2px 12px rgba(0,0,0,0.7);
+  color: var(--bbb-wood-dark);
 }
 .kiosk-hero-label {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 10px;
+  padding: 6px 14px 5px;
+  border-radius: 100px;
+  background: var(--bbb-wood-dark);
+  border: 2px solid var(--bbb-yellow);
   font-family: var(--theme-display-font);
   font-size: 13px;
-  letter-spacing: 0.28em;
+  letter-spacing: 0.24em;
   text-transform: uppercase;
-  color: rgba(255,255,255,0.85);
-  margin-bottom: 10px;
+  color: var(--bbb-cream-light);
+  margin-bottom: 12px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.3);
 }
 .kiosk-hero-dot {
-  width: 10px; height: 10px;
+  width: 9px; height: 9px;
   border-radius: 50%;
-  background: var(--theme-coral, #e85d4a);
-  box-shadow: 0 0 10px currentColor;
+  background: var(--bbb-coral);
+  box-shadow: 0 0 8px var(--bbb-coral);
 }
 .kiosk-hero-dot.is-live {
-  animation: kiosk-hero-pulse 1.6s ease-in-out infinite;
+  animation: kiosk-hero-pulse 1.4s ease-in-out infinite;
 }
 .kiosk-hero-dot.is-paused {
-  background: rgba(255,255,255,0.4);
+  background: var(--bbb-cream-edge);
   box-shadow: none;
   animation: none;
 }
 @keyframes kiosk-hero-pulse {
   0%, 100% { opacity: 1; transform: scale(1); }
-  50%      { opacity: 0.55; transform: scale(0.85); }
+  50%      { opacity: 0.4; transform: scale(0.7); }
 }
 .kiosk-hero-paused-tag {
   margin-left: 6px;
-  padding: 2px 8px;
+  padding: 2px 7px;
   border-radius: 100px;
-  background: rgba(255,255,255,0.12);
-  border: 1px solid rgba(255,255,255,0.25);
+  background: var(--bbb-cream-edge);
+  color: var(--bbb-wood-dark);
   font-size: 10px;
   letter-spacing: 0.2em;
-  color: rgba(255,255,255,0.85);
 }
 .kiosk-hero-title {
   font-family: var(--theme-display-font);
   font-size: 56px;
-  line-height: 1.02;
-  color: #fff;
-  margin-bottom: 6px;
+  line-height: 1.0;
+  color: var(--bbb-wood-dark);
+  margin-bottom: 4px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   letter-spacing: 0.005em;
+  text-shadow: 0 2px 0 var(--bbb-cream-edge);
 }
 .kiosk-hero-artist {
   font-size: 22px;
   font-style: italic;
-  color: rgba(255,255,255,0.75);
+  color: var(--bbb-wood);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  margin-bottom: 18px;
+  margin-bottom: 16px;
 }
+/* Progress bar — yellow→coral gradient on a recessed wood track */
 .kiosk-hero-progress {
-  height: 6px;
+  height: 8px;
   width: 100%;
-  background: rgba(255,255,255,0.12);
+  background: var(--bbb-wood-dark);
   border-radius: 100px;
   overflow: hidden;
   margin-bottom: 6px;
+  box-shadow: inset 0 1px 2px rgba(0,0,0,0.6);
 }
 .kiosk-hero-progress-bar {
   height: 100%;
-  background: linear-gradient(90deg, var(--theme-accent, #f5b820), var(--theme-coral, #e85d4a));
+  background: linear-gradient(90deg, var(--bbb-yellow), var(--bbb-orange) 60%, var(--bbb-coral));
   border-radius: 100px;
   transition: width 600ms linear;
-  box-shadow: 0 0 12px rgba(245,184,32,0.5);
+  box-shadow: 0 0 10px rgba(245,184,32,0.8), 0 0 20px rgba(232,93,74,0.4);
 }
 .kiosk-hero-time {
   display: flex;
   justify-content: space-between;
   font-feature-settings: 'tnum';
+  font-family: var(--theme-display-font);
   font-size: 12px;
-  color: rgba(255,255,255,0.65);
-  letter-spacing: 0.04em;
+  color: var(--bbb-wood);
+  letter-spacing: 0.06em;
   margin-bottom: 14px;
 }
 .kiosk-hero-req {
-  font-size: 13px;
-  color: rgba(255,255,255,0.65);
+  font-size: 14px;
+  color: var(--bbb-wood);
 }
 .kiosk-hero-req-label {
   text-transform: uppercase;
   letter-spacing: 0.18em;
   font-size: 10px;
-  margin-right: 4px;
+  margin-right: 6px;
+  color: var(--bbb-wood-light);
 }
 .kiosk-hero-req-name {
-  color: var(--theme-accent, #f5b820);
-  font-weight: 600;
+  color: var(--bbb-coral);
+  font-family: var(--theme-display-font);
+  font-weight: 400;
+  font-size: 16px;
+  letter-spacing: 0.02em;
 }
 
 /* Up Next dense list — kiosk-specific compact rows. Larger thumbs +
@@ -909,33 +950,43 @@
   flex-direction: column;
   gap: 4px;
 }
+/* Up-next rows on the kiosk — cream cards with wood trim, BBB feel */
 .kiosk-up-next-row {
   display: grid;
-  grid-template-columns: 32px 56px 1fr auto;
+  grid-template-columns: 36px 56px 1fr auto;
   align-items: center;
   gap: 14px;
-  padding: 10px 12px;
-  background: rgba(255,255,255,0.03);
-  border: 1px solid rgba(255,255,255,0.06);
+  padding: 10px 14px 10px 10px;
+  background: linear-gradient(180deg, var(--bbb-cream-light) 0%, var(--bbb-cream) 100%);
+  border: 2px solid var(--bbb-wood);
   border-radius: 10px;
-  transition: background 200ms ease;
+  box-shadow:
+    0 4px 10px rgba(0,0,0,0.35),
+    inset 0 1px 0 rgba(255,255,255,0.55);
+  transition: transform 180ms ease, box-shadow 180ms ease;
 }
 .kiosk-up-next-row:hover {
-  background: rgba(255,255,255,0.06);
+  transform: translateY(-1px);
+  box-shadow:
+    0 6px 14px rgba(0,0,0,0.45),
+    inset 0 1px 0 rgba(255,255,255,0.6),
+    0 0 0 2px var(--bbb-yellow);
 }
 .kiosk-up-next-pos {
   font-family: var(--theme-display-font);
-  font-size: 22px;
-  color: rgba(255,255,255,0.4);
+  font-size: 24px;
+  color: var(--bbb-coral);
   text-align: center;
   font-feature-settings: 'tnum';
+  text-shadow: 0 2px 0 rgba(255,255,255,0.4);
 }
 .kiosk-up-next-art {
   width: 56px; height: 56px;
   border-radius: 6px;
-  background: rgba(0,0,0,0.4);
+  background: var(--bbb-wood-dark);
+  border: 2px solid var(--bbb-wood-dark);
   overflow: hidden;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.45), 0 0 0 1px rgba(255,255,255,0.06);
+  box-shadow: 0 3px 8px rgba(0,0,0,0.45), 0 0 0 1px var(--bbb-yellow);
 }
 .kiosk-up-next-art img {
   width: 100%; height: 100%; display: block; object-fit: cover;
@@ -946,13 +997,13 @@
 .kiosk-up-next-title {
   font-size: 17px;
   font-weight: 600;
-  color: #fff;
+  color: var(--bbb-wood-dark);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   letter-spacing: 0.005em;
 }
 .kiosk-up-next-artist {
   font-size: 13px;
-  color: rgba(255,255,255,0.6);
+  color: var(--bbb-wood);
   font-style: italic;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   margin-top: 2px;
@@ -966,34 +1017,37 @@
   text-align: right;
 }
 .kiosk-up-next-duration {
+  font-family: var(--theme-display-font);
   font-size: 13px;
-  color: rgba(255,255,255,0.7);
+  color: var(--bbb-wood);
   font-feature-settings: 'tnum';
+  letter-spacing: 0.04em;
 }
 .kiosk-up-next-req {
   font-size: 11px;
-  color: rgba(255,255,255,0.45);
+  color: var(--bbb-wood-light);
   font-style: italic;
-  text-transform: lowercase;
   letter-spacing: 0.02em;
 }
 
-/* Right column: SCAN block, JUST PLAYED pill, counter — premium look */
+/* Right column on the kiosk — Scan block, Just Played, counter.
+   These sit inside the right .jukebox-cabinet (cream gradient panel)
+   but each gets its own wood-trim sub-frame for visual hierarchy. */
 .kiosk-scan-block {
   text-align: center;
-  padding: 22px 18px;
-  background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.01));
-  border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 16px;
-  box-shadow: 0 16px 40px rgba(0,0,0,0.35);
+  padding: 16px 12px 18px;
+  border: 3px solid var(--bbb-wood);
+  border-radius: 12px;
+  background: var(--bbb-cream-light);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.6);
 }
 .kiosk-scan-label {
   font-family: var(--theme-display-font);
   font-size: 13px;
-  letter-spacing: 0.28em;
-  color: rgba(255,255,255,0.65);
+  letter-spacing: 0.24em;
+  color: var(--bbb-wood-dark);
   text-transform: uppercase;
-  margin-bottom: 14px;
+  margin-bottom: 12px;
 }
 .kiosk-qr {
   width: 100%;
@@ -1001,39 +1055,40 @@
   height: auto;
   display: block;
   margin: 0 auto;
-  border-radius: 12px;
-  background: #fff8e7;
-  padding: 10px;
-  box-shadow:
-    0 8px 24px rgba(0,0,0,0.4),
-    0 0 0 1px rgba(255,255,255,0.08);
+  border-radius: 8px;
+  background: var(--bbb-cream-light);
+  padding: 8px;
+  border: 2px solid var(--bbb-wood-dark);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.35);
 }
 .kiosk-qr-url {
-  margin-top: 12px;
+  margin-top: 10px;
   font-size: 11px;
   font-family: monospace;
-  color: rgba(255,255,255,0.55);
+  color: var(--bbb-wood-light);
   letter-spacing: 0.04em;
   word-break: break-all;
 }
 
+/* JUST PLAYED pill — cream card with yellow accent */
 .kiosk-just-played {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 12px 14px;
-  background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 12px;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+  padding: 10px 12px;
+  background: var(--bbb-cream-light);
+  border: 2px solid var(--bbb-wood);
+  border-radius: 10px;
+  box-shadow: 0 3px 8px rgba(0,0,0,0.3);
 }
 .kiosk-just-played-art {
   width: 48px; height: 48px;
   border-radius: 6px;
-  background: rgba(0,0,0,0.4);
+  background: var(--bbb-wood-dark);
+  border: 2px solid var(--bbb-wood-dark);
   flex-shrink: 0;
   overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.06);
+  box-shadow: 0 0 0 1px var(--bbb-yellow);
 }
 .kiosk-just-played-art img {
   width: 100%; height: 100%; display: block; object-fit: cover;
@@ -1042,49 +1097,51 @@
 .kiosk-just-played-label {
   font-family: var(--theme-display-font);
   font-size: 10px;
-  letter-spacing: 0.24em;
-  color: var(--theme-accent, #f5b820);
+  letter-spacing: 0.22em;
+  color: var(--bbb-orange);
   text-transform: uppercase;
-  margin-bottom: 3px;
+  margin-bottom: 2px;
 }
 .kiosk-just-played-title {
   font-size: 14px;
   font-weight: 600;
-  color: #fff;
+  color: var(--bbb-wood-dark);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .kiosk-just-played-artist {
   font-size: 12px;
-  color: rgba(255,255,255,0.6);
+  color: var(--bbb-wood);
   font-style: italic;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   margin-top: 1px;
 }
 
+/* Activity counter — teal-accented cream pill */
 .kiosk-counter {
   display: flex;
   align-items: baseline;
   justify-content: center;
   gap: 10px;
-  padding: 14px 16px;
-  background: linear-gradient(180deg, rgba(74,170,144,0.18), rgba(74,170,144,0.08));
-  border: 1px solid rgba(74,170,144,0.4);
-  border-radius: 12px;
+  padding: 12px 14px;
+  background: linear-gradient(180deg, var(--bbb-cream-light), var(--bbb-cream));
+  border: 2px solid var(--bbb-teal);
+  border-radius: 10px;
   text-align: center;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+  box-shadow: 0 3px 8px rgba(0,0,0,0.3);
 }
 .kiosk-counter-num {
   font-family: var(--theme-display-font);
   font-size: 36px;
-  color: #fff;
+  color: var(--bbb-teal);
   line-height: 1;
-  text-shadow: 0 2px 8px rgba(0,0,0,0.6);
+  text-shadow: 0 2px 0 var(--bbb-cream-edge);
 }
 .kiosk-counter-label {
   font-size: 11px;
-  color: rgba(255,255,255,0.7);
+  color: var(--bbb-wood);
   text-transform: uppercase;
-  letter-spacing: 0.18em;
+  letter-spacing: 0.16em;
+  font-family: var(--theme-display-font);
 }
 
 /* Empty state — big animated arrow toward the QR */
