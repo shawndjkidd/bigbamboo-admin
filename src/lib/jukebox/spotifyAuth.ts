@@ -62,12 +62,24 @@ export async function storeSpotifyTokens(args: {
     row.provider_display_name = args.providerDisplayName;
   }
 
-  const { error } = await sb
+  console.log('[storeSpotifyTokens] upserting', {
+    venue_id: args.venueId,
+    has_access: !!args.accessToken,
+    has_refresh: !!args.refreshToken,
+    expires_in: args.expiresInSec,
+    scopes: args.scopes,
+    user_id: args.providerUserId,
+    user_name: args.providerDisplayName,
+  });
+  const { data, error } = await sb
     .from('jukebox_provider_auth')
-    .upsert(row, { onConflict: 'venue_id,provider' });
+    .upsert(row, { onConflict: 'venue_id,provider' })
+    .select('id, venue_id, is_connected, provider_user_id');
   if (error) {
+    console.error('[storeSpotifyTokens] upsert error:', error.message, error);
     throw new Error(`storeSpotifyTokens: ${error.message}`);
   }
+  console.log('[storeSpotifyTokens] upsert ok, returned rows:', data?.length, data);
 }
 
 /** Clear tokens; mark disconnected. Idempotent. */
@@ -326,16 +338,29 @@ export async function exchangeCodeAndStore(args: {
     // non-fatal — we can store without these
   }
 
-  await storeSpotifyTokens({
-    venueId: args.venueId,
-    accessToken: tokenJson.access_token,
-    refreshToken: tokenJson.refresh_token,
-    expiresInSec: tokenJson.expires_in ?? 3600,
-    scopes: tokenJson.scope ? tokenJson.scope.split(/\s+/).filter(Boolean) : undefined,
-    providerUserId,
-    providerDisplayName,
-  });
+  try {
+    await storeSpotifyTokens({
+      venueId: args.venueId,
+      accessToken: tokenJson.access_token,
+      refreshToken: tokenJson.refresh_token,
+      expiresInSec: tokenJson.expires_in ?? 3600,
+      scopes: tokenJson.scope ? tokenJson.scope.split(/\s+/).filter(Boolean) : undefined,
+      providerUserId,
+      providerDisplayName,
+    });
+  } catch (e: unknown) {
+    console.error('[exchangeCodeAndStore] storeSpotifyTokens threw:', e);
+    return { ok: false, error: `store_failed: ${String(e)}` };
+  }
 
   const status = await getSpotifyAuthStatus(args.venueId);
+  console.log('[exchangeCodeAndStore] post-store status:', {
+    isConnected: status.isConnected,
+    providerUserId: status.providerUserId,
+    expiresAt: status.expiresAt?.toISOString(),
+  });
+  if (!status.isConnected) {
+    return { ok: false, error: 'store_silently_failed' };
+  }
   return { ok: true, status };
 }

@@ -18,18 +18,12 @@ export const dynamic = 'force-dynamic';
 const OAUTH_COOKIE = 'juke_oauth';
 const COOKIE_TTL_MS = 10 * 60 * 1000;
 
-const ADMIN_BASE =
-  process.env.NEXT_PUBLIC_JUKEBOX_PUBLIC_URL?.replace(/\/$/, '') ||
-  process.env.APP_BASE_URL?.replace(/\/$/, '') ||
-  '';
-
-function adminRedirect(qs: string): NextResponse {
-  // Build absolute URL if we have a base; otherwise fall back to a
-  // relative redirect (works inside the same Vercel app).
-  const target = ADMIN_BASE
-    ? `${ADMIN_BASE}/jukebox/admin?${qs}`
-    : `/jukebox/admin?${qs}`;
-  return NextResponse.redirect(target);
+function adminRedirect(req: NextRequest, qs: string): NextResponse {
+  // Always redirect back to the SAME host the callback ran on (admin.*),
+  // never to NEXT_PUBLIC_JUKEBOX_PUBLIC_URL — that's the guest subdomain
+  // and the user's Supabase auth cookie isn't there.
+  const origin = new URL(req.url).origin;
+  return NextResponse.redirect(`${origin}/jukebox/admin?${qs}`);
 }
 
 export async function GET(req: NextRequest) {
@@ -48,29 +42,29 @@ export async function GET(req: NextRequest) {
   const oauthError = url.searchParams.get('error');
 
   if (oauthError) {
-    const res = adminRedirect(`spotify_error=${encodeURIComponent(oauthError)}`);
+    const res = adminRedirect(req, `spotify_error=${encodeURIComponent(oauthError)}`);
     res.cookies.delete(OAUTH_COOKIE);
     return res;
   }
   if (!code || !state) {
-    const res = adminRedirect('spotify_error=missing_code_or_state');
+    const res = adminRedirect(req, 'spotify_error=missing_code_or_state');
     res.cookies.delete(OAUTH_COOKIE);
     return res;
   }
 
   const cookie = req.cookies.get(OAUTH_COOKIE)?.value;
   if (!cookie) {
-    return adminRedirect('spotify_error=cookie_missing');
+    return adminRedirect(req, 'spotify_error=cookie_missing');
   }
   const verified = verifySigned(cookie);
   if (!verified) {
-    return adminRedirect('spotify_error=cookie_invalid');
+    return adminRedirect(req, 'spotify_error=cookie_invalid');
   }
   let payload: { state?: string; verifier?: string; ts?: number };
   try {
     payload = JSON.parse(verified);
   } catch {
-    return adminRedirect('spotify_error=cookie_malformed');
+    return adminRedirect(req, 'spotify_error=cookie_malformed');
   }
   if (
     !payload.state ||
@@ -78,19 +72,19 @@ export async function GET(req: NextRequest) {
     !payload.ts ||
     Date.now() - payload.ts > COOKIE_TTL_MS
   ) {
-    const res = adminRedirect('spotify_error=cookie_expired');
+    const res = adminRedirect(req, 'spotify_error=cookie_expired');
     res.cookies.delete(OAUTH_COOKIE);
     return res;
   }
   if (payload.state !== state) {
-    const res = adminRedirect('spotify_error=state_mismatch');
+    const res = adminRedirect(req, 'spotify_error=state_mismatch');
     res.cookies.delete(OAUTH_COOKIE);
     return res;
   }
 
   const redirectUri = process.env.SPOTIFY_REDIRECT_URI || '';
   if (!redirectUri) {
-    const res = adminRedirect('spotify_error=missing_redirect_uri');
+    const res = adminRedirect(req, 'spotify_error=missing_redirect_uri');
     res.cookies.delete(OAUTH_COOKIE);
     return res;
   }
@@ -105,9 +99,9 @@ export async function GET(req: NextRequest) {
 
   let res: NextResponse;
   if ('error' in result) {
-    res = adminRedirect(`spotify_error=${encodeURIComponent(result.error)}`);
+    res = adminRedirect(req, `spotify_error=${encodeURIComponent(result.error)}`);
   } else {
-    res = adminRedirect('spotify_connected=1');
+    res = adminRedirect(req, 'spotify_connected=1');
   }
   res.cookies.delete(OAUTH_COOKIE);
   return res;
