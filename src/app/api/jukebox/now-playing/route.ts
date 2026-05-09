@@ -3,12 +3,19 @@
 //  Server-side cached with 10s TTL so a busy room can hit this
 //  endpoint freely without hammering Spotify.
 //  No device info, no internal flags — guest-safe projection only.
+//
+//  Side effect on CACHE-MISS: when Spotify reports a track playing,
+//  we mark the matching `queued` jukebox_request as `played`. This
+//  replaces the auto-mark cron (Hobby plan can't run minute-level
+//  crons). The kiosk polls every ~8s, so this fires roughly every
+//  10s and is idempotent (already-played rows are no-ops).
 // ═══════════════════════════════════════════════════════════════
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getRequestIp, hashIp } from '@/lib/jukebox/crypto';
 import { getProvider } from '@/lib/jukebox/providers';
 import { rateLimit, sweepRateLimit } from '@/lib/jukebox/rateLimit';
+import { getServiceClient } from '@/lib/supabase';
 import { getJukeboxVenueId } from '@/lib/jukebox/venue';
 
 export const runtime = 'nodejs';
@@ -31,6 +38,33 @@ interface CacheEntry {
 
 const CACHE = new Map<string, CacheEntry>();
 const TTL_MS = 10_000;
+
+/** Idempotent auto-mark: if Spotify says trackId is currently playing,
+ *  find the oldest still-`queued` request matching this provider_track_id
+ *  in this venue and stamp it `played`. Quiet on errors — this is best-effort
+ *  housekeeping driven by the kiosk poll, not the contract of this endpoint. */
+async function autoMarkPlayed(venueId: string, trackId: string): Promise<void> {
+  try {
+    const sb = getServiceClient();
+    const { data } = await sb
+      .from('jukebox_requests')
+      .select('id')
+      .eq('venue_id', venueId)
+      .eq('status', 'queued')
+      .eq('provider_track_id', trackId)
+      .order('queued_at', { ascending: true, nullsFirst: false })
+      .limit(1);
+    const target = data && data[0];
+    if (!target) return;
+    await sb
+      .from('jukebox_requests')
+      .update({ status: 'played', played_at: new Date().toISOString() })
+      .eq('id', target.id)
+      .eq('status', 'queued'); // belt-and-suspenders: don't clobber if already changed
+  } catch (e) {
+    console.error('[now-playing autoMarkPlayed] failed:', e);
+  }
+}
 
 export async function GET(req: NextRequest) {
   sweepRateLimit();
@@ -60,6 +94,7 @@ export async function GET(req: NextRequest) {
   const res = await provider.getNowPlaying();
 
   let data: PublicNowPlaying | null = null;
+  let liveTrackId: string | null = null;
   if ('value' in res && res.value) {
     data = {
       track_name: res.value.track.name,
@@ -69,10 +104,18 @@ export async function GET(req: NextRequest) {
       progress_ms: res.value.progressMs,
       is_playing: res.value.isPlaying,
     };
+    liveTrackId = res.value.track.id;
   }
   // If 'error' in res or value === null, data stays null. Cache that too —
   // we don't want to keep hitting Spotify when nothing's playing.
 
   CACHE.set(venueId, { data, expiresAt: Date.now() + TTL_MS });
+
+  // Side effect: roll any matching queued request to played. Don't await
+  // before responding to the kiosk — fire and forget so the page paints fast.
+  if (liveTrackId) {
+    void autoMarkPlayed(venueId, liveTrackId);
+  }
+
   return NextResponse.json({ ok: true, data });
 }
