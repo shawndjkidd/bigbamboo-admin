@@ -27,31 +27,59 @@ function unauthorized(reason: string) {
   );
 }
 
-/** Read JWT from Authorization: Bearer or Supabase cookies. */
+/** Read JWT from Authorization: Bearer or any Supabase cookie format. */
 function readJwt(req: Request): string | null {
   const auth = req.headers.get('authorization') || '';
   if (auth.toLowerCase().startsWith('bearer ')) {
     return auth.slice(7).trim() || null;
   }
-  // Supabase SSR cookies — try the common names.
+  // Supabase SSR cookies. Modern @supabase/ssr stores the session in
+  //   sb-<project-ref>-auth-token=<encoded>
+  // where the value is either:
+  //   - a URL-encoded JSON array [access_token, refresh_token, ...]
+  //   - or 'base64-<base64-encoded JSON>' for newer chunked storage
+  // Older clients use plain sb-access-token / supabase-auth-token. Try them all.
   const cookie = req.headers.get('cookie') || '';
   const m =
+    cookie.match(/(?:^|;\s*)sb-[a-z0-9]+-auth-token=([^;]+)/i) ||
     cookie.match(/(?:^|;\s*)sb-access-token=([^;]+)/) ||
     cookie.match(/(?:^|;\s*)supabase-auth-token=([^;]+)/);
-  if (m && m[1]) {
+  if (!m || !m[1]) return null;
+
+  let value: string;
+  try {
+    value = decodeURIComponent(m[1]);
+  } catch {
+    return null;
+  }
+  // base64- prefix means the rest is base64-encoded JSON.
+  if (value.startsWith('base64-')) {
     try {
-      // Newer Supabase SSR stores JSON-encoded array; older stores raw token.
-      const decoded = decodeURIComponent(m[1]);
-      if (decoded.startsWith('[')) {
-        const arr = JSON.parse(decoded);
-        if (Array.isArray(arr) && typeof arr[0] === 'string') return arr[0];
-      }
-      return decoded;
+      value = Buffer.from(value.slice(7), 'base64').toString('utf8');
     } catch {
       return null;
     }
   }
-  return null;
+  // JSON array form: first element is the access token.
+  if (value.startsWith('[')) {
+    try {
+      const arr = JSON.parse(value);
+      if (Array.isArray(arr) && typeof arr[0] === 'string') return arr[0];
+    } catch {
+      return null;
+    }
+  }
+  // Object form: { access_token, refresh_token, ... }
+  if (value.startsWith('{')) {
+    try {
+      const obj = JSON.parse(value);
+      if (obj && typeof obj.access_token === 'string') return obj.access_token;
+    } catch {
+      return null;
+    }
+  }
+  // Otherwise assume the cookie value is the raw JWT.
+  return value;
 }
 
 export async function requireStaff(
