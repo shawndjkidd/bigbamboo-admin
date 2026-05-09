@@ -39,7 +39,7 @@ export default async function DisplayPage({
   const qr = qrImageUrl(guestUrl, { size: 480, dark: '2c1810', light: 'fff8e7' })
 
   return (
-    <div style={pageWrap}>
+    <div className="kiosk-page" style={pageWrap}>
       <header className="kiosk-header">
         <div className="kiosk-header-brand">
           {/* eslint-disable-next-line @next/next/no-img-element */}

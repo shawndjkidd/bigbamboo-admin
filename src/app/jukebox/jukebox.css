@@ -560,6 +560,53 @@
 /* Page wrapper is the host's responsibility; these classes
    handle the in-page layout. */
 
+/* Premium kiosk page — cinematic dark background, replaces the
+   cream cabinet aesthetic for the display screen only. Other pages
+   that use .jukebox-cabinet (admin, guest) keep the cream look. */
+.kiosk-page {
+  background:
+    radial-gradient(ellipse at 30% 0%, rgba(232, 93, 74, 0.22) 0%, transparent 55%),
+    radial-gradient(ellipse at 80% 100%, rgba(245, 184, 32, 0.18) 0%, transparent 55%),
+    linear-gradient(180deg, #0e0a07 0%, #1a120c 50%, #0e0a07 100%);
+  color: #fff;
+}
+/* Make the right-column "cabinet" transparent on the kiosk so the
+   children (scan block, just-played, counter) own their own framing. */
+.kiosk-page .jukebox-cabinet {
+  background: transparent;
+  box-shadow: none;
+  color: inherit;
+  padding: 0;
+}
+/* Same trick for the left column — the hero card has its own framing
+   and we don't want a cream container around it. */
+.kiosk-page .kiosk-twocol .jukebox-cabinet {
+  padding: 0;
+}
+/* Up-next divider on dark bg — thinner, paler, premium */
+.kiosk-page .jukebox-up-next-divider {
+  margin: 18px 4px 10px;
+  font-size: 11px;
+  letter-spacing: 0.32em;
+  color: rgba(255,255,255,0.45);
+}
+.kiosk-page .jukebox-up-next-divider::before,
+.kiosk-page .jukebox-up-next-divider::after {
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.12), transparent);
+  height: 1px;
+}
+/* Header refinements on dark bg */
+.kiosk-page .kiosk-header-wordmark {
+  text-shadow: 0 4px 14px rgba(0,0,0,0.85);
+  letter-spacing: 0.08em;
+}
+.kiosk-page .kiosk-tonight-pill {
+  background: rgba(255,255,255,0.06);
+  border-color: rgba(255,255,255,0.18);
+  color: rgba(255,255,255,0.85);
+  backdrop-filter: blur(8px);
+}
+
 .kiosk-header {
   display: flex;
   align-items: center;
@@ -981,12 +1028,12 @@
   box-shadow: 0 4px 16px rgba(0,0,0,0.3);
 }
 .kiosk-just-played-art {
-  width: 42px; height: 42px;
-  border-radius: 5px;
-  border: 2px solid var(--bbb-wood);
-  background: var(--bbb-wood-dark);
+  width: 48px; height: 48px;
+  border-radius: 6px;
+  background: rgba(0,0,0,0.4);
   flex-shrink: 0;
   overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.06);
 }
 .kiosk-just-played-art img {
   width: 100%; height: 100%; display: block; object-fit: cover;
@@ -995,46 +1042,49 @@
 .kiosk-just-played-label {
   font-family: var(--theme-display-font);
   font-size: 10px;
-  letter-spacing: 0.16em;
-  color: var(--theme-accent);
+  letter-spacing: 0.24em;
+  color: var(--theme-accent, #f5b820);
   text-transform: uppercase;
-  margin-bottom: 2px;
+  margin-bottom: 3px;
 }
 .kiosk-just-played-title {
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--theme-text);
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .kiosk-just-played-artist {
-  font-size: 11px;
-  color: var(--theme-text-muted);
+  font-size: 12px;
+  color: rgba(255,255,255,0.6);
   font-style: italic;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  margin-top: 1px;
 }
 
 .kiosk-counter {
   display: flex;
   align-items: baseline;
   justify-content: center;
-  gap: 8px;
-  padding: 8px 12px;
-  background: rgba(74,170,144,0.18);
-  border: 1px solid var(--bbb-teal-light);
-  border-radius: 10px;
+  gap: 10px;
+  padding: 14px 16px;
+  background: linear-gradient(180deg, rgba(74,170,144,0.18), rgba(74,170,144,0.08));
+  border: 1px solid rgba(74,170,144,0.4);
+  border-radius: 12px;
   text-align: center;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.3);
 }
 .kiosk-counter-num {
   font-family: var(--theme-display-font);
-  font-size: 28px;
-  color: var(--theme-text);
+  font-size: 36px;
+  color: #fff;
   line-height: 1;
+  text-shadow: 0 2px 8px rgba(0,0,0,0.6);
 }
 .kiosk-counter-label {
   font-size: 11px;
-  color: var(--theme-text-muted);
+  color: rgba(255,255,255,0.7);
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.18em;
 }
 
 /* Empty state — big animated arrow toward the QR */
