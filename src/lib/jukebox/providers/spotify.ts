@@ -255,12 +255,24 @@ export class SpotifyProvider implements PlaybackProvider {
     return { ok: true, value: mapTrack(json) };
   }
 
+  /** Pick the best token for playlist endpoints. Prefer the venue's
+   *  connected user token — it can read private playlists AND avoids
+   *  the Spotify Development-Mode restrictions on Client Credentials.
+   *  Fall back to Client Credentials so public playlists keep working
+   *  before the venue connects Spotify. */
+  private async getPlaylistAuthToken(): Promise<ProviderResult<string>> {
+    const userTok = await getValidAccessToken(this.venueId);
+    if (userTok.ok === true) return { ok: true, value: userTok.token };
+    // Fallback: Client Credentials. Only public, non-editorial playlists.
+    return await getAppToken();
+  }
+
   // ── Playlist metadata (single cheap call) ────────────────────
   async getPlaylistMeta(playlistId: string): Promise<ProviderResult<PlaylistMeta>> {
     if (!playlistId || !/^[A-Za-z0-9]{16,40}$/.test(playlistId)) {
       return { ok: false, error: { kind: 'unknown', message: 'invalid playlist id' } };
     }
-    const tok = await getAppToken();
+    const tok = await this.getPlaylistAuthToken();
     if (tok.ok === false) return { ok: false, error: tok.error };
 
     let res: Response;
@@ -298,12 +310,12 @@ export class SpotifyProvider implements PlaybackProvider {
     };
   }
 
-  // ── Curated playlist fetch (Client Credentials) ──────────────
+  // ── Curated playlist fetch — uses venue user token when connected ──
   async getPlaylistTracks(playlistId: string): Promise<ProviderResult<PlaylistFetchResult>> {
     if (!playlistId || !/^[A-Za-z0-9]{16,40}$/.test(playlistId)) {
       return { ok: false, error: { kind: 'unknown', message: 'invalid playlist id' } };
     }
-    const tok = await getAppToken();
+    const tok = await this.getPlaylistAuthToken();
     if (tok.ok === false) return { ok: false, error: tok.error };
 
     // Fetch metadata first
