@@ -174,18 +174,43 @@ export async function getValidAccessToken(
   venueId: string,
 ): Promise<{ ok: true; token: string } | { ok: false; error: ProviderError }> {
   const sb = getServiceClient();
-  const { data } = await sb
+
+  // Two-step: locate by venue_id+provider with minimal select, then read
+  // the encrypted tokens by id. Same parser-quirk workaround as
+  // getSpotifyAuthStatus (4-column maybeSingle returns null on this table).
+  const locate = await sb
     .from('jukebox_provider_auth')
-    .select(
-      'access_token_encrypted, refresh_token_encrypted, token_expires_at, is_connected',
-    )
+    .select('id, is_connected')
     .eq('venue_id', venueId)
     .eq('provider', 'spotify')
     .maybeSingle();
 
-  if (!data || !data.is_connected) {
+  if (locate.error) {
+    console.error('[getValidAccessToken] locate error:', locate.error);
+  }
+  if (!locate.data || !locate.data.is_connected) {
+    console.log('[getValidAccessToken] not connected', {
+      venueId,
+      hasRow: !!locate.data,
+      hadError: !!locate.error,
+    });
     return { ok: false, error: { kind: 'token_invalid' } };
   }
+
+  const tokens = await sb
+    .from('jukebox_provider_auth')
+    .select('access_token_encrypted, refresh_token_encrypted, token_expires_at')
+    .eq('id', locate.data.id)
+    .maybeSingle();
+
+  if (tokens.error || !tokens.data) {
+    console.error('[getValidAccessToken] tokens fetch failed', {
+      rowId: locate.data.id,
+      error: tokens.error,
+    });
+    return { ok: false, error: { kind: 'token_invalid' } };
+  }
+  const data = tokens.data;
 
   const expiresAtMs = data.token_expires_at
     ? new Date(data.token_expires_at).getTime()
@@ -203,6 +228,7 @@ export async function getValidAccessToken(
   }
 
   if (!data.refresh_token_encrypted) {
+    console.log('[getValidAccessToken] no refresh_token stored — disconnecting');
     return { ok: false, error: { kind: 'token_invalid' } };
   }
 
