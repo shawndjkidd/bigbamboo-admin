@@ -6,6 +6,7 @@ import { rateLimit, sweepRateLimit } from '@/lib/jukebox/rateLimit';
 import { filterNickname } from '@/lib/jukebox/profanity';
 import { normalizeName } from '@/lib/jukebox/cooldowns';
 import { getProvider } from '@/lib/jukebox/providers';
+import { getSpotifyAuthStatus } from '@/lib/jukebox/spotifyAuth';
 import { validateRequest } from '@/lib/jukebox/validation';
 
 export const runtime = 'nodejs';
@@ -85,7 +86,10 @@ export async function POST(req: NextRequest) {
   // the venue's curated playlist, so requiring staff to approve again is busy
   // work. (Per Shawn — "if it's on the playlist, it's pre-approved.")
   const curatedSettings = settings as typeof settings & { curated_mode_enabled?: boolean };
-  const autoApprove = settings.mode === 'open' || !!curatedSettings.curated_mode_enabled;
+  const autoApprove =
+    settings.mode === 'open' ||
+    settings.mode === 'autopilot' ||
+    !!curatedSettings.curated_mode_enabled;
   const nowIso = new Date().toISOString();
 
   const insertRow = {
@@ -147,6 +151,37 @@ export async function POST(req: NextRequest) {
       last_request_at: nowIso,
       request_count: 1,
     });
+  }
+
+  // Autopilot: auto-push to Spotify immediately after insert.
+  // Mirrors the approve route's push pattern. Failure is silent to the guest —
+  // the request stays approved and staff can retry from Up Next.
+  if (settings.mode === 'autopilot' && inserted.status === 'approved') {
+    const spotifyStatus = await getSpotifyAuthStatus(venueId);
+    if (spotifyStatus.isConnected) {
+      const result = await provider.addToQueue(track.id);
+      if (!('error' in result)) {
+        await sb
+          .from('jukebox_requests')
+          .update({
+            status: 'queued',
+            queued_at: new Date().toISOString(),
+            provider_queue_status: 'queued',
+            provider_error: null,
+          })
+          .eq('id', inserted.id);
+        // Update local status for the response.
+        (inserted as { status: string }).status = 'queued';
+      } else {
+        await sb
+          .from('jukebox_requests')
+          .update({
+            provider_queue_status: 'failed',
+            provider_error: result.error.kind,
+          })
+          .eq('id', inserted.id);
+      }
+    }
   }
 
   // Compute live queue position from approved+queued by approved_at asc.

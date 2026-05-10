@@ -13,7 +13,7 @@ interface Settings {
   id: string
   venue_id: string
   is_active: boolean
-  mode: 'approval' | 'open' | 'locked' | 'event'
+  mode: 'approval' | 'open' | 'autopilot' | 'locked' | 'event'
   guest_cooldown_minutes: number
   member_cooldown_minutes: number
   max_song_length_seconds: number
@@ -37,6 +37,7 @@ interface Settings {
   curated_playlist_error?: string | null
   wifi_network?: string | null
   wifi_password?: string | null
+  blocked_genres?: string[] | null
 }
 
 interface ReqRow {
@@ -56,6 +57,7 @@ interface ReqRow {
   approved_at: string | null
   played_at: string | null
   rejection_reason: string | null
+  provider_queue_status: string | null
 }
 
 interface BlockEntry {
@@ -367,7 +369,9 @@ function QueueTab({
           <button className="btn-red" disabled={!!busy} onClick={() => act(r.id, 'remove')}>
             {copy.admin.remove}
           </button>
-          {r.status === 'approved' && (
+          {r.status === 'queued' || r.provider_queue_status === 'queued' ? (
+            <span className="badge badge-green" style={{ alignSelf: 'center', fontSize: 11 }}>✓ Queued</span>
+          ) : r.status === 'approved' ? (
             <button
               className="btn-outline"
               disabled={!!busy}
@@ -376,7 +380,7 @@ function QueueTab({
             >
               {busy === r.id + ':spotify' ? '…' : copy.admin.addToSpotify}
             </button>
-          )}
+          ) : null}
           <button className="btn-green" disabled={!!busy} onClick={() => act(r.id, 'mark-played')}>
             {copy.admin.markPlayed}
           </button>
@@ -439,11 +443,51 @@ function BlocklistTab({
   const [pid, setPid] = useState('')
   const [name, setName] = useState('')
 
+  // Genre blocklist state
+  const [blockedGenres, setBlockedGenres] = useState<string[]>([])
+  const [genreInput, setGenreInput] = useState('')
+  const [genreLoaded, setGenreLoaded] = useState(false)
+
   const load = useCallback(async () => {
     const j = await apiFetch('/api/admin/jukebox/blocklist')
     if (j.ok) setRows((j.data as { entries: BlockEntry[] }).entries)
   }, [apiFetch])
   useEffect(() => { load() }, [load])
+
+  useEffect(() => {
+    apiFetch('/api/admin/jukebox/settings').then((j) => {
+      if (j.ok) {
+        const s = j.data as { blocked_genres?: string[] | null }
+        setBlockedGenres(s.blocked_genres ?? [])
+      }
+      setGenreLoaded(true)
+    })
+  }, [apiFetch])
+
+  async function saveGenres(genres: string[]) {
+    const j = await apiFetch('/api/admin/jukebox/settings', {
+      method: 'PATCH',
+      body: JSON.stringify({ blocked_genres: genres }),
+    })
+    if (j.ok) {
+      setBlockedGenres(genres)
+      onAction('Saved')
+    } else {
+      onAction((j.error as { message?: string } | undefined)?.message || 'Save failed')
+    }
+  }
+
+  function addGenre() {
+    const g = genreInput.trim().toLowerCase()
+    if (!g || blockedGenres.includes(g)) { setGenreInput(''); return }
+    const next = [...blockedGenres, g]
+    setGenreInput('')
+    saveGenres(next)
+  }
+
+  function removeGenre(g: string) {
+    saveGenres(blockedGenres.filter((x) => x !== g))
+  }
 
   async function add() {
     if (!pid.trim() || !name.trim()) return
@@ -488,7 +532,7 @@ function BlocklistTab({
       {rows.length === 0 ? (
         <EmptyCard title="Nothing blocked." sub="Block a track or artist from the Pending tab." />
       ) : (
-        <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+        <div className="card" style={{ padding: 0, overflow: 'hidden', marginBottom: 16 }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
             <thead>
               <tr style={{ background: 'var(--bg-subtle)' }}>
@@ -509,6 +553,55 @@ function BlocklistTab({
           </table>
         </div>
       )}
+
+      <div className="card" style={{ padding: 16 }}>
+        <div className="section-title" style={{ marginBottom: 4 }}>Blocked genres</div>
+        <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 12 }}>
+          Substring match — e.g. &ldquo;metal&rdquo; blocks &ldquo;death metal&rdquo;, &ldquo;heavy metal&rdquo;, etc. Case-insensitive. Genres come from Spotify&apos;s artist data. Leave empty to allow all genres.
+        </div>
+        {genreLoaded && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
+            {blockedGenres.length === 0 && (
+              <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>No genres blocked.</span>
+            )}
+            {blockedGenres.map((g) => (
+              <span
+                key={g}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 6,
+                  padding: '4px 10px', borderRadius: 100,
+                  background: 'var(--badge-orange-bg)', color: 'var(--badge-orange-text)',
+                  border: '1px solid var(--badge-orange-border)',
+                  fontSize: 12, fontWeight: 500,
+                }}
+              >
+                {g}
+                <button
+                  onClick={() => removeGenre(g)}
+                  style={{
+                    background: 'none', border: 'none', cursor: 'pointer',
+                    color: 'inherit', padding: 0, lineHeight: 1, fontSize: 14,
+                  }}
+                  title={`Remove ${g}`}
+                >
+                  ×
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
+        <div style={{ display: 'flex', gap: 8 }}>
+          <input
+            className="input"
+            placeholder="e.g. metal, country, trap"
+            value={genreInput}
+            onChange={(e) => setGenreInput(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addGenre() } }}
+            style={{ flex: 1 }}
+          />
+          <button className="btn-accent" onClick={addGenre} disabled={!genreInput.trim()}>Add</button>
+        </div>
+      </div>
     </>
   )
 }
@@ -639,25 +732,34 @@ function SettingsTab({
         <div className="section-title" style={{ marginBottom: 12 }}>State</div>
         <div style={{ display: 'flex', gap: 10, marginBottom: 12, flexWrap: 'wrap' }}>
           <ToggleChip
-            on={s.is_active}
-            label={s.is_active ? copy.admin.statusActive : copy.admin.statusPaused}
-            onClick={() => patch({ is_active: !s.is_active })}
+            on={!s.is_active}
+            label="Paused"
+            onClick={() => patch({ is_active: false })}
             disabled={saving}
           />
-          {(['approval', 'open', 'locked'] as const).map((m) => (
-            <ToggleChip
-              key={m}
-              on={s.mode === m}
-              label={m.charAt(0).toUpperCase() + m.slice(1)}
-              onClick={() => patch({ mode: m })}
-              disabled={saving}
-            />
-          ))}
+          <ToggleChip
+            on={s.is_active && s.mode === 'approval'}
+            label="Approval"
+            onClick={() => patch({ is_active: true, mode: 'approval' })}
+            disabled={saving}
+          />
+          <ToggleChip
+            on={s.is_active && s.mode === 'autopilot'}
+            label="Autopilot"
+            onClick={() => patch({ is_active: true, mode: 'autopilot' })}
+            disabled={saving}
+          />
+          <ToggleChip
+            on={s.is_active && s.mode === 'locked'}
+            label="Locked"
+            onClick={() => patch({ is_active: true, mode: 'locked' })}
+            disabled={saving}
+          />
         </div>
         <div style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.5 }}>
-          <div><b style={{ color: 'var(--text-secondary)' }}>Active / Paused</b> — master switch. Paused hides the request button on the guest page.</div>
-          <div><b style={{ color: 'var(--text-secondary)' }}>Approval</b> — guests submit, you tap Approve in Pending before it joins the queue.</div>
-          <div><b style={{ color: 'var(--text-secondary)' }}>Open</b> — approved tracks skip the queue and go straight to Up Next (no manual approval).</div>
+          <div><b style={{ color: 'var(--text-secondary)' }}>Paused</b> — master off. Request button hidden on the guest page.</div>
+          <div><b style={{ color: 'var(--text-secondary)' }}>Approval</b> — guests submit; you tap Approve in Pending before it joins the queue.</div>
+          <div><b style={{ color: 'var(--text-secondary)' }}>Autopilot</b> — auto-approve + instantly push to the Spotify queue. Zero staff action needed.</div>
           <div><b style={{ color: 'var(--text-secondary)' }}>Locked</b> — read-only. Guests see the queue but can&apos;t request anything.</div>
         </div>
       </div>
@@ -798,7 +900,6 @@ function SettingsTab({
         </div>
         <div style={{ marginTop: 14, display: 'flex', gap: 10, alignItems: 'center' }}>
           <ToggleChip on={s.allow_explicit} label="Allow explicit" onClick={() => patch({ allow_explicit: !s.allow_explicit })} disabled={saving} />
-          <ToggleChip on={s.auto_add_to_provider} label="Auto-add to Spotify (Phase 2)" onClick={() => patch({ auto_add_to_provider: !s.auto_add_to_provider })} disabled={saving} />
         </div>
       </div>
 

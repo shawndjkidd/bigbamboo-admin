@@ -2,7 +2,7 @@
 //  Jukebox — shared TypeScript types
 // ═══════════════════════════════════════════════════════════════
 
-export type JukeboxMode = 'approval' | 'open' | 'locked' | 'event';
+export type JukeboxMode = 'approval' | 'open' | 'autopilot' | 'locked' | 'event';
 
 export type RequestStatus =
   | 'pending'
@@ -29,6 +29,7 @@ export interface JukeboxSettings {
   provider: string;
   auto_add_to_provider: boolean;
   max_queue_length: number;
+  blocked_genres?: string[];
   pending_request_ttl_minutes: number;
   display_token: string;
   timezone: string;
@@ -122,7 +123,8 @@ export type RejectionCode =
   | 'queue_full'
   | 'invalid_input'
   | 'profanity'
-  | 'not_in_playlist';
+  | 'not_in_playlist'
+  | 'genre_blocked';
 
 export interface ApiError {
   code: string;

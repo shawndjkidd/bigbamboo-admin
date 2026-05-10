@@ -16,6 +16,7 @@ import {
   wasRecentlyRequested,
 } from './cooldowns';
 import { isTrackInCurated } from './curated';
+import { getArtistGenres, isGenreBlocked } from './genres';
 
 export interface ValidationContext {
   venueId: string;
@@ -110,6 +111,17 @@ export async function validateRequest(
   const artistIds = (track.artists || []).map((a) => a.id).filter(Boolean);
   if (await isBlocked(ctx.venueId, track.id, artistIds)) {
     return reject('blocklisted', 'This song is blocked tonight.');
+  }
+
+  // 6.5. Genre blocklist
+  type GenreSettings = JukeboxSettings & { blocked_genres?: string[] };
+  const blockedGenres = ((settings as GenreSettings).blocked_genres ?? []).filter(Boolean);
+  if (blockedGenres.length > 0 && artistIds.length > 0) {
+    const primaryArtistId = artistIds[0];
+    const artistGenres = await getArtistGenres(ctx.venueId, primaryArtistId);
+    if (isGenreBlocked(artistGenres, blockedGenres)) {
+      return reject('genre_blocked', "This genre isn't on the playlist tonight.");
+    }
   }
 
   // 7. Cooldown (strictest of device / ip / user)
