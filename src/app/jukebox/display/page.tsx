@@ -73,9 +73,10 @@ export default async function DisplayPage({
 const pageWrap: React.CSSProperties = {
   padding: '12px 20px 14px',
   height: '100vh',
+  boxSizing: 'border-box',
   color: 'var(--theme-text)',
-  display: 'flex',
-  flexDirection: 'column',
+  display: 'grid',
+  gridTemplateRows: 'auto 1fr',
   gap: 10,
   overflow: 'hidden',
 }

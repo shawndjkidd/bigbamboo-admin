@@ -740,70 +740,81 @@
 
 /* ── TV kiosk two-column layout ──────────────────────────────── */
 
-/* Body fills remaining height below the header */
+/* Body: CSS Grid so each child gets an explicit height from the grid */
 .kiosk-body {
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  flex-direction: row;
+  display: grid;
+  grid-template-columns: 45% 1fr;
   gap: 28px;
+  overflow: hidden;
 }
 
-/* Left column: 45% — QR card stacked above Now Playing card */
+/* Left column: two equal-height cells */
 .kiosk-body-left {
-  width: 45%;
-  flex-shrink: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 28px;
-  min-height: 0;
+  display: grid;
+  grid-template-rows: 1fr 1fr;
+  gap: 16px;
+  overflow: hidden;
 }
 
-/* Right column: 55% — full-height Up Next card */
+/* Right column: flex so Un Card can stretch to fill it */
 .kiosk-body-right {
-  flex: 1;
   display: flex;
   flex-direction: column;
-  min-height: 0;
+  overflow: hidden;
 }
 
-/* QR card — top half of left column */
+/* QR card — top cell of left column.
+   height: 100% ensures percentage max-heights on children resolve. */
 .kiosk-qr-card {
-  flex: 1;
-  min-height: 0;
+  height: 100%;
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 18px;
+  gap: 16px;
   text-align: center;
-  padding: 24px 20px;
+  padding: 20px 16px;
+  overflow: hidden;
 }
 .kiosk-scan-headline {
   font-family: var(--theme-display-font);
-  font-size: clamp(16px, 1.8vw, 26px);
+  font-size: clamp(14px, 1.6vw, 24px);
   letter-spacing: 0.22em;
   color: var(--bbb-wood-dark);
   text-transform: uppercase;
   line-height: 1.2;
+  flex-shrink: 0;
 }
-/* TV-scale QR — fills ~80% of the QR card width */
+/* QR image: constrained so it never overflows the card.
+   max-height 62% of card height leaves room for headline + URL. */
 .kiosk-qr--tv {
-  width: min(80%, 640px) !important;
-  max-width: none !important;
+  max-height: 62% !important;
+  max-width: 90% !important;
+  width: auto !important;
+  height: auto !important;
   border-radius: 12px;
   padding: 10px;
   border: 3px solid var(--bbb-wood-dark);
   box-shadow: 0 6px 20px rgba(0,0,0,0.4);
+  display: block;
 }
 .kiosk-qr-url--tv {
-  font-size: clamp(12px, 1.2vw, 18px);
+  font-size: clamp(11px, 1.1vw, 16px);
   color: var(--bbb-wood-light);
   font-family: monospace;
   letter-spacing: 0.04em;
+  flex-shrink: 0;
 }
 
-/* Up Next card — right column, full height */
+/* Now Playing card (kiosk-hero) and Empty state fill their grid cell */
+.kiosk-hero,
+.kiosk-empty {
+  height: 100%;
+  box-sizing: border-box;
+}
+
+/* Up Next card — fills the right column via flex */
 .kiosk-un-card {
   flex: 1;
   min-height: 0;
