@@ -185,7 +185,7 @@ export default function DisplayClient({ guestUrl, qr, wifiNetwork, wifiPassword 
                   Nothing queued yet — scan the QR to add a song!
                 </div>
               ) : (
-                onDeck.slice(0, 8).map((it) => (
+                onDeck.slice(0, 9).map((it) => (
                   <div key={it.id} className="kiosk-deck-row">
                     <div className="kiosk-deck-pos">{it.position}</div>
                     <div className="kiosk-deck-art">
@@ -251,7 +251,6 @@ export default function DisplayClient({ guestUrl, qr, wifiNetwork, wifiPassword 
 
 // ── Now Playing hero ─────────────────────────────────────────────
 function NowPlayingHero({ now }: { now: NowPlaying }) {
-  const label = now.is_fallback ? 'UP FIRST' : 'NOW PLAYING'
   const hasLiveProgress = typeof now.progress_ms === 'number' && now.duration_ms > 0
   const pct = hasLiveProgress
     ? Math.max(0, Math.min(100, (now.progress_ms! / now.duration_ms) * 100))
@@ -259,7 +258,6 @@ function NowPlayingHero({ now }: { now: NowPlaying }) {
   const elapsed = hasLiveProgress ? fmtDuration(now.progress_ms!) : null
   const total = fmtDuration(now.duration_ms)
   const art = now.album_art_url
-  const isLive = now.is_playing !== false && !now.is_fallback
 
   return (
     <>
@@ -271,10 +269,10 @@ function NowPlayingHero({ now }: { now: NowPlaying }) {
         }
       </div>
       <div className="kiosk-np-info">
-        <div className="kiosk-np-pill">
-          <span className={`kiosk-np-dot${isLive ? ' is-live' : ''}`} aria-hidden="true" />
-          {label}
-          {now.is_playing === false && !now.is_fallback && (
+        <div className="kiosk-np-onair">
+          <span className="kiosk-np-onair-dot" aria-hidden="true" />
+          NOW PLAYING
+          {now.is_playing === false && (
             <span className="kiosk-np-paused-tag">PAUSED</span>
           )}
         </div>
