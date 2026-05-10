@@ -1,11 +1,3 @@
-// ═══════════════════════════════════════════════════════════════
-//  /jukebox/display?token=... — Kiosk view (server component)
-//  Theme-aware tropical/tiki design. Today the styles read from
-//  --theme-* CSS variables that alias BigBamBoo's brand palette.
-//  In Phase 1 (multi-tenant) the same CSS variables get injected
-//  per-venue from venue_themes — this code does not change.
-// ═══════════════════════════════════════════════════════════════
-
 import { notFound } from 'next/navigation'
 import { getServiceClient } from '@/lib/supabase'
 import { getJukeboxVenueId } from '@/lib/jukebox/venue'
@@ -32,33 +24,32 @@ export default async function DisplayPage({
 
   if (!settings || settings.display_token !== token) notFound()
 
-  // Build the absolute URL for the QR. Size 600 for crisp rendering at TV scale.
+  // Wifi fields — graceful fallback if columns don't exist yet (pre-migration)
+  let wifiNetwork: string | null = null
+  let wifiPassword: string | null = null
+  try {
+    const { data: wifiRow } = await sb
+      .from('jukebox_settings')
+      .select('wifi_network, wifi_password')
+      .eq('venue_id', venueId)
+      .maybeSingle()
+    wifiNetwork = (wifiRow as { wifi_network?: string | null })?.wifi_network ?? null
+    wifiPassword = (wifiRow as { wifi_password?: string | null })?.wifi_password ?? null
+  } catch { /* columns not migrated yet — show nothing */ }
+
   const base = process.env.APP_BASE_URL?.replace(/\/$/, '') || ''
   const isSubdomain = /^https?:\/\/jukebox\./i.test(base)
   const guestUrl = base ? (isSubdomain ? base : `${base}/jukebox`) : '/jukebox'
   const qr = qrImageUrl(guestUrl, { size: 600, dark: '2c1810', light: 'fff8e7' })
 
   return (
-    <div className="kiosk-page" style={pageWrap}>
-      <header className="kiosk-header" style={{ flexShrink: 0 }}>
-        <div className="kiosk-header-brand">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src="https://bigbamboo.app/images/bbb-img-5.png"
-            alt="BigBamBoo"
-            className="kiosk-header-logo"
-          />
-          <div className="kiosk-header-wordmark">JUKEBOX</div>
-        </div>
-        {settings.curated_mode_enabled && settings.curated_playlist_name && (
-          <div className="kiosk-tonight-pill">
-            TONIGHT ·{' '}
-            <span className="kiosk-tonight-pill-name">{settings.curated_playlist_name}</span>
-          </div>
-        )}
-      </header>
-
-      <DisplayClient qr={qr} guestUrl={guestUrl} />
+    <div style={pageWrap}>
+      <DisplayClient
+        qr={qr}
+        guestUrl={guestUrl}
+        wifiNetwork={wifiNetwork}
+        wifiPassword={wifiPassword}
+      />
 
       {!settings.is_active && (
         <div style={pausedBanner}>{copy.guest.requestsPaused}</div>
@@ -71,14 +62,11 @@ export default async function DisplayPage({
 }
 
 const pageWrap: React.CSSProperties = {
-  padding: '12px 20px 14px',
   height: '100vh',
-  boxSizing: 'border-box',
-  color: 'var(--theme-text)',
-  display: 'grid',
-  gridTemplateRows: 'auto 1fr',
-  gap: 10,
   overflow: 'hidden',
+  background: 'linear-gradient(135deg, #2a5a4f 0%, #1f4338 100%)',
+  boxSizing: 'border-box',
+  padding: '10px',
 }
 
 const pausedBanner: React.CSSProperties = {

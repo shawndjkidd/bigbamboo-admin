@@ -35,6 +35,8 @@ interface Settings {
   curated_playlist_track_count?: number
   curated_playlist_synced_at?: string | null
   curated_playlist_error?: string | null
+  wifi_network?: string | null
+  wifi_password?: string | null
 }
 
 interface ReqRow {
@@ -811,6 +813,17 @@ function SettingsTab({
           <button className="btn-red" onClick={rotateToken}>{copy.admin.rotateDisplayToken}</button>
         </div>
       </div>
+
+      <div className="card" style={{ padding: 18 }}>
+        <div className="section-title" style={{ marginBottom: 4 }}>Kiosk WiFi display</div>
+        <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 12 }}>
+          Shown on the kiosk header strip so guests can connect. Leave blank to hide.
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <WifiField label="Network name (SSID)" field="wifi_network" settings={s} patch={patch} />
+          <WifiField label="Password" field="wifi_password" settings={s} patch={patch} />
+        </div>
+      </div>
     </div>
   )
 }
@@ -891,6 +904,32 @@ function NumberField({ label, value, onSave }: { label: string; value: number; o
           const n = parseInt(v, 10)
           if (Number.isFinite(n) && n !== value) onSave(n)
         }}
+      />
+    </div>
+  )
+}
+
+function WifiField({ label, field, settings, patch }: {
+  label: string
+  field: 'wifi_network' | 'wifi_password'
+  settings: Settings
+  patch: (b: Partial<Settings>) => void
+}) {
+  const [v, setV] = useState(settings[field] ?? '')
+  useEffect(() => { setV(settings[field] ?? '') }, [settings, field])
+  return (
+    <div>
+      <label className="label">{label}</label>
+      <input
+        className="input"
+        type="text"
+        value={v}
+        onChange={(e) => setV(e.target.value)}
+        onBlur={() => {
+          const trimmed = v.trim()
+          if (trimmed !== (settings[field] ?? '')) patch({ [field]: trimmed || null } as Partial<Settings>)
+        }}
+        placeholder="leave blank to hide"
       />
     </div>
   )

@@ -23,6 +23,8 @@ const ALLOWED_PATCH_FIELDS = new Set([
   'pending_request_ttl_minutes',
   'timezone',
   'curated_mode_enabled',
+  'wifi_network',
+  'wifi_password',
 ]);
 
 const VALID_MODES = new Set(['approval', 'open', 'locked', 'event']);
