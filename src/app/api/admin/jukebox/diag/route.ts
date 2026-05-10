@@ -36,6 +36,40 @@ export async function GET(req: NextRequest) {
     matches_resolved: r.venue_id === venueIdResolved,
   }));
 
+  // Enriched token state for the resolved venue + spotify.
+  const tokenRow = await sb
+    .from('jukebox_provider_auth')
+    .select(
+      'id, is_connected, is_active, access_token, refresh_token, expires_at, scope, provider_user_id, display_name, last_error, created_at, updated_at'
+    )
+    .eq('venue_id', venueIdResolved)
+    .eq('provider', 'spotify')
+    .maybeSingle();
+
+  let token_state: Record<string, unknown> | null = null;
+  if (tokenRow.data) {
+    const r = tokenRow.data;
+    const expiresAt = r.expires_at ? new Date(r.expires_at) : null;
+    const expiresInSec = expiresAt ? Math.round((expiresAt.getTime() - Date.now()) / 1000) : null;
+    token_state = {
+      row_id: r.id,
+      is_connected: r.is_connected,
+      is_active: r.is_active,
+      has_access_token: r.access_token != null,
+      access_token_len: r.access_token ? String(r.access_token).length : 0,
+      has_refresh_token: r.refresh_token != null,
+      refresh_token_len: r.refresh_token ? String(r.refresh_token).length : 0,
+      expires_at: r.expires_at ?? null,
+      expires_in_sec_from_now: expiresInSec,
+      scope: r.scope ?? null,
+      provider_user_id: r.provider_user_id ?? null,
+      display_name: r.display_name ?? null,
+      last_error: r.last_error ?? null,
+      created_at: r.created_at ?? null,
+      updated_at: r.updated_at ?? null,
+    };
+  }
+
   // Try the same query getSpotifyAuthStatus uses.
   const single = await sb
     .from('jukebox_provider_auth')
@@ -67,6 +101,8 @@ export async function GET(req: NextRequest) {
       all_rows_count: rows.length,
       all_rows_error: all.error?.message || null,
       all_rows_summary: rows,
+      token_state,
+      token_state_error: tokenRow.error?.message || null,
       filtered_query: { data: single.data, error: single.error?.message || null },
       by_id_query: byId ? { data: byId.data, error: byId.error?.message || null } : null,
     },
