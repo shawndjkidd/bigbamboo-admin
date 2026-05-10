@@ -13,7 +13,8 @@ interface Settings {
   id: string
   venue_id: string
   is_active: boolean
-  mode: 'approval' | 'open' | 'autopilot' | 'locked' | 'event'
+  mode: 'approval' | 'autopilot' | 'locked' | 'event'
+  logo_url?: string | null
   guest_cooldown_minutes: number
   member_cooldown_minutes: number
   max_song_length_seconds: number
@@ -96,8 +97,9 @@ export default function JukeboxAdminPage() {
   }, [router])
 
   const apiFetch = useCallback(async (path: string, init?: RequestInit) => {
+    const isFormData = init?.body instanceof FormData
     const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
+      ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
       ...(init?.headers as Record<string, string> | undefined),
     }
     if (tokenRef.current) headers.Authorization = `Bearer ${tokenRef.current}`
@@ -137,19 +139,31 @@ export default function JukeboxAdminPage() {
   return (
     <div style={{ maxWidth: 960, margin: '0 auto', padding: '24px 24px 60px' }}>
       <div className="jukebox-admin-header">
-        <header style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
-          <div>
-            <div className="page-title">Jukebox</div>
-            <div className="jukebox-admin-sub">
-              Approve, queue, and tune the room.
+        <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            {settings?.logo_url && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={settings.logo_url} alt="Venue logo" style={{ height: 32, width: 'auto', borderRadius: 4 }} />
+            )}
+            <div>
+              <div className="page-title">Jukebox</div>
+              <div className="jukebox-admin-sub">
+                Approve, queue, and tune the room.
+              </div>
             </div>
           </div>
-          <button className="btn-outline" onClick={() => router.push('/dashboard')}>← Dashboard</button>
+          <button
+            className="btn-outline"
+            style={{ borderColor: '#E8553A', color: '#E8553A' }}
+            onClick={() => router.push('/dashboard')}
+          >
+            ← Dashboard
+          </button>
         </header>
         <Tabs tab={tab} onChange={setTab} />
       </div>
 
-      {tab === 'pending' && <PendingTab apiFetch={apiFetch} onAction={showToast} />}
+      {tab === 'pending' && <PendingTab apiFetch={apiFetch} onAction={showToast} mode={settings?.mode ?? null} />}
       {tab === 'queue' && <QueueTab apiFetch={apiFetch} onAction={showToast} />}
       {tab === 'history' && <HistoryTab apiFetch={apiFetch} />}
       {tab === 'blocklist' && <BlocklistTab apiFetch={apiFetch} onAction={showToast} />}
@@ -198,7 +212,8 @@ function Tabs({ tab, onChange }: { tab: Tab; onChange: (t: Tab) => void }) {
 function PendingTab({
   apiFetch,
   onAction,
-}: { apiFetch: (p: string, i?: RequestInit) => Promise<{ ok: boolean; data?: unknown; error?: { message: string } }>; onAction: (m: string) => void }) {
+  mode,
+}: { apiFetch: (p: string, i?: RequestInit) => Promise<{ ok: boolean; data?: unknown; error?: { message: string } }>; onAction: (m: string) => void; mode: Settings['mode'] | null }) {
   const [rows, setRows] = useState<ReqRow[]>([])
   const [busy, setBusy] = useState<string | null>(null)
 
@@ -233,7 +248,10 @@ function PendingTab({
   }
 
   if (rows.length === 0) {
-    return <EmptyCard title="Nothing pending." sub="Approved requests show up under Up Next." />
+    const sub = mode === 'autopilot'
+      ? 'Autopilot is on — guest requests go straight to Up Next without needing your approval.'
+      : 'Approved requests show up under Up Next.'
+    return <EmptyCard title="Nothing pending." sub={sub} />
   }
 
   return (
@@ -324,7 +342,7 @@ function QueueTab({
           <button className="btn-outline" disabled={!!busy} onClick={() => act(r.id, 'hide-nickname')}>
             {copy.admin.hideName}
           </button>
-          <button className="btn-outline" disabled={!!busy} onClick={() => act(r.id, 'skip')}>
+          <button className="btn-red" disabled={!!busy} onClick={() => act(r.id, 'skip')}>
             {copy.admin.skip}
           </button>
           <button className="btn-red" disabled={!!busy} onClick={() => act(r.id, 'remove')}>
@@ -691,6 +709,19 @@ function SettingsTab({
           <WifiField label="Password" field="wifi_password" settings={s} patch={patch} />
         </div>
       </div>
+
+      <div className="card" style={{ padding: 18 }}>
+        <div className="section-title" style={{ marginBottom: 4 }}>Branding</div>
+        <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 12 }}>
+          Venue logo shown in the kiosk display header and admin page. PNG or JPG, max 500 KB. Leave blank to use the default BBB logo.
+        </div>
+        <LogoField
+          logoUrl={s.logo_url ?? null}
+          apiFetch={apiFetch}
+          onAction={onAction}
+          onSaved={(url) => setSettings({ ...s, logo_url: url })}
+        />
+      </div>
     </div>
   )
 }
@@ -798,6 +829,73 @@ function WifiField({ label, field, settings, patch }: {
         }}
         placeholder="leave blank to hide"
       />
+    </div>
+  )
+}
+
+function LogoField({ logoUrl, apiFetch, onAction, onSaved }: {
+  logoUrl: string | null
+  apiFetch: (p: string, i?: RequestInit) => Promise<{ ok: boolean; data?: unknown; error?: { message: string } }>
+  onAction: (m: string) => void
+  onSaved: (url: string | null) => void
+}) {
+  const [uploading, setUploading] = useState(false)
+  const fileRef = useRef<HTMLInputElement>(null)
+
+  async function handleFile(file: File) {
+    if (file.size > 512_000) { onAction('File too large (max 500 KB)'); return }
+    setUploading(true)
+    const form = new FormData()
+    form.append('file', file)
+    try {
+      const j = await apiFetch('/api/admin/jukebox/settings/logo', { method: 'POST', body: form }) as { ok: boolean; data?: { url: string }; error?: { message: string } }
+      if (j.ok && j.data?.url) {
+        onSaved(j.data.url)
+        onAction('Logo saved')
+      } else {
+        onAction(j.error?.message || 'Upload failed')
+      }
+    } catch {
+      onAction('Upload failed')
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  async function removeLogo() {
+    const j = await apiFetch('/api/admin/jukebox/settings', {
+      method: 'PATCH',
+      body: JSON.stringify({ logo_url: null }),
+    })
+    if (j.ok) { onSaved(null); onAction('Logo removed') }
+    else onAction((j.error as { message?: string } | undefined)?.message || 'Remove failed')
+  }
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+      {logoUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={logoUrl} alt="Venue logo" style={{ height: 48, width: 'auto', borderRadius: 6, border: '1px solid var(--border)' }} />
+      ) : (
+        <div style={{ width: 48, height: 48, borderRadius: 6, background: 'var(--bg-input)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, color: 'var(--text-muted)' }}>
+          🏷
+        </div>
+      )}
+      <div style={{ display: 'flex', gap: 8 }}>
+        <input
+          ref={fileRef}
+          type="file"
+          accept="image/png,image/jpeg,image/webp"
+          style={{ display: 'none' }}
+          onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f) }}
+        />
+        <button className="btn-outline" disabled={uploading} onClick={() => fileRef.current?.click()}>
+          {uploading ? 'Uploading…' : logoUrl ? 'Replace logo' : 'Upload logo'}
+        </button>
+        {logoUrl && (
+          <button className="btn-red" onClick={removeLogo}>Remove</button>
+        )}
+      </div>
     </div>
   )
 }

@@ -182,13 +182,13 @@
   background: transparent;
   border: 2px solid var(--bbb-wood);
   color: var(--bbb-wood);
-  padding: 11px 20px;
-  border-radius: 100px;
+  padding: 8px 14px;
+  border-radius: 6px;
   cursor: pointer;
-  font-size: 16px;
-  font-family: 'Sigmar', sans-serif;
-  font-weight: 400;
-  letter-spacing: 0.04em;
+  font-size: 13px;
+  font-family: inherit;
+  font-weight: 600;
+  letter-spacing: 0;
   transition: background 0.12s;
 }
 .jukebox-root .btn-outline:hover { background: rgba(107,66,38,0.08); }
@@ -1026,7 +1026,7 @@
   align-items: center;
   gap: 10px;
   padding: 8px 0;
-  border-bottom: 2px dotted rgba(232,154,74,0.2);
+  border-bottom: 2px dotted rgba(232,154,74,0.3);
   flex-shrink: 0;
 }
 .kiosk-deck-row:last-child { border-bottom: none; }

@@ -25,9 +25,10 @@ const ALLOWED_PATCH_FIELDS = new Set([
   'wifi_network',
   'wifi_password',
   'blocked_genres',
+  'logo_url',
 ]);
 
-const VALID_MODES = new Set(['approval', 'open', 'autopilot', 'locked', 'event']);
+const VALID_MODES = new Set(['approval', 'autopilot', 'locked', 'event']);
 
 export async function GET(req: NextRequest) {
   const auth = await requireModerator(req);

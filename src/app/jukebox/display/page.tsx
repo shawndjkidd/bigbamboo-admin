@@ -24,19 +24,20 @@ export default async function DisplayPage({
 
   if (!settings || settings.display_token !== token) notFound()
 
-  // Wifi fields — graceful fallback if columns don't exist yet (pre-migration).
-  // Supabase never throws on schema errors; it returns { data: null, error }.
-  // We check the error field explicitly so a missing column silently shows nothing.
+  // Extra fields — graceful fallback if columns don't exist yet (pre-migration).
   let wifiNetwork: string | null = null
   let wifiPassword: string | null = null
-  const { data: wifiRow, error: wifiErr } = await sb
+  let logoUrl: string | null = null
+  const { data: extraRow, error: extraErr } = await sb
     .from('jukebox_settings')
-    .select('wifi_network, wifi_password')
+    .select('wifi_network, wifi_password, logo_url')
     .eq('venue_id', venueId)
     .maybeSingle()
-  if (!wifiErr && wifiRow) {
-    wifiNetwork = (wifiRow as { wifi_network?: string | null }).wifi_network ?? null
-    wifiPassword = (wifiRow as { wifi_password?: string | null }).wifi_password ?? null
+  if (!extraErr && extraRow) {
+    const r = extraRow as { wifi_network?: string | null; wifi_password?: string | null; logo_url?: string | null }
+    wifiNetwork = r.wifi_network ?? null
+    wifiPassword = r.wifi_password ?? null
+    logoUrl = r.logo_url ?? null
   }
 
   const base = process.env.APP_BASE_URL?.replace(/\/$/, '') || ''
@@ -51,6 +52,7 @@ export default async function DisplayPage({
         guestUrl={guestUrl}
         wifiNetwork={wifiNetwork}
         wifiPassword={wifiPassword}
+        logoUrl={logoUrl}
       />
 
       {!settings.is_active && (

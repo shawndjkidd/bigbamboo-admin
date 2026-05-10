@@ -46,6 +46,7 @@ interface Props {
   qr: string
   wifiNetwork?: string | null
   wifiPassword?: string | null
+  logoUrl?: string | null
 }
 
 function fmtDuration(ms: number): string {
@@ -62,7 +63,7 @@ const POSTERS = [
   { cls: 'kp-brand',  decor: '🌴', tag: 'BIG BAM BOO', headline: 'TROPICAL VIBES', sub: 'Ho Chi Minh City · District 1', foot: 'Welcome to the jungle' },
 ]
 
-export default function DisplayClient({ guestUrl, qr, wifiNetwork, wifiPassword }: Props) {
+export default function DisplayClient({ guestUrl, qr, wifiNetwork, wifiPassword, logoUrl }: Props) {
   const [data, setData] = useState<QueuePayload | null>(null)
   const [spotifyNow, setSpotifyNow] = useState<SpotifyLiveNow | null>(null)
 
@@ -142,7 +143,11 @@ export default function DisplayClient({ guestUrl, qr, wifiNetwork, wifiPassword 
       <div className="kiosk-strip">
         <div className="kiosk-strip-brand">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="https://bigbamboo.app/images/bbb-img-5.png" alt="BigBamBoo" className="kiosk-strip-logo" />
+          <img
+            src={logoUrl || 'https://bigbamboo.app/images/bbb-img-5.png'}
+            alt="Venue logo"
+            className="kiosk-strip-logo"
+          />
           <div className="kiosk-strip-wordmark">JUKEBOX</div>
         </div>
         {(wifiNetwork || wifiPassword) && (

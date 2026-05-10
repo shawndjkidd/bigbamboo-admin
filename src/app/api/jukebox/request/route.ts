@@ -81,7 +81,7 @@ export async function POST(req: NextRequest) {
   const { track, settings } = result;
   const sb = getServiceClient();
 
-  const autoApprove = settings.mode === 'open' || settings.mode === 'autopilot';
+  const autoApprove = settings.mode === 'autopilot';
   const nowIso = new Date().toISOString();
 
   const insertRow = {

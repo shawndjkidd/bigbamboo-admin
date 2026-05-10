@@ -94,6 +94,9 @@ export async function requireStaff(
   // auth.getUser() to fail with a 401 on every request.
   const verifier = createClient(SUPABASE_URL, SUPABASE_ANON, {
     auth: { persistSession: false, autoRefreshToken: false },
+    global: {
+      fetch: (input, init) => fetch(input, { ...init, cache: 'no-store' }),
+    },
   });
   const { data: userRes, error: userErr } = await verifier.auth.getUser(jwt);
   if (userErr || !userRes?.user?.email) {
