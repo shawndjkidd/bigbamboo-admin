@@ -11,8 +11,15 @@ const SUPABASE_SERVICE_ROLE_KEY = (process.env.SUPABASE_SERVICE_ROLE_KEY || '').
 export const supabase = createBrowserClient(SUPABASE_URL, SUPABASE_ANON_KEY)
 
 // Server-side only — uses service role key, bypasses RLS. Never call from client components.
+// cache: 'no-store' on every request prevents Next.js from serving stale Supabase reads
+// from the fetch cache (observed in Vercel logs as "Using cache hodqpckslglxuyhitlgh...").
 export function getServiceClient() {
-  return createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
+  return createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+    auth: { persistSession: false, autoRefreshToken: false },
+    global: {
+      fetch: (input, init) => fetch(input, { ...init, cache: 'no-store' }),
+    },
+  })
 }
 
 export type Role = 'super_admin' | 'manager' | 'scanner'
