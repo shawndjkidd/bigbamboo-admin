@@ -185,7 +185,7 @@ export default function DisplayClient({ guestUrl, qr, wifiNetwork, wifiPassword 
                   Nothing queued yet — scan the QR to add a song!
                 </div>
               ) : (
-                onDeck.slice(0, 10).map((it) => (
+                onDeck.slice(0, 8).map((it) => (
                   <div key={it.id} className="kiosk-deck-row">
                     <div className="kiosk-deck-pos">{it.position}</div>
                     <div className="kiosk-deck-art">
