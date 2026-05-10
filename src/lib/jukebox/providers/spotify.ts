@@ -347,7 +347,7 @@ export class SpotifyProvider implements PlaybackProvider {
     // Paginate through tracks
     const tracks: Track[] = [];
     let next: string | null =
-      `${SPOTIFY_API}/playlists/${playlistId}/tracks?limit=100&market=VN&fields=next,items(track(id,name,duration_ms,explicit,external_urls,artists(id,name),album(name,images)))`;
+      `${SPOTIFY_API}/playlists/${playlistId}/tracks?limit=100`;
     let safety = 50; // max 5,000 tracks
     while (next && safety-- > 0) {
       let pageRes: Response;
