@@ -40,7 +40,7 @@ export async function GET(req: NextRequest) {
   const tokenRow = await sb
     .from('jukebox_provider_auth')
     .select(
-      'id, is_connected, access_token, refresh_token, expires_at, scope, provider_user_id, display_name, last_error, created_at, updated_at'
+      'id, is_connected, access_token_encrypted, refresh_token_encrypted, expires_at, scope, provider_user_id, display_name, last_error, created_at, updated_at'
     )
     .eq('venue_id', venueIdResolved)
     .eq('provider', 'spotify')
@@ -54,10 +54,10 @@ export async function GET(req: NextRequest) {
     token_state = {
       row_id: r.id,
       is_connected: r.is_connected,
-      has_access_token: r.access_token != null,
-      access_token_len: r.access_token ? String(r.access_token).length : 0,
-      has_refresh_token: r.refresh_token != null,
-      refresh_token_len: r.refresh_token ? String(r.refresh_token).length : 0,
+      has_access_token: r.access_token_encrypted != null,
+      access_token_len: r.access_token_encrypted ? String(r.access_token_encrypted).length : 0,
+      has_refresh_token: r.refresh_token_encrypted != null,
+      refresh_token_len: r.refresh_token_encrypted ? String(r.refresh_token_encrypted).length : 0,
       expires_at: r.expires_at ?? null,
       expires_in_sec_from_now: expiresInSec,
       scope: r.scope ?? null,
