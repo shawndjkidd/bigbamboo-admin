@@ -8,6 +8,8 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { copy } from '@/lib/jukebox/copy'
+import { Button } from '@/components/ui/Button'
+import { Card } from '@/components/ui/Card'
 
 interface Settings {
   id: string
@@ -258,18 +260,18 @@ function PendingTab({
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
       {rows.map((r) => (
         <RowCard key={r.id} row={r}>
-          <button className="btn-outline" disabled={!!busy} onClick={() => blockAndReject(r, 'track')}>
+          <Button variant="secondary" disabled={!!busy} onClick={() => blockAndReject(r, 'track')}>
             {copy.admin.blockTrack}
-          </button>
-          <button className="btn-outline" disabled={!!busy} onClick={() => blockAndReject(r, 'artist')}>
+          </Button>
+          <Button variant="secondary" disabled={!!busy} onClick={() => blockAndReject(r, 'artist')}>
             {copy.admin.blockArtist}
-          </button>
-          <button className="btn-red" disabled={!!busy} onClick={() => act(r.id, 'reject')}>
+          </Button>
+          <Button variant="danger" disabled={!!busy} onClick={() => act(r.id, 'reject')}>
             {busy === r.id + ':reject' ? '…' : copy.admin.reject}
-          </button>
-          <button className="btn-green" disabled={!!busy} onClick={() => act(r.id, 'approve')}>
+          </Button>
+          <Button variant="success" disabled={!!busy} onClick={() => act(r.id, 'approve')}>
             {busy === r.id + ':approve' ? '…' : copy.admin.approve}
-          </button>
+          </Button>
         </RowCard>
       ))}
     </div>
@@ -339,30 +341,30 @@ function QueueTab({
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
       {rows.map((r, i) => (
         <RowCard key={r.id} row={r} position={i + 1}>
-          <button className="btn-outline" disabled={!!busy} onClick={() => act(r.id, 'hide-nickname')}>
+          <Button variant="secondary" disabled={!!busy} onClick={() => act(r.id, 'hide-nickname')}>
             {copy.admin.hideName}
-          </button>
-          <button className="btn-red" disabled={!!busy} onClick={() => act(r.id, 'skip')}>
+          </Button>
+          <Button variant="danger" disabled={!!busy} onClick={() => act(r.id, 'skip')}>
             {copy.admin.skip}
-          </button>
-          <button className="btn-red" disabled={!!busy} onClick={() => act(r.id, 'remove')}>
+          </Button>
+          <Button variant="danger" disabled={!!busy} onClick={() => act(r.id, 'remove')}>
             {copy.admin.remove}
-          </button>
+          </Button>
           {r.status === 'queued' || r.provider_queue_status === 'queued' ? (
             <span className="badge badge-green" style={{ alignSelf: 'center', fontSize: 11 }}>✓ Queued</span>
           ) : r.status === 'approved' ? (
-            <button
-              className="btn-outline"
+            <Button
+              variant="secondary"
               disabled={!!busy}
               onClick={() => addToSpotify(r.id)}
               title="Push this song into the venue's Spotify queue"
             >
               {busy === r.id + ':spotify' ? '…' : copy.admin.addToSpotify}
-            </button>
+            </Button>
           ) : null}
-          <button className="btn-green" disabled={!!busy} onClick={() => act(r.id, 'mark-played')}>
+          <Button variant="success" disabled={!!busy} onClick={() => act(r.id, 'mark-played')}>
             {copy.admin.markPlayed}
-          </button>
+          </Button>
         </RowCard>
       ))}
     </div>
@@ -387,27 +389,34 @@ function HistoryTab({
   }
 
   return (
-    <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-        <thead>
-          <tr style={{ background: 'var(--bg-subtle)' }}>
-            <Th>Status</Th><Th>Track</Th><Th>Artist</Th><Th>Nickname</Th><Th>When</Th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((r) => (
-            <tr key={r.id} style={{ borderTop: '1px solid var(--border)' }}>
-              <Td><span className={`badge ${badgeFor(r.status)}`}>{r.status}</span></Td>
-              <Td>{r.track_name}</Td>
-              <Td>{r.artist_name}</Td>
-              <Td style={{ color: r.requested_by_hidden ? 'var(--text-muted)' : 'var(--text)' }}>
-                {r.requested_by_hidden ? 'anonymous' : r.requested_by}
-              </Td>
-              <Td>{new Date(r.played_at || r.created_at).toLocaleString()}</Td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      {rows.map((r) => (
+        <Card key={r.id} padding={12} style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+          <div style={{ width: 44, height: 44, flexShrink: 0, borderRadius: 6, overflow: 'hidden', background: 'var(--bg-input)' }}>
+            {r.album_art_url
+              // eslint-disable-next-line @next/next/no-img-element
+              ? <img src={r.album_art_url} alt="" width={44} height={44} style={{ display: 'block', objectFit: 'cover' }} />
+              : null}
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 14, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {r.track_name}{r.explicit ? <span className="badge badge-gray" style={{ marginLeft: 6, fontSize: 10 }}>E</span> : null}
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {r.artist_name}
+              {r.requested_by && !r.requested_by_hidden && (
+                <span style={{ color: 'var(--text-muted)' }}> · {r.requested_by}</span>
+              )}
+            </div>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4, flexShrink: 0 }}>
+            <span className={`badge ${badgeFor(r.status)}`}>{r.status}</span>
+            <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+              {new Date(r.played_at || r.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            </span>
+          </div>
+        </Card>
+      ))}
     </div>
   )
 }
@@ -504,7 +513,7 @@ function BlocklistTab({
             <label className="label">Name</label>
             <input className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder="display name" />
           </div>
-          <button className="btn-accent" onClick={add}>Block</button>
+          <Button variant="danger" onClick={add}>Block</Button>
         </div>
       </div>
 
@@ -525,7 +534,7 @@ function BlocklistTab({
                   <Td>{r.name}</Td>
                   <Td style={{ fontFamily: 'monospace', fontSize: 12 }}>{r.provider_id}</Td>
                   <Td>{new Date(r.created_at).toLocaleDateString()}</Td>
-                  <Td><button className="btn-outline" onClick={() => remove(r.id)}>Unblock</button></Td>
+                  <Td><Button variant="secondary" onClick={() => remove(r.id)}>Unblock</Button></Td>
                 </tr>
               ))}
             </tbody>
@@ -578,7 +587,7 @@ function BlocklistTab({
             onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addGenre() } }}
             style={{ flex: 1 }}
           />
-          <button className="btn-accent" onClick={addGenre} disabled={!genreInput.trim()}>Add</button>
+          <Button variant="primary" onClick={addGenre} disabled={!genreInput.trim()}>Add</Button>
         </div>
       </div>
     </>
@@ -636,70 +645,102 @@ function SettingsTab({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <div className="card" style={{ padding: 18 }}>
-        <div className="section-title" style={{ marginBottom: 12 }}>State</div>
-        <div style={{ display: 'flex', gap: 10, marginBottom: 12, flexWrap: 'wrap' }}>
-          <ToggleChip
-            on={!s.is_active}
-            label="Paused"
-            onClick={() => patch({ is_active: false })}
-            disabled={saving}
-          />
-          <ToggleChip
-            on={s.is_active && s.mode === 'approval'}
-            label="Approval"
-            onClick={() => patch({ is_active: true, mode: 'approval' })}
-            disabled={saving}
-          />
-          <ToggleChip
-            on={s.is_active && s.mode === 'autopilot'}
-            label="Autopilot"
-            onClick={() => patch({ is_active: true, mode: 'autopilot' })}
-            disabled={saving}
-          />
-          <ToggleChip
-            on={s.is_active && s.mode === 'locked'}
-            label="Locked"
-            onClick={() => patch({ is_active: true, mode: 'locked' })}
-            disabled={saving}
-          />
-        </div>
-        <div style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.5 }}>
-          <div><b style={{ color: 'var(--text-secondary)' }}>Paused</b> — master off. Request button hidden on the guest page.</div>
-          <div><b style={{ color: 'var(--text-secondary)' }}>Approval</b> — guests submit; you tap Approve in Pending before it joins the queue.</div>
-          <div><b style={{ color: 'var(--text-secondary)' }}>Autopilot</b> — auto-approve + instantly push to the Spotify queue. Zero staff action needed.</div>
-          <div><b style={{ color: 'var(--text-secondary)' }}>Locked</b> — read-only. Guests see the queue but can&apos;t request anything.</div>
-        </div>
-      </div>
+      <Card>
+        <div className="section-title" style={{ marginBottom: 16 }}>Options</div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+          <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
+            <Toggle on={s.is_active} onChange={(v) => patch({ is_active: v })} disabled={saving} />
+            <div>
+              <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text)' }}>
+                Jukebox{' '}
+                <span style={{ color: s.is_active ? '#16a34a' : '#dc2626', fontWeight: 600 }}>
+                  {s.is_active ? 'Active' : 'Paused'}
+                </span>
+              </div>
+              <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 3, lineHeight: 1.5, maxWidth: 420 }}>
+                When paused, guests can see the queue but can&apos;t request anything.
+              </div>
+            </div>
+          </div>
 
-      <div className="card" style={{ padding: 18 }}>
+          <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start', opacity: s.is_active ? 1 : 0.4 }}>
+            <Toggle
+              on={s.mode === 'approval'}
+              onChange={(v) => patch({ is_active: true, mode: v ? 'approval' : 'autopilot' })}
+              disabled={saving || !s.is_active}
+            />
+            <div>
+              <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text)' }}>
+                {s.mode === 'approval' ? 'Staff approval required' : 'Autopilot'}
+              </div>
+              <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 3, lineHeight: 1.5, maxWidth: 420 }}>
+                {s.mode === 'approval'
+                  ? 'Each request lands in the Pending tab. You manually approve or reject before it joins the queue.'
+                  : 'Guest requests go straight to the Spotify queue automatically. No staff input needed.'}
+              </div>
+            </div>
+          </div>
+        </div>
+      </Card>
+
+      <Card>
         <div className="section-title" style={{ marginBottom: 12 }}>Cooldowns &amp; rules</div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
-          <NumberField label="Guest cooldown (min)" value={s.guest_cooldown_minutes} onSave={(v) => patch({ guest_cooldown_minutes: v })} />
-          <NumberField label="Member cooldown (min)" value={s.member_cooldown_minutes} onSave={(v) => patch({ member_cooldown_minutes: v })} />
-          <NumberField label="Duplicate window (min)" value={s.duplicate_cooldown_minutes} onSave={(v) => patch({ duplicate_cooldown_minutes: v })} />
-          <NumberField label="Same-artist window (min)" value={s.same_artist_cooldown_minutes} onSave={(v) => patch({ same_artist_cooldown_minutes: v })} />
-          <NumberField label="Max queue length" value={s.max_queue_length} onSave={(v) => patch({ max_queue_length: v })} />
-          <NumberField label="Pending TTL (min)" value={s.pending_request_ttl_minutes} onSave={(v) => patch({ pending_request_ttl_minutes: v })} />
+          <NumberField
+            label="Guest cooldown (min)"
+            help="How long a guest must wait between requests."
+            value={s.guest_cooldown_minutes}
+            onSave={(v) => patch({ guest_cooldown_minutes: v })}
+          />
+          <NumberField
+            label="Member cooldown (min)"
+            help="Same, for logged-in members (if member system is active)."
+            value={s.member_cooldown_minutes}
+            onSave={(v) => patch({ member_cooldown_minutes: v })}
+          />
+          <NumberField
+            label="Duplicate window (min)"
+            help="How long before the same song can be requested again."
+            value={s.duplicate_cooldown_minutes}
+            onSave={(v) => patch({ duplicate_cooldown_minutes: v })}
+          />
+          <NumberField
+            label="Same-artist window (min)"
+            help="How long before the same artist can be requested again."
+            value={s.same_artist_cooldown_minutes}
+            onSave={(v) => patch({ same_artist_cooldown_minutes: v })}
+          />
+          <NumberField
+            label="Max queue length"
+            help="When the queue hits this many songs, new requests are rejected."
+            value={s.max_queue_length}
+            onSave={(v) => patch({ max_queue_length: v })}
+          />
+          <NumberField
+            label="Pending requests expire after (min)"
+            help="If you don't approve within this many minutes, the request is auto-rejected."
+            value={s.pending_request_ttl_minutes}
+            onSave={(v) => patch({ pending_request_ttl_minutes: v })}
+          />
         </div>
         <div style={{ marginTop: 14, display: 'flex', gap: 10, alignItems: 'center' }}>
           <ToggleChip on={s.allow_explicit} label="Allow explicit" onClick={() => patch({ allow_explicit: !s.allow_explicit })} disabled={saving} />
         </div>
-      </div>
+      </Card>
 
-      <div className="card" style={{ padding: 18 }}>
+      <Card>
         <div className="section-title" style={{ marginBottom: 12 }}>Display URL</div>
         <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 6 }}>
           Open this on the venue TV/kiosk. Rotate the token to invalidate old links.
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           <input className="input" readOnly value={displayUrl} style={{ fontFamily: 'monospace', fontSize: 12 }} />
-          <button className="btn-outline" onClick={() => navigator.clipboard?.writeText(displayUrl).then(() => onAction('Copied'))}>Copy</button>
-          <button className="btn-red" onClick={rotateToken}>{copy.admin.rotateDisplayToken}</button>
+          <Button variant="secondary" onClick={() => navigator.clipboard?.writeText(displayUrl).then(() => onAction('Copied'))}>Copy</Button>
+          <Button variant="danger" onClick={rotateToken}>{copy.admin.rotateDisplayToken}</Button>
         </div>
-      </div>
+      </Card>
 
-      <div className="card" style={{ padding: 18 }}>
+      <Card>
         <div className="section-title" style={{ marginBottom: 4 }}>Display info</div>
         <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 12 }}>
           WiFi credentials shown on the kiosk header strip. Leave blank to hide the pill.
@@ -708,9 +749,9 @@ function SettingsTab({
           <WifiField label="Network name (SSID)" field="wifi_network" settings={s} patch={patch} />
           <WifiField label="Password" field="wifi_password" settings={s} patch={patch} />
         </div>
-      </div>
+      </Card>
 
-      <div className="card" style={{ padding: 18 }}>
+      <Card>
         <div className="section-title" style={{ marginBottom: 4 }}>Branding</div>
         <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 12 }}>
           Venue logo shown in the kiosk display header and admin page. PNG or JPG, max 500 KB. Leave blank to use the default BBB logo.
@@ -721,7 +762,7 @@ function SettingsTab({
           onAction={onAction}
           onSaved={(url) => setSettings({ ...s, logo_url: url })}
         />
-      </div>
+      </Card>
     </div>
   )
 }
@@ -786,12 +827,13 @@ function ToggleChip({ on, label, onClick, disabled }: { on: boolean; label: stri
   )
 }
 
-function NumberField({ label, value, onSave }: { label: string; value: number; onSave: (n: number) => void }) {
+function NumberField({ label, help, value, onSave }: { label: string; help?: string; value: number; onSave: (n: number) => void }) {
   const [v, setV] = useState(String(value))
   useEffect(() => { setV(String(value)) }, [value])
   return (
     <div>
       <label className="label">{label}</label>
+      {help && <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 4, lineHeight: 1.4 }}>{help}</div>}
       <input
         className="input"
         type="number"
@@ -803,6 +845,22 @@ function NumberField({ label, value, onSave }: { label: string; value: number; o
           if (Number.isFinite(n) && n !== value) onSave(n)
         }}
       />
+    </div>
+  )
+}
+
+function Toggle({ on, onChange, disabled }: { on: boolean; onChange: (v: boolean) => void; disabled?: boolean }) {
+  return (
+    <div
+      className={`admin-toggle-track ${on ? 'is-on' : ''} ${disabled ? 'is-disabled' : ''}`}
+      onClick={() => !disabled && onChange(!on)}
+      role="switch"
+      aria-checked={on}
+      tabIndex={disabled ? -1 : 0}
+      onKeyDown={(e) => { if (!disabled && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); onChange(!on) } }}
+      style={{ userSelect: 'none' }}
+    >
+      <div className="admin-toggle-thumb" />
     </div>
   )
 }
@@ -1070,7 +1128,7 @@ function SpotifyTab({
           an active playback device (a speaker or computer playing Spotify).
         </div>
         <div>
-          <button className="btn-green" onClick={connect}>Connect Spotify</button>
+          <Button variant="success" onClick={connect}>Connect Spotify</Button>
         </div>
       </div>
     )
@@ -1091,12 +1149,12 @@ function SpotifyTab({
             </div>
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
-            <button className="btn-outline" disabled={busy === 'refresh'} onClick={refresh}>
+            <Button variant="secondary" disabled={busy === 'refresh'} onClick={refresh}>
               {busy === 'refresh' ? '…' : 'Refresh token'}
-            </button>
-            <button className="btn-outline" disabled={busy === 'disconnect'} onClick={disconnect}>
+            </Button>
+            <Button variant="danger" disabled={busy === 'disconnect'} onClick={disconnect}>
               {busy === 'disconnect' ? '…' : 'Disconnect'}
-            </button>
+            </Button>
           </div>
         </div>
       </div>
@@ -1119,7 +1177,7 @@ function SpotifyTab({
             speaker, hit play on anything for a second, then click Refresh below.
             Spotify queue adds will fail until a device is active.
             <div style={{ marginTop: 8 }}>
-              <button className="btn-outline" onClick={load}>Refresh devices</button>
+              <Button variant="secondary" onClick={load}>Refresh devices</Button>
             </div>
           </div>
         ) : (
