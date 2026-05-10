@@ -22,7 +22,6 @@ const ALLOWED_PATCH_FIELDS = new Set([
   'max_queue_length',
   'pending_request_ttl_minutes',
   'timezone',
-  'curated_mode_enabled',
   'wifi_network',
   'wifi_password',
   'blocked_genres',

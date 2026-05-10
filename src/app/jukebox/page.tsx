@@ -25,9 +25,6 @@ interface PublicSettings {
   max_song_length_seconds: number
   allow_explicit: boolean
   max_queue_length: number
-  curated_mode_enabled?: boolean
-  curated_playlist_name?: string | null
-  curated_playlist_track_count?: number
 }
 
 const DEVICE_KEY = 'bbb_jukebox_device_id'
@@ -206,24 +203,6 @@ export default function JukeboxGuestPage() {
       {settings && !settings.is_active && <Banner kind="warn">{copy.guest.requestsPaused}</Banner>}
       {settings && settings.mode === 'locked' && <Banner kind="warn">{copy.guest.requestsLocked}</Banner>}
 
-      {/* Curated playlist banner */}
-      {settings && settings.curated_mode_enabled && settings.curated_playlist_name && (
-        <div style={{
-          padding: '8px 14px', borderRadius: 10,
-          border: '1px solid rgba(245,184,32,0.4)',
-          background: 'rgba(245,184,32,0.18)', color: '#fff8e7',
-          fontFamily: 'Sigmar, sans-serif', fontSize: 11, letterSpacing: '0.16em',
-          marginBottom: 12, textAlign: 'center', textTransform: 'uppercase',
-        }}>
-          — {copy.curated.bannerPrefix}{' '}
-          <span style={{ color: '#f5b820' }}>{settings.curated_playlist_name}</span>
-          {typeof settings.curated_playlist_track_count === 'number' && settings.curated_playlist_track_count > 0 && (
-            <span style={{ opacity: 0.75 }}> · {settings.curated_playlist_track_count} tracks</span>
-          )}
-          {' '}—
-        </div>
-      )}
-
       {/* Cooldown */}
       {cooldownMs > 0 && (
         <Banner kind="info">{copy.guest.cooldownActive(fmtMmSs(cooldownMs))}</Banner>
@@ -264,9 +243,7 @@ export default function JukeboxGuestPage() {
           {searchErr && <div style={errorHint}>{searchErr}</div>}
 
           {!searching && !searchErr && query.trim().length >= 2 && results.length === 0 && (
-            <div style={hint}>
-              {settings?.curated_mode_enabled ? copy.curated.emptyResults : copy.guest.emptyResults}
-            </div>
+            <div style={hint}>{copy.guest.emptyResults}</div>
           )}
 
           {results.length > 0 && (
@@ -301,11 +278,7 @@ export default function JukeboxGuestPage() {
             </div>
           )}
 
-          <div className="jukebox-marquee">
-            {settings?.curated_mode_enabled && settings.curated_playlist_name
-              ? <>— Tonight&apos;s playlist: {settings.curated_playlist_name} —</>
-              : <>— Pick a tune. We&apos;ll spin it up —</>}
-          </div>
+          <div className="jukebox-marquee">— Pick a tune. We&apos;ll spin it up —</div>
         </div>
       )}
 

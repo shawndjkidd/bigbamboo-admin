@@ -26,15 +26,6 @@ interface Settings {
   pending_request_ttl_minutes: number
   display_token: string
   timezone: string
-  curated_mode_enabled?: boolean
-  curated_playlist_url?: string | null
-  curated_playlist_id?: string | null
-  curated_playlist_name?: string | null
-  curated_playlist_owner?: string | null
-  curated_playlist_image_url?: string | null
-  curated_playlist_track_count?: number
-  curated_playlist_synced_at?: string | null
-  curated_playlist_error?: string | null
   wifi_network?: string | null
   wifi_password?: string | null
   blocked_genres?: string[] | null
@@ -71,19 +62,6 @@ interface BlockEntry {
 
 type Tab = 'pending' | 'queue' | 'history' | 'blocklist' | 'spotify' | 'settings'
 
-interface PlaylistPreset {
-  id: string
-  name: string
-  playlist_url: string
-  playlist_id: string
-  playlist_name: string | null
-  playlist_owner: string | null
-  playlist_image_url: string | null
-  playlist_track_count: number
-  last_synced_at: string | null
-  created_at: string
-}
-
 export default function JukeboxAdminPage() {
   const router = useRouter()
   const [staff, setStaff] = useState<{ id: string; role: string } | null>(null)
@@ -92,11 +70,7 @@ export default function JukeboxAdminPage() {
   const [toast, setToast] = useState('')
   const tokenRef = useRef<string | null>(null)
 
-  // Settings + presets are prefetched on mount so the Settings tab paints
-  // instantly when the user clicks it (instead of triggering 2 cold-start
-  // API calls only after the click).
   const [settings, setSettings] = useState<Settings | null>(null)
-  const [presets, setPresets] = useState<PlaylistPreset[] | null>(null)
 
   useEffect(() => {
     async function init() {
@@ -131,19 +105,13 @@ export default function JukeboxAdminPage() {
     return res.json()
   }, [])
 
-  // Prefetch settings + presets the moment we have a valid staff session.
-  // Both run in parallel — no point waiting on one before kicking off the other.
   useEffect(() => {
     if (!staff) return
     let alive = true
     void (async () => {
-      const [s, p] = await Promise.all([
-        apiFetch('/api/admin/jukebox/settings'),
-        apiFetch('/api/admin/jukebox/playlists'),
-      ])
+      const s = await apiFetch('/api/admin/jukebox/settings')
       if (!alive) return
       if (s.ok) setSettings(s.data as Settings)
-      if (p.ok) setPresets((p.data as { presets: PlaylistPreset[] }).presets)
     })()
     return () => { alive = false }
   }, [staff, apiFetch])
@@ -151,11 +119,6 @@ export default function JukeboxAdminPage() {
   const refreshSettings = useCallback(async () => {
     const j = await apiFetch('/api/admin/jukebox/settings')
     if (j.ok) setSettings(j.data as Settings)
-  }, [apiFetch])
-
-  const refreshPresets = useCallback(async () => {
-    const j = await apiFetch('/api/admin/jukebox/playlists')
-    if (j.ok) setPresets((j.data as { presets: PlaylistPreset[] }).presets)
   }, [apiFetch])
 
   function showToast(msg: string) {
@@ -196,10 +159,8 @@ export default function JukeboxAdminPage() {
           apiFetch={apiFetch}
           onAction={showToast}
           settings={settings}
-          presets={presets}
           setSettings={setSettings}
           refreshSettings={refreshSettings}
-          refreshPresets={refreshPresets}
         />
       )}
 
@@ -611,26 +572,18 @@ interface SettingsTabProps {
   apiFetch: (p: string, i?: RequestInit) => Promise<{ ok: boolean; data?: unknown; error?: { message: string } }>
   onAction: (m: string) => void
   settings: Settings | null
-  presets: PlaylistPreset[] | null
   setSettings: (s: Settings) => void
   refreshSettings: () => Promise<void>
-  refreshPresets: () => Promise<void>
 }
 
 function SettingsTab({
   apiFetch,
   onAction,
   settings: s,
-  presets,
   setSettings,
   refreshSettings,
-  refreshPresets,
 }: SettingsTabProps) {
   const [saving, setSaving] = useState(false)
-  const [newUrl, setNewUrl] = useState('')
-  const [newName, setNewName] = useState('')
-  const [addBusy, setAddBusy] = useState(false)
-  const [rowBusy, setRowBusy] = useState<string | null>(null)
 
   async function patch(patchBody: Partial<Settings>) {
     setSaving(true)
@@ -649,70 +602,9 @@ function SettingsTab({
     else onAction(j.error?.message || 'Rotate failed')
   }
 
-  async function addPreset() {
-    const url = newUrl.trim()
-    if (!url) return
-    setAddBusy(true)
-    const j = await apiFetch('/api/admin/jukebox/playlists', {
-      method: 'POST',
-      body: JSON.stringify({ url, name: newName.trim() || undefined }),
-    })
-    setAddBusy(false)
-    if (j.ok) {
-      setNewUrl(''); setNewName('')
-      onAction('Playlist saved')
-      refreshPresets()
-    } else {
-      onAction(j.error?.message || 'Could not save playlist')
-    }
-  }
-
-  async function activatePreset(p: PlaylistPreset) {
-    setRowBusy(p.id + ':activate')
-    onAction('Syncing tracks…')
-    const j = await apiFetch(`/api/admin/jukebox/playlists/${p.id}/activate`, { method: 'POST', body: '{}' })
-    setRowBusy(null)
-    if (j.ok) {
-      onAction(`Activated · ${(j.data as { track_count: number }).track_count} tracks`)
-      await Promise.all([refreshSettings(), refreshPresets()])
-    } else {
-      onAction(j.error?.message || 'Activate failed')
-    }
-  }
-
-  async function renamePreset(p: PlaylistPreset) {
-    const next = window.prompt('Rename playlist preset:', p.name)
-    if (next == null) return
-    const name = next.trim()
-    if (!name || name === p.name) return
-    setRowBusy(p.id + ':rename')
-    const j = await apiFetch(`/api/admin/jukebox/playlists/${p.id}`, {
-      method: 'PATCH',
-      body: JSON.stringify({ name }),
-    })
-    setRowBusy(null)
-    if (j.ok) { onAction('Renamed'); refreshPresets() }
-    else onAction(j.error?.message || 'Rename failed')
-  }
-
-  async function removePreset(p: PlaylistPreset) {
-    if (!window.confirm(`Remove "${p.name}" from your saved playlists?`)) return
-    setRowBusy(p.id + ':delete')
-    const j = await apiFetch(`/api/admin/jukebox/playlists/${p.id}`, { method: 'DELETE' })
-    setRowBusy(null)
-    if (j.ok) {
-      onAction('Removed')
-      await Promise.all([refreshSettings(), refreshPresets()])
-    } else {
-      onAction(j.error?.message || 'Remove failed')
-    }
-  }
-
   // Show skeleton cards while the prefetch is in flight — feels much faster
   // than a single "Loading…" text, especially during a Vercel cold start.
   if (!s) return <SettingsSkeleton />
-  const presetsLoaded = presets !== null
-  const presetList = presets ?? []
 
   // Always show the friendlier subdomain URL when the public base hint is set;
   // fall back to the current origin so admin-on-localhost still works in dev.
@@ -723,8 +615,6 @@ function SettingsTab({
   const displayUrl = displayBase
     ? (isSubdomain ? `${displayBase}/display?token=${s.display_token}` : `${displayBase}/jukebox/display?token=${s.display_token}`)
     : ''
-
-  const activeId = s.curated_playlist_id || null
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -761,130 +651,6 @@ function SettingsTab({
           <div><b style={{ color: 'var(--text-secondary)' }}>Approval</b> — guests submit; you tap Approve in Pending before it joins the queue.</div>
           <div><b style={{ color: 'var(--text-secondary)' }}>Autopilot</b> — auto-approve + instantly push to the Spotify queue. Zero staff action needed.</div>
           <div><b style={{ color: 'var(--text-secondary)' }}>Locked</b> — read-only. Guests see the queue but can&apos;t request anything.</div>
-        </div>
-      </div>
-
-      <div className="card" style={{ padding: 18 }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-          <div className="section-title">Curated playlists</div>
-          <ToggleChip
-            on={!!s.curated_mode_enabled}
-            label={s.curated_mode_enabled ? 'Curated mode: On' : 'Curated mode: Off'}
-            onClick={() => patch({ curated_mode_enabled: !s.curated_mode_enabled } as Partial<Settings>)}
-            disabled={saving}
-          />
-        </div>
-        <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 14 }}>
-          Save your favourite Spotify playlists below — then tap <b>Activate</b> to make one tonight&apos;s allowed list.
-          Curated mode must be On for this to gate guest requests. Make sure each playlist is public on Spotify.
-        </div>
-
-        {!presetsLoaded ? (
-          <div style={{ color: 'var(--text-muted)', fontSize: 13, padding: '12px 0' }}>Loading playlists…</div>
-        ) : presetList.length === 0 ? (
-          <div style={{
-            padding: '14px 16px', background: 'var(--bg-input)', borderRadius: 8,
-            color: 'var(--text-muted)', fontSize: 13, marginBottom: 14,
-          }}>
-            No saved playlists yet. Add one below to get started.
-          </div>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 14 }}>
-            {presetList.map((p) => {
-              const isActive = activeId === p.playlist_id
-              return (
-                <div
-                  key={p.id}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px',
-                    background: 'var(--bg-input)',
-                    border: isActive ? '2px solid var(--accent)' : '1px solid var(--border)',
-                    borderRadius: 8,
-                  }}
-                >
-                  {p.playlist_image_url ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={p.playlist_image_url} alt="" width={44} height={44} style={{ borderRadius: 4, objectFit: 'cover', flexShrink: 0 }} />
-                  ) : (
-                    <div style={{ width: 44, height: 44, background: 'var(--bg-subtle)', borderRadius: 4, flexShrink: 0 }} />
-                  )}
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</span>
-                      {isActive && <span className="badge badge-green" style={{ fontSize: 10 }}>ACTIVE</span>}
-                    </div>
-                    <div style={{ fontSize: 12, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {p.playlist_track_count || 0} tracks
-                      {p.playlist_owner ? ` · by ${p.playlist_owner}` : ''}
-                      {p.last_synced_at ? ` · synced ${new Date(p.last_synced_at).toLocaleDateString()}` : ' · not yet synced'}
-                    </div>
-                  </div>
-                  <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-                    <button
-                      className="btn-outline"
-                      onClick={() => renamePreset(p)}
-                      disabled={!!rowBusy}
-                      style={{ fontSize: 12, padding: '6px 10px' }}
-                    >
-                      Rename
-                    </button>
-                    <button
-                      className="btn-red"
-                      onClick={() => removePreset(p)}
-                      disabled={!!rowBusy}
-                      style={{ fontSize: 12, padding: '6px 10px' }}
-                    >
-                      Remove
-                    </button>
-                    <button
-                      className="btn-accent"
-                      onClick={() => activatePreset(p)}
-                      disabled={!!rowBusy}
-                      style={{ fontSize: 12, padding: '6px 14px', whiteSpace: 'nowrap' }}
-                    >
-                      {rowBusy === p.id + ':activate' ? '…' : isActive ? 'Re-sync' : 'Activate'}
-                    </button>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        )}
-
-        {s.curated_playlist_error && (
-          <div style={{ marginBottom: 14, padding: '8px 12px', background: 'var(--badge-red-bg)', color: 'var(--badge-red-text)', border: '1px solid var(--badge-red-border)', borderRadius: 8, fontSize: 12 }}>
-            Last sync error: <span style={{ fontFamily: 'monospace' }}>{s.curated_playlist_error}</span>
-          </div>
-        )}
-
-        <div style={{ borderTop: '1px solid var(--border)', paddingTop: 14 }}>
-          <div className="label" style={{ marginBottom: 8 }}>Add a Spotify playlist</div>
-          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr auto', gap: 8 }}>
-            <input
-              className="input"
-              placeholder="https://open.spotify.com/playlist/..."
-              value={newUrl}
-              onChange={(e) => setNewUrl(e.target.value)}
-              style={{ fontFamily: 'monospace', fontSize: 12 }}
-            />
-            <input
-              className="input"
-              placeholder="Friendly name (optional)"
-              value={newName}
-              onChange={(e) => setNewName(e.target.value)}
-            />
-            <button
-              className="btn-accent"
-              onClick={addPreset}
-              disabled={addBusy || !newUrl.trim()}
-              style={{ whiteSpace: 'nowrap' }}
-            >
-              {addBusy ? 'Saving…' : 'Save'}
-            </button>
-          </div>
-          <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 6 }}>
-            We&apos;ll fetch the playlist info now. Tracks sync when you tap Activate.
-          </div>
         </div>
       </div>
 

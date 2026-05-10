@@ -24,8 +24,6 @@ const SCOPES = [
   'user-read-playback-state',
   'user-modify-playback-state',
   'user-read-currently-playing',
-  'playlist-read-private',
-  'playlist-read-collaborative',
 ];
 
 export async function GET(req: NextRequest) {

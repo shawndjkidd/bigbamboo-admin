@@ -81,15 +81,7 @@ export async function POST(req: NextRequest) {
   const { track, settings } = result;
   const sb = getServiceClient();
 
-  // Open mode → auto-approve. Approval/event mode → pending.
-  // Curated mode also auto-approves: the track is already vetted by being in
-  // the venue's curated playlist, so requiring staff to approve again is busy
-  // work. (Per Shawn — "if it's on the playlist, it's pre-approved.")
-  const curatedSettings = settings as typeof settings & { curated_mode_enabled?: boolean };
-  const autoApprove =
-    settings.mode === 'open' ||
-    settings.mode === 'autopilot' ||
-    !!curatedSettings.curated_mode_enabled;
+  const autoApprove = settings.mode === 'open' || settings.mode === 'autopilot';
   const nowIso = new Date().toISOString();
 
   const insertRow = {
