@@ -738,33 +738,183 @@
   opacity: 0.85;
 }
 
-/* ── TV kiosk two-column layout ──────────────────────────────── */
+/* ── TV kiosk two-row layout ─────────────────────────────────────
+   Row 1 (60%) = NowPlaying 2/3  |  QR 1/3
+   Row 2 (40%) = UpNext 50%      |  FollowUs 50%
+   All heights are explicit grid fractions — no content-driven sizing.
+   ──────────────────────────────────────────────────────────────── */
 
-/* Body: CSS Grid so each child gets an explicit height from the grid */
 .kiosk-body {
   display: grid;
-  grid-template-columns: 45% 1fr;
-  gap: 28px;
+  grid-template-rows: 3fr 2fr;
+  gap: 24px;
   overflow: hidden;
 }
-
-/* Left column: two equal-height cells */
-.kiosk-body-left {
+.kiosk-row1 {
   display: grid;
-  grid-template-rows: 1fr 1fr;
-  gap: 16px;
+  grid-template-columns: 2fr 1fr;
+  gap: 24px;
+  overflow: hidden;
+}
+.kiosk-row2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
   overflow: hidden;
 }
 
-/* Right column: flex so Un Card can stretch to fill it */
-.kiosk-body-right {
+/* ── NOW PLAYING card ─────────────────────────────────────────── */
+.kiosk-now-card {
+  height: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
+  padding: 24px;
+}
+/* Inner flex row: square art on left, meta on right */
+.kiosk-np {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  gap: 28px;
+}
+/* Art: stretches to card content height → square via aspect-ratio */
+.kiosk-np-art {
+  align-self: stretch;
+  aspect-ratio: 1 / 1;
+  width: auto;
+  flex-shrink: 0;
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--bbb-wood-dark);
+  border: 4px solid var(--bbb-wood-dark);
+  box-shadow:
+    0 12px 28px rgba(0,0,0,0.45),
+    0 0 0 2px var(--bbb-yellow),
+    inset 0 0 0 1px rgba(0,0,0,0.4);
+}
+.kiosk-np-art img { width: 100%; height: 100%; display: block; object-fit: cover; }
+.kiosk-np-art-empty {
+  width: 100%; height: 100%;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--theme-display-font);
+  font-size: clamp(60px, 8vw, 120px);
+  color: var(--bbb-cream-edge);
+}
+.kiosk-np-meta {
+  flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
+  justify-content: center;
+  gap: 10px;
+  color: var(--bbb-wood-dark);
   overflow: hidden;
 }
+.kiosk-np-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 14px 5px;
+  border-radius: 100px;
+  background: var(--bbb-wood-dark);
+  border: 2px solid var(--bbb-yellow);
+  font-family: var(--theme-display-font);
+  font-size: clamp(10px, 0.9vw, 14px);
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--bbb-cream-light);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+  align-self: flex-start;
+  flex-shrink: 0;
+}
+.kiosk-np-title {
+  font-family: var(--theme-display-font);
+  font-size: clamp(30px, 4.2vw, 72px);
+  line-height: 1.05;
+  color: var(--bbb-wood-dark);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  letter-spacing: 0.005em;
+  text-shadow: 0 2px 0 var(--bbb-cream-edge);
+}
+.kiosk-np-artist {
+  font-size: clamp(16px, 2vw, 36px);
+  font-style: italic;
+  color: var(--bbb-wood);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.kiosk-np-progress {
+  height: 8px;
+  width: 100%;
+  background: var(--bbb-wood-dark);
+  border-radius: 100px;
+  overflow: hidden;
+  box-shadow: inset 0 1px 2px rgba(0,0,0,0.6);
+  flex-shrink: 0;
+}
+.kiosk-np-progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, var(--bbb-yellow), var(--bbb-orange) 60%, var(--bbb-coral));
+  border-radius: 100px;
+  transition: width 600ms linear;
+  box-shadow: 0 0 10px rgba(245,184,32,0.8), 0 0 20px rgba(232,93,74,0.4);
+}
+.kiosk-np-time {
+  display: flex;
+  justify-content: space-between;
+  font-feature-settings: 'tnum';
+  font-family: var(--theme-display-font);
+  font-size: clamp(11px, 1vw, 17px);
+  color: var(--bbb-wood);
+  letter-spacing: 0.06em;
+  flex-shrink: 0;
+}
+.kiosk-np-req { font-size: clamp(12px, 1vw, 17px); color: var(--bbb-wood); flex-shrink: 0; }
+.kiosk-np-req-label {
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  font-size: 11px;
+  margin-right: 6px;
+  color: var(--bbb-wood-light);
+}
+.kiosk-np-req-name {
+  color: var(--bbb-coral);
+  font-family: var(--theme-display-font);
+  font-size: clamp(13px, 1.2vw, 19px);
+}
+/* Empty state inside the Now Playing card */
+.kiosk-np-empty {
+  width: 100%; height: 100%;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 14px; text-align: center;
+}
+.kiosk-np-empty-note {
+  font-family: var(--theme-display-font);
+  font-size: clamp(48px, 6vw, 96px);
+  color: var(--bbb-cream-edge);
+  line-height: 1;
+}
+.kiosk-np-empty-text {
+  font-family: var(--theme-display-font);
+  font-size: clamp(22px, 2.4vw, 38px);
+  color: var(--bbb-wood);
+  letter-spacing: 0.04em;
+}
+.kiosk-np-empty-sub {
+  font-size: clamp(14px, 1.2vw, 20px);
+  color: var(--bbb-wood-light);
+  font-style: italic;
+  max-width: 420px;
+}
 
-/* QR card — top cell of left column.
-   height: 100% ensures percentage max-heights on children resolve. */
+/* ── QR card — 1/3 of row 1, ~square proportions → fills with QR ── */
 .kiosk-qr-card {
   height: 100%;
   box-sizing: border-box;
@@ -772,25 +922,33 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 16px;
+  gap: 14px;
   text-align: center;
   padding: 20px 16px;
   overflow: hidden;
 }
 .kiosk-scan-headline {
   font-family: var(--theme-display-font);
-  font-size: clamp(14px, 1.6vw, 24px);
+  font-size: clamp(12px, 1.4vw, 22px);
   letter-spacing: 0.22em;
-  color: var(--bbb-wood-dark);
+  color: var(--bbb-orange);
   text-transform: uppercase;
   line-height: 1.2;
   flex-shrink: 0;
 }
-/* QR image: constrained so it never overflows the card.
-   max-height 62% of card height leaves room for headline + URL. */
+/* Wrapper expands to fill available space; QR scales to fit it */
+.kiosk-qr-wrapper {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
 .kiosk-qr--tv {
-  max-height: 62% !important;
-  max-width: 90% !important;
+  max-width: 100% !important;
+  max-height: 100% !important;
   width: auto !important;
   height: auto !important;
   border-radius: 12px;
@@ -800,38 +958,30 @@
   display: block;
 }
 .kiosk-qr-url--tv {
-  font-size: clamp(11px, 1.1vw, 16px);
+  font-size: clamp(10px, 1vw, 15px);
   color: var(--bbb-wood-light);
   font-family: monospace;
   letter-spacing: 0.04em;
   flex-shrink: 0;
 }
 
-/* Now Playing card (kiosk-hero) and Empty state fill their grid cell */
-.kiosk-hero,
-.kiosk-empty {
+/* ── UP NEXT card — left half of row 2 ────────────────────────── */
+.kiosk-un-card {
   height: 100%;
   box-sizing: border-box;
-}
-
-/* Up Next card — fills the right column via flex */
-.kiosk-un-card {
-  flex: 1;
-  min-height: 0;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  padding: 20px 18px 16px;
+  padding: 16px 16px 12px;
 }
 .kiosk-un-header {
   font-family: var(--theme-display-font);
-  font-size: clamp(18px, 1.8vw, 28px);
+  font-size: clamp(14px, 1.4vw, 20px);
   letter-spacing: 0.28em;
   color: var(--bbb-orange);
   text-transform: uppercase;
-  text-shadow: 0 2px 0 rgba(107,66,38,0.15);
-  padding-bottom: 12px;
-  margin-bottom: 6px;
+  padding-bottom: 8px;
+  margin-bottom: 4px;
   border-bottom: 2px solid var(--bbb-cream-edge);
   flex-shrink: 0;
 }
@@ -842,81 +992,124 @@
   display: flex;
   flex-direction: column;
 }
+/* Each row takes equal share of available height */
 .kiosk-un-row {
+  flex: 1;
   display: grid;
-  grid-template-columns: 44px 64px 1fr auto;
+  grid-template-columns: 34px 52px 1fr auto;
   align-items: center;
-  gap: 16px;
-  padding: 10px 12px;
+  gap: 12px;
+  padding: 4px 8px;
+  min-height: 0;
 }
-.kiosk-un-row + .kiosk-un-row {
-  border-top: 1px solid var(--bbb-cream-edge);
-}
+.kiosk-un-row + .kiosk-un-row { border-top: 1px solid var(--bbb-cream-edge); }
 .kiosk-un-pos {
   font-family: var(--theme-display-font);
-  font-size: clamp(22px, 2.2vw, 36px);
+  font-size: clamp(16px, 1.7vw, 26px);
   color: var(--bbb-orange);
   text-align: center;
   font-feature-settings: 'tnum';
 }
 .kiosk-un-art {
-  width: 64px; height: 64px;
-  border-radius: 6px;
+  width: 52px; height: 52px;
+  border-radius: 5px;
   background: var(--bbb-wood-dark);
   overflow: hidden;
   border: 2px solid var(--bbb-cream-edge);
   flex-shrink: 0;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.25);
 }
-.kiosk-un-art img {
-  width: 100%; height: 100%; display: block; object-fit: cover;
-}
+.kiosk-un-art img { width: 100%; height: 100%; display: block; object-fit: cover; }
 .kiosk-un-meta { min-width: 0; }
 .kiosk-un-title {
-  font-size: clamp(18px, 1.7vw, 26px);
+  font-size: clamp(14px, 1.4vw, 20px);
   font-weight: 700;
   color: var(--bbb-wood-dark);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  letter-spacing: 0.005em;
 }
 .kiosk-un-artist {
-  font-size: clamp(14px, 1.3vw, 20px);
+  font-size: clamp(11px, 1vw, 15px);
   color: var(--bbb-wood);
   font-style: italic;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  margin-top: 3px;
+  margin-top: 2px;
 }
 .kiosk-un-side {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 4px;
+  display: flex; flex-direction: column;
+  align-items: flex-end; gap: 2px;
   white-space: nowrap;
-  text-align: right;
 }
 .kiosk-un-duration {
   font-family: var(--theme-display-font);
-  font-size: clamp(16px, 1.5vw, 22px);
+  font-size: clamp(12px, 1.2vw, 17px);
   color: var(--bbb-wood);
   font-feature-settings: 'tnum';
   letter-spacing: 0.04em;
 }
 .kiosk-un-req {
-  font-size: clamp(12px, 1.1vw, 16px);
+  font-size: clamp(10px, 0.9vw, 13px);
   color: var(--bbb-wood-light);
   font-style: italic;
 }
 .kiosk-up-next-empty {
   flex: 1;
+  display: flex; align-items: center; justify-content: center;
+  font-size: clamp(12px, 1.2vw, 17px);
+  color: var(--bbb-wood-light);
+  font-style: italic; text-align: center;
+}
+
+/* ── FOLLOW US card — right half of row 2 ─────────────────────── */
+.kiosk-follow-card {
+  height: 100%;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 16px 16px 12px;
+}
+.kiosk-follow-rows {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: clamp(8px, 1.4vh, 18px);
+  padding: 4px 0;
+}
+.kiosk-follow-row {
   display: flex;
   align-items: center;
-  justify-content: center;
-  font-size: clamp(14px, 1.4vw, 18px);
-  color: var(--bbb-wood-light);
-  font-style: italic;
-  text-align: center;
-  padding: 12px;
+  gap: 16px;
 }
+.kiosk-follow-mark {
+  width: clamp(36px, 3.6vw, 52px);
+  height: clamp(36px, 3.6vw, 52px);
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: system-ui, sans-serif;
+  font-weight: 900;
+  font-size: clamp(14px, 1.4vw, 20px);
+  color: #fff;
+  flex-shrink: 0;
+  letter-spacing: 0;
+  box-shadow: 0 3px 8px rgba(0,0,0,0.3);
+}
+.kiosk-follow-mark--ig {
+  background: linear-gradient(135deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%);
+}
+.kiosk-follow-mark--fb { background: #1877F2; }
+.kiosk-follow-mark--tt {
+  background: #010101;
+  font-size: clamp(18px, 1.8vw, 26px);
+}
+.kiosk-follow-handle {
+  font-family: var(--theme-display-font);
+  font-size: clamp(18px, 1.9vw, 30px);
+  color: var(--bbb-wood-dark);
+  letter-spacing: 0.03em;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+/* Reserved for optional venue content — add tagline, specials, hours here */
+.kiosk-follow-slot { flex-shrink: 0; }
 
 /* ── Premium BigBamBoo hero ──────────────────────────────────────
    TV-scale redesign: flex row, big art (clamp 240→360px), massive

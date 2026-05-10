@@ -1,8 +1,8 @@
 'use client'
 // ═══════════════════════════════════════════════════════════════
-//  Kiosk display client — TV-scale 3-zone layout:
-//    1. Main hero zone (hero left 60% | QR right 40%)
-//    2. Up Next band (full width)
+//  Kiosk display client — TV-scale 2-row layout:
+//    Row 1 (60%): Now Playing (2/3) | QR code (1/3)
+//    Row 2 (40%): Up Next (50%)     | Follow Us (50%)
 //  Polls /api/jukebox/queue every 12s and /api/jukebox/now-playing
 //  every 8s. Data fetching is unchanged from Phase 2.
 // ═══════════════════════════════════════════════════════════════
@@ -121,22 +121,31 @@ export default function DisplayClient({ guestUrl, qr }: Props) {
 
   return (
     <div className="kiosk-body">
-      {/* Left column: QR card (top) + Now Playing card (bottom) */}
-      <div className="kiosk-body-left">
+
+      {/* ── Row 1: Now Playing (2/3) + QR card (1/3) ── */}
+      <div className="kiosk-row1">
+
+        <div className="kiosk-now-card jukebox-cabinet">
+          {nowPlaying
+            ? <NowPlayingHero now={nowPlaying} />
+            : <NowPlayingEmpty />
+          }
+        </div>
+
         <div className="kiosk-qr-card jukebox-cabinet">
           <div className="kiosk-scan-headline">SCAN TO REQUEST A SONG</div>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={qr} alt="Scan to request a song" className="kiosk-qr kiosk-qr--tv" />
+          <div className="kiosk-qr-wrapper">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={qr} alt="Scan to request a song" className="kiosk-qr kiosk-qr--tv" />
+          </div>
           <div className="kiosk-qr-url kiosk-qr-url--tv">{displayUrl}</div>
         </div>
-        {nowPlaying
-          ? <NowPlayingHero now={nowPlaying} />
-          : <EmptyState />
-        }
+
       </div>
 
-      {/* Right column: vertical Up Next list */}
-      <div className="kiosk-body-right">
+      {/* ── Row 2: Up Next (50%) + Follow Us (50%) ── */}
+      <div className="kiosk-row2">
+
         <div className="kiosk-un-card jukebox-cabinet">
           <div className="kiosk-un-header">UP NEXT</div>
           <div className="kiosk-un-rows">
@@ -145,7 +154,7 @@ export default function DisplayClient({ guestUrl, qr }: Props) {
                 Nothing in the queue yet — scan the QR to add a song!
               </div>
             ) : (
-              upNext.slice(0, 8).map((it) => (
+              upNext.slice(0, 5).map((it) => (
                 <div key={it.id} className="kiosk-un-row">
                   <div className="kiosk-un-pos">{it.position}</div>
                   <div className="kiosk-un-art">
@@ -169,6 +178,28 @@ export default function DisplayClient({ guestUrl, qr }: Props) {
             )}
           </div>
         </div>
+
+        <div className="kiosk-follow-card jukebox-cabinet">
+          <div className="kiosk-un-header">FOLLOW US</div>
+          {/* TODO Shawn: swap these handles for the real BigBamBoo social accounts */}
+          <div className="kiosk-follow-rows">
+            <div className="kiosk-follow-row">
+              <div className="kiosk-follow-mark kiosk-follow-mark--ig">IG</div>
+              <span className="kiosk-follow-handle">@bigbamboohcmc</span>
+            </div>
+            <div className="kiosk-follow-row">
+              <div className="kiosk-follow-mark kiosk-follow-mark--fb">f</div>
+              <span className="kiosk-follow-handle">/bigbamboohcmc</span>
+            </div>
+            <div className="kiosk-follow-row">
+              <div className="kiosk-follow-mark kiosk-follow-mark--tt">♪</div>
+              <span className="kiosk-follow-handle">@bigbamboohcmc</span>
+            </div>
+          </div>
+          {/* Optional content slot — add venue tagline, drink special, or hours here */}
+          <div className="kiosk-follow-slot" />
+        </div>
+
       </div>
     </div>
   )
@@ -186,23 +217,17 @@ function NowPlayingHero({ now }: { now: NowPlaying }) {
   const art = now.album_art_url
 
   return (
-    <div className="kiosk-hero" data-fallback={now.is_fallback ? '1' : '0'}>
-      <div className="kiosk-hero-ambient"
-        style={art ? { backgroundImage: `url(${art})` } : undefined}
-        aria-hidden="true"
-      />
-      <div className="kiosk-hero-vignette" aria-hidden="true" />
-
-      <div className="kiosk-hero-art">
+    <div className="kiosk-np">
+      <div className="kiosk-np-art">
         {art
           // eslint-disable-next-line @next/next/no-img-element
           ? <img src={art} alt="" />
-          : <div className="kiosk-hero-art-empty" aria-hidden="true">♪</div>
+          : <div className="kiosk-np-art-empty" aria-hidden="true">♪</div>
         }
       </div>
 
-      <div className="kiosk-hero-meta">
-        <div className="kiosk-hero-label">
+      <div className="kiosk-np-meta">
+        <div className="kiosk-np-label">
           <span
             className={`kiosk-hero-dot ${
               now.is_playing === false || now.is_fallback ? 'is-paused' : 'is-live'
@@ -215,24 +240,24 @@ function NowPlayingHero({ now }: { now: NowPlaying }) {
           )}
         </div>
 
-        <div className="kiosk-hero-title">{now.track_name}</div>
-        <div className="kiosk-hero-artist">{now.artist_name}</div>
+        <div className="kiosk-np-title">{now.track_name}</div>
+        <div className="kiosk-np-artist">{now.artist_name}</div>
 
-        <div className="kiosk-hero-progress">
+        <div className="kiosk-np-progress">
           <div
-            className="kiosk-hero-progress-bar"
+            className="kiosk-np-progress-bar"
             style={{ width: `${hasLiveProgress ? pct : 0}%` }}
           />
         </div>
-        <div className="kiosk-hero-time">
+        <div className="kiosk-np-time">
           <span>{elapsed ?? '— —'}</span>
           <span>{total}</span>
         </div>
 
         {now.requested_by && now.requested_by !== 'anonymous' && (
-          <div className="kiosk-hero-req">
-            <span className="kiosk-hero-req-label">requested by</span>{' '}
-            <span className="kiosk-hero-req-name">{now.requested_by}</span>
+          <div className="kiosk-np-req">
+            <span className="kiosk-np-req-label">requested by</span>{' '}
+            <span className="kiosk-np-req-name">{now.requested_by}</span>
           </div>
         )}
       </div>
@@ -240,14 +265,12 @@ function NowPlayingHero({ now }: { now: NowPlaying }) {
   )
 }
 
-function EmptyState() {
+function NowPlayingEmpty() {
   return (
-    <div className="kiosk-empty">
-      <div className="kiosk-empty-arrow" aria-hidden="true">↑</div>
-      <div className="kiosk-empty-cta">BE THE FIRST TO SCAN</div>
-      <div className="kiosk-empty-sub">
-        Pick a song from your phone. It&rsquo;ll show up here for the room to see.
-      </div>
+    <div className="kiosk-np-empty">
+      <div className="kiosk-np-empty-note">♪</div>
+      <div className="kiosk-np-empty-text">Nothing playing yet</div>
+      <div className="kiosk-np-empty-sub">Scan the QR code to request the first song!</div>
     </div>
   )
 }
