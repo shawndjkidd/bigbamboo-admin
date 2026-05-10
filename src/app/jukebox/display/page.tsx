@@ -32,15 +32,15 @@ export default async function DisplayPage({
 
   if (!settings || settings.display_token !== token) notFound()
 
-  // Build the absolute URL for the QR.
+  // Build the absolute URL for the QR. Size 600 for crisp rendering at TV scale.
   const base = process.env.APP_BASE_URL?.replace(/\/$/, '') || ''
   const isSubdomain = /^https?:\/\/jukebox\./i.test(base)
   const guestUrl = base ? (isSubdomain ? base : `${base}/jukebox`) : '/jukebox'
-  const qr = qrImageUrl(guestUrl, { size: 480, dark: '2c1810', light: 'fff8e7' })
+  const qr = qrImageUrl(guestUrl, { size: 600, dark: '2c1810', light: 'fff8e7' })
 
   return (
     <div className="kiosk-page" style={pageWrap}>
-      <header className="kiosk-header">
+      <header className="kiosk-header" style={{ flexShrink: 0 }}>
         <div className="kiosk-header-brand">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
@@ -58,23 +58,7 @@ export default async function DisplayPage({
         )}
       </header>
 
-      <section className="kiosk-twocol" style={twoCol}>
-        <div className="jukebox-cabinet" style={leftCabinet}>
-          <DisplayClient guestUrl={guestUrl} />
-        </div>
-
-        <div className="jukebox-cabinet" style={rightCabinet}>
-          <div className="kiosk-scan-block">
-            <div className="kiosk-scan-label">Scan to request a song</div>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={qr} alt="QR code" className="kiosk-qr" />
-            <div className="kiosk-qr-url">{guestUrl}</div>
-          </div>
-
-          <div id="kiosk-just-played-mount" />
-          <div id="kiosk-counter-mount" />
-        </div>
-      </section>
+      <DisplayClient qr={qr} guestUrl={guestUrl} />
 
       {!settings.is_active && (
         <div style={pausedBanner}>{copy.guest.requestsPaused}</div>
@@ -86,40 +70,16 @@ export default async function DisplayPage({
   )
 }
 
-// Page sized to fit a 1080p TV viewport without scrolling.
-// Heights are capped via flex; the queue list inside DisplayClient
-// scrolls internally if it exceeds available vertical space.
 const pageWrap: React.CSSProperties = {
-  padding: '14px 24px 18px',
+  padding: '12px 20px 14px',
   height: '100vh',
   color: 'var(--theme-text)',
   display: 'flex',
   flexDirection: 'column',
-  gap: 12,
+  gap: 10,
   overflow: 'hidden',
 }
-const twoCol: React.CSSProperties = {
-  display: 'grid',
-  gridTemplateColumns: 'minmax(0, 1.7fr) minmax(0, 1fr)',
-  gap: 22,
-  alignItems: 'stretch',
-  flex: 1,
-  minHeight: 0,
-}
-const leftCabinet: React.CSSProperties = {
-  padding: 16,
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 12,
-  minHeight: 0,
-  overflow: 'hidden',
-}
-const rightCabinet: React.CSSProperties = {
-  padding: 16,
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 14,
-}
+
 const pausedBanner: React.CSSProperties = {
   position: 'fixed', bottom: 18, left: '50%', transform: 'translateX(-50%)',
   background: 'var(--theme-coral)', color: 'var(--theme-text)',

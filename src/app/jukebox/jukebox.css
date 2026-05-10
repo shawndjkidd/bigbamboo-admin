@@ -738,20 +738,125 @@
   opacity: 0.85;
 }
 
+/* ── TV kiosk 3-zone layout ──────────────────────────────────── */
+
+/* Zone 1: hero (left 60%) + QR card (right 40%) */
+.kiosk-main-zone {
+  display: flex;
+  gap: 16px;
+  flex: 0 0 57%;
+  min-height: 0;
+}
+.kiosk-left-col {
+  flex: 0 0 60%;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+/* Right column: cream cabinet card, centered QR */
+.kiosk-right-col {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  text-align: center;
+  /* jukebox-cabinet provides the cream gradient + shadow */
+}
+.kiosk-scan-headline {
+  font-family: var(--theme-display-font);
+  font-size: clamp(16px, 1.8vw, 26px);
+  letter-spacing: 0.22em;
+  color: var(--bbb-wood-dark);
+  text-transform: uppercase;
+  line-height: 1.2;
+}
+/* TV-scale QR — overrides .kiosk-qr max-width */
+.kiosk-qr--tv {
+  width: min(480px, 85%) !important;
+  max-width: none !important;
+  border-radius: 12px;
+  padding: 10px;
+  border: 3px solid var(--bbb-wood-dark);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.4);
+}
+.kiosk-qr-url--tv {
+  font-size: clamp(12px, 1.2vw, 18px);
+  color: var(--bbb-wood-light);
+  font-family: monospace;
+  letter-spacing: 0.04em;
+}
+
+/* Zone 2: Up Next band — full width, dark backdrop */
+.kiosk-up-next-band {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: rgba(10, 40, 28, 0.62);
+  border-radius: 12px;
+  padding: 8px 16px 10px;
+  border: 1px solid rgba(245, 184, 32, 0.22);
+  box-shadow: 0 6px 24px rgba(0,0,0,0.45);
+  backdrop-filter: blur(6px);
+}
+.kiosk-up-next-band-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+  font-family: var(--theme-display-font);
+  font-size: clamp(14px, 1.4vw, 20px);
+  letter-spacing: 0.28em;
+  color: var(--bbb-yellow);
+  text-transform: uppercase;
+  text-shadow: 0 2px 6px rgba(0,0,0,0.55);
+  padding-bottom: 4px;
+}
+.kiosk-up-next-band-header::before,
+.kiosk-up-next-band-header::after {
+  content: '';
+  flex: 1;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(245,184,32,0.4), transparent);
+}
+.kiosk-up-next-rows {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.kiosk-up-next-empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: clamp(14px, 1.4vw, 18px);
+  color: var(--theme-text-muted);
+  font-style: italic;
+  text-align: center;
+  padding: 12px;
+}
+
 /* ── Premium BigBamBoo hero ──────────────────────────────────────
-   Cream-cabinet jukebox feel: wood-grain frame, brass/gold accents,
-   marquee bulbs, coral live glow. Cinematic album art on the left,
-   chunky Sigmar typography on the right, BBB yellow→coral progress
-   bar. Sits on the painted-jungle backdrop from .jukebox-root. */
+   TV-scale redesign: flex row, big art (clamp 240→360px), massive
+   title (2 lines allowed), large artist, Sigmar label pill, progress
+   bar. Fills its left column. */
 .kiosk-hero {
   position: relative;
-  display: grid;
-  grid-template-columns: minmax(180px, 26%) 1fr;
-  gap: 28px;
+  display: flex;
+  flex-direction: row;
   align-items: center;
-  padding: 28px 32px 26px;
+  gap: 28px;
+  padding: 24px 28px;
   border-radius: 16px;
   overflow: hidden;
+  flex: 1;
   background:
     linear-gradient(180deg, var(--bbb-cream-light) 0%, var(--bbb-cream) 55%, var(--bbb-cream-dark) 100%);
   /* Wood-grain frame: outer border + inset highlight + drop shadow */
@@ -761,7 +866,6 @@
     0 18px 48px rgba(0,0,0,0.55),
     inset 0 2px 0 var(--bbb-cream-light),
     inset 0 -3px 0 var(--bbb-cream-edge);
-  flex-shrink: 0;
   isolation: isolate;
 }
 /* Coral "ON AIR" pulse ring — premium animated glow on the wood-frame */
@@ -793,12 +897,12 @@
 .kiosk-hero-ambient,
 .kiosk-hero-vignette { display: none; }
 
-/* Album art with wood-frame "record sleeve" treatment */
+/* Album art with wood-frame "record sleeve" treatment — TV-scale */
 .kiosk-hero-art {
-  width: 100%;
+  width: clamp(240px, 22vw, 360px);
   aspect-ratio: 1 / 1;
-  max-width: 240px;
-  border-radius: 8px;
+  flex-shrink: 0;
+  border-radius: 10px;
   overflow: hidden;
   background: var(--bbb-wood-dark);
   border: 4px solid var(--bbb-wood-dark);
@@ -820,8 +924,12 @@
 }
 
 .kiosk-hero-meta {
+  flex: 1;
   min-width: 0;
   color: var(--bbb-wood-dark);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 .kiosk-hero-label {
   display: inline-flex;
@@ -868,24 +976,26 @@
 }
 .kiosk-hero-title {
   font-family: var(--theme-display-font);
-  font-size: 56px;
-  line-height: 1.0;
+  font-size: clamp(42px, 4.5vw, 72px);
+  line-height: 1.05;
   color: var(--bbb-wood-dark);
-  margin-bottom: 4px;
-  white-space: nowrap;
+  margin-bottom: 6px;
+  /* Allow 2 lines — no truncation on a TV */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
   overflow: hidden;
-  text-overflow: ellipsis;
   letter-spacing: 0.005em;
   text-shadow: 0 2px 0 var(--bbb-cream-edge);
 }
 .kiosk-hero-artist {
-  font-size: 22px;
+  font-size: clamp(20px, 2.2vw, 32px);
   font-style: italic;
   color: var(--bbb-wood);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  margin-bottom: 16px;
+  margin-bottom: 18px;
 }
 /* Progress bar — yellow→coral gradient on a recessed wood track */
 .kiosk-hero-progress {
@@ -909,7 +1019,7 @@
   justify-content: space-between;
   font-feature-settings: 'tnum';
   font-family: var(--theme-display-font);
-  font-size: 12px;
+  font-size: clamp(12px, 1.1vw, 16px);
   color: var(--bbb-wood);
   letter-spacing: 0.06em;
   margin-bottom: 14px;
@@ -950,43 +1060,36 @@
   flex-direction: column;
   gap: 4px;
 }
-/* Up-next rows on the kiosk — cream cards with wood trim, BBB feel */
+/* Up-next rows on the kiosk — cream cards with wood trim, TV-scale */
 .kiosk-up-next-row {
   display: grid;
-  grid-template-columns: 36px 56px 1fr auto;
+  grid-template-columns: 44px 72px 1fr auto;
   align-items: center;
-  gap: 14px;
-  padding: 10px 14px 10px 10px;
+  gap: 16px;
+  padding: 8px 16px 8px 12px;
   background: linear-gradient(180deg, var(--bbb-cream-light) 0%, var(--bbb-cream) 100%);
   border: 2px solid var(--bbb-wood);
   border-radius: 10px;
   box-shadow:
     0 4px 10px rgba(0,0,0,0.35),
     inset 0 1px 0 rgba(255,255,255,0.55);
-  transition: transform 180ms ease, box-shadow 180ms ease;
-}
-.kiosk-up-next-row:hover {
-  transform: translateY(-1px);
-  box-shadow:
-    0 6px 14px rgba(0,0,0,0.45),
-    inset 0 1px 0 rgba(255,255,255,0.6),
-    0 0 0 2px var(--bbb-yellow);
 }
 .kiosk-up-next-pos {
   font-family: var(--theme-display-font);
-  font-size: 24px;
+  font-size: clamp(22px, 2vw, 30px);
   color: var(--bbb-coral);
   text-align: center;
   font-feature-settings: 'tnum';
   text-shadow: 0 2px 0 rgba(255,255,255,0.4);
 }
 .kiosk-up-next-art {
-  width: 56px; height: 56px;
+  width: 72px; height: 72px;
   border-radius: 6px;
   background: var(--bbb-wood-dark);
   border: 2px solid var(--bbb-wood-dark);
   overflow: hidden;
   box-shadow: 0 3px 8px rgba(0,0,0,0.45), 0 0 0 1px var(--bbb-yellow);
+  flex-shrink: 0;
 }
 .kiosk-up-next-art img {
   width: 100%; height: 100%; display: block; object-fit: cover;
@@ -995,36 +1098,36 @@
   min-width: 0;
 }
 .kiosk-up-next-title {
-  font-size: 17px;
+  font-size: clamp(17px, 1.6vw, 24px);
   font-weight: 600;
   color: var(--bbb-wood-dark);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   letter-spacing: 0.005em;
 }
 .kiosk-up-next-artist {
-  font-size: 13px;
+  font-size: clamp(13px, 1.2vw, 18px);
   color: var(--bbb-wood);
   font-style: italic;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  margin-top: 2px;
+  margin-top: 3px;
 }
 .kiosk-up-next-side {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 2px;
+  gap: 3px;
   white-space: nowrap;
   text-align: right;
 }
 .kiosk-up-next-duration {
   font-family: var(--theme-display-font);
-  font-size: 13px;
+  font-size: clamp(16px, 1.5vw, 22px);
   color: var(--bbb-wood);
   font-feature-settings: 'tnum';
   letter-spacing: 0.04em;
 }
 .kiosk-up-next-req {
-  font-size: 11px;
+  font-size: clamp(12px, 1.1vw, 16px);
   color: var(--bbb-wood-light);
   font-style: italic;
   letter-spacing: 0.02em;

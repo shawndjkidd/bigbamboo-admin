@@ -1,17 +1,13 @@
 'use client'
 // ═══════════════════════════════════════════════════════════════
-//  Kiosk display client — renders Now Playing hero + Up Next list,
-//  plus the right-column "Just Played" pill and activity counter
-//  via React portals (mount points are rendered in the parent
-//  server component so styling/positioning is consistent).
-//  Polls /api/jukebox/queue every 12s for the queue,
-//  and /api/jukebox/now-playing every 8s for live Spotify state.
-//  Spotify's live track wins; queue's now_playing is a fallback
-//  for when Spotify is paused or disconnected.
+//  Kiosk display client — TV-scale 3-zone layout:
+//    1. Main hero zone (hero left 60% | QR right 40%)
+//    2. Up Next band (full width)
+//  Polls /api/jukebox/queue every 12s and /api/jukebox/now-playing
+//  every 8s. Data fetching is unchanged from Phase 2.
 // ═══════════════════════════════════════════════════════════════
 
 import { useEffect, useState } from 'react'
-import { createPortal } from 'react-dom'
 
 interface Item {
   id: string
@@ -32,36 +28,15 @@ interface NowPlaying {
   requested_by: string
   played_at: string | null
   is_fallback: boolean
-  // Phase-2 only — populated when Spotify provides live state.
   progress_ms?: number
   is_playing?: boolean
-}
-
-interface JustPlayed {
-  id: string
-  track_name: string
-  artist_name: string
-  album_art_url: string | null
-  requested_by: string
-  played_at: string
 }
 
 interface QueuePayload {
   queue: Item[]
   now_playing: NowPlaying | null
-  just_played: JustPlayed | null
+  just_played: unknown
   played_today_count: number
-}
-
-function fmtDuration(ms: number): string {
-  const s = Math.floor(ms / 1000)
-  const mm = Math.floor(s / 60)
-  const ss = (s % 60).toString().padStart(2, '0')
-  return `${mm}:${ss}`
-}
-
-interface Props {
-  guestUrl: string
 }
 
 interface SpotifyLiveNow {
@@ -73,13 +48,23 @@ interface SpotifyLiveNow {
   is_playing: boolean
 }
 
-export default function DisplayClient({ guestUrl }: Props) {
+interface Props {
+  guestUrl: string
+  qr: string
+}
+
+function fmtDuration(ms: number): string {
+  const s = Math.floor(ms / 1000)
+  const mm = Math.floor(s / 60)
+  const ss = (s % 60).toString().padStart(2, '0')
+  return `${mm}:${ss}`
+}
+
+export default function DisplayClient({ guestUrl, qr }: Props) {
   const [data, setData] = useState<QueuePayload | null>(null)
   const [spotifyNow, setSpotifyNow] = useState<SpotifyLiveNow | null>(null)
-  const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
-    setMounted(true)
     let alive = true
     async function loadQueue() {
       try {
@@ -101,22 +86,13 @@ export default function DisplayClient({ guestUrl }: Props) {
     loadSpotify()
     const tQueue = setInterval(loadQueue, 12_000)
     const tSpotify = setInterval(loadSpotify, 8_000)
-    return () => {
-      alive = false
-      clearInterval(tQueue)
-      clearInterval(tSpotify)
-    }
+    return () => { alive = false; clearInterval(tQueue); clearInterval(tSpotify) }
   }, [])
 
   const items = data?.queue || []
   const queueNowPlaying = data?.now_playing ?? null
-  const justPlayed = data?.just_played ?? null
-  const playedTodayCount = data?.played_today_count ?? 0
 
-  // Prefer Spotify's live state when present. Enrich requested_by from the
-  // queue's now_playing if it's the same track (poll cron usually keeps
-  // these in sync). When Spotify says nothing's playing, fall through to
-  // the queue endpoint's logic (mark-played stamp → queue head).
+  // Prefer Spotify's live state when present; fall back to queue's now_playing.
   const nowPlaying: NowPlaying | null = spotifyNow
     ? {
         id: queueNowPlaying?.id || 'spotify',
@@ -137,70 +113,74 @@ export default function DisplayClient({ guestUrl }: Props) {
       }
     : queueNowPlaying
 
-  // When the queue head IS the now-playing fallback, hide it from the
-  // Up Next list so the same song doesn't appear twice on screen.
-  const upNext = (nowPlaying?.is_fallback && items.length > 0)
-    ? items.slice(1)
-    : items
+  // Hide the queue head from Up Next when it's the now-playing fallback.
+  const upNext = (nowPlaying?.is_fallback && items.length > 0) ? items.slice(1) : items
 
-  const isEmpty = !nowPlaying && upNext.length === 0
+  // Strip protocol for display-friendly URL under the QR.
+  const displayUrl = guestUrl.replace(/^https?:\/\//, '')
 
   return (
     <>
-      {isEmpty ? (
-        <EmptyState />
-      ) : (
-        <>
-          {nowPlaying && <NowPlayingHero now={nowPlaying} />}
+      {/* ── Zone 1: hero (60%) + QR (40%) ── */}
+      <div className="kiosk-main-zone">
+        <div className="kiosk-left-col">
+          {nowPlaying
+            ? <NowPlayingHero now={nowPlaying} />
+            : <EmptyState />
+          }
+        </div>
 
-          <div className="jukebox-up-next-divider"><span>UP NEXT</span></div>
+        <div className="jukebox-cabinet kiosk-right-col">
+          <div className="kiosk-scan-headline">SCAN TO REQUEST A SONG</div>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={qr} alt="Scan to request a song" className="kiosk-qr kiosk-qr--tv" />
+          <div className="kiosk-qr-url kiosk-qr-url--tv">{displayUrl}</div>
+        </div>
+      </div>
 
-          <div className="kiosk-up-next-list">
-            {upNext.length === 0 ? (
-              <div style={{
-                padding: '20px 0', textAlign: 'center',
-                color: 'var(--theme-card-text-muted)', fontSize: 14, fontStyle: 'italic',
-              }}>
-                One song queued. Scan the QR to add the next.
-              </div>
-            ) : (
-              upNext.slice(0, 5).map((it) => (
-                <div key={it.id} className="kiosk-up-next-row">
-                  <div className="kiosk-up-next-pos">{it.position}</div>
-                  <div className="kiosk-up-next-art">
-                    {it.album_art_url ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={it.album_art_url} alt="" />
-                    ) : null}
-                  </div>
-                  <div className="kiosk-up-next-meta">
-                    <div className="kiosk-up-next-title">{it.track_name}</div>
-                    <div className="kiosk-up-next-artist">{it.artist_name}</div>
-                  </div>
-                  <div className="kiosk-up-next-side">
-                    <div className="kiosk-up-next-duration">{fmtDuration(it.duration_ms)}</div>
-                    <div className="kiosk-up-next-req">— {it.requested_by}</div>
-                  </div>
+      {/* ── Zone 2: Up Next band (full width) ── */}
+      <div className="kiosk-up-next-band">
+        <div className="kiosk-up-next-band-header">
+          <span>UP NEXT</span>
+        </div>
+        <div className="kiosk-up-next-rows">
+          {upNext.length === 0 ? (
+            <div className="kiosk-up-next-empty">
+              Nothing in the queue yet — scan the QR to request the first song!
+            </div>
+          ) : (
+            upNext.slice(0, 6).map((it) => (
+              <div key={it.id} className="kiosk-up-next-row">
+                <div className="kiosk-up-next-pos">{it.position}</div>
+                <div className="kiosk-up-next-art">
+                  {it.album_art_url
+                    // eslint-disable-next-line @next/next/no-img-element
+                    ? <img src={it.album_art_url} alt="" />
+                    : null}
                 </div>
-              ))
-            )}
-          </div>
-        </>
-      )}
-
-      {/* Right-column portals — mount into the server-rendered slots */}
-      {mounted && <RightColumnExtras justPlayed={justPlayed} count={playedTodayCount} guestUrl={guestUrl} />}
+                <div className="kiosk-up-next-meta">
+                  <div className="kiosk-up-next-title">{it.track_name}</div>
+                  <div className="kiosk-up-next-artist">{it.artist_name}</div>
+                </div>
+                <div className="kiosk-up-next-side">
+                  <div className="kiosk-up-next-duration">{fmtDuration(it.duration_ms)}</div>
+                  {it.requested_by && (
+                    <div className="kiosk-up-next-req">— {it.requested_by}</div>
+                  )}
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
     </>
   )
 }
 
-// ── Now Playing hero — cinematic album art, frosted glass overlay
-//    Live progress bar when Spotify provides progress_ms, else static
-//    duration pill. Falls back gracefully when no Spotify connection.
+// ── Now Playing hero ─────────────────────────────────────────────
 function NowPlayingHero({ now }: { now: NowPlaying }) {
   const label = now.is_fallback ? 'UP FIRST' : 'NOW PLAYING'
-  const hasLiveProgress =
-    typeof now.progress_ms === 'number' && now.duration_ms > 0
+  const hasLiveProgress = typeof now.progress_ms === 'number' && now.duration_ms > 0
   const pct = hasLiveProgress
     ? Math.max(0, Math.min(100, (now.progress_ms! / now.duration_ms) * 100))
     : 0
@@ -210,21 +190,18 @@ function NowPlayingHero({ now }: { now: NowPlaying }) {
 
   return (
     <div className="kiosk-hero" data-fallback={now.is_fallback ? '1' : '0'}>
-      {/* Ambient blurred album art behind everything */}
-      <div
-        className="kiosk-hero-ambient"
+      <div className="kiosk-hero-ambient"
         style={art ? { backgroundImage: `url(${art})` } : undefined}
         aria-hidden="true"
       />
       <div className="kiosk-hero-vignette" aria-hidden="true" />
 
       <div className="kiosk-hero-art">
-        {art ? (
+        {art
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={art} alt="" />
-        ) : (
-          <div className="kiosk-hero-art-empty" aria-hidden="true">♪</div>
-        )}
+          ? <img src={art} alt="" />
+          : <div className="kiosk-hero-art-empty" aria-hidden="true">♪</div>
+        }
       </div>
 
       <div className="kiosk-hero-meta">
@@ -266,7 +243,6 @@ function NowPlayingHero({ now }: { now: NowPlaying }) {
   )
 }
 
-// ── Empty state — big arrow at the QR ───────────────────────────
 function EmptyState() {
   return (
     <div className="kiosk-empty">
@@ -275,63 +251,6 @@ function EmptyState() {
       <div className="kiosk-empty-sub">
         Pick a song from your phone. It&rsquo;ll show up here for the room to see.
       </div>
-    </div>
-  )
-}
-
-// ── Right column extras — Just Played pill + activity counter ───
-// Rendered via portals into mount points in the server-rendered
-// right cabinet, so server can lay them out in the correct slot.
-function RightColumnExtras({
-  justPlayed,
-  count,
-  guestUrl: _guestUrl,
-}: { justPlayed: JustPlayed | null; count: number; guestUrl: string }) {
-  const [justMount, setJustMount] = useState<HTMLElement | null>(null)
-  const [counterMount, setCounterMount] = useState<HTMLElement | null>(null)
-
-  useEffect(() => {
-    setJustMount(document.getElementById('kiosk-just-played-mount'))
-    setCounterMount(document.getElementById('kiosk-counter-mount'))
-  }, [])
-
-  return (
-    <>
-      {justMount && justPlayed
-        ? createPortal(<JustPlayedPill jp={justPlayed} />, justMount)
-        : null}
-      {counterMount && count > 0
-        ? createPortal(<ActivityCounter count={count} />, counterMount)
-        : null}
-    </>
-  )
-}
-
-function JustPlayedPill({ jp }: { jp: JustPlayed }) {
-  return (
-    <div className="kiosk-just-played">
-      <div className="kiosk-just-played-art">
-        {jp.album_art_url ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={jp.album_art_url} alt="" />
-        ) : null}
-      </div>
-      <div className="kiosk-just-played-meta">
-        <div className="kiosk-just-played-label">Just played</div>
-        <div className="kiosk-just-played-title">{jp.track_name}</div>
-        <div className="kiosk-just-played-artist">{jp.artist_name}</div>
-      </div>
-    </div>
-  )
-}
-
-function ActivityCounter({ count }: { count: number }) {
-  return (
-    <div className="kiosk-counter">
-      <span className="kiosk-counter-num">{count}</span>
-      <span className="kiosk-counter-label">
-        song{count === 1 ? '' : 's'} played today
-      </span>
     </div>
   )
 }
