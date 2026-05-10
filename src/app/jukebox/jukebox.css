@@ -738,32 +738,46 @@
   opacity: 0.85;
 }
 
-/* ── TV kiosk 3-zone layout ──────────────────────────────────── */
+/* ── TV kiosk two-column layout ──────────────────────────────── */
 
-/* Zone 1: hero (left 60%) + QR card (right 40%) */
-.kiosk-main-zone {
-  display: flex;
-  gap: 16px;
-  flex: 0 0 57%;
+/* Body fills remaining height below the header */
+.kiosk-body {
+  flex: 1;
   min-height: 0;
+  display: flex;
+  flex-direction: row;
+  gap: 28px;
 }
-.kiosk-left-col {
-  flex: 0 0 60%;
-  min-width: 0;
+
+/* Left column: 45% — QR card stacked above Now Playing card */
+.kiosk-body-left {
+  width: 45%;
+  flex-shrink: 0;
   display: flex;
   flex-direction: column;
+  gap: 28px;
+  min-height: 0;
 }
-/* Right column: cream cabinet card, centered QR */
-.kiosk-right-col {
+
+/* Right column: 55% — full-height Up Next card */
+.kiosk-body-right {
   flex: 1;
-  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+/* QR card — top half of left column */
+.kiosk-qr-card {
+  flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 18px;
   text-align: center;
-  /* jukebox-cabinet provides the cream gradient + shadow */
+  padding: 24px 20px;
 }
 .kiosk-scan-headline {
   font-family: var(--theme-display-font);
@@ -773,9 +787,9 @@
   text-transform: uppercase;
   line-height: 1.2;
 }
-/* TV-scale QR — overrides .kiosk-qr max-width */
+/* TV-scale QR — fills ~80% of the QR card width */
 .kiosk-qr--tv {
-  width: min(480px, 85%) !important;
+  width: min(80%, 640px) !important;
   max-width: none !important;
   border-radius: 12px;
   padding: 10px;
@@ -789,47 +803,97 @@
   letter-spacing: 0.04em;
 }
 
-/* Zone 2: Up Next band — full width, dark backdrop */
-.kiosk-up-next-band {
+/* Up Next card — right column, full height */
+.kiosk-un-card {
   flex: 1;
   min-height: 0;
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  background: rgba(10, 40, 28, 0.62);
-  border-radius: 12px;
-  padding: 8px 16px 10px;
-  border: 1px solid rgba(245, 184, 32, 0.22);
-  box-shadow: 0 6px 24px rgba(0,0,0,0.45);
-  backdrop-filter: blur(6px);
+  overflow: hidden;
+  padding: 20px 18px 16px;
 }
-.kiosk-up-next-band-header {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-shrink: 0;
+.kiosk-un-header {
   font-family: var(--theme-display-font);
-  font-size: clamp(14px, 1.4vw, 20px);
+  font-size: clamp(18px, 1.8vw, 28px);
   letter-spacing: 0.28em;
-  color: var(--bbb-yellow);
+  color: var(--bbb-orange);
   text-transform: uppercase;
-  text-shadow: 0 2px 6px rgba(0,0,0,0.55);
-  padding-bottom: 4px;
+  text-shadow: 0 2px 0 rgba(107,66,38,0.15);
+  padding-bottom: 12px;
+  margin-bottom: 6px;
+  border-bottom: 2px solid var(--bbb-cream-edge);
+  flex-shrink: 0;
 }
-.kiosk-up-next-band-header::before,
-.kiosk-up-next-band-header::after {
-  content: '';
-  flex: 1;
-  height: 2px;
-  background: linear-gradient(90deg, transparent, rgba(245,184,32,0.4), transparent);
-}
-.kiosk-up-next-rows {
+.kiosk-un-rows {
   flex: 1;
   min-height: 0;
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  gap: 5px;
+}
+.kiosk-un-row {
+  display: grid;
+  grid-template-columns: 44px 64px 1fr auto;
+  align-items: center;
+  gap: 16px;
+  padding: 10px 12px;
+}
+.kiosk-un-row + .kiosk-un-row {
+  border-top: 1px solid var(--bbb-cream-edge);
+}
+.kiosk-un-pos {
+  font-family: var(--theme-display-font);
+  font-size: clamp(22px, 2.2vw, 36px);
+  color: var(--bbb-orange);
+  text-align: center;
+  font-feature-settings: 'tnum';
+}
+.kiosk-un-art {
+  width: 64px; height: 64px;
+  border-radius: 6px;
+  background: var(--bbb-wood-dark);
+  overflow: hidden;
+  border: 2px solid var(--bbb-cream-edge);
+  flex-shrink: 0;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+}
+.kiosk-un-art img {
+  width: 100%; height: 100%; display: block; object-fit: cover;
+}
+.kiosk-un-meta { min-width: 0; }
+.kiosk-un-title {
+  font-size: clamp(18px, 1.7vw, 26px);
+  font-weight: 700;
+  color: var(--bbb-wood-dark);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  letter-spacing: 0.005em;
+}
+.kiosk-un-artist {
+  font-size: clamp(14px, 1.3vw, 20px);
+  color: var(--bbb-wood);
+  font-style: italic;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  margin-top: 3px;
+}
+.kiosk-un-side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  white-space: nowrap;
+  text-align: right;
+}
+.kiosk-un-duration {
+  font-family: var(--theme-display-font);
+  font-size: clamp(16px, 1.5vw, 22px);
+  color: var(--bbb-wood);
+  font-feature-settings: 'tnum';
+  letter-spacing: 0.04em;
+}
+.kiosk-un-req {
+  font-size: clamp(12px, 1.1vw, 16px);
+  color: var(--bbb-wood-light);
+  font-style: italic;
 }
 .kiosk-up-next-empty {
   flex: 1;
@@ -837,7 +901,7 @@
   align-items: center;
   justify-content: center;
   font-size: clamp(14px, 1.4vw, 18px);
-  color: var(--theme-text-muted);
+  color: var(--bbb-wood-light);
   font-style: italic;
   text-align: center;
   padding: 12px;
@@ -899,8 +963,9 @@
 
 /* Album art with wood-frame "record sleeve" treatment — TV-scale */
 .kiosk-hero-art {
-  width: clamp(240px, 22vw, 360px);
+  height: clamp(160px, 26vh, 320px);
   aspect-ratio: 1 / 1;
+  width: auto;
   flex-shrink: 0;
   border-radius: 10px;
   overflow: hidden;
@@ -1247,9 +1312,10 @@
   font-family: var(--theme-display-font);
 }
 
-/* Empty state — big animated arrow toward the QR */
+/* Empty state — cream card (matches NowPlayingHero), arrow points up to QR */
 .kiosk-empty {
   flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1257,30 +1323,37 @@
   padding: 32px 24px;
   text-align: center;
   gap: 16px;
+  border-radius: 16px;
+  background: linear-gradient(180deg, var(--bbb-cream-light) 0%, var(--bbb-cream) 55%, var(--bbb-cream-dark) 100%);
+  border: 4px solid var(--bbb-wood);
+  box-shadow:
+    0 0 0 2px var(--bbb-yellow),
+    0 18px 48px rgba(0,0,0,0.55),
+    inset 0 2px 0 var(--bbb-cream-light),
+    inset 0 -3px 0 var(--bbb-cream-edge);
 }
 .kiosk-empty-arrow {
   font-family: var(--theme-display-font);
-  font-size: 96px;
+  font-size: 80px;
   line-height: 1;
-  color: var(--theme-primary);
-  text-shadow: 0 3px 10px rgba(0,0,0,0.4);
-  animation: kiosk-arrow-bounce 1.6s ease-in-out infinite;
+  color: var(--bbb-orange);
+  text-shadow: 0 3px 8px rgba(0,0,0,0.2);
+  animation: kiosk-arrow-bounce-up 1.6s ease-in-out infinite;
 }
-@keyframes kiosk-arrow-bounce {
-  0%, 100% { transform: translateX(0); }
-  50%      { transform: translateX(18px); }
+@keyframes kiosk-arrow-bounce-up {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-14px); }
 }
 .kiosk-empty-cta {
   font-family: var(--theme-display-font);
-  font-size: 36px;
+  font-size: 32px;
   letter-spacing: 0.04em;
-  color: var(--theme-text);
-  text-shadow: 0 3px 10px rgba(0,0,0,0.65);
+  color: var(--bbb-wood-dark);
   line-height: 1.1;
 }
 .kiosk-empty-sub {
-  font-size: 14px;
-  color: var(--theme-text-muted);
+  font-size: 15px;
+  color: var(--bbb-wood);
   max-width: 320px;
 }
 

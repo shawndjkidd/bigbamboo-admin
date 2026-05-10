@@ -120,60 +120,57 @@ export default function DisplayClient({ guestUrl, qr }: Props) {
   const displayUrl = guestUrl.replace(/^https?:\/\//, '')
 
   return (
-    <>
-      {/* ── Zone 1: hero (60%) + QR (40%) ── */}
-      <div className="kiosk-main-zone">
-        <div className="kiosk-left-col">
-          {nowPlaying
-            ? <NowPlayingHero now={nowPlaying} />
-            : <EmptyState />
-          }
-        </div>
-
-        <div className="jukebox-cabinet kiosk-right-col">
+    <div className="kiosk-body">
+      {/* Left column: QR card (top) + Now Playing card (bottom) */}
+      <div className="kiosk-body-left">
+        <div className="kiosk-qr-card jukebox-cabinet">
           <div className="kiosk-scan-headline">SCAN TO REQUEST A SONG</div>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={qr} alt="Scan to request a song" className="kiosk-qr kiosk-qr--tv" />
           <div className="kiosk-qr-url kiosk-qr-url--tv">{displayUrl}</div>
         </div>
+        {nowPlaying
+          ? <NowPlayingHero now={nowPlaying} />
+          : <EmptyState />
+        }
       </div>
 
-      {/* ── Zone 2: Up Next band (full width) ── */}
-      <div className="kiosk-up-next-band">
-        <div className="kiosk-up-next-band-header">
-          <span>UP NEXT</span>
-        </div>
-        <div className="kiosk-up-next-rows">
-          {upNext.length === 0 ? (
-            <div className="kiosk-up-next-empty">
-              Nothing in the queue yet — scan the QR to request the first song!
-            </div>
-          ) : (
-            upNext.slice(0, 6).map((it) => (
-              <div key={it.id} className="kiosk-up-next-row">
-                <div className="kiosk-up-next-pos">{it.position}</div>
-                <div className="kiosk-up-next-art">
-                  {it.album_art_url
-                    // eslint-disable-next-line @next/next/no-img-element
-                    ? <img src={it.album_art_url} alt="" />
-                    : null}
-                </div>
-                <div className="kiosk-up-next-meta">
-                  <div className="kiosk-up-next-title">{it.track_name}</div>
-                  <div className="kiosk-up-next-artist">{it.artist_name}</div>
-                </div>
-                <div className="kiosk-up-next-side">
-                  <div className="kiosk-up-next-duration">{fmtDuration(it.duration_ms)}</div>
-                  {it.requested_by && (
-                    <div className="kiosk-up-next-req">— {it.requested_by}</div>
-                  )}
-                </div>
+      {/* Right column: vertical Up Next list */}
+      <div className="kiosk-body-right">
+        <div className="kiosk-un-card jukebox-cabinet">
+          <div className="kiosk-un-header">UP NEXT</div>
+          <div className="kiosk-un-rows">
+            {upNext.length === 0 ? (
+              <div className="kiosk-up-next-empty">
+                Nothing in the queue yet — scan the QR to add a song!
               </div>
-            ))
-          )}
+            ) : (
+              upNext.slice(0, 8).map((it) => (
+                <div key={it.id} className="kiosk-un-row">
+                  <div className="kiosk-un-pos">{it.position}</div>
+                  <div className="kiosk-un-art">
+                    {it.album_art_url
+                      // eslint-disable-next-line @next/next/no-img-element
+                      ? <img src={it.album_art_url} alt="" />
+                      : null}
+                  </div>
+                  <div className="kiosk-un-meta">
+                    <div className="kiosk-un-title">{it.track_name}</div>
+                    <div className="kiosk-un-artist">{it.artist_name}</div>
+                  </div>
+                  <div className="kiosk-un-side">
+                    <div className="kiosk-un-duration">{fmtDuration(it.duration_ms)}</div>
+                    {it.requested_by && (
+                      <div className="kiosk-un-req">— {it.requested_by}</div>
+                    )}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
         </div>
       </div>
-    </>
+    </div>
   )
 }
 
@@ -246,7 +243,7 @@ function NowPlayingHero({ now }: { now: NowPlaying }) {
 function EmptyState() {
   return (
     <div className="kiosk-empty">
-      <div className="kiosk-empty-arrow" aria-hidden="true">→</div>
+      <div className="kiosk-empty-arrow" aria-hidden="true">↑</div>
       <div className="kiosk-empty-cta">BE THE FIRST TO SCAN</div>
       <div className="kiosk-empty-sub">
         Pick a song from your phone. It&rsquo;ll show up here for the room to see.
