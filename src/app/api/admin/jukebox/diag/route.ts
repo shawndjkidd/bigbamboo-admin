@@ -40,7 +40,7 @@ export async function GET(req: NextRequest) {
   const tokenRow = await sb
     .from('jukebox_provider_auth')
     .select(
-      'id, is_connected, access_token_encrypted, refresh_token_encrypted, expires_at, scope, provider_user_id, display_name, last_error, created_at, updated_at'
+      'id, is_connected, access_token_encrypted, refresh_token_encrypted, token_expires_at, scopes, provider_user_id, provider_display_name, created_at, updated_at'
     )
     .eq('venue_id', venueIdResolved)
     .eq('provider', 'spotify')
@@ -49,7 +49,7 @@ export async function GET(req: NextRequest) {
   let token_state: Record<string, unknown> | null = null;
   if (tokenRow.data) {
     const r = tokenRow.data;
-    const expiresAt = r.expires_at ? new Date(r.expires_at) : null;
+    const expiresAt = r.token_expires_at ? new Date(r.token_expires_at) : null;
     const expiresInSec = expiresAt ? Math.round((expiresAt.getTime() - Date.now()) / 1000) : null;
     token_state = {
       row_id: r.id,
@@ -58,12 +58,11 @@ export async function GET(req: NextRequest) {
       access_token_len: r.access_token_encrypted ? String(r.access_token_encrypted).length : 0,
       has_refresh_token: r.refresh_token_encrypted != null,
       refresh_token_len: r.refresh_token_encrypted ? String(r.refresh_token_encrypted).length : 0,
-      expires_at: r.expires_at ?? null,
+      expires_at: r.token_expires_at ?? null,
       expires_in_sec_from_now: expiresInSec,
-      scope: r.scope ?? null,
+      scopes: r.scopes ?? null,
       provider_user_id: r.provider_user_id ?? null,
-      display_name: r.display_name ?? null,
-      last_error: r.last_error ?? null,
+      display_name: r.provider_display_name ?? null,
       created_at: r.created_at ?? null,
       updated_at: r.updated_at ?? null,
     };
