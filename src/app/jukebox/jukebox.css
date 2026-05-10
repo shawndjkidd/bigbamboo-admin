@@ -996,14 +996,18 @@
   font-style: italic;
 }
 
+/* ── Row height split: top 62%, bottom 38% ────────────────────── */
+.kiosk-row--top    { flex: 62; }
+.kiosk-row--bottom { flex: 38; }
+
 /* ── On Deck (queue list) card ────────────────────────────────── */
 .kiosk-deck-card { flex: 1; }
 .kiosk-section-title {
-  font-size: clamp(9px, 0.9vw, 12px);
+  font-size: clamp(16px, 1.5vw, 24px);
   font-weight: 800;
   letter-spacing: 1.5px;
   color: #E89A4A;
-  margin-bottom: 6px;
+  margin-bottom: 8px;
   flex-shrink: 0;
 }
 .kiosk-deck-list {
@@ -1018,17 +1022,17 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: clamp(11px, 1vw, 15px);
+  font-size: clamp(14px, 1.3vw, 20px);
   color: #8a7560;
   font-style: italic;
   text-align: center;
 }
 .kiosk-deck-row {
   display: grid;
-  grid-template-columns: 18px 22px 1fr auto;
+  grid-template-columns: 30px 40px 1fr auto;
   align-items: center;
-  gap: 7px;
-  padding: 3px 0;
+  gap: 10px;
+  padding: 8px 0;
   border-bottom: 1px solid rgba(58,37,17,0.07);
   flex-shrink: 0;
 }
@@ -1036,15 +1040,15 @@
 .kiosk-deck-pos {
   color: #E89A4A;
   font-weight: 800;
-  font-size: clamp(9px, 0.9vw, 13px);
+  font-size: clamp(16px, 1.4vw, 24px);
   text-align: right;
   line-height: 1;
   font-variant-numeric: tabular-nums;
 }
 .kiosk-deck-art {
-  width: 22px;
-  height: 22px;
-  border-radius: 3px;
+  width: 40px;
+  height: 40px;
+  border-radius: 4px;
   background: #6b4226;
   overflow: hidden;
   flex-shrink: 0;
@@ -1052,15 +1056,15 @@
 .kiosk-deck-art img { width: 100%; height: 100%; display: block; object-fit: cover; }
 .kiosk-deck-info { min-width: 0; line-height: 1.2; }
 .kiosk-deck-title {
-  font-size: clamp(10px, 1vw, 14px);
-  font-weight: 600;
+  font-size: clamp(15px, 1.2vw, 20px);
+  font-weight: 700;
   color: #3a2511;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 .kiosk-deck-meta {
-  font-size: clamp(8px, 0.8vw, 11px);
+  font-size: clamp(12px, 0.95vw, 16px);
   color: #6b4a2b;
   white-space: nowrap;
   overflow: hidden;
@@ -1069,14 +1073,12 @@
 .kiosk-deck-artist { font-style: italic; }
 .kiosk-deck-by { color: #8a7560; }
 .kiosk-deck-time {
-  font-size: clamp(9px, 0.85vw, 12px);
+  font-size: clamp(13px, 1.05vw, 18px);
   color: #3a2511;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
+  font-weight: 500;
 }
-
-/* ── Bottom row ────────────────────────────────────────────────── */
-.kiosk-row--bottom { flex: 0.65; }
 
 /* QR card — square (height of bottom row) */
 .kiosk-qr-card {

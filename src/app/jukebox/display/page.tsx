@@ -24,18 +24,20 @@ export default async function DisplayPage({
 
   if (!settings || settings.display_token !== token) notFound()
 
-  // Wifi fields — graceful fallback if columns don't exist yet (pre-migration)
+  // Wifi fields — graceful fallback if columns don't exist yet (pre-migration).
+  // Supabase never throws on schema errors; it returns { data: null, error }.
+  // We check the error field explicitly so a missing column silently shows nothing.
   let wifiNetwork: string | null = null
   let wifiPassword: string | null = null
-  try {
-    const { data: wifiRow } = await sb
-      .from('jukebox_settings')
-      .select('wifi_network, wifi_password')
-      .eq('venue_id', venueId)
-      .maybeSingle()
-    wifiNetwork = (wifiRow as { wifi_network?: string | null })?.wifi_network ?? null
-    wifiPassword = (wifiRow as { wifi_password?: string | null })?.wifi_password ?? null
-  } catch { /* columns not migrated yet — show nothing */ }
+  const { data: wifiRow, error: wifiErr } = await sb
+    .from('jukebox_settings')
+    .select('wifi_network, wifi_password')
+    .eq('venue_id', venueId)
+    .maybeSingle()
+  if (!wifiErr && wifiRow) {
+    wifiNetwork = (wifiRow as { wifi_network?: string | null }).wifi_network ?? null
+    wifiPassword = (wifiRow as { wifi_password?: string | null }).wifi_password ?? null
+  }
 
   const base = process.env.APP_BASE_URL?.replace(/\/$/, '') || ''
   const isSubdomain = /^https?:\/\/jukebox\./i.test(base)

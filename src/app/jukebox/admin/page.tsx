@@ -815,9 +815,9 @@ function SettingsTab({
       </div>
 
       <div className="card" style={{ padding: 18 }}>
-        <div className="section-title" style={{ marginBottom: 4 }}>Kiosk WiFi display</div>
+        <div className="section-title" style={{ marginBottom: 4 }}>Display info</div>
         <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 12 }}>
-          Shown on the kiosk header strip so guests can connect. Leave blank to hide.
+          WiFi credentials shown on the kiosk header strip. Leave blank to hide the pill.
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           <WifiField label="Network name (SSID)" field="wifi_network" settings={s} patch={patch} />
