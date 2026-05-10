@@ -499,8 +499,11 @@ export class SpotifyProvider implements PlaybackProvider {
       return { ok: false, error: { kind: 'token_invalid' } };
     }
     const tok = await getValidAccessToken(this.venueId);
-    console.log('[refreshAuthIfNeeded] getValidAccessToken result:', tok.ok ? 'ok' : `error=${tok.error.kind}`);
-    if (tok.ok === false) return { ok: false, error: tok.error };
+    if (tok.ok === false) {
+      console.log('[refreshAuthIfNeeded] getValidAccessToken result: error=' + tok.error.kind);
+      return { ok: false, error: tok.error };
+    }
+    console.log('[refreshAuthIfNeeded] getValidAccessToken result: ok');
     return { ok: true, value: undefined };
   }
 }
