@@ -785,14 +785,14 @@
 .kiosk-wifi-bar {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 24px;
   background: rgba(245,232,208,0.12);
   border: 1px solid rgba(245,232,208,0.2);
   border-radius: 999px;
-  padding: 4px 16px;
+  padding: 8px 24px;
 }
 .kiosk-wifi-label {
-  font-size: 9px;
+  font-size: 18px;
   font-weight: 800;
   letter-spacing: 1.5px;
   color: #E89A4A;
@@ -801,17 +801,17 @@
 .kiosk-wifi-pair {
   display: flex;
   align-items: baseline;
-  gap: 5px;
+  gap: 6px;
   font-family: monospace;
 }
 .kiosk-wifi-k {
-  font-size: 8px;
+  font-size: 14px;
   color: rgba(245,232,208,0.6);
   text-transform: uppercase;
   letter-spacing: 1px;
 }
 .kiosk-wifi-v {
-  font-size: clamp(11px, 1.1vw, 15px);
+  font-size: 24px;
   color: #F5E8D0;
   font-weight: 700;
 }
