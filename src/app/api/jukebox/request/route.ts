@@ -57,7 +57,7 @@ export async function POST(req: NextRequest) {
 
   const ipHash = hashIp(getRequestIp(req));
   const venueId = await getJukeboxVenueId();
-  const provider = getProvider('spotify');
+  const provider = getProvider('spotify', venueId);
 
   const result = await validateRequest(
     { providerTrackId, nickname: nick.clean },

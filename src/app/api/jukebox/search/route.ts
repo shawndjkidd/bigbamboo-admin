@@ -57,7 +57,7 @@ export async function GET(req: NextRequest) {
   }
 
   // Free mode: hit Spotify.
-  const provider = getProvider('spotify');
+  const provider = getProvider('spotify', venueId);
   const res = await provider.searchTracks(q, { limit: 12, market });
   if (res.ok === false) {
     return NextResponse.json(

@@ -52,7 +52,8 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const provider = getProvider('spotify');
+  const venueId = await getJukeboxVenueId();
+  const provider = getProvider('spotify', venueId);
   const meta = await provider.getPlaylistMeta(playlistId);
   if (meta.ok === false) {
     return NextResponse.json(
@@ -60,8 +61,6 @@ export async function POST(req: NextRequest) {
       { status: 502 },
     );
   }
-
-  const venueId = await getJukeboxVenueId();
   const sb = getServiceClient();
   const friendlyName = (body.name || '').trim() || meta.value.name;
 
