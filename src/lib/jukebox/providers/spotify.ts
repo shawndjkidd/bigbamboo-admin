@@ -256,16 +256,13 @@ export class SpotifyProvider implements PlaybackProvider {
     return { ok: true, value: mapTrack(json) };
   }
 
-  /** Pick the best token for playlist endpoints. Prefer the venue's
-   *  connected user token — it can read private playlists AND avoids
-   *  the Spotify Development-Mode restrictions on Client Credentials.
-   *  Fall back to Client Credentials so public playlists keep working
-   *  before the venue connects Spotify. */
+  /** Returns the venue's user token for playlist endpoints.
+   *  Client Credentials are NOT used as a fallback — they 403 on user
+   *  playlists even when public. If the venue isn't connected, fail fast. */
   private async getPlaylistAuthToken(): Promise<ProviderResult<string>> {
     const userTok = await getValidAccessToken(this.venueId);
     if (userTok.ok === true) return { ok: true, value: userTok.token };
-    // Fallback: Client Credentials. Only public, non-editorial playlists.
-    return await getAppToken();
+    return { ok: false, error: userTok.error };
   }
 
   // ── Playlist metadata (single cheap call) ────────────────────

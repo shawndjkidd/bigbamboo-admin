@@ -74,7 +74,7 @@ export async function syncCuratedPlaylist(
   venueId: string,
   playlistId: string,
 ): Promise<{ ok: true; count: number; meta: { name: string; owner: string; image: string | null } } | { ok: false; error: string }> {
-  const provider = getProvider('spotify');
+  const provider = getProvider('spotify', venueId);
   if (!('getPlaylistTracks' in provider)) {
     return { ok: false, error: 'provider_no_playlist_support' };
   }
