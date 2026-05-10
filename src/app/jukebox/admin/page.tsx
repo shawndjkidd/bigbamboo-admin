@@ -224,7 +224,11 @@ function PendingTab({
     if (j.ok) setRows((j.data as { requests: ReqRow[] }).requests)
   }, [apiFetch])
 
-  useEffect(() => { load() }, [load])
+  useEffect(() => {
+    load()
+    const t = setInterval(load, 7_000)
+    return () => clearInterval(t)
+  }, [load])
 
   async function act(id: string, action: 'approve' | 'reject') {
     setBusy(id + ':' + action)
@@ -291,7 +295,11 @@ function QueueTab({
     if (j.ok) setRows((j.data as { requests: ReqRow[] }).requests)
   }, [apiFetch])
 
-  useEffect(() => { load() }, [load])
+  useEffect(() => {
+    load()
+    const t = setInterval(load, 7_000)
+    return () => clearInterval(t)
+  }, [load])
 
   async function act(id: string, action: 'remove' | 'skip' | 'mark-played' | 'hide-nickname') {
     setBusy(id + ':' + action)
