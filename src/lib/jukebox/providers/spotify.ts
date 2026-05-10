@@ -124,7 +124,8 @@ function mapTrack(t: SpotifyTrackJson): Track {
 }
 
 function mapHttpError(status: number, retryAfter?: string | null): ProviderError {
-  if (status === 401 || status === 403) return { kind: 'token_invalid' };
+  if (status === 401) return { kind: 'token_invalid' };
+  if (status === 403) return { kind: 'missing_permissions' };
   if (status === 429) {
     const r = Number(retryAfter || '30');
     return { kind: 'rate_limited', retryAfterSec: Number.isFinite(r) ? r : 30 };
