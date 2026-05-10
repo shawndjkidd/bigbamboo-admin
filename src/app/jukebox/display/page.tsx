@@ -66,7 +66,7 @@ export default async function DisplayPage({
 const pageWrap: React.CSSProperties = {
   height: '100vh',
   overflow: 'hidden',
-  background: 'linear-gradient(135deg, #2a5a4f 0%, #1f4338 100%)',
+  background: 'transparent',
   boxSizing: 'border-box',
   padding: '10px',
 }

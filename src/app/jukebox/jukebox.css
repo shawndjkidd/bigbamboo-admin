@@ -769,17 +769,11 @@
   gap: 8px;
 }
 .kiosk-strip-logo {
-  width: 28px;
-  height: 28px;
-  background: #E89A4A;
-  border-radius: 5px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #3a2511;
-  font-weight: 800;
-  font-size: 11px;
+  height: 38px;
+  width: auto;
+  display: block;
   flex-shrink: 0;
+  filter: drop-shadow(0 2px 8px rgba(0,0,0,0.55));
 }
 .kiosk-strip-wordmark {
   color: #F5E8D0;

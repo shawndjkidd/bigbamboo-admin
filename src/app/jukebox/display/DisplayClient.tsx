@@ -141,7 +141,8 @@ export default function DisplayClient({ guestUrl, qr, wifiNetwork, wifiPassword 
       {/* ── Header strip ── */}
       <div className="kiosk-strip">
         <div className="kiosk-strip-brand">
-          <div className="kiosk-strip-logo">BB</div>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="https://bigbamboo.app/images/bbb-img-5.png" alt="BigBamBoo" className="kiosk-strip-logo" />
           <div className="kiosk-strip-wordmark">JUKEBOX</div>
         </div>
         {(wifiNetwork || wifiPassword) && (
