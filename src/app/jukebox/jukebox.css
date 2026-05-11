@@ -489,7 +489,7 @@
   align-items: baseline;
   justify-content: center;
   gap: 8px;
-  margin-top: 6px;
+  margin-top: 4px;
   margin-bottom: 0;
   position: relative;
   z-index: 2;
@@ -523,7 +523,7 @@
   color: var(--bbb-cream-light);
   line-height: 1.08;
   text-shadow: 0 3px 10px rgba(0,0,0,0.75);
-  margin-top: 18px;
+  margin-top: 12px;
 }
 .jukebox-tagline-accent { color: var(--bbb-yellow); }
 @media (min-width: 600px) {

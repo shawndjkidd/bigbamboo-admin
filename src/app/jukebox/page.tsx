@@ -78,6 +78,7 @@ export default function JukeboxGuestPage() {
   const [picked, setPicked] = useState<Track | null>(null)
   const [nickname, setNickname] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [queueCount, setQueueCount] = useState<number | null>(null)
   const [submitErr, setSubmitErr] = useState('')
   const [submitOk, setSubmitOk] = useState<{ position: number | null; mode: PublicSettings['mode']; status: string } | null>(null)
 
@@ -130,6 +131,14 @@ export default function JukeboxGuestPage() {
       }
     }, 300)
   }, [query, deviceId])
+
+  useEffect(() => {
+    if (!picked) return
+    fetch('/api/jukebox/queue', { cache: 'no-store' })
+      .then(r => r.json())
+      .then(j => { if (j.ok) setQueueCount((j.data.queue as Array<unknown>).length) })
+      .catch(() => {})
+  }, [picked])
 
   const cooldownMs = useMemo(() => {
     if (typeof window === 'undefined') return 0
@@ -296,11 +305,19 @@ export default function JukeboxGuestPage() {
               ) : null}
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div className="jukebox-strip-title" style={{ fontSize: 16 }}>{picked.name}</div>
-              <div className="jukebox-strip-sub" style={{ fontSize: 13 }}>{picked.artists.map(a => a.name).join(', ')}</div>
-              <div style={{ fontSize: 12, color: 'var(--bbb-wood-light)', marginTop: 4 }}>
-                {fmtDuration(picked.durationMs)}{picked.explicit ? ' · explicit' : ''}
-              </div>
+              <div className="jukebox-strip-title" style={{ fontSize: 22, whiteSpace: 'normal', lineHeight: 1.15 }}>{picked.name}</div>
+              <div style={{ fontSize: 18, color: 'var(--bbb-wood)', fontStyle: 'italic', fontFamily: 'Inter, system-ui, sans-serif', marginTop: 4, lineHeight: 1.2 }}>{picked.artists.map(a => a.name).join(', ')}</div>
+              <div style={{ fontSize: 15, color: 'var(--bbb-wood-light)', marginTop: 6 }}>{fmtDuration(picked.durationMs)}</div>
+              {picked.explicit && (
+                <div style={{ marginTop: 4, fontSize: 11, color: 'var(--bbb-wood-light)', fontFamily: 'Inter, system-ui, sans-serif', fontWeight: 500, letterSpacing: '0.02em' }}>
+                  🅴 explicit
+                </div>
+              )}
+              {typeof queueCount === 'number' && (
+                <div style={{ marginTop: 8, fontSize: 13, color: 'var(--bbb-wood-light)', fontStyle: 'italic', fontFamily: 'Inter, system-ui, sans-serif' }}>
+                  {queueCount === 0 ? "No wait — you're up soon." : `Estimated wait: ~${queueCount * 4} min`}
+                </div>
+              )}
             </div>
           </div>
 

@@ -588,6 +588,7 @@ function SettingsTab({
   const [saving, setSaving] = useState(false)
 
   async function patch(patchBody: Partial<Settings>) {
+    console.log('[SETTINGS PATCH] sending PATCH to /api/admin/jukebox/settings, body:', patchBody)
     setSaving(true)
     try {
       const j = await apiFetch('/api/admin/jukebox/settings', {
@@ -845,8 +846,11 @@ function SegmentedControl({
             value === o.value ? 'is-active' : '',
             o.color ? `seg-${o.color}` : '',
           ].filter(Boolean).join(' ')}
-          onClick={() => !disabled && onChange(o.value)}
-          disabled={disabled && value !== o.value}
+          onClick={() => {
+            console.log('[SEG] clicked, target:', o.value, 'disabled:', disabled, 'current:', value)
+            if (!disabled) onChange(o.value)
+          }}
+          disabled={!!disabled && value !== o.value}
           type="button"
         >
           {o.label}
