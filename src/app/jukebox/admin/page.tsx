@@ -226,6 +226,7 @@ function QueueTab({
 }: { apiFetch: (p: string, i?: RequestInit) => Promise<{ ok: boolean; data?: unknown; error?: { message: string } }>; onAction: (m: string) => void; mode: Settings['mode'] | null }) {
   const [rows, setRows] = useState<ReqRow[]>([])
   const [busy, setBusy] = useState<string | null>(null)
+  const retryingRef = useRef<Set<string>>(new Set())
 
   const load = useCallback(async () => {
     const [pj, qj] = await Promise.all([
@@ -242,6 +243,22 @@ function QueueTab({
     const t = setInterval(load, 7_000)
     return () => clearInterval(t)
   }, [load])
+
+  // Auto-retry rows stuck with a failed Spotify push (no active device at approval time).
+  // Fires once per row per polling cycle; stops after 30 min (cron cleanup takes over).
+  useEffect(() => {
+    const THIRTY_MIN = 30 * 60 * 1000
+    for (const row of rows) {
+      if (row.provider_queue_status !== 'failed') continue
+      if (row.status === 'pending') continue
+      if (Date.now() - new Date(row.created_at).getTime() >= THIRTY_MIN) continue
+      if (retryingRef.current.has(row.id)) continue
+      retryingRef.current.add(row.id)
+      void apiFetch(`/api/admin/jukebox/requests/${row.id}/add-to-provider-queue`, { method: 'POST', body: '{}' })
+        .then((j) => { if (j.ok) load() })
+        .finally(() => retryingRef.current.delete(row.id))
+    }
+  }, [rows, apiFetch, load])
 
   async function act(id: string, action: 'approve' | 'reject' | 'remove' | 'skip' | 'mark-played' | 'hide-nickname') {
     setBusy(id + ':' + action)
