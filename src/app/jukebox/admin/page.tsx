@@ -643,6 +643,8 @@ function SettingsTab({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <PostersSection apiFetch={apiFetch} onAction={onAction} />
+
       <Card>
         <div className="section-title" style={{ marginBottom: 16 }}>Options</div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
@@ -973,6 +975,202 @@ function EmptyCard({ title, sub }: { title: string; sub: string }) {
       <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--adm-text)', marginBottom: 6 }}>{title}</div>
       <div style={{ fontSize: 13, color: 'var(--adm-text-muted)' }}>{sub}</div>
     </div>
+  )
+}
+
+// ── Display Posters ────────────────────────────────────────────
+interface PosterRow {
+  id: string
+  storage_path: string
+  public_url: string
+  position: number
+  is_active: boolean
+  created_at: string
+}
+
+function PostersSection({
+  apiFetch,
+  onAction,
+}: {
+  apiFetch: (p: string, i?: RequestInit) => Promise<{ ok: boolean; data?: unknown; error?: { message: string } }>
+  onAction: (m: string) => void
+}) {
+  const [posters, setPosters] = useState<PosterRow[]>([])
+  const [uploading, setUploading] = useState(false)
+  const [busy, setBusy] = useState<string | null>(null)
+  const [dragOver, setDragOver] = useState(false)
+  const fileRef = useRef<HTMLInputElement>(null)
+  const dragIdx = useRef<number | null>(null)
+
+  const load = useCallback(async () => {
+    const j = await apiFetch('/api/admin/jukebox/posters')
+    if (j.ok) setPosters((j.data as { posters: PosterRow[] }).posters)
+  }, [apiFetch])
+
+  useEffect(() => { load() }, [load])
+
+  async function uploadFile(file: File) {
+    if (!['image/png', 'image/jpeg'].includes(file.type)) { onAction('Only PNG or JPEG allowed.'); return }
+    if (file.size > 2_097_152) { onAction('File too large (max 2 MB).'); return }
+    setUploading(true)
+    const form = new FormData()
+    form.append('file', file)
+    try {
+      const j = await apiFetch('/api/admin/jukebox/posters', { method: 'POST', body: form }) as { ok: boolean; data?: { poster: PosterRow }; error?: { message: string } }
+      if (j.ok && j.data?.poster) {
+        setPosters(p => [...p, j.data!.poster])
+        onAction('Poster uploaded')
+      } else {
+        onAction(j.error?.message || 'Upload failed')
+      }
+    } catch {
+      onAction('Upload failed')
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  async function toggle(id: string, is_active: boolean) {
+    setBusy(id + ':toggle')
+    const j = await apiFetch(`/api/admin/jukebox/posters/${id}`, { method: 'PATCH', body: JSON.stringify({ is_active }) })
+    setBusy(null)
+    if (j.ok) setPosters(p => p.map(x => x.id === id ? { ...x, is_active } : x))
+    else onAction(j.error?.message || 'Update failed')
+  }
+
+  async function remove(id: string) {
+    setBusy(id + ':del')
+    const j = await apiFetch(`/api/admin/jukebox/posters/${id}`, { method: 'DELETE' })
+    setBusy(null)
+    if (j.ok) setPosters(p => p.filter(x => x.id !== id))
+    else onAction(j.error?.message || 'Delete failed')
+  }
+
+  async function reorder(fromIdx: number, toIdx: number) {
+    if (fromIdx === toIdx) return
+    const next = [...posters]
+    const [moved] = next.splice(fromIdx, 1)
+    next.splice(toIdx, 0, moved)
+    const reindexed = next.map((p, i) => ({ ...p, position: i }))
+    setPosters(reindexed)
+    // Persist new positions in parallel
+    await Promise.all(
+      reindexed
+        .filter((p, i) => p.position !== posters[i]?.position)
+        .map(p => apiFetch(`/api/admin/jukebox/posters/${p.id}`, { method: 'PATCH', body: JSON.stringify({ position: p.position }) }))
+    )
+  }
+
+  function onDrop(e: React.DragEvent, toIdx: number) {
+    e.preventDefault()
+    if (dragIdx.current !== null) reorder(dragIdx.current, toIdx)
+    dragIdx.current = null
+  }
+
+  function onZoneDrop(e: React.DragEvent) {
+    e.preventDefault()
+    setDragOver(false)
+    const file = e.dataTransfer.files?.[0]
+    if (file) uploadFile(file)
+  }
+
+  return (
+    <Card>
+      <div className="section-title" style={{ marginBottom: 4 }}>Display Posters</div>
+      <div style={{ fontSize: 12, color: 'var(--adm-text-muted)', marginBottom: 4 }}>
+        Upload event posters, drink specials, or any image. Auto-rotates on the kiosk TV every 8 seconds.
+      </div>
+      <div style={{ fontSize: 11, color: 'var(--adm-text-muted)', marginBottom: 14, lineHeight: 1.5 }}>
+        Recommended size: <strong>1600 × 400 px</strong> (4:1 aspect ratio). PNG or JPG, max 2 MB.
+        Images narrower than 1600px will be upscaled. Non-4:1 ratios are cropped to fit.
+      </div>
+
+      {/* Drop zone */}
+      <div
+        onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
+        onDragLeave={() => setDragOver(false)}
+        onDrop={onZoneDrop}
+        onClick={() => fileRef.current?.click()}
+        style={{
+          border: `2px dashed ${dragOver ? 'var(--adm-accent)' : 'var(--adm-border)'}`,
+          borderRadius: 10, padding: '20px 16px', textAlign: 'center',
+          cursor: 'pointer', marginBottom: 14, transition: 'border-color 0.15s',
+          background: dragOver ? 'var(--adm-subtle-bg)' : 'transparent',
+        }}
+      >
+        <input
+          ref={fileRef}
+          type="file"
+          accept="image/png,image/jpeg"
+          multiple
+          style={{ display: 'none' }}
+          onChange={(e) => {
+            Array.from(e.target.files || []).forEach(uploadFile)
+            e.target.value = ''
+          }}
+        />
+        <div style={{ fontSize: 13, color: 'var(--adm-text-muted)' }}>
+          {uploading ? 'Uploading…' : 'Drag & drop poster images here, or click to browse'}
+        </div>
+        <div style={{ fontSize: 11, color: 'var(--adm-text-muted)', marginTop: 4 }}>PNG · JPG · max 2 MB</div>
+      </div>
+
+      {/* Thumbnail grid */}
+      {posters.length > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {posters.map((poster, idx) => (
+            <div
+              key={poster.id}
+              draggable
+              onDragStart={() => { dragIdx.current = idx }}
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={(e) => onDrop(e, idx)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 10,
+                padding: '8px 10px', borderRadius: 8,
+                border: '1px solid var(--adm-border)',
+                background: poster.is_active ? 'var(--adm-card-bg)' : 'var(--adm-subtle-bg)',
+                opacity: poster.is_active ? 1 : 0.55,
+                cursor: 'grab',
+              }}
+            >
+              <span style={{ fontSize: 16, color: 'var(--adm-text-muted)', cursor: 'grab', flexShrink: 0 }} title="Drag to reorder">⠿</span>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={poster.public_url}
+                alt=""
+                style={{ width: 160, height: 40, objectFit: 'cover', borderRadius: 4, flexShrink: 0, background: 'var(--adm-input-bg)' }}
+              />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 11, color: 'var(--adm-text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  #{idx + 1} · {poster.storage_path.split('/').pop()}
+                </div>
+              </div>
+              <SegmentedControl
+                options={[{ value: 'active', label: 'Active', color: 'green' }, { value: 'hidden', label: 'Hidden', color: 'red' }]}
+                value={poster.is_active ? 'active' : 'hidden'}
+                onChange={(v) => toggle(poster.id, v === 'active')}
+                disabled={busy === poster.id + ':toggle'}
+              />
+              <Button
+                variant="danger"
+                size="sm"
+                disabled={busy === poster.id + ':del'}
+                onClick={() => remove(poster.id)}
+              >
+                {busy === poster.id + ':del' ? '…' : '✕'}
+              </Button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {posters.length === 0 && !uploading && (
+        <div style={{ fontSize: 13, color: 'var(--adm-text-muted)', textAlign: 'center', padding: '8px 0' }}>
+          No posters yet. Upload one above.
+        </div>
+      )}
+    </Card>
   )
 }
 

@@ -56,16 +56,15 @@ function fmtDuration(ms: number): string {
   return `${mm}:${ss}`
 }
 
-// ── Poster data ───────────────────────────────────────────────────
-const POSTERS = [
-  { cls: 'kp-live',   decor: '♪', tag: 'TONIGHT', headline: 'LIVE MUSIC', sub: 'Request your favourites', foot: 'Scan the QR →' },
-  { cls: 'kp-happy',  decor: '☀', tag: 'EVERY DAY 5–8PM', headline: 'HAPPY HOUR', sub: 'Half-off cocktails & bar bites', foot: 'Come early!' },
-  { cls: 'kp-brand',  decor: '🌴', tag: 'BIG BAM BOO', headline: 'TROPICAL VIBES', sub: 'Ho Chi Minh City · District 1', foot: 'Welcome to the jungle' },
-]
+interface Poster {
+  id: string
+  public_url: string
+}
 
 export default function DisplayClient({ guestUrl, qr, wifiNetwork, wifiPassword, logoUrl }: Props) {
   const [data, setData] = useState<QueuePayload | null>(null)
   const [spotifyNow, setSpotifyNow] = useState<SpotifyLiveNow | null>(null)
+  const [posters, setPosters] = useState<Poster[]>([])
 
   // Poster rotator state
   const [posterIdx, setPosterIdx] = useState(0)
@@ -90,23 +89,32 @@ export default function DisplayClient({ guestUrl, qr, wifiNetwork, wifiPassword,
         if (j.ok) setSpotifyNow((j.data as SpotifyLiveNow | null) ?? null)
       } catch { /* ignore */ }
     }
-    loadQueue()
-    loadSpotify()
+    async function loadPosters() {
+      try {
+        const r = await fetch('/api/jukebox/posters', { cache: 'no-store' })
+        const j = await r.json()
+        if (!alive) return
+        if (j.ok) setPosters((j.data as { posters: Poster[] }).posters || [])
+      } catch { /* ignore */ }
+    }
+    loadQueue(); loadSpotify(); loadPosters()
     const tQueue = setInterval(loadQueue, 12_000)
     const tSpotify = setInterval(loadSpotify, 8_000)
-    return () => { alive = false; clearInterval(tQueue); clearInterval(tSpotify) }
+    const tPosters = setInterval(loadPosters, 30_000)
+    return () => { alive = false; clearInterval(tQueue); clearInterval(tSpotify); clearInterval(tPosters) }
   }, [])
 
   useEffect(() => {
+    if (posters.length <= 1) return
     posterTimer.current = setInterval(() => {
       setPosterVisible(false)
       setTimeout(() => {
-        setPosterIdx(i => (i + 1) % POSTERS.length)
+        setPosterIdx(i => (i + 1) % posters.length)
         setPosterVisible(true)
       }, 300)
     }, 8_000)
     return () => { if (posterTimer.current) clearInterval(posterTimer.current) }
-  }, [])
+  }, [posters.length])
 
   const items = data?.queue || []
   const queueNowPlaying = data?.now_playing ?? null
@@ -134,7 +142,7 @@ export default function DisplayClient({ guestUrl, qr, wifiNetwork, wifiPassword,
   const onDeck = (nowPlaying?.is_fallback && items.length > 0) ? items.slice(1) : items
 
   const displayUrl = guestUrl.replace(/^https?:\/\//, '')
-  const poster = POSTERS[posterIdx]
+  const activePoster = posters[posterIdx % Math.max(posters.length, 1)]
 
   return (
     <div className="kiosk-wrap">
@@ -236,21 +244,30 @@ export default function DisplayClient({ guestUrl, qr, wifiNetwork, wifiPassword,
           </div>
 
           <div
-            className={`kiosk-card kiosk-poster-panel ${poster.cls}`}
-            style={{ opacity: posterVisible ? 1 : 0 }}
+            className="kiosk-card kiosk-poster-panel"
+            style={{ opacity: posterVisible ? 1 : 0, padding: 0, overflow: 'hidden', position: 'relative' }}
           >
-            <div className="kiosk-poster-decor" aria-hidden="true">{poster.decor}</div>
-            <div>
-              <div className="kiosk-poster-tag">{poster.tag}</div>
-              <div className="kiosk-poster-headline">{poster.headline}</div>
-              <div className="kiosk-poster-sub">{poster.sub}</div>
-            </div>
-            <div className="kiosk-poster-foot">{poster.foot}</div>
-            <div className="kiosk-poster-dots">
-              {POSTERS.map((_, i) => (
-                <div key={i} className={`kiosk-poster-dot${i === posterIdx ? ' is-active' : ''}`} />
-              ))}
-            </div>
+            {activePoster ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={activePoster.public_url}
+                alt=""
+                style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+              />
+            ) : (
+              <div className="kp-live" style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, padding: 24 }}>
+                <div className="kiosk-poster-decor" aria-hidden="true">♪</div>
+                <div className="kiosk-poster-headline">TONIGHT — LIVE MUSIC</div>
+                <div className="kiosk-poster-sub">Request your favourites</div>
+              </div>
+            )}
+            {posters.length > 1 && (
+              <div className="kiosk-poster-dots" style={{ position: 'absolute', bottom: 8, right: 10 }}>
+                {posters.map((_, i) => (
+                  <div key={i} className={`kiosk-poster-dot${i === posterIdx ? ' is-active' : ''}`} />
+                ))}
+              </div>
+            )}
           </div>
 
         </div>
