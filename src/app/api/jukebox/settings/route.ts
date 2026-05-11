@@ -21,9 +21,12 @@ export async function GET(req: NextRequest) {
   try {
     const venueId = await getJukeboxVenueId();
     const sb = getServiceClient();
-    const [{ data }, { data: branding }] = await Promise.all([
+    const [{ data }, { data: extra }] = await Promise.all([
       sb.from('jukebox_public_settings').select('*').eq('venue_id', venueId).maybeSingle(),
-      sb.from('jukebox_settings').select('logo_url').eq('venue_id', venueId).maybeSingle(),
+      sb.from('jukebox_settings')
+        .select('logo_url, wifi_network, wifi_password, rotate_posters, poster_rotation_seconds')
+        .eq('venue_id', venueId)
+        .maybeSingle(),
     ]);
 
     if (!data) {
@@ -32,7 +35,8 @@ export async function GET(req: NextRequest) {
         { status: 404 },
       );
     }
-    return NextResponse.json({ ok: true, data: { ...data, logo_url: (branding as { logo_url?: string | null } | null)?.logo_url ?? null } });
+    const extraFields = (extra as Record<string, unknown> | null) ?? {};
+    return NextResponse.json({ ok: true, data: { ...data, ...extraFields } });
   } catch (e: unknown) {
     return NextResponse.json(
       { ok: false, error: { code: 'server_error', message: String(e) } },

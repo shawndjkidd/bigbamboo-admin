@@ -185,23 +185,6 @@ export default function DisplayClient({ guestBase, guestToken, qr: initialQr, wi
             <span className="kiosk-vibequeue">VibeQueue</span>
           </div>
         </div>
-        {(wifiNetwork || wifiPassword) && (
-          <div className="kiosk-wifi-bar">
-            <span className="kiosk-wifi-label">FREE WIFI</span>
-            {wifiNetwork && (
-              <span className="kiosk-wifi-pair">
-                <span className="kiosk-wifi-k">network</span>
-                <span className="kiosk-wifi-v">{wifiNetwork}</span>
-              </span>
-            )}
-            {wifiPassword && (
-              <span className="kiosk-wifi-pair">
-                <span className="kiosk-wifi-k">password</span>
-                <span className="kiosk-wifi-v">{wifiPassword}</span>
-              </span>
-            )}
-          </div>
-        )}
       </div>
 
       {/* ── Content ── */}
@@ -212,7 +195,7 @@ export default function DisplayClient({ guestBase, guestToken, qr: initialQr, wi
 
           <div className="kiosk-card kiosk-np-card">
             {nowPlaying
-              ? <NowPlayingHero now={nowPlaying} />
+              ? <NowPlayingHero now={nowPlaying} wifiNetwork={wifiNetwork} wifiPassword={wifiPassword} />
               : <NowPlayingEmpty />
             }
           </div>
@@ -296,7 +279,8 @@ export default function DisplayClient({ guestBase, guestToken, qr: initialQr, wi
 }
 
 // ── Now Playing hero ─────────────────────────────────────────────
-function NowPlayingHero({ now }: { now: NowPlaying }) {
+interface NPHeroProps { now: NowPlaying; wifiNetwork?: string | null; wifiPassword?: string | null }
+function NowPlayingHero({ now, wifiNetwork, wifiPassword }: NPHeroProps) {
   const hasLiveProgress = typeof now.progress_ms === 'number' && now.duration_ms > 0
   const pct = hasLiveProgress
     ? Math.max(0, Math.min(100, (now.progress_ms! / now.duration_ms) * 100))
@@ -338,6 +322,23 @@ function NowPlayingHero({ now }: { now: NowPlaying }) {
               : "from tonight’s playlist"
             }
           </div>
+          {(wifiNetwork || wifiPassword) && (
+            <div className="kiosk-np-wifi">
+              <span className="kiosk-np-wifi-label">FREE WIFI</span>
+              {wifiNetwork && (
+                <div className="kiosk-np-wifi-row">
+                  <span className="kiosk-np-wifi-k">network</span>
+                  <span className="kiosk-np-wifi-v">{wifiNetwork}</span>
+                </div>
+              )}
+              {wifiPassword && (
+                <div className="kiosk-np-wifi-row">
+                  <span className="kiosk-np-wifi-k">password</span>
+                  <span className="kiosk-np-wifi-v">{wifiPassword}</span>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </>

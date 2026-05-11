@@ -1081,6 +1081,45 @@
   color: #E89A4A;
   font-weight: 700;
 }
+.kiosk-np-wifi {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed rgba(58,37,17,0.25);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex-shrink: 0;
+}
+.kiosk-np-wifi-label {
+  font-size: clamp(9px, 0.85vw, 14px);
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  color: #E89A4A;
+  text-transform: uppercase;
+  margin-bottom: 2px;
+}
+.kiosk-np-wifi-row {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+.kiosk-np-wifi-k {
+  font-size: clamp(9px, 0.8vw, 13px);
+  color: rgba(58,37,17,0.5);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-family: var(--theme-mono-font);
+  flex-shrink: 0;
+}
+.kiosk-np-wifi-v {
+  font-size: clamp(11px, 1.1vw, 18px);
+  color: #3a2511;
+  font-weight: 700;
+  font-family: var(--theme-mono-font);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 .kiosk-np-empty {
   width: 100%;
   height: 100%;
