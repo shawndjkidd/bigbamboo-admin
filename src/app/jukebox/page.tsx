@@ -143,6 +143,9 @@ export default function JukeboxGuestPage() {
   const [now, setNow] = useState(Date.now())
   const [nowPlaying, setNowPlaying] = useState<{ track_name: string; artist_name: string; album_art_url: string | null } | null>(null)
   const debounceRef = useRef<number | null>(null)
+  // Keeps last non-null data so card content persists during fade-out.
+  const lastNpRef = useRef<{ track_name: string; artist_name: string; album_art_url: string | null } | null>(null)
+  if (nowPlaying) lastNpRef.current = nowPlaying
 
   useEffect(() => {
     setDeviceId(getOrCreateDeviceId())
@@ -270,38 +273,9 @@ export default function JukeboxGuestPage() {
 
       {/* Brand header */}
       <header style={{ textAlign: 'center', padding: '4px 0 20px', position: 'relative' }}>
-        <div style={{ position: 'absolute', top: 0, right: 0, zIndex: 1 }}>
+        <div style={{ position: 'absolute', top: 0, right: 0 }}>
           <LangToggle lang={lang} onSwitch={switchLang} />
         </div>
-
-        {nowPlaying && (
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: 10,
-            padding: '6px 10px', marginBottom: 14,
-            borderRadius: 10,
-            background: 'rgba(0,0,0,0.2)',
-            border: '1px solid rgba(255,248,231,0.1)',
-            textAlign: 'left',
-          }}>
-            {nowPlaying.album_art_url ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={nowPlaying.album_art_url} alt="" style={{ width: 32, height: 32, borderRadius: 4, flexShrink: 0, objectFit: 'cover' }} />
-            ) : (
-              <div style={{ width: 32, height: 32, borderRadius: 4, flexShrink: 0, background: 'rgba(255,248,231,0.1)' }} />
-            )}
-            <div style={{ minWidth: 0, flex: 1, overflow: 'hidden' }}>
-              <span style={{ fontFamily: 'Sigmar, sans-serif', fontSize: 11, color: 'rgba(255,248,231,0.55)', marginRight: 6, letterSpacing: '0.03em' }}>
-                Now playing:
-              </span>
-              <span style={{ fontSize: 13, color: 'rgba(255,248,231,0.88)', fontWeight: 500 }}>
-                {nowPlaying.track_name}
-              </span>
-              <span style={{ fontSize: 13, color: 'rgba(255,248,231,0.5)', marginLeft: 5 }}>
-                — {nowPlaying.artist_name}
-              </span>
-            </div>
-          </div>
-        )}
 
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
@@ -348,6 +322,41 @@ export default function JukeboxGuestPage() {
           )}
         </div>
       )}
+
+      {/* Now Playing card — fades in/out above search box */}
+      <div style={{
+        opacity: nowPlaying ? 1 : 0,
+        maxHeight: nowPlaying ? '160px' : '0px',
+        marginBottom: nowPlaying ? 14 : 0,
+        overflow: 'hidden',
+        transition: 'opacity 0.35s ease, max-height 0.4s ease, margin-bottom 0.4s ease',
+      }}>
+        {lastNpRef.current && (
+          <div className="jukebox-cabinet" style={{ display: 'flex', gap: 14, alignItems: 'center', padding: '12px 14px', margin: 0 }}>
+            {lastNpRef.current.album_art_url ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={lastNpRef.current.album_art_url}
+                alt=""
+                style={{ width: 80, height: 80, borderRadius: 8, flexShrink: 0, objectFit: 'cover' }}
+              />
+            ) : (
+              <div style={{ width: 80, height: 80, borderRadius: 8, flexShrink: 0, background: 'rgba(44,24,16,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28, color: 'var(--bbb-wood-light)' }}>♪</div>
+            )}
+            <div style={{ minWidth: 0, flex: 1 }}>
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', color: 'var(--theme-coral)', marginBottom: 4 }}>
+                NOW PLAYING
+              </div>
+              <div style={{ fontFamily: 'Sigmar, sans-serif', fontSize: 20, color: 'var(--bbb-wood-dark)', lineHeight: 1.15, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {lastNpRef.current.track_name}
+              </div>
+              <div style={{ fontSize: 15, fontStyle: 'italic', fontFamily: 'Inter, system-ui, sans-serif', color: 'var(--bbb-wood)', marginTop: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {lastNpRef.current.artist_name}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* Search + results */}
       {settings && settings.is_active && settings.mode !== 'locked' && cooldownMs === 0 && !picked && (
