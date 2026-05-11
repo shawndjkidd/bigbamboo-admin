@@ -1284,22 +1284,114 @@
 .kp-review { background: linear-gradient(135deg, #ffa726 0%, #f57c00 100%); }
 
 /* ════════════════════════════════════════════════════════
-   Admin dashboard — clean professional overrides.
-   Scoped to .admin-page so the kiosk stays tropical.
+   Admin dashboard — clean professional dashboard.
+   Scoped to .admin-page. Supports dark (default) and
+   light mode via .admin-page / .admin-page.is-dark.
+   Kiosk stays tropical.
    ════════════════════════════════════════════════════════ */
 
+/* ── Dark mode variables (default) ───────────────────── */
 .admin-page {
+  --adm-bg:                 #0F172A;
+  --adm-card:               #1E293B;
+  --adm-border:             #334155;
+  --adm-text:               #F1F5F9;
+  --adm-text-sec:           #CBD5E1;
+  --adm-text-muted:         #94A3B8;
+  --adm-nav-bg:             #1E293B;
+  --adm-input-bg:           #0F172A;
+  --adm-input-border:       #475569;
+  --adm-subtle-bg:          #162032;
+  --adm-accent:             #E89A4A;
+  --adm-btn-primary-bg:     #E89A4A;
+  --adm-btn-primary-text:   #1F2937;
+  --adm-btn-sec-bg:         #1E293B;
+  --adm-btn-sec-text:       #CBD5E1;
+  --adm-btn-sec-border:     #475569;
+  --adm-btn-ghost-hover:    #273549;
+  --adm-seg-bg:             #0F172A;
+  --adm-seg-border:         #475569;
+  --adm-seg-text:           #94A3B8;
+  --adm-toast-bg:           #334155;
+  --adm-toast-text:         #F1F5F9;
+  --adm-success:            #4ADE80;
+  --adm-danger:             #F87171;
+  --adm-warning-bg:         rgba(251,191,36,0.08);
+  --adm-warning-border:     rgba(251,191,36,0.3);
+  --adm-skel-bg:            rgba(255,255,255,0.06);
+  --adm-badge-green-bg:     rgba(74,222,128,0.15);
+  --adm-badge-green-text:   #4ADE80;
+  --adm-badge-green-border: rgba(74,222,128,0.3);
+  --adm-badge-red-bg:       rgba(248,113,113,0.15);
+  --adm-badge-red-text:     #F87171;
+  --adm-badge-red-border:   rgba(248,113,113,0.3);
+  --adm-badge-orange-bg:    rgba(252,211,77,0.15);
+  --adm-badge-orange-text:  #FCD34D;
+  --adm-badge-orange-border:rgba(252,211,77,0.3);
+  --adm-badge-gray-bg:      rgba(148,163,184,0.15);
+  --adm-badge-gray-text:    #94A3B8;
+  --adm-badge-gray-border:  rgba(148,163,184,0.3);
+  --adm-badge-blue-bg:      rgba(96,165,250,0.15);
+  --adm-badge-blue-text:    #60A5FA;
+  --adm-badge-blue-border:  rgba(96,165,250,0.3);
+
   min-height: 100vh;
-  background: #FAFAF9;
+  background: var(--adm-bg);
   font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  color: #111827;
+  color: var(--adm-text);
   -webkit-font-smoothing: antialiased;
 }
 
-/* ── Top nav strip ────────────────────────────────── */
+/* ── Light mode variables ─────────────────────────────── */
+.admin-page.is-light {
+  --adm-bg:                 #FAFAF9;
+  --adm-card:               #FFFFFF;
+  --adm-border:             #E5E7EB;
+  --adm-text:               #111827;
+  --adm-text-sec:           #374151;
+  --adm-text-muted:         #6B7280;
+  --adm-nav-bg:             #FFFFFF;
+  --adm-input-bg:           #FFFFFF;
+  --adm-input-border:       #D1D5DB;
+  --adm-subtle-bg:          #F3F4F6;
+  --adm-btn-primary-bg:     #1F2937;
+  --adm-btn-primary-text:   #FFFFFF;
+  --adm-btn-sec-bg:         #FFFFFF;
+  --adm-btn-sec-text:       #374151;
+  --adm-btn-sec-border:     #D1D5DB;
+  --adm-btn-ghost-hover:    #F3F4F6;
+  --adm-seg-bg:             #F9FAFB;
+  --adm-seg-border:         #D1D5DB;
+  --adm-seg-text:           #6B7280;
+  --adm-toast-bg:           #1F2937;
+  --adm-toast-text:         #FFFFFF;
+  --adm-success:            #15803D;
+  --adm-danger:             #B91C1C;
+  --adm-warning-bg:         rgba(255,180,80,0.12);
+  --adm-warning-border:     rgba(255,180,80,0.4);
+  --adm-skel-bg:            rgba(0,0,0,0.07);
+  --adm-badge-green-bg:     #DCFCE7;
+  --adm-badge-green-text:   #15803D;
+  --adm-badge-green-border: #86EFAC;
+  --adm-badge-red-bg:       #FEE2E2;
+  --adm-badge-red-text:     #B91C1C;
+  --adm-badge-red-border:   #FCA5A5;
+  --adm-badge-orange-bg:    #FEF3C7;
+  --adm-badge-orange-text:  #92400E;
+  --adm-badge-orange-border:#FDE68A;
+  --adm-badge-gray-bg:      #F3F4F6;
+  --adm-badge-gray-text:    #6B7280;
+  --adm-badge-gray-border:  #E5E7EB;
+  --adm-badge-blue-bg:      #DBEAFE;
+  --adm-badge-blue-text:    #1D4ED8;
+  --adm-badge-blue-border:  #BFDBFE;
+  --adm-skel-bg:            rgba(0,0,0,0.07);
+}
+
+/* ── Top nav strip ─────────────────────────────────────── */
 .admin-nav {
-  background: #FFFFFF;
-  border-bottom: 1px solid #E5E7EB;
+  background: var(--adm-nav-bg);
+  border-bottom: 1px solid var(--adm-border);
   position: sticky;
   top: 0;
   z-index: 100;
@@ -1320,7 +1412,7 @@
   gap: 10px;
   flex-shrink: 0;
   padding-right: 20px;
-  border-right: 1px solid #E5E7EB;
+  border-right: 1px solid var(--adm-border);
   margin-right: 4px;
 }
 
@@ -1328,7 +1420,7 @@
   font-family: Inter, system-ui, sans-serif;
   font-size: 16px;
   font-weight: 700;
-  color: #111827;
+  color: var(--adm-text);
   letter-spacing: -0.02em;
 }
 
@@ -1338,9 +1430,30 @@
   flex-shrink: 0;
   margin-left: auto;
   padding-left: 16px;
+  gap: 8px;
 }
 
-/* ── Tabs (inside nav) ────────────────────────────── */
+/* ── Theme toggle ──────────────────────────────────────── */
+.admin-theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  border: 1px solid var(--adm-border);
+  background: transparent;
+  color: var(--adm-text-muted);
+  cursor: pointer;
+  font-size: 16px;
+  transition: background 0.1s, color 0.1s;
+}
+.admin-theme-toggle:hover {
+  background: var(--adm-btn-ghost-hover);
+  color: var(--adm-text);
+}
+
+/* ── Tabs (inside nav) ─────────────────────────────────── */
 .admin-page .jukebox-admin-tabs {
   display: flex;
   flex: 1;
@@ -1359,7 +1472,7 @@
   padding: 0 16px;
   font-size: 14px;
   font-weight: 500;
-  color: #6B7280;
+  color: var(--adm-text-muted);
   font-family: Inter, system-ui, sans-serif;
   white-space: nowrap;
   background: transparent;
@@ -1368,34 +1481,34 @@
 }
 
 .admin-page .jukebox-admin-tab:hover {
-  color: #111827;
-  background: #F9FAFB;
+  color: var(--adm-text);
+  background: var(--adm-btn-ghost-hover);
 }
 
 .admin-page .jukebox-admin-tab.is-active {
-  color: #111827;
+  color: var(--adm-text);
   background: transparent;
   font-weight: 600;
-  box-shadow: inset 0 -2px 0 #E89A4A;
+  box-shadow: inset 0 -2px 0 var(--adm-accent);
 }
 
-/* ── Cards ────────────────────────────────────────── */
+/* ── Cards ─────────────────────────────────────────────── */
 .admin-page .card {
-  background: #FFFFFF;
-  border: 1px solid #E5E7EB;
+  background: var(--adm-card);
+  border: 1px solid var(--adm-border);
   border-radius: 8px;
   box-shadow: none;
-  color: #111827;
+  color: var(--adm-text);
 }
 
-/* ── Typography ───────────────────────────────────── */
+/* ── Typography ────────────────────────────────────────── */
 .admin-page .section-title {
   font-family: Inter, system-ui, sans-serif;
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: #6B7280;
+  color: var(--adm-text-muted);
 }
 
 .admin-page .label {
@@ -1404,16 +1517,16 @@
   font-weight: 500;
   letter-spacing: 0;
   text-transform: none;
-  color: #374151;
+  color: var(--adm-text-sec);
   margin-bottom: 4px;
 }
 
-/* ── Inputs ───────────────────────────────────────── */
+/* ── Inputs ────────────────────────────────────────────── */
 .admin-page .input {
-  background: #FFFFFF;
-  border: 1px solid #D1D5DB;
+  background: var(--adm-input-bg);
+  border: 1px solid var(--adm-input-border);
   border-radius: 6px;
-  color: #111827;
+  color: var(--adm-text);
   font-style: normal;
   font-size: 14px;
   box-shadow: none;
@@ -1423,20 +1536,20 @@
 
 .admin-page .input:focus {
   outline: none;
-  border-color: #9CA3AF;
-  box-shadow: 0 0 0 3px rgba(156,163,175,0.2);
+  border-color: var(--adm-accent);
+  box-shadow: 0 0 0 3px rgba(232,154,74,0.2);
 }
 
 .admin-page .input::placeholder {
-  color: #9CA3AF;
+  color: var(--adm-text-muted);
   font-style: normal;
 }
 
 .admin-page select.input {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236B7280' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2394A3B8' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
 }
 
-/* ── Buttons ──────────────────────────────────────── */
+/* ── Buttons ────────────────────────────────────────────── */
 .admin-page .admin-btn {
   font-family: Inter, system-ui, sans-serif;
   font-weight: 600;
@@ -1448,41 +1561,48 @@
 .admin-page .admin-btn--md { padding: 8px 16px; font-size: 14px; }
 
 .admin-page .admin-btn--primary {
-  background: #1F2937;
-  color: #FFFFFF;
-  border-color: #1F2937;
+  background: var(--adm-btn-primary-bg);
+  color: var(--adm-btn-primary-text);
+  border-color: var(--adm-btn-primary-bg);
 }
-.admin-page .admin-btn--primary:hover:not(:disabled) { background: #111827; filter: none; }
+.admin-page .admin-btn--primary:hover:not(:disabled) { filter: brightness(1.1); }
 
 .admin-page .admin-btn--secondary {
-  background: #FFFFFF;
-  color: #374151;
-  border-color: #D1D5DB;
+  background: var(--adm-btn-sec-bg);
+  color: var(--adm-btn-sec-text);
+  border-color: var(--adm-btn-sec-border);
 }
-.admin-page .admin-btn--secondary:hover:not(:disabled) { background: #F9FAFB; filter: none; }
+.admin-page .admin-btn--secondary:hover:not(:disabled) {
+  background: var(--adm-btn-ghost-hover);
+  filter: none;
+}
 
 .admin-page .admin-btn--danger {
   background: #DC2626;
   color: #FFFFFF;
   border-color: #DC2626;
 }
-.admin-page .admin-btn--danger:hover:not(:disabled) { background: #B91C1C; filter: none; }
+.admin-page .admin-btn--danger:hover:not(:disabled) { filter: brightness(1.1); }
 
 .admin-page .admin-btn--success {
   background: #16A34A;
   color: #FFFFFF;
   border-color: #16A34A;
 }
-.admin-page .admin-btn--success:hover:not(:disabled) { background: #15803D; filter: none; }
+.admin-page .admin-btn--success:hover:not(:disabled) { filter: brightness(1.1); }
 
 .admin-page .admin-btn--ghost {
-  color: #374151;
+  color: var(--adm-text-muted);
   border-color: transparent;
   background: transparent;
 }
-.admin-page .admin-btn--ghost:hover:not(:disabled) { background: #F3F4F6; color: #111827; filter: none; }
+.admin-page .admin-btn--ghost:hover:not(:disabled) {
+  background: var(--adm-btn-ghost-hover);
+  color: var(--adm-text);
+  filter: none;
+}
 
-/* ── Badges — rectangular, not pill ──────────────── */
+/* ── Badges — rectangular ───────────────────────────────── */
 .admin-page .badge {
   border-radius: 6px;
   font-family: Inter, system-ui, sans-serif;
@@ -1491,60 +1611,64 @@
   padding: 3px 8px;
 }
 
-.admin-page .badge-green  { background: #DCFCE7; color: #15803D; border-color: #86EFAC; }
-.admin-page .badge-red    { background: #FEE2E2; color: #B91C1C; border-color: #FCA5A5; }
-.admin-page .badge-orange { background: #FEF3C7; color: #92400E; border-color: #FDE68A; }
-.admin-page .badge-gray   { background: #F3F4F6; color: #6B7280; border-color: #E5E7EB; }
-.admin-page .badge-blue   { background: #DBEAFE; color: #1D4ED8; border-color: #BFDBFE; }
+.admin-page .badge-green  { background: var(--adm-badge-green-bg);  color: var(--adm-badge-green-text);  border-color: var(--adm-badge-green-border); }
+.admin-page .badge-red    { background: var(--adm-badge-red-bg);    color: var(--adm-badge-red-text);    border-color: var(--adm-badge-red-border); }
+.admin-page .badge-orange { background: var(--adm-badge-orange-bg); color: var(--adm-badge-orange-text); border-color: var(--adm-badge-orange-border); }
+.admin-page .badge-gray   { background: var(--adm-badge-gray-bg);   color: var(--adm-badge-gray-text);   border-color: var(--adm-badge-gray-border); }
+.admin-page .badge-blue   { background: var(--adm-badge-blue-bg);   color: var(--adm-badge-blue-text);   border-color: var(--adm-badge-blue-border); }
 
-/* ── Toast ────────────────────────────────────────── */
+/* ── Toast ──────────────────────────────────────────────── */
 .admin-page .toast {
   border-radius: 8px;
   font-family: Inter, system-ui, sans-serif;
-  background: #1F2937;
-  color: #FFFFFF;
+  background: var(--adm-toast-bg);
+  color: var(--adm-toast-text);
   border: none;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
 }
 
-/* ── Segmented control ────────────────────────────── */
+/* ── Segmented control ──────────────────────────────────── */
 .admin-seg {
   display: inline-flex;
-  border: 1px solid #D1D5DB;
+  border: 1px solid var(--adm-seg-border);
   border-radius: 8px;
   overflow: hidden;
-  background: #F9FAFB;
+  background: var(--adm-seg-bg);
   flex-shrink: 0;
 }
 
 .admin-seg-btn {
   border: none;
   background: transparent;
-  color: #6B7280;
+  color: var(--adm-seg-text);
   font-family: Inter, system-ui, sans-serif;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 500;
-  padding: 7px 16px;
+  padding: 8px 20px;
   cursor: pointer;
   white-space: nowrap;
-  border-right: 1px solid #D1D5DB;
+  min-width: 80px;
+  border-right: 1px solid var(--adm-seg-border);
   transition: background 0.1s, color 0.1s;
 }
 
 .admin-seg-btn:last-child { border-right: none; }
 
 .admin-seg-btn:hover:not(:disabled):not(.is-active) {
-  background: #F3F4F6;
-  color: #111827;
+  background: var(--adm-btn-ghost-hover);
+  color: var(--adm-text);
 }
 
+/* Default active */
 .admin-seg-btn.is-active {
-  background: #1F2937;
-  color: #FFFFFF;
+  background: var(--adm-btn-primary-bg);
+  color: var(--adm-btn-primary-text);
+  font-weight: 600;
 }
 
-.admin-seg-btn:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-}
+/* Semantic color variants — applied on top of .is-active */
+.admin-seg-btn.seg-green.is-active { background: #16A34A; color: #FFFFFF; }
+.admin-seg-btn.seg-red.is-active   { background: #DC2626; color: #FFFFFF; }
+
+.admin-seg-btn:disabled { opacity: 0.45; cursor: not-allowed; }
 

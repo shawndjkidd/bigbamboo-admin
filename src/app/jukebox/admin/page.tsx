@@ -72,8 +72,20 @@ export default function JukeboxAdminPage() {
   const [tab, setTab] = useState<Tab>('pending')
   const [toast, setToast] = useState('')
   const tokenRef = useRef<string | null>(null)
+  const [isDark, setIsDark] = useState(true)
 
   const [settings, setSettings] = useState<Settings | null>(null)
+
+  useEffect(() => {
+    const stored = localStorage.getItem('admin-theme')
+    if (stored !== null) setIsDark(stored === 'dark')
+  }, [])
+
+  function toggleTheme() {
+    const next = !isDark
+    setIsDark(next)
+    localStorage.setItem('admin-theme', next ? 'dark' : 'light')
+  }
 
   useEffect(() => {
     async function init() {
@@ -132,14 +144,14 @@ export default function JukeboxAdminPage() {
 
   if (loading) {
     return (
-      <div className="admin-page" style={{ padding: 40, textAlign: 'center', color: '#6B7280', fontSize: 16 }}>
+      <div className="admin-page" style={{ padding: 40, textAlign: 'center', color: 'var(--adm-text-muted)', fontSize: 16 }}>
         Loading…
       </div>
     )
   }
 
   return (
-    <div className="admin-page">
+    <div className={`admin-page${isDark ? '' : ' is-light'}`}>
       <div className="admin-nav">
         <div className="admin-nav-inner">
           <div className="admin-nav-brand">
@@ -151,6 +163,9 @@ export default function JukeboxAdminPage() {
           </div>
           <Tabs tab={tab} onChange={setTab} />
           <div className="admin-nav-end">
+            <button className="admin-theme-toggle" onClick={toggleTheme} title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}>
+              {isDark ? '☀' : '☾'}
+            </button>
             <Button variant="ghost" size="sm" onClick={() => router.push('/dashboard')}>
               ← Dashboard
             </Button>
@@ -395,7 +410,7 @@ function HistoryTab({
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
       {rows.map((r) => (
         <Card key={r.id} padding={12} style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-          <div style={{ width: 44, height: 44, flexShrink: 0, borderRadius: 6, overflow: 'hidden', background: 'var(--bg-input)' }}>
+          <div style={{ width: 44, height: 44, flexShrink: 0, borderRadius: 6, overflow: 'hidden', background: 'var(--adm-input-bg)' }}>
             {r.album_art_url
               // eslint-disable-next-line @next/next/no-img-element
               ? <img src={r.album_art_url} alt="" width={44} height={44} style={{ display: 'block', objectFit: 'cover' }} />
@@ -405,16 +420,16 @@ function HistoryTab({
             <div style={{ fontSize: 14, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {r.track_name}{r.explicit ? <span className="badge badge-gray" style={{ marginLeft: 6, fontSize: 10 }}>E</span> : null}
             </div>
-            <div style={{ fontSize: 12, color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            <div style={{ fontSize: 12, color: 'var(--adm-text-sec)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {r.artist_name}
               {r.requested_by && !r.requested_by_hidden && (
-                <span style={{ color: 'var(--text-muted)' }}> · {r.requested_by}</span>
+                <span style={{ color: 'var(--adm-text-muted)' }}> · {r.requested_by}</span>
               )}
             </div>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4, flexShrink: 0 }}>
             <span className={`badge ${badgeFor(r.status)}`}>{r.status}</span>
-            <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+            <span style={{ fontSize: 11, color: 'var(--adm-text-muted)' }}>
               {new Date(r.played_at || r.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
             </span>
           </div>
@@ -526,13 +541,13 @@ function BlocklistTab({
         <div className="card" style={{ padding: 0, overflow: 'hidden', marginBottom: 16 }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
             <thead>
-              <tr style={{ background: 'var(--bg-subtle)' }}>
+              <tr style={{ background: 'var(--adm-subtle-bg)' }}>
                 <Th>Type</Th><Th>Name</Th><Th>Spotify ID</Th><Th>Added</Th><Th></Th>
               </tr>
             </thead>
             <tbody>
               {rows.map((r) => (
-                <tr key={r.id} style={{ borderTop: '1px solid var(--border)' }}>
+                <tr key={r.id} style={{ borderTop: '1px solid var(--adm-border)' }}>
                   <Td><span className={`badge ${r.type === 'artist' ? 'badge-orange' : 'badge-gray'}`}>{r.type}</span></Td>
                   <Td>{r.name}</Td>
                   <Td style={{ fontFamily: 'monospace', fontSize: 12 }}>{r.provider_id}</Td>
@@ -547,13 +562,13 @@ function BlocklistTab({
 
       <div className="card" style={{ padding: 16 }}>
         <div className="section-title" style={{ marginBottom: 4 }}>Blocked genres</div>
-        <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 12 }}>
+        <div style={{ fontSize: 12, color: 'var(--adm-text-muted)', marginBottom: 12 }}>
           Substring match — e.g. &ldquo;metal&rdquo; blocks &ldquo;death metal&rdquo;, &ldquo;heavy metal&rdquo;, etc. Case-insensitive. Genres come from Spotify&apos;s artist data. Leave empty to allow all genres.
         </div>
         {genreLoaded && (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
             {blockedGenres.length === 0 && (
-              <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>No genres blocked.</span>
+              <span style={{ fontSize: 13, color: 'var(--adm-text-muted)' }}>No genres blocked.</span>
             )}
             {blockedGenres.map((g) => (
               <span
@@ -653,14 +668,14 @@ function SettingsTab({
         <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
           <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
             <SegmentedControl
-              options={[{ value: 'active', label: 'Active' }, { value: 'paused', label: 'Paused' }]}
+              options={[{ value: 'active', label: 'Active', color: 'green' }, { value: 'paused', label: 'Paused', color: 'red' }]}
               value={s.is_active ? 'active' : 'paused'}
               onChange={(v) => patch({ is_active: v === 'active' })}
               disabled={saving}
             />
             <div>
-              <div style={{ fontWeight: 600, fontSize: 14, color: '#111827', marginBottom: 3 }}>Jukebox</div>
-              <div style={{ fontSize: 12, color: '#6B7280', lineHeight: 1.5 }}>
+              <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--adm-text)', marginBottom: 3 }}>Jukebox</div>
+              <div style={{ fontSize: 12, color: 'var(--adm-text-muted)', lineHeight: 1.5 }}>
                 When paused, guests can&apos;t request anything.
               </div>
             </div>
@@ -668,14 +683,14 @@ function SettingsTab({
 
           <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start', opacity: s.is_active ? 1 : 0.4 }}>
             <SegmentedControl
-              options={[{ value: 'approval', label: 'Active' }, { value: 'autopilot', label: 'Paused' }]}
+              options={[{ value: 'approval', label: 'Active', color: 'green' }, { value: 'autopilot', label: 'Paused', color: 'red' }]}
               value={s.mode === 'approval' ? 'approval' : 'autopilot'}
               onChange={(v) => patch({ mode: v as Settings['mode'] })}
               disabled={saving || !s.is_active}
             />
             <div>
-              <div style={{ fontWeight: 600, fontSize: 14, color: '#111827', marginBottom: 3 }}>Approval</div>
-              <div style={{ fontSize: 12, color: '#6B7280', lineHeight: 1.5 }}>
+              <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--adm-text)', marginBottom: 3 }}>Approval</div>
+              <div style={{ fontSize: 12, color: 'var(--adm-text-muted)', lineHeight: 1.5 }}>
                 {s.mode === 'approval'
                   ? 'Each request lands in Pending. You approve manually before it joins the queue.'
                   : 'Guest requests go straight to the Spotify queue automatically. No staff input needed.'}
@@ -685,14 +700,14 @@ function SettingsTab({
 
           <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
             <SegmentedControl
-              options={[{ value: 'yes', label: 'Active' }, { value: 'no', label: 'Paused' }]}
+              options={[{ value: 'yes', label: 'Active', color: 'green' }, { value: 'no', label: 'Paused', color: 'red' }]}
               value={s.allow_explicit ? 'yes' : 'no'}
               onChange={(v) => patch({ allow_explicit: v === 'yes' })}
               disabled={saving}
             />
             <div>
-              <div style={{ fontWeight: 600, fontSize: 14, color: '#111827', marginBottom: 3 }}>Allow explicit</div>
-              <div style={{ fontSize: 12, color: '#6B7280', lineHeight: 1.5 }}>
+              <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--adm-text)', marginBottom: 3 }}>Allow explicit</div>
+              <div style={{ fontSize: 12, color: 'var(--adm-text-muted)', lineHeight: 1.5 }}>
                 {s.allow_explicit
                   ? 'Explicit-tagged tracks are allowed in requests.'
                   : 'Explicit-tagged tracks are auto-rejected.'}
@@ -746,7 +761,7 @@ function SettingsTab({
 
       <Card>
         <div className="section-title" style={{ marginBottom: 12 }}>Display URL</div>
-        <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 6 }}>
+        <div style={{ fontSize: 12, color: 'var(--adm-text-muted)', marginBottom: 6 }}>
           Open this on the venue TV/kiosk. Rotate the token to invalidate old links.
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
@@ -758,7 +773,7 @@ function SettingsTab({
 
       <Card>
         <div className="section-title" style={{ marginBottom: 4 }}>Display info</div>
-        <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 12 }}>
+        <div style={{ fontSize: 12, color: 'var(--adm-text-muted)', marginBottom: 12 }}>
           WiFi credentials shown on the kiosk header strip. Leave blank to hide the pill.
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
@@ -769,7 +784,7 @@ function SettingsTab({
 
       <Card>
         <div className="section-title" style={{ marginBottom: 4 }}>Branding</div>
-        <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 12 }}>
+        <div style={{ fontSize: 12, color: 'var(--adm-text-muted)', marginBottom: 12 }}>
           Venue logo shown in the kiosk display header and admin page. PNG or JPG, max 500 KB. Leave blank to use the default BBB logo.
         </div>
         <LogoField
@@ -796,22 +811,22 @@ function RowCard({
   return (
     <div className="card" style={{ display: 'flex', gap: 14, alignItems: 'center', padding: 12 }}>
       {typeof position === 'number' && (
-        <div style={{ fontSize: 18, fontWeight: 700, color: '#E89A4A', width: 28, textAlign: 'center', flexShrink: 0 }}>
+        <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--adm-accent)', width: 28, textAlign: 'center', flexShrink: 0 }}>
           {position}
         </div>
       )}
-      <div style={{ width: 48, height: 48, flexShrink: 0, borderRadius: 6, overflow: 'hidden', background: 'var(--bg-input)' }}>
+      <div style={{ width: 48, height: 48, flexShrink: 0, borderRadius: 6, overflow: 'hidden', background: 'var(--adm-input-bg)' }}>
         {row.album_art_url ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={row.album_art_url} alt="" width={48} height={48} style={{ display: 'block', objectFit: 'cover' }} />
         ) : null}
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--adm-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {row.track_name}{row.explicit ? <span className="badge badge-gray" style={{ marginLeft: 8, fontSize: 10 }}>E</span> : null}
         </div>
-        <div style={{ fontSize: 12, color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {row.artist_name} · <span style={{ color: row.requested_by_hidden ? 'var(--text-muted)' : 'var(--text-secondary)' }}>{row.requested_by_hidden ? 'anonymous' : row.requested_by}</span>
+        <div style={{ fontSize: 12, color: 'var(--adm-text-sec)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {row.artist_name} · <span style={{ color: row.requested_by_hidden ? 'var(--adm-text-muted)' : 'var(--adm-text-sec)' }}>{row.requested_by_hidden ? 'anonymous' : row.requested_by}</span>
         </div>
       </div>
       <div style={{ display: 'flex', gap: 6, flexShrink: 0, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
@@ -828,7 +843,7 @@ function NumberField({ label, help, value, onSave }: { label: string; help?: str
   return (
     <div>
       <label className="label">{label}</label>
-      {help && <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 4, lineHeight: 1.4 }}>{help}</div>}
+      {help && <div style={{ fontSize: 11, color: 'var(--adm-text-muted)', marginBottom: 4, lineHeight: 1.4 }}>{help}</div>}
       <input
         className="input"
         type="number"
@@ -850,7 +865,7 @@ function SegmentedControl({
   onChange,
   disabled,
 }: {
-  options: { value: string; label: string }[]
+  options: { value: string; label: string; color?: string }[]
   value: string
   onChange: (v: string) => void
   disabled?: boolean
@@ -860,7 +875,11 @@ function SegmentedControl({
       {options.map((o) => (
         <button
           key={o.value}
-          className={`admin-seg-btn${value === o.value ? ' is-active' : ''}`}
+          className={[
+            'admin-seg-btn',
+            value === o.value ? 'is-active' : '',
+            o.color ? `seg-${o.color}` : '',
+          ].filter(Boolean).join(' ')}
           onClick={() => !disabled && onChange(o.value)}
           disabled={disabled && value !== o.value}
           type="button"
@@ -940,9 +959,9 @@ function LogoField({ logoUrl, apiFetch, onAction, onSaved }: {
     <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
       {logoUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={logoUrl} alt="Venue logo" style={{ height: 48, width: 'auto', borderRadius: 6, border: '1px solid var(--border)' }} />
+        <img src={logoUrl} alt="Venue logo" style={{ height: 48, width: 'auto', borderRadius: 6, border: '1px solid var(--adm-border)' }} />
       ) : (
-        <div style={{ width: 48, height: 48, borderRadius: 6, background: 'var(--bg-input)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, color: 'var(--text-muted)' }}>
+        <div style={{ width: 48, height: 48, borderRadius: 6, background: 'var(--adm-input-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, color: 'var(--adm-text-muted)' }}>
           🏷
         </div>
       )}
@@ -968,8 +987,8 @@ function LogoField({ logoUrl, apiFetch, onAction, onSaved }: {
 function EmptyCard({ title, sub }: { title: string; sub: string }) {
   return (
     <div className="card" style={{ padding: 32, textAlign: 'center' }}>
-      <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--text)', marginBottom: 6 }}>{title}</div>
-      <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>{sub}</div>
+      <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--adm-text)', marginBottom: 6 }}>{title}</div>
+      <div style={{ fontSize: 13, color: 'var(--adm-text-muted)' }}>{sub}</div>
     </div>
   )
 }
@@ -981,7 +1000,7 @@ function SettingsSkeleton() {
   const bar = (w: string, h = 14) => (
     <div style={{
       width: w, height: h, borderRadius: 4,
-      background: 'rgba(0,0,0,0.08)',
+      background: 'var(--adm-skel-bg)',
       animation: 'bbb-skel 1.4s ease-in-out infinite',
     }} />
   )
@@ -1018,7 +1037,7 @@ function SettingsSkeleton() {
 }
 
 function Th({ children }: { children?: React.ReactNode }) {
-  return <th style={{ textAlign: 'left', padding: '10px 14px', fontSize: 11, fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>{children}</th>
+  return <th style={{ textAlign: 'left', padding: '10px 14px', fontSize: 11, fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--adm-text-muted)' }}>{children}</th>
 }
 function Td({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) {
   return <td style={{ padding: '10px 14px', verticalAlign: 'middle', ...style }}>{children}</td>
@@ -1129,7 +1148,7 @@ function SpotifyTab({
     return (
       <div className="card" style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 12 }}>
         <div style={{ fontWeight: 600, fontSize: 16 }}>Spotify not connected</div>
-        <div style={{ color: 'var(--text-muted)', fontSize: 13, lineHeight: 1.5 }}>
+        <div style={{ color: 'var(--adm-text-muted)', fontSize: 13, lineHeight: 1.5 }}>
           Connect the venue's Spotify account so approved requests can be pushed
           into Spotify's playback queue. The account must be Premium and have
           an active playback device (a speaker or computer playing Spotify).
@@ -1150,7 +1169,7 @@ function SpotifyTab({
             <div style={{ fontWeight: 600, fontSize: 15 }}>
               ● Connected as {status.provider_display_name || status.provider_user_id || 'unknown'}
             </div>
-            <div style={{ color: 'var(--text-muted)', fontSize: 12, marginTop: 4 }}>
+            <div style={{ color: 'var(--adm-text-muted)', fontSize: 12, marginTop: 4 }}>
               Scopes: {status.scopes.join(', ') || '(none)'} · Expires{' '}
               {status.expires_at ? new Date(status.expires_at).toLocaleString() : 'unknown'}
             </div>
@@ -1173,9 +1192,9 @@ function SpotifyTab({
             style={{
               padding: 12,
               borderRadius: 8,
-              background: 'rgba(255,180,80,0.12)',
-              border: '1px solid rgba(255,180,80,0.4)',
-              color: 'var(--text)',
+              background: 'var(--adm-warning-bg)',
+              border: '1px solid var(--adm-warning-border)',
+              color: 'var(--adm-text)',
               fontSize: 13,
               lineHeight: 1.5,
             }}
@@ -1189,17 +1208,17 @@ function SpotifyTab({
           </div>
         ) : (
           <div style={{ fontSize: 14 }}>
-            <span style={{ color: 'var(--bbb-bamboo)' }}>●</span>{' '}
+            <span style={{ color: 'var(--adm-success)' }}>●</span>{' '}
             <strong>{status.active_device!.name}</strong>
             {status.all_devices.length > 1 && (
-              <span style={{ color: 'var(--text-muted)', marginLeft: 8, fontSize: 12 }}>
+              <span style={{ color: 'var(--adm-text-muted)', marginLeft: 8, fontSize: 12 }}>
                 ({status.all_devices.length} devices total)
               </span>
             )}
           </div>
         )}
         {status.devices_error && (
-          <div style={{ color: 'var(--bbb-flame)', fontSize: 12 }}>
+          <div style={{ color: 'var(--adm-danger)', fontSize: 12 }}>
             Device list error: {status.devices_error}
           </div>
         )}
@@ -1221,10 +1240,10 @@ function SpotifyTab({
               <div style={{ fontWeight: 600, fontSize: 15, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {nowPlaying.track.name}
               </div>
-              <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>
+              <div style={{ color: 'var(--adm-text-muted)', fontSize: 13 }}>
                 {nowPlaying.track.artists.map((a) => a.name).join(', ')}
               </div>
-              <div style={{ color: 'var(--text-muted)', fontSize: 11, marginTop: 4 }}>
+              <div style={{ color: 'var(--adm-text-muted)', fontSize: 11, marginTop: 4 }}>
                 {nowPlaying.isPlaying ? '▶ Playing' : '❚❚ Paused'} ·{' '}
                 {Math.floor(nowPlaying.progressMs / 1000)}s of{' '}
                 {Math.floor(nowPlaying.track.durationMs / 1000)}s
@@ -1232,7 +1251,7 @@ function SpotifyTab({
             </div>
           </div>
         ) : (
-          <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>
+          <div style={{ color: 'var(--adm-text-muted)', fontSize: 13 }}>
             Nothing playing right now.
           </div>
         )}
