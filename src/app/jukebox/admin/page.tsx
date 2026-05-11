@@ -115,13 +115,35 @@ export default function JukeboxAdminPage() {
     init()
   }, [router])
 
+  // Keep tokenRef current across Supabase's silent token refreshes (tokens expire
+  // after 1 hour; without this, apiFetch sends an expired JWT and gets 401).
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.access_token) {
+        tokenRef.current = session.access_token
+      } else if (!session) {
+        router.push('/login')
+      }
+    })
+    return () => subscription.unsubscribe()
+  }, [router])
+
   const apiFetch = useCallback(async (path: string, init?: RequestInit) => {
     const isFormData = init?.body instanceof FormData
     const headers: Record<string, string> = {
       ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
       ...(init?.headers as Record<string, string> | undefined),
     }
-    if (tokenRef.current) headers.Authorization = `Bearer ${tokenRef.current}`
+    // Pull a FRESH session every call. supabase-js auto-refreshes the
+    // access token when it's near expiry, so this avoids the "Invalid
+    // token" failure that happens after the admin page sits open for
+    // longer than the 1h JWT lifetime.
+    const { data: { session } } = await supabase.auth.getSession()
+    const token = session?.access_token ?? tokenRef.current
+    if (token) {
+      headers.Authorization = `Bearer ${token}`
+      tokenRef.current = token
+    }
     const res = await fetch(path, { ...init, headers, cache: 'no-store' })
     return res.json()
   }, [])
