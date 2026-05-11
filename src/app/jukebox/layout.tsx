@@ -15,10 +15,14 @@ export default function JukeboxLayout({ children }: { children: React.ReactNode 
   return (
     <>
       {/* THREE-FONT DISCIPLINE: Sigmar (display), Inter (body, all weights + italic),
-          JetBrains Mono (mono). Do not add a 4th. */}
+          JetBrains Mono (mono). Do not add a 4th LATIN font.
+          CJK exception: Noto Sans SC/JP/KR @ 700 are loaded as per-glyph
+          fallbacks for Chinese/Japanese/Korean song titles so they don't
+          render as a thin system sans-serif against our bold display type.
+          Browsers fall back per-character, so this never affects Latin/Vietnamese. */}
       <link
         rel="stylesheet"
-        href="https://fonts.googleapis.com/css2?family=Sigmar&family=JetBrains+Mono:wght@400;500&family=Inter:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&display=swap"
+        href="https://fonts.googleapis.com/css2?family=Sigmar&family=JetBrains+Mono:wght@400;500&family=Inter:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Noto+Sans+SC:wght@700&family=Noto+Sans+JP:wght@700&family=Noto+Sans+KR:wght@700&display=swap"
       />
       <div className="jukebox-root">{children}</div>
     </>
