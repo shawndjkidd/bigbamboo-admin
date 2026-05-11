@@ -1040,6 +1040,7 @@
 .kiosk-np-artist {
   font-size: clamp(16px, 2vw, 36px);
   color: #6b4a2b;
+  font-family: Inter, system-ui, sans-serif;
   font-style: italic;
   white-space: nowrap;
   overflow: hidden;
@@ -1072,6 +1073,7 @@
 .kiosk-np-by {
   font-size: clamp(12px, 1.1vw, 20px);
   color: #8a7560;
+  font-family: Inter, system-ui, sans-serif;
   font-style: italic;
   flex-shrink: 0;
 }
@@ -1104,6 +1106,7 @@
 .kiosk-np-empty-sub {
   font-size: clamp(11px, 1.1vw, 16px);
   color: #8a7560;
+  font-family: Inter, system-ui, sans-serif;
   font-style: italic;
 }
 
@@ -1200,7 +1203,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.kiosk-deck-artist { font-style: italic; }
+.kiosk-deck-artist { font-family: Inter, system-ui, sans-serif; font-style: italic; }
 .kiosk-deck-by { color: #8a7560; }
 .kiosk-deck-time {
   font-size: clamp(13px, 1.05vw, 18px);
@@ -1289,6 +1292,7 @@
   font-size: clamp(11px, 1.2vw, 18px);
   opacity: 0.85;
   margin-top: 6px;
+  font-family: Inter, system-ui, sans-serif;
   font-style: italic;
 }
 .kiosk-poster-foot {
