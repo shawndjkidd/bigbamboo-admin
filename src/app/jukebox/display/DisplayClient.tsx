@@ -268,22 +268,16 @@ export default function DisplayClient({ guestBase, guestToken, qr: initialQr, wi
           </div>
 
           <div
-            className="kiosk-card kiosk-poster-panel"
+            className={`kiosk-card kiosk-poster-panel${posters.length === 0 ? ' kiosk-poster-panel--empty' : ''}`}
             style={{ opacity: posterVisible ? 1 : 0, padding: 0, overflow: 'hidden', position: 'relative' }}
           >
-            {activePoster ? (
+            {activePoster && (
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={activePoster.public_url}
                 alt=""
                 style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
               />
-            ) : (
-              <div className="kp-live" style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, padding: 24 }}>
-                <div className="kiosk-poster-decor" aria-hidden="true">♪</div>
-                <div className="kiosk-poster-headline">TONIGHT — LIVE MUSIC</div>
-                <div className="kiosk-poster-sub">Request your favourites</div>
-              </div>
             )}
             {posters.length > 1 && (
               <div className="kiosk-poster-dots" style={{ position: 'absolute', bottom: 8, right: 10 }}>
