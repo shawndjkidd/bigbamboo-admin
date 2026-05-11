@@ -227,7 +227,7 @@ export default function DisplayClient({ guestUrl, qr, wifiNetwork, wifiPassword,
         <div className="kiosk-row kiosk-row--bottom">
 
           <div className="kiosk-card kiosk-qr-card">
-            <div className="kiosk-qr-label">SCAN TO REQUEST A SONG</div>
+            <div className="kiosk-qr-label">SCAN TO REQUEST</div>
             <div className="kiosk-qr-wrap">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={qr} alt="Scan to request a song" className="kiosk-qr-img" />
@@ -297,11 +297,12 @@ function NowPlayingHero({ now }: { now: NowPlaying }) {
             <span>{elapsed ?? '— —'}</span>
             <span>{total}</span>
           </div>
-          {now.requested_by && now.requested_by !== 'anonymous' && (
-            <div className="kiosk-np-by">
-              requested by <span className="kiosk-np-nick">{now.requested_by}</span>
-            </div>
-          )}
+          <div className="kiosk-np-by">
+            {now.requested_by && now.requested_by !== 'anonymous'
+              ? <>requested by <span className="kiosk-np-nick">{now.requested_by}</span></>
+              : "from tonight’s playlist"
+            }
+          </div>
         </div>
       </div>
     </>
