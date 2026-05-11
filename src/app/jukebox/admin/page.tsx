@@ -335,28 +335,39 @@ function QueueTab({
 
         return (
           <RowCard key={r.id} row={r} position={isPending ? undefined : queuePos} badge={badge}>
-            {isPending && mode === 'approval' && (
+            {isPending && (
               <Button variant="success" disabled={!!busy} onClick={() => act(r.id, 'approve')}>
                 {busy === r.id + ':approve' ? '…' : 'Approve'}
+              </Button>
+            )}
+            {isPending && (
+              <Button variant="secondary" disabled={!!busy} onClick={() => act(r.id, 'reject')}>
+                {busy === r.id + ':reject' ? '…' : 'Reject'}
               </Button>
             )}
             <Button variant="secondary" disabled={!!busy} onClick={() => act(r.id, 'hide-nickname')}>
               Hide nickname
             </Button>
-            <Button variant="secondary" disabled={!!busy} onClick={() => act(r.id, 'skip')}>
-              Skip
-            </Button>
-            <Button variant="danger" disabled={!!busy} onClick={() => blockRow(r)}>
-              {busy === r.id + ':block' ? '…' : 'Block'}
-            </Button>
+            {!isPending && (
+              <Button variant="secondary" disabled={!!busy} onClick={() => act(r.id, 'skip')}>
+                Skip
+              </Button>
+            )}
+            {!isPending && (
+              <Button variant="danger" disabled={!!busy} onClick={() => blockRow(r)}>
+                {busy === r.id + ':block' ? '…' : 'Block'}
+              </Button>
+            )}
             {!isSpotifyQueued && !isPending && (
               <Button variant="secondary" disabled={!!busy} onClick={() => addToSpotify(r.id)} title="Push into Spotify queue">
                 {busy === r.id + ':spotify' ? '…' : 'Add to Spotify'}
               </Button>
             )}
-            <Button variant="secondary" disabled={!!busy} onClick={() => act(r.id, 'mark-played')}>
-              Mark played
-            </Button>
+            {!isPending && (
+              <Button variant="secondary" disabled={!!busy} onClick={() => act(r.id, 'mark-played')}>
+                Mark played
+              </Button>
+            )}
           </RowCard>
         )
       })}
