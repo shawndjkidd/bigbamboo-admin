@@ -132,53 +132,48 @@ export default function JukeboxAdminPage() {
 
   if (loading) {
     return (
-      <div style={{ padding: 40, textAlign: 'center', color: 'var(--bbb-cream-light)', fontSize: 16 }}>
+      <div className="admin-page" style={{ padding: 40, textAlign: 'center', color: '#6B7280', fontSize: 16 }}>
         Loading…
       </div>
     )
   }
 
   return (
-    <div style={{ maxWidth: 960, margin: '0 auto', padding: '24px 24px 60px' }}>
-      <div className="jukebox-admin-header">
-        <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+    <div className="admin-page">
+      <div className="admin-nav">
+        <div className="admin-nav-inner">
+          <div className="admin-nav-brand">
             {settings?.logo_url && (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={settings.logo_url} alt="Venue logo" style={{ height: 32, width: 'auto', borderRadius: 4 }} />
+              <img src={settings.logo_url} alt="Venue logo" style={{ height: 28, width: 'auto', borderRadius: 4 }} />
             )}
-            <div>
-              <div className="page-title">Jukebox</div>
-              <div className="jukebox-admin-sub">
-                Approve, queue, and tune the room.
-              </div>
-            </div>
+            <span className="admin-nav-title">Jukebox</span>
           </div>
-          <button
-            className="btn-outline"
-            style={{ borderColor: '#E8553A', color: '#E8553A' }}
-            onClick={() => router.push('/dashboard')}
-          >
-            ← Dashboard
-          </button>
-        </header>
-        <Tabs tab={tab} onChange={setTab} />
+          <Tabs tab={tab} onChange={setTab} />
+          <div className="admin-nav-end">
+            <Button variant="ghost" size="sm" onClick={() => router.push('/dashboard')}>
+              ← Dashboard
+            </Button>
+          </div>
+        </div>
       </div>
 
-      {tab === 'pending' && <PendingTab apiFetch={apiFetch} onAction={showToast} mode={settings?.mode ?? null} />}
-      {tab === 'queue' && <QueueTab apiFetch={apiFetch} onAction={showToast} />}
-      {tab === 'history' && <HistoryTab apiFetch={apiFetch} />}
-      {tab === 'blocklist' && <BlocklistTab apiFetch={apiFetch} onAction={showToast} />}
-      {tab === 'spotify' && <SpotifyTab apiFetch={apiFetch} onAction={showToast} />}
-      {tab === 'settings' && (
-        <SettingsTab
-          apiFetch={apiFetch}
-          onAction={showToast}
-          settings={settings}
-          setSettings={setSettings}
-          refreshSettings={refreshSettings}
-        />
-      )}
+      <div style={{ maxWidth: 1400, margin: '0 auto', padding: '24px 24px 60px' }}>
+        {tab === 'pending' && <PendingTab apiFetch={apiFetch} onAction={showToast} mode={settings?.mode ?? null} />}
+        {tab === 'queue' && <QueueTab apiFetch={apiFetch} onAction={showToast} />}
+        {tab === 'history' && <HistoryTab apiFetch={apiFetch} />}
+        {tab === 'blocklist' && <BlocklistTab apiFetch={apiFetch} onAction={showToast} />}
+        {tab === 'spotify' && <SpotifyTab apiFetch={apiFetch} onAction={showToast} />}
+        {tab === 'settings' && (
+          <SettingsTab
+            apiFetch={apiFetch}
+            onAction={showToast}
+            settings={settings}
+            setSettings={setSettings}
+            refreshSettings={refreshSettings}
+          />
+        )}
+      </div>
 
       {toast && <div className="toast">{toast}</div>}
     </div>
@@ -565,7 +560,7 @@ function BlocklistTab({
                 key={g}
                 style={{
                   display: 'inline-flex', alignItems: 'center', gap: 6,
-                  padding: '4px 10px', borderRadius: 100,
+                  padding: '4px 10px', borderRadius: 8,
                   background: 'var(--badge-orange-bg)', color: 'var(--badge-orange-text)',
                   border: '1px solid var(--badge-orange-border)',
                   fontSize: 12, fontWeight: 500,
@@ -655,36 +650,52 @@ function SettingsTab({
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <Card>
         <div className="section-title" style={{ marginBottom: 16 }}>Options</div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-          <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
-            <Toggle on={s.is_active} onChange={(v) => patch({ is_active: v })} disabled={saving} />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+          <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
+            <SegmentedControl
+              options={[{ value: 'active', label: 'Active' }, { value: 'paused', label: 'Paused' }]}
+              value={s.is_active ? 'active' : 'paused'}
+              onChange={(v) => patch({ is_active: v === 'active' })}
+              disabled={saving}
+            />
             <div>
-              <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text)' }}>
-                Jukebox{' '}
-                <span style={{ color: s.is_active ? '#16a34a' : '#dc2626', fontWeight: 600 }}>
-                  {s.is_active ? 'Active' : 'Paused'}
-                </span>
-              </div>
-              <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 3, lineHeight: 1.5, maxWidth: 420 }}>
-                When paused, guests can see the queue but can&apos;t request anything.
+              <div style={{ fontWeight: 600, fontSize: 14, color: '#111827', marginBottom: 3 }}>Jukebox</div>
+              <div style={{ fontSize: 12, color: '#6B7280', lineHeight: 1.5 }}>
+                When paused, guests can&apos;t request anything.
               </div>
             </div>
           </div>
 
-          <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start', opacity: s.is_active ? 1 : 0.4 }}>
-            <Toggle
-              on={s.mode === 'approval'}
-              onChange={(v) => patch({ is_active: true, mode: v ? 'approval' : 'autopilot' })}
+          <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start', opacity: s.is_active ? 1 : 0.4 }}>
+            <SegmentedControl
+              options={[{ value: 'approval', label: 'Active' }, { value: 'autopilot', label: 'Paused' }]}
+              value={s.mode === 'approval' ? 'approval' : 'autopilot'}
+              onChange={(v) => patch({ mode: v as Settings['mode'] })}
               disabled={saving || !s.is_active}
             />
             <div>
-              <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text)' }}>
-                {s.mode === 'approval' ? 'Staff approval required' : 'Autopilot'}
-              </div>
-              <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 3, lineHeight: 1.5, maxWidth: 420 }}>
+              <div style={{ fontWeight: 600, fontSize: 14, color: '#111827', marginBottom: 3 }}>Approval</div>
+              <div style={{ fontSize: 12, color: '#6B7280', lineHeight: 1.5 }}>
                 {s.mode === 'approval'
-                  ? 'Each request lands in the Pending tab. You manually approve or reject before it joins the queue.'
+                  ? 'Each request lands in Pending. You approve manually before it joins the queue.'
                   : 'Guest requests go straight to the Spotify queue automatically. No staff input needed.'}
+              </div>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
+            <SegmentedControl
+              options={[{ value: 'yes', label: 'Active' }, { value: 'no', label: 'Paused' }]}
+              value={s.allow_explicit ? 'yes' : 'no'}
+              onChange={(v) => patch({ allow_explicit: v === 'yes' })}
+              disabled={saving}
+            />
+            <div>
+              <div style={{ fontWeight: 600, fontSize: 14, color: '#111827', marginBottom: 3 }}>Allow explicit</div>
+              <div style={{ fontSize: 12, color: '#6B7280', lineHeight: 1.5 }}>
+                {s.allow_explicit
+                  ? 'Explicit-tagged tracks are allowed in requests.'
+                  : 'Explicit-tagged tracks are auto-rejected.'}
               </div>
             </div>
           </div>
@@ -730,9 +741,6 @@ function SettingsTab({
             value={s.pending_request_ttl_minutes}
             onSave={(v) => patch({ pending_request_ttl_minutes: v })}
           />
-        </div>
-        <div style={{ marginTop: 14, display: 'flex', gap: 10, alignItems: 'center' }}>
-          <ToggleChip on={s.allow_explicit} label="Allow explicit" onClick={() => patch({ allow_explicit: !s.allow_explicit })} disabled={saving} />
         </div>
       </Card>
 
@@ -788,7 +796,7 @@ function RowCard({
   return (
     <div className="card" style={{ display: 'flex', gap: 14, alignItems: 'center', padding: 12 }}>
       {typeof position === 'number' && (
-        <div style={{ fontFamily: 'Bebas Neue, sans-serif', fontSize: 24, color: 'var(--accent)', width: 28, textAlign: 'center', flexShrink: 0 }}>
+        <div style={{ fontSize: 18, fontWeight: 700, color: '#E89A4A', width: 28, textAlign: 'center', flexShrink: 0 }}>
           {position}
         </div>
       )}
@@ -813,27 +821,6 @@ function RowCard({
   )
 }
 
-function ToggleChip({ on, label, onClick, disabled }: { on: boolean; label: string; onClick: () => void; disabled?: boolean }) {
-  return (
-    <button
-      onClick={onClick}
-      disabled={disabled}
-      style={{
-        cursor: disabled ? 'not-allowed' : 'pointer',
-        padding: '6px 14px',
-        border: `1px solid ${on ? 'var(--accent)' : 'var(--border)'}`,
-        background: on ? 'var(--accent)' : 'transparent',
-        color: on ? '#fff' : 'var(--text-secondary)',
-        borderRadius: 100,
-        fontSize: 13, fontWeight: 500,
-        opacity: disabled ? 0.6 : 1,
-        fontFamily: 'inherit',
-      }}
-    >
-      {label}
-    </button>
-  )
-}
 
 function NumberField({ label, help, value, onSave }: { label: string; help?: string; value: number; onSave: (n: number) => void }) {
   const [v, setV] = useState(String(value))
@@ -857,18 +844,30 @@ function NumberField({ label, help, value, onSave }: { label: string; help?: str
   )
 }
 
-function Toggle({ on, onChange, disabled }: { on: boolean; onChange: (v: boolean) => void; disabled?: boolean }) {
+function SegmentedControl({
+  options,
+  value,
+  onChange,
+  disabled,
+}: {
+  options: { value: string; label: string }[]
+  value: string
+  onChange: (v: string) => void
+  disabled?: boolean
+}) {
   return (
-    <div
-      className={`admin-toggle-track ${on ? 'is-on' : ''} ${disabled ? 'is-disabled' : ''}`}
-      onClick={() => !disabled && onChange(!on)}
-      role="switch"
-      aria-checked={on}
-      tabIndex={disabled ? -1 : 0}
-      onKeyDown={(e) => { if (!disabled && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); onChange(!on) } }}
-      style={{ userSelect: 'none' }}
-    >
-      <div className="admin-toggle-thumb" />
+    <div className="admin-seg">
+      {options.map((o) => (
+        <button
+          key={o.value}
+          className={`admin-seg-btn${value === o.value ? ' is-active' : ''}`}
+          onClick={() => !disabled && onChange(o.value)}
+          disabled={disabled && value !== o.value}
+          type="button"
+        >
+          {o.label}
+        </button>
+      ))}
     </div>
   )
 }
@@ -955,11 +954,11 @@ function LogoField({ logoUrl, apiFetch, onAction, onSaved }: {
           style={{ display: 'none' }}
           onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f) }}
         />
-        <button className="btn-outline" disabled={uploading} onClick={() => fileRef.current?.click()}>
+        <Button variant="secondary" disabled={uploading} onClick={() => fileRef.current?.click()}>
           {uploading ? 'Uploading…' : logoUrl ? 'Replace logo' : 'Upload logo'}
-        </button>
+        </Button>
         {logoUrl && (
-          <button className="btn-red" onClick={removeLogo}>Remove</button>
+          <Button variant="danger" onClick={removeLogo}>Remove</Button>
         )}
       </div>
     </div>

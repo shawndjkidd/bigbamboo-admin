@@ -1075,12 +1075,30 @@
 /* ── On Deck (queue list) card ────────────────────────────────── */
 .kiosk-deck-card { flex: 1; }
 .kiosk-section-title {
-  font-size: clamp(16px, 1.5vw, 24px);
+  font-family: var(--theme-display-font);
+  font-size: clamp(22px, 2.5vw, 36px);
   font-weight: 800;
-  letter-spacing: 1.5px;
+  letter-spacing: 2px;
   color: #E89A4A;
-  margin-bottom: 8px;
+  margin-bottom: 12px;
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  position: relative;
+}
+.kiosk-section-title::after {
+  content: '';
+  position: absolute;
+  bottom: -4px;
+  left: 0;
+  height: 2px;
+  background: #E89A4A;
+  width: 0;
+  animation: kiosk-title-underline 0.8s ease 0.3s forwards;
+}
+@keyframes kiosk-title-underline {
+  to { width: 100%; }
 }
 .kiosk-deck-list {
   flex: 1;
@@ -1264,4 +1282,269 @@
 .kp-trivia { background: linear-gradient(135deg, #1565c0 0%, #0c447c 100%); }
 .kp-mojito { background: linear-gradient(135deg, #4caf50 0%, #1b5e20 100%); }
 .kp-review { background: linear-gradient(135deg, #ffa726 0%, #f57c00 100%); }
+
+/* ════════════════════════════════════════════════════════
+   Admin dashboard — clean professional overrides.
+   Scoped to .admin-page so the kiosk stays tropical.
+   ════════════════════════════════════════════════════════ */
+
+.admin-page {
+  min-height: 100vh;
+  background: #FAFAF9;
+  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  color: #111827;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Top nav strip ────────────────────────────────── */
+.admin-nav {
+  background: #FFFFFF;
+  border-bottom: 1px solid #E5E7EB;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.admin-nav-inner {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 24px;
+  display: flex;
+  align-items: stretch;
+  height: 56px;
+}
+
+.admin-nav-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+  padding-right: 20px;
+  border-right: 1px solid #E5E7EB;
+  margin-right: 4px;
+}
+
+.admin-nav-title {
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  color: #111827;
+  letter-spacing: -0.02em;
+}
+
+.admin-nav-end {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  margin-left: auto;
+  padding-left: 16px;
+}
+
+/* ── Tabs (inside nav) ────────────────────────────── */
+.admin-page .jukebox-admin-tabs {
+  display: flex;
+  flex: 1;
+  align-items: stretch;
+  overflow-x: auto;
+  border: none;
+  margin: 0;
+  padding: 0;
+  gap: 0;
+}
+
+.admin-page .jukebox-admin-tab {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 0;
+  padding: 0 16px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #6B7280;
+  font-family: Inter, system-ui, sans-serif;
+  white-space: nowrap;
+  background: transparent;
+  box-shadow: none;
+  border-bottom: 2px solid transparent;
+}
+
+.admin-page .jukebox-admin-tab:hover {
+  color: #111827;
+  background: #F9FAFB;
+}
+
+.admin-page .jukebox-admin-tab.is-active {
+  color: #111827;
+  background: transparent;
+  font-weight: 600;
+  box-shadow: inset 0 -2px 0 #E89A4A;
+}
+
+/* ── Cards ────────────────────────────────────────── */
+.admin-page .card {
+  background: #FFFFFF;
+  border: 1px solid #E5E7EB;
+  border-radius: 8px;
+  box-shadow: none;
+  color: #111827;
+}
+
+/* ── Typography ───────────────────────────────────── */
+.admin-page .section-title {
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #6B7280;
+}
+
+.admin-page .label {
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+  color: #374151;
+  margin-bottom: 4px;
+}
+
+/* ── Inputs ───────────────────────────────────────── */
+.admin-page .input {
+  background: #FFFFFF;
+  border: 1px solid #D1D5DB;
+  border-radius: 6px;
+  color: #111827;
+  font-style: normal;
+  font-size: 14px;
+  box-shadow: none;
+  padding: 8px 12px;
+  font-family: Inter, system-ui, sans-serif;
+}
+
+.admin-page .input:focus {
+  outline: none;
+  border-color: #9CA3AF;
+  box-shadow: 0 0 0 3px rgba(156,163,175,0.2);
+}
+
+.admin-page .input::placeholder {
+  color: #9CA3AF;
+  font-style: normal;
+}
+
+.admin-page select.input {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236B7280' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+}
+
+/* ── Buttons ──────────────────────────────────────── */
+.admin-page .admin-btn {
+  font-family: Inter, system-ui, sans-serif;
+  font-weight: 600;
+  letter-spacing: 0;
+  border-radius: 8px;
+}
+
+.admin-page .admin-btn--sm { padding: 6px 12px; font-size: 13px; }
+.admin-page .admin-btn--md { padding: 8px 16px; font-size: 14px; }
+
+.admin-page .admin-btn--primary {
+  background: #1F2937;
+  color: #FFFFFF;
+  border-color: #1F2937;
+}
+.admin-page .admin-btn--primary:hover:not(:disabled) { background: #111827; filter: none; }
+
+.admin-page .admin-btn--secondary {
+  background: #FFFFFF;
+  color: #374151;
+  border-color: #D1D5DB;
+}
+.admin-page .admin-btn--secondary:hover:not(:disabled) { background: #F9FAFB; filter: none; }
+
+.admin-page .admin-btn--danger {
+  background: #DC2626;
+  color: #FFFFFF;
+  border-color: #DC2626;
+}
+.admin-page .admin-btn--danger:hover:not(:disabled) { background: #B91C1C; filter: none; }
+
+.admin-page .admin-btn--success {
+  background: #16A34A;
+  color: #FFFFFF;
+  border-color: #16A34A;
+}
+.admin-page .admin-btn--success:hover:not(:disabled) { background: #15803D; filter: none; }
+
+.admin-page .admin-btn--ghost {
+  color: #374151;
+  border-color: transparent;
+  background: transparent;
+}
+.admin-page .admin-btn--ghost:hover:not(:disabled) { background: #F3F4F6; color: #111827; filter: none; }
+
+/* ── Badges — rectangular, not pill ──────────────── */
+.admin-page .badge {
+  border-radius: 6px;
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 8px;
+}
+
+.admin-page .badge-green  { background: #DCFCE7; color: #15803D; border-color: #86EFAC; }
+.admin-page .badge-red    { background: #FEE2E2; color: #B91C1C; border-color: #FCA5A5; }
+.admin-page .badge-orange { background: #FEF3C7; color: #92400E; border-color: #FDE68A; }
+.admin-page .badge-gray   { background: #F3F4F6; color: #6B7280; border-color: #E5E7EB; }
+.admin-page .badge-blue   { background: #DBEAFE; color: #1D4ED8; border-color: #BFDBFE; }
+
+/* ── Toast ────────────────────────────────────────── */
+.admin-page .toast {
+  border-radius: 8px;
+  font-family: Inter, system-ui, sans-serif;
+  background: #1F2937;
+  color: #FFFFFF;
+  border: none;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+
+/* ── Segmented control ────────────────────────────── */
+.admin-seg {
+  display: inline-flex;
+  border: 1px solid #D1D5DB;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #F9FAFB;
+  flex-shrink: 0;
+}
+
+.admin-seg-btn {
+  border: none;
+  background: transparent;
+  color: #6B7280;
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 7px 16px;
+  cursor: pointer;
+  white-space: nowrap;
+  border-right: 1px solid #D1D5DB;
+  transition: background 0.1s, color 0.1s;
+}
+
+.admin-seg-btn:last-child { border-right: none; }
+
+.admin-seg-btn:hover:not(:disabled):not(.is-active) {
+  background: #F3F4F6;
+  color: #111827;
+}
+
+.admin-seg-btn.is-active {
+  background: #1F2937;
+  color: #FFFFFF;
+}
+
+.admin-seg-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
 

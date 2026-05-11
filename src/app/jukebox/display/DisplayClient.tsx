@@ -183,7 +183,10 @@ export default function DisplayClient({ guestUrl, qr, wifiNetwork, wifiPassword,
           </div>
 
           <div className="kiosk-card kiosk-deck-card">
-            <div className="kiosk-section-title">ON DECK</div>
+            <div className="kiosk-section-title">
+              <span style={{ fontSize: '0.65em', lineHeight: 1, letterSpacing: 0, opacity: 0.9 }}>≡</span>
+              COMING UP
+            </div>
             <div className="kiosk-deck-list">
               {onDeck.length === 0 ? (
                 <div className="kiosk-deck-empty">
