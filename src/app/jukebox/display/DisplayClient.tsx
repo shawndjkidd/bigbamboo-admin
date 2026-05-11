@@ -188,7 +188,7 @@ export default function DisplayClient({ guestUrl, qr, wifiNetwork, wifiPassword,
           <div className="kiosk-card kiosk-deck-card">
             <div className="kiosk-section-title">
               <span style={{ fontSize: '0.65em', lineHeight: 1, letterSpacing: 0, opacity: 0.9 }}>≡</span>
-              COMING UP
+              NEXT IN QUEUE
             </div>
             <div className="kiosk-deck-list">
               {onDeck.length === 0 ? (
@@ -280,27 +280,29 @@ function NowPlayingHero({ now }: { now: NowPlaying }) {
         }
       </div>
       <div className="kiosk-np-info">
-        <div className="kiosk-np-onair">
+        <div className="kiosk-np-banner">
           <span className="kiosk-np-onair-dot" aria-hidden="true" />
           NOW PLAYING
           {now.is_playing === false && (
             <span className="kiosk-np-paused-tag">PAUSED</span>
           )}
         </div>
-        <div className="kiosk-np-title">{now.track_name}</div>
-        <div className="kiosk-np-artist">{now.artist_name}</div>
-        <div className="kiosk-np-progress">
-          <div className="kiosk-np-progress-fill" style={{ width: `${hasLiveProgress ? pct : 0}%` }} />
-        </div>
-        <div className="kiosk-np-times">
-          <span>{elapsed ?? '— —'}</span>
-          <span>{total}</span>
-        </div>
-        {now.requested_by && now.requested_by !== 'anonymous' && (
-          <div className="kiosk-np-by">
-            requested by <span className="kiosk-np-nick">{now.requested_by}</span>
+        <div className="kiosk-np-body">
+          <div className="kiosk-np-title">{now.track_name}</div>
+          <div className="kiosk-np-artist">{now.artist_name}</div>
+          <div className="kiosk-np-progress">
+            <div className="kiosk-np-progress-fill" style={{ width: `${hasLiveProgress ? pct : 0}%` }} />
           </div>
-        )}
+          <div className="kiosk-np-times">
+            <span>{elapsed ?? '— —'}</span>
+            <span>{total}</span>
+          </div>
+          {now.requested_by && now.requested_by !== 'anonymous' && (
+            <div className="kiosk-np-by">
+              requested by <span className="kiosk-np-nick">{now.requested_by}</span>
+            </div>
+          )}
+        </div>
       </div>
     </>
   )

@@ -16,7 +16,7 @@ const NAV = [
   { href: '/dashboard/game', label: 'Game Control' },
   { href: '/dashboard/claims', label: 'Claims & Contacts' },
   { href: '/dashboard/staff', label: 'Staff Logins', adminOnly: true },
-  { href: '/jukebox', label: 'Jukebox', section: true },
+  { href: '/jukebox', label: 'VibeQueue', section: true },
   { href: '/jukebox/admin', label: 'Requests & Queue' },
   { href: '/dashboard/settings', label: 'Settings', adminOnly: true },
 ]

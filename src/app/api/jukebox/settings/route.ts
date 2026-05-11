@@ -29,7 +29,7 @@ export async function GET(req: NextRequest) {
 
     if (!data) {
       return NextResponse.json(
-        { ok: false, error: { code: 'not_configured', message: 'Jukebox not configured.' } },
+        { ok: false, error: { code: 'not_configured', message: 'VibeQueue not configured.' } },
         { status: 404 },
       );
     }

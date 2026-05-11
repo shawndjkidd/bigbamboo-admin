@@ -40,7 +40,7 @@ export const copy = {
   },
   rejection: {
     duplicate: 'This song was already requested recently.',
-    too_long: 'This track is too long for regular jukebox mode.',
+    too_long: 'This track is too long for VibeQueue.',
     same_artist: 'We already have this artist coming up. Try another track.',
     blocklisted: 'This song is blocked tonight.',
     paused: 'VibeQueue is paused right now.',

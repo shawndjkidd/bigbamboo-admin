@@ -64,11 +64,11 @@ export async function validateRequest(
   // 0. Settings exist?
   const settings = await loadSettings(ctx.venueId);
   if (!settings) {
-    return reject('paused', 'Jukebox is not configured for this venue.');
+    return reject('paused', 'VibeQueue is not configured for this venue.');
   }
 
   // 1. Active?
-  if (!settings.is_active) return reject('paused', 'The jukebox is paused right now.');
+  if (!settings.is_active) return reject('paused', 'VibeQueue is paused right now.');
 
   // 2. Mode locked?
   if (settings.mode === 'locked') {
