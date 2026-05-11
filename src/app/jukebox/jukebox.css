@@ -74,6 +74,7 @@
   --theme-text-muted: rgba(255,248,231,0.75);
   --theme-display-font: 'Sigmar', 'Bebas Neue', sans-serif;
   --theme-body-font:    'DM Sans', system-ui, sans-serif;
+  --theme-mono-font:    'JetBrains Mono', 'Fira Mono', ui-monospace, monospace;
 }
 
 .jukebox-root,
@@ -904,7 +905,7 @@
   display: flex;
   align-items: baseline;
   gap: 6px;
-  font-family: monospace;
+  font-family: var(--theme-mono-font);
 }
 .kiosk-wifi-k {
   font-size: 16px;
@@ -916,6 +917,7 @@
   font-size: 28px;
   color: #F5E8D0;
   font-weight: 700;
+  font-family: var(--theme-mono-font);
 }
 
 /* ── Content area ─────────────────────────────────────────────── */
@@ -948,7 +950,7 @@
 .kiosk-np-card {
   flex: 2.3;
   flex-direction: row;
-  align-items: center;
+  align-items: flex-start;
   gap: 10px;
 }
 .kiosk-np-art {
@@ -973,37 +975,46 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  justify-content: center;
+  overflow: hidden;
 }
-.kiosk-np-onair {
-  display: inline-flex;
+/* Full-width NOW PLAYING banner — replaces the floating pill */
+.kiosk-np-banner {
+  display: flex;
   align-items: center;
   gap: 12px;
-  background: #dc2626;
+  background: #DC2626;
   color: #fff;
-  padding: 10px 28px;
-  border-radius: 5px;
-  font-size: clamp(20px, 2vw, 48px);
+  padding: 14px 16px;
+  margin-top: -10px;
+  margin-right: -10px;
+  border-radius: 0 10px 0 0;
+  flex-shrink: 0;
+  font-family: var(--theme-display-font);
+  font-size: clamp(18px, 2vw, 32px);
   font-weight: 800;
   letter-spacing: 3px;
-  align-self: flex-start;
   text-transform: uppercase;
-  margin-bottom: 16px;
-  box-shadow: 0 0 30px rgba(220,38,38,0.6), 0 0 60px rgba(220,38,38,0.3), inset 0 1px 0 rgba(255,255,255,0.2);
 }
 .kiosk-np-onair-dot {
-  width: 14px;
-  height: 14px;
-  background: #dc2626;
+  width: 12px;
+  height: 12px;
+  background: #fff;
   border-radius: 50%;
   flex-shrink: 0;
-  box-shadow: 0 0 8px rgba(255,255,255,0.8);
   animation: kiosk-onair-blink 2s ease-in-out infinite;
 }
 @keyframes kiosk-onair-blink {
   0%, 100% { opacity: 1; }
-  50%       { opacity: 0.5; }
+  50%       { opacity: 0.4; }
+}
+/* Body below the banner — vertically centered in remaining space */
+.kiosk-np-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  justify-content: center;
+  padding: 10px 4px 4px 0;
 }
 .kiosk-np-paused-tag {
   margin-left: 2px;
@@ -1054,7 +1065,7 @@
   justify-content: space-between;
   font-size: clamp(12px, 1.2vw, 22px);
   color: #6b4a2b;
-  font-family: monospace;
+  font-family: var(--theme-mono-font);
   flex-shrink: 0;
 }
 .kiosk-np-by {
@@ -1234,7 +1245,7 @@
 .kiosk-qr-url {
   font-size: clamp(8px, 0.8vw, 12px);
   color: #6b4a2b;
-  font-family: monospace;
+  font-family: var(--theme-mono-font);
   text-align: center;
   font-weight: 700;
   flex-shrink: 0;
