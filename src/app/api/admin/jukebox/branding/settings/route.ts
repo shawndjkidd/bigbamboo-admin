@@ -32,6 +32,16 @@ export async function PATCH(req: NextRequest) {
     }
     patch.poster_rotation_seconds = secs;
   }
+  if (typeof body.guest_token_rotation_hours === 'number') {
+    const hrs = Math.round(body.guest_token_rotation_hours);
+    if (hrs < 1 || hrs > 168) {
+      return NextResponse.json(
+        { ok: false, error: { code: 'invalid_input', message: 'guest_token_rotation_hours must be between 1 and 168.' } },
+        { status: 400 },
+      );
+    }
+    patch.guest_token_rotation_hours = hrs;
+  }
 
   if (Object.keys(patch).length === 0) {
     return NextResponse.json(
@@ -46,7 +56,7 @@ export async function PATCH(req: NextRequest) {
     .from('jukebox_settings')
     .update(patch)
     .eq('venue_id', venueId)
-    .select('id, rotate_posters, poster_rotation_seconds')
+    .select('id, rotate_posters, poster_rotation_seconds, guest_token_rotation_hours')
     .single();
 
   if (error) {

@@ -28,28 +28,32 @@ export default async function DisplayPage({
   let wifiNetwork: string | null = null
   let wifiPassword: string | null = null
   let logoUrl: string | null = null
+  let guestToken: string | null = null
   const { data: extraRow, error: extraErr } = await sb
     .from('jukebox_settings')
-    .select('wifi_network, wifi_password, logo_url')
+    .select('wifi_network, wifi_password, logo_url, guest_token')
     .eq('venue_id', venueId)
     .maybeSingle()
   if (!extraErr && extraRow) {
-    const r = extraRow as { wifi_network?: string | null; wifi_password?: string | null; logo_url?: string | null }
+    const r = extraRow as { wifi_network?: string | null; wifi_password?: string | null; logo_url?: string | null; guest_token?: string | null }
     wifiNetwork = r.wifi_network ?? null
     wifiPassword = r.wifi_password ?? null
     logoUrl = r.logo_url ?? null
+    guestToken = r.guest_token ?? null
   }
 
   const base = process.env.APP_BASE_URL?.replace(/\/$/, '') || ''
   const isSubdomain = /^https?:\/\/jukebox\./i.test(base)
-  const guestUrl = base ? (isSubdomain ? base : `${base}/jukebox`) : '/jukebox'
-  const qr = qrImageUrl(guestUrl, { size: 600, dark: '2c1810', light: 'fff8e7' })
+  const guestBase = base ? (isSubdomain ? base : `${base}/jukebox`) : '/jukebox'
+  const guestUrlWithToken = guestToken ? `${guestBase}?t=${guestToken}` : guestBase
+  const qr = qrImageUrl(guestUrlWithToken, { size: 600, dark: '2c1810', light: 'fff8e7' })
 
   return (
     <div style={pageWrap}>
       <DisplayClient
         qr={qr}
-        guestUrl={guestUrl}
+        guestBase={guestBase}
+        guestToken={guestToken ?? ''}
         wifiNetwork={wifiNetwork}
         wifiPassword={wifiPassword}
         logoUrl={logoUrl}

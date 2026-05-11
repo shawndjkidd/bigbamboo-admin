@@ -34,6 +34,9 @@ interface Settings {
   blocked_genres?: string[] | null
   rotate_posters?: boolean | null
   poster_rotation_seconds?: number | null
+  guest_token?: string | null
+  guest_token_rotated_at?: string | null
+  guest_token_rotation_hours?: number | null
 }
 
 interface ReqRow {
@@ -833,7 +836,111 @@ function BrandingTab({ apiFetch, onAction, settings: s, setSettings }: BrandingT
       </Card>
 
       <PostersSection apiFetch={apiFetch} onAction={onAction} settings={s} setSettings={setSettings} />
+
+      <GuestAccessSection apiFetch={apiFetch} onAction={onAction} settings={s} setSettings={setSettings} />
     </div>
+  )
+}
+
+// ── Guest Access ───────────────────────────────────────────────
+function GuestAccessSection({
+  apiFetch,
+  onAction,
+  settings,
+  setSettings,
+}: {
+  apiFetch: (p: string, i?: RequestInit) => Promise<{ ok: boolean; data?: unknown; error?: { message: string } }>
+  onAction: (m: string) => void
+  settings: Settings
+  setSettings: (s: Settings) => void
+}) {
+  const [now, setNow] = useState(Date.now())
+  const [rotating, setRotating] = useState(false)
+  const [rotHours, setRotHours] = useState(String(settings.guest_token_rotation_hours ?? 12))
+
+  useEffect(() => { setRotHours(String(settings.guest_token_rotation_hours ?? 12)) }, [settings.guest_token_rotation_hours])
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 10_000)
+    return () => clearInterval(t)
+  }, [])
+
+  async function saveRotationHours() {
+    const n = parseInt(rotHours, 10)
+    if (!Number.isFinite(n) || n < 1 || n > 168) { setRotHours(String(settings.guest_token_rotation_hours ?? 12)); return }
+    if (n === (settings.guest_token_rotation_hours ?? 12)) return
+    const j = await apiFetch('/api/admin/jukebox/branding/settings', {
+      method: 'PATCH',
+      body: JSON.stringify({ guest_token_rotation_hours: n }),
+    })
+    if (j.ok) {
+      setSettings({ ...settings, ...(j.data as Pick<Settings, 'guest_token_rotation_hours'>) })
+      onAction('Saved')
+    } else onAction(j.error?.message || 'Save failed')
+  }
+
+  async function rotateNow() {
+    if (!confirm('Rotate the QR token now? Anyone with the current QR link will need to rescan.')) return
+    setRotating(true)
+    const j = await apiFetch('/api/admin/jukebox/branding/rotate-guest-token', { method: 'POST', body: '{}' })
+    setRotating(false)
+    if (j.ok) {
+      const s = await apiFetch('/api/admin/jukebox/settings')
+      if (s.ok) setSettings(s.data as Settings)
+      onAction('Token rotated — old QR links invalidated')
+    } else onAction(j.error?.message || 'Rotate failed')
+  }
+
+  const rotatedAt = settings.guest_token_rotated_at ? new Date(settings.guest_token_rotated_at).getTime() : now
+  const hours = settings.guest_token_rotation_hours ?? 12
+  const expiresAt = rotatedAt + hours * 3_600_000
+  const msLeft = Math.max(0, expiresAt - now)
+  const hLeft = Math.floor(msLeft / 3_600_000)
+  const mLeft = Math.floor((msLeft % 3_600_000) / 60_000)
+  const expiryLabel = msLeft === 0 ? 'Rotating soon…' : hLeft > 0 ? `${hLeft}h ${mLeft}m` : `${mLeft}m`
+
+  return (
+    <Card>
+      <div className="section-title" style={{ marginBottom: 4 }}>Guest access</div>
+      <div style={{ fontSize: 12, color: 'var(--adm-text-muted)', marginBottom: 16, lineHeight: 1.5 }}>
+        The kiosk QR code embeds a token. When the token rotates, old QR links stop working — guests must rescan the TV. Use this to ensure only people physically present can request songs.
+      </div>
+
+      <div style={{ display: 'flex', gap: 20, alignItems: 'flex-end', flexWrap: 'wrap', marginBottom: 16 }}>
+        <div>
+          <label className="label" style={{ marginBottom: 4 }}>Auto-rotate every</label>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <input
+              className="input"
+              type="number"
+              min={1}
+              max={168}
+              style={{ width: 80 }}
+              value={rotHours}
+              onChange={(e) => setRotHours(e.target.value)}
+              onBlur={saveRotationHours}
+            />
+            <span style={{ fontSize: 13, color: 'var(--adm-text-sec)' }}>hours</span>
+          </div>
+          <div style={{ fontSize: 11, color: 'var(--adm-text-muted)', marginTop: 3 }}>1 – 168 hours</div>
+        </div>
+
+        <div style={{ paddingBottom: 24 }}>
+          <div style={{ fontSize: 12, color: 'var(--adm-text-muted)', marginBottom: 2 }}>Current token expires in</div>
+          <div style={{ fontSize: 16, fontWeight: 600, color: msLeft < 3_600_000 ? 'var(--adm-danger)' : 'var(--adm-text)', fontVariantNumeric: 'tabular-nums' }}>
+            {expiryLabel}
+          </div>
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+        <Button variant="danger" disabled={rotating} onClick={rotateNow}>
+          {rotating ? 'Rotating…' : 'Rotate now'}
+        </Button>
+        <span style={{ fontSize: 12, color: 'var(--adm-text-muted)' }}>
+          Invalidates all current QR links immediately.
+        </span>
+      </div>
+    </Card>
   )
 }
 

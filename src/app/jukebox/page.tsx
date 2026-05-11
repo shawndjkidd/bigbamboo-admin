@@ -125,8 +125,10 @@ export default function JukeboxGuestPage() {
   const { lang, switchLang, t } = useLang()
 
   const [deviceId, setDeviceId] = useState('')
+  const [guestToken, setGuestToken] = useState('')
   const [settings, setSettings] = useState<PublicSettings | null>(null)
   const [settingsErr, setSettingsErr] = useState('')
+  const [expiredQr, setExpiredQr] = useState(false)
 
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<Track[]>([])
@@ -150,6 +152,7 @@ export default function JukeboxGuestPage() {
   useEffect(() => {
     setDeviceId(getOrCreateDeviceId())
     setNickname(localStorage.getItem(NICK_KEY) || '')
+    setGuestToken(new URLSearchParams(window.location.search).get('t') ?? '')
     const tick = setInterval(() => setNow(Date.now()), 1000)
     return () => clearInterval(tick)
   }, [])
@@ -241,10 +244,18 @@ export default function JukeboxGuestPage() {
           provider_track_id: picked.id,
           nickname: nickname.trim(),
           device_id: deviceId,
+          guest_token: guestToken,
         }),
       })
       const j = await r.json()
       if (!j.ok) {
+        if (j.error?.code === 'expired_qr') {
+          setExpiredQr(true)
+          setPicked(null)
+          setQuery('')
+          setResults([])
+          return
+        }
         const retry = j.error?.meta?.retryAfterSec
         if (retry && typeof retry === 'number') {
           localStorage.setItem(NEXT_AVAILABLE_KEY, String(Date.now() + retry * 1000))
@@ -317,6 +328,26 @@ export default function JukeboxGuestPage() {
               {t.queuePosition(submitOk.position)}
             </div>
           )}
+        </div>
+      )}
+
+      {/* Expired QR notice */}
+      {expiredQr && (
+        <div className="jukebox-cabinet" style={{ marginBottom: 14, textAlign: 'center', padding: '28px 20px' }}>
+          <div style={{ fontSize: 32, marginBottom: 10 }}>📵</div>
+          <div style={{ fontFamily: 'Sigmar, sans-serif', fontSize: 22, color: 'var(--bbb-wood-dark)', marginBottom: 8 }}>
+            {t.expiredQr}
+          </div>
+          <div style={{ fontSize: 14, color: 'var(--bbb-wood)', marginBottom: 20, lineHeight: 1.5 }}>
+            {t.expiredQrSub}
+          </div>
+          <button
+            className="btn-outline"
+            onClick={() => setExpiredQr(false)}
+            style={{ fontSize: 14, padding: '10px 24px' }}
+          >
+            {t.scanQrAgain}
+          </button>
         </div>
       )}
 

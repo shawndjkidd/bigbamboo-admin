@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { qrImageUrl } from '@/lib/jukebox/qr'
 
 interface Item {
   id: string
@@ -42,7 +43,8 @@ interface SpotifyLiveNow {
 }
 
 interface Props {
-  guestUrl: string
+  guestBase: string
+  guestToken: string
   qr: string
   wifiNetwork?: string | null
   wifiPassword?: string | null
@@ -61,12 +63,14 @@ interface Poster {
   public_url: string
 }
 
-export default function DisplayClient({ guestUrl, qr, wifiNetwork, wifiPassword, logoUrl }: Props) {
+export default function DisplayClient({ guestBase, guestToken, qr: initialQr, wifiNetwork, wifiPassword, logoUrl }: Props) {
   const [data, setData] = useState<QueuePayload | null>(null)
   const [spotifyNow, setSpotifyNow] = useState<SpotifyLiveNow | null>(null)
   const [posters, setPosters] = useState<Poster[]>([])
   const [rotatePosters, setRotatePosters] = useState(true)
   const [rotationSeconds, setRotationSeconds] = useState(8)
+  const [qrSrc, setQrSrc] = useState(initialQr)
+  const currentTokenRef = useRef(guestToken)
 
   // Poster rotator state
   const [posterIdx, setPosterIdx] = useState(0)
@@ -104,12 +108,25 @@ export default function DisplayClient({ guestUrl, qr, wifiNetwork, wifiPassword,
         }
       } catch { /* ignore */ }
     }
-    loadQueue(); loadSpotify(); loadPosters()
+    async function pollToken() {
+      try {
+        const r = await fetch('/api/jukebox/guest-token', { cache: 'no-store' })
+        const j = await r.json()
+        if (!alive) return
+        if (j.ok && j.data?.guest_token && j.data.guest_token !== currentTokenRef.current) {
+          currentTokenRef.current = j.data.guest_token
+          const url = guestBase + '?t=' + j.data.guest_token
+          setQrSrc(qrImageUrl(url, { size: 600, dark: '2c1810', light: 'fff8e7' }))
+        }
+      } catch { /* ignore */ }
+    }
+    loadQueue(); loadSpotify(); loadPosters(); pollToken()
     const tQueue = setInterval(loadQueue, 12_000)
     const tSpotify = setInterval(loadSpotify, 8_000)
     const tPosters = setInterval(loadPosters, 30_000)
-    return () => { alive = false; clearInterval(tQueue); clearInterval(tSpotify); clearInterval(tPosters) }
-  }, [])
+    const tToken = setInterval(pollToken, 60_000)
+    return () => { alive = false; clearInterval(tQueue); clearInterval(tSpotify); clearInterval(tPosters); clearInterval(tToken) }
+  }, [guestBase])
 
   useEffect(() => {
     if (!rotatePosters || posters.length <= 1) return
@@ -148,7 +165,7 @@ export default function DisplayClient({ guestUrl, qr, wifiNetwork, wifiPassword,
 
   const onDeck = (nowPlaying?.is_fallback && items.length > 0) ? items.slice(1) : items
 
-  const displayUrl = guestUrl.replace(/^https?:\/\//, '')
+  const displayUrl = guestBase.replace(/^https?:\/\//, '')
   const activePoster = posters[posterIdx % Math.max(posters.length, 1)]
 
   return (
@@ -245,7 +262,7 @@ export default function DisplayClient({ guestUrl, qr, wifiNetwork, wifiPassword,
             <div className="kiosk-qr-label">SCAN TO REQUEST</div>
             <div className="kiosk-qr-wrap">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={qr} alt="Scan to request a song" className="kiosk-qr-img" />
+              <img src={qrSrc} alt="Scan to request a song" className="kiosk-qr-img" />
             </div>
             <div className="kiosk-qr-url">{displayUrl}</div>
           </div>

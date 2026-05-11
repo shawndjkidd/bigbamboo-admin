@@ -37,6 +37,9 @@ export const translations = {
     noWait: "No wait — you're up soon.",
     estimatedWait: (min: number) => `Estimated wait: ~${min} min`,
     explicit: 'explicit',
+    expiredQr: 'QR code expired.',
+    expiredQrSub: 'Scan the QR on the venue TV to get a fresh link.',
+    scanQrAgain: 'Scan the QR again',
   },
   vi: {
     // ⚠️  Translate-app quality — have a native speaker review before public launch.
@@ -69,6 +72,9 @@ export const translations = {
     noWait: 'Không cần chờ — bạn sắp đến lượt.',
     estimatedWait: (min: number) => `Thời gian chờ: ~${min} phút`,
     explicit: 'tục tĩu',
+    expiredQr: 'Mã QR đã hết hạn.',
+    expiredQrSub: 'Quét mã QR trên TV nhà hàng để lấy link mới.',
+    scanQrAgain: 'Quét lại mã QR',
   },
 } as const
 

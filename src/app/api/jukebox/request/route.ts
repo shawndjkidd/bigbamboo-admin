@@ -16,6 +16,7 @@ interface Body {
   provider_track_id?: string;
   nickname?: string;
   device_id?: string;
+  guest_token?: string;
 }
 
 export async function POST(req: NextRequest) {
@@ -32,6 +33,7 @@ export async function POST(req: NextRequest) {
   const providerTrackId = (body.provider_track_id || '').trim();
   const nicknameRaw = (body.nickname || '').trim();
   const deviceId = (body.device_id || '').trim();
+  const guestToken = (body.guest_token || '').trim();
 
   if (!providerTrackId || !deviceId || !/^[A-Za-z0-9_-]{8,64}$/.test(deviceId)) {
     return NextResponse.json(
@@ -56,8 +58,24 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const ipHash = hashIp(getRequestIp(req));
   const venueId = await getJukeboxVenueId();
+  const sbEarly = getServiceClient();
+
+  // Proximity check: validate guest_token against the venue's current token.
+  // If the column doesn't exist yet (pre-migration) the row will be null — skip.
+  const { data: tokenRow } = await sbEarly
+    .from('jukebox_settings')
+    .select('guest_token')
+    .eq('venue_id', venueId)
+    .maybeSingle();
+  if (tokenRow?.guest_token && guestToken !== tokenRow.guest_token) {
+    return NextResponse.json(
+      { ok: false, error: { code: 'expired_qr', message: 'This QR code has expired. Scan the QR on the venue TV to get a fresh link.' } },
+      { status: 403 },
+    );
+  }
+
+  const ipHash = hashIp(getRequestIp(req));
   const provider = getProvider('spotify', venueId);
 
   const result = await validateRequest(
