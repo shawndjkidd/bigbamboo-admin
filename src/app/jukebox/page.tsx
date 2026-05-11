@@ -299,8 +299,10 @@ export default function JukeboxGuestPage() {
           <span className="jukebox-vibequeue">VibeQueue</span>
         </div>
         <div className="jukebox-tagline">
-          <span style={{ display: 'block' }}>{t.tagLine1}</span>
-          <span style={{ display: 'block', marginTop: '0.25em' }}>{t.tagLine2}</span>
+          <span style={{ display: 'block' }}>
+            {t.tagBefore} <span className="jukebox-tagline-accent">{t.tagHighlight}</span>
+          </span>
+          <span style={{ display: 'block', marginTop: '0.25em' }}>{t.tagAfter}</span>
         </div>
       </header>
 
