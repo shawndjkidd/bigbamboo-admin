@@ -25,6 +25,7 @@ interface PublicSettings {
   max_song_length_seconds: number
   allow_explicit: boolean
   max_queue_length: number
+  logo_url?: string | null
 }
 
 const DEVICE_KEY = 'bbb_jukebox_device_id'
@@ -290,7 +291,7 @@ export default function JukeboxGuestPage() {
 
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src="https://bigbamboo.app/images/bbb-img-5.png"
+          src={settings?.logo_url || 'https://bigbamboo.app/images/bbb-img-5.png'}
           alt="BigBamBoo"
           className="bbb-logo"
         />

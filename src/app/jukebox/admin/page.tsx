@@ -160,10 +160,12 @@ export default function JukeboxAdminPage() {
       <div className="admin-nav">
         <div className="admin-nav-inner">
           <div className="admin-nav-brand">
-            {settings?.logo_url && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={settings.logo_url} alt="Venue logo" style={{ height: 28, width: 'auto', borderRadius: 4 }} />
-            )}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={settings?.logo_url || 'https://bigbamboo.app/images/bbb-img-5.png'}
+              alt="Venue logo"
+              style={{ height: 28, width: 'auto', borderRadius: 4, objectFit: 'cover' }}
+            />
             <span className="admin-nav-title">VibeQueue</span>
           </div>
           <Tabs tab={tab} onChange={setTab} />
@@ -813,8 +815,11 @@ function BrandingTab({ apiFetch, onAction, settings: s, setSettings }: BrandingT
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <Card>
         <div className="section-title" style={{ marginBottom: 4 }}>Branding</div>
-        <div style={{ fontSize: 12, color: 'var(--adm-text-muted)', marginBottom: 12 }}>
-          Venue logo shown in the kiosk display header and admin page. PNG or JPG, max 500 KB. Leave blank to use the default BBB logo.
+        <div style={{ fontSize: 12, color: 'var(--adm-text-muted)', marginBottom: 4 }}>
+          Venue logo shown in the kiosk display header, admin nav, and guest page.
+        </div>
+        <div style={{ fontSize: 11, color: 'var(--adm-text-muted)', marginBottom: 12 }}>
+          Recommended: <strong>512 × 512 px</strong> PNG with transparent background. Square aspect ratio. Max 500 KB.
         </div>
         <LogoField
           logoUrl={s.logo_url ?? null}
@@ -1108,15 +1113,13 @@ function LogoField({ logoUrl, apiFetch, onAction, onSaved }: {
 
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-      {logoUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={logoUrl} alt="Venue logo" style={{ height: 48, width: 'auto', borderRadius: 6, border: '1px solid var(--adm-border)' }} />
-      ) : (
-        <div style={{ width: 48, height: 48, borderRadius: 6, background: 'var(--adm-input-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, color: 'var(--adm-text-muted)' }}>
-          🏷
-        </div>
-      )}
-      <div style={{ display: 'flex', gap: 8 }}>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={logoUrl || 'https://bigbamboo.app/images/bbb-img-5.png'}
+        alt="Venue logo"
+        style={{ height: 64, width: 64, borderRadius: 8, objectFit: 'cover', border: '1px solid var(--adm-border)', flexShrink: 0, background: 'var(--adm-input-bg)' }}
+      />
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
         <input
           ref={fileRef}
           type="file"
@@ -1128,7 +1131,7 @@ function LogoField({ logoUrl, apiFetch, onAction, onSaved }: {
           {uploading ? 'Uploading…' : logoUrl ? 'Replace logo' : 'Upload logo'}
         </Button>
         {logoUrl && (
-          <Button variant="danger" onClick={removeLogo}>Remove</Button>
+          <Button variant="secondary" onClick={removeLogo}>Reset to default</Button>
         )}
       </div>
     </div>

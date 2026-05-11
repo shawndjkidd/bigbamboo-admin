@@ -21,11 +21,10 @@ export async function GET(req: NextRequest) {
   try {
     const venueId = await getJukeboxVenueId();
     const sb = getServiceClient();
-    const { data } = await sb
-      .from('jukebox_public_settings')
-      .select('*')
-      .eq('venue_id', venueId)
-      .maybeSingle();
+    const [{ data }, { data: branding }] = await Promise.all([
+      sb.from('jukebox_public_settings').select('*').eq('venue_id', venueId).maybeSingle(),
+      sb.from('jukebox_settings').select('logo_url').eq('venue_id', venueId).maybeSingle(),
+    ]);
 
     if (!data) {
       return NextResponse.json(
@@ -33,7 +32,7 @@ export async function GET(req: NextRequest) {
         { status: 404 },
       );
     }
-    return NextResponse.json({ ok: true, data });
+    return NextResponse.json({ ok: true, data: { ...data, logo_url: (branding as { logo_url?: string | null } | null)?.logo_url ?? null } });
   } catch (e: unknown) {
     return NextResponse.json(
       { ok: false, error: { code: 'server_error', message: String(e) } },
