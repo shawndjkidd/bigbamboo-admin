@@ -947,6 +947,7 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
+  justify-content: center;
 }
 .kiosk-np-onair {
   display: inline-flex;
@@ -954,21 +955,23 @@
   gap: 12px;
   background: #dc2626;
   color: #fff;
-  padding: 8px 22px;
-  border-radius: 999px;
-  font-size: clamp(16px, 1.6vw, 26px);
+  padding: 10px 28px;
+  border-radius: 5px;
+  font-size: clamp(20px, 2vw, 48px);
   font-weight: 800;
-  letter-spacing: 2.5px;
+  letter-spacing: 3px;
   align-self: flex-start;
   text-transform: uppercase;
-  box-shadow: 0 4px 18px rgba(220,38,38,0.45);
+  margin-bottom: 16px;
+  box-shadow: 0 0 30px rgba(220,38,38,0.6), 0 0 60px rgba(220,38,38,0.3), inset 0 1px 0 rgba(255,255,255,0.2);
 }
 .kiosk-np-onair-dot {
   width: 14px;
   height: 14px;
-  background: #fff;
+  background: #dc2626;
   border-radius: 50%;
   flex-shrink: 0;
+  box-shadow: 0 0 8px rgba(255,255,255,0.8);
   animation: kiosk-onair-blink 2s ease-in-out infinite;
 }
 @keyframes kiosk-onair-blink {
@@ -984,7 +987,7 @@
   letter-spacing: 0.1em;
 }
 .kiosk-np-title {
-  font-size: clamp(28px, 3.8vw, 64px);
+  font-size: clamp(32px, 4.5vw, 80px);
   font-weight: 800;
   color: #3a2511;
   line-height: 1.05;
@@ -996,7 +999,7 @@
   font-family: var(--theme-display-font);
 }
 .kiosk-np-artist {
-  font-size: clamp(12px, 1.4vw, 22px);
+  font-size: clamp(16px, 2vw, 36px);
   color: #6b4a2b;
   font-style: italic;
   white-space: nowrap;
@@ -1004,7 +1007,7 @@
   text-overflow: ellipsis;
 }
 .kiosk-np-progress {
-  height: 3px;
+  height: 6px;
   background: #3a2511;
   border-radius: 2px;
   position: relative;
@@ -1022,14 +1025,15 @@
 .kiosk-np-times {
   display: flex;
   justify-content: space-between;
-  font-size: clamp(9px, 0.9vw, 13px);
+  font-size: clamp(12px, 1.2vw, 22px);
   color: #6b4a2b;
   font-family: monospace;
   flex-shrink: 0;
 }
 .kiosk-np-by {
-  font-size: clamp(9px, 0.9vw, 12px);
+  font-size: clamp(12px, 1.1vw, 20px);
   color: #8a7560;
+  font-style: italic;
   flex-shrink: 0;
 }
 .kiosk-np-nick {
@@ -1097,7 +1101,7 @@
 }
 .kiosk-deck-row {
   display: grid;
-  grid-template-columns: 30px 40px 1fr auto;
+  grid-template-columns: 30px 56px 1fr auto;
   align-items: center;
   gap: 10px;
   padding: 8px 0;
@@ -1114,8 +1118,8 @@
   font-variant-numeric: tabular-nums;
 }
 .kiosk-deck-art {
-  width: 40px;
-  height: 40px;
+  width: 56px;
+  height: 56px;
   border-radius: 4px;
   border: 1px solid #3a2511;
   background: #6b4226;
@@ -1159,7 +1163,7 @@
   justify-content: space-between;
 }
 .kiosk-qr-label {
-  font-size: 18px;
+  font-size: 22px;
   font-weight: 800;
   letter-spacing: 2px;
   color: #3a2511;
