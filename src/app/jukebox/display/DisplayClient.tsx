@@ -65,6 +65,8 @@ export default function DisplayClient({ guestUrl, qr, wifiNetwork, wifiPassword,
   const [data, setData] = useState<QueuePayload | null>(null)
   const [spotifyNow, setSpotifyNow] = useState<SpotifyLiveNow | null>(null)
   const [posters, setPosters] = useState<Poster[]>([])
+  const [rotatePosters, setRotatePosters] = useState(true)
+  const [rotationSeconds, setRotationSeconds] = useState(8)
 
   // Poster rotator state
   const [posterIdx, setPosterIdx] = useState(0)
@@ -94,7 +96,12 @@ export default function DisplayClient({ guestUrl, qr, wifiNetwork, wifiPassword,
         const r = await fetch('/api/jukebox/posters', { cache: 'no-store' })
         const j = await r.json()
         if (!alive) return
-        if (j.ok) setPosters((j.data as { posters: Poster[] }).posters || [])
+        if (j.ok) {
+          const d = j.data as { posters: Poster[]; rotate_posters?: boolean; poster_rotation_seconds?: number }
+          setPosters(d.posters || [])
+          setRotatePosters(d.rotate_posters ?? true)
+          setRotationSeconds(d.poster_rotation_seconds ?? 8)
+        }
       } catch { /* ignore */ }
     }
     loadQueue(); loadSpotify(); loadPosters()
@@ -105,16 +112,16 @@ export default function DisplayClient({ guestUrl, qr, wifiNetwork, wifiPassword,
   }, [])
 
   useEffect(() => {
-    if (posters.length <= 1) return
+    if (!rotatePosters || posters.length <= 1) return
     posterTimer.current = setInterval(() => {
       setPosterVisible(false)
       setTimeout(() => {
         setPosterIdx(i => (i + 1) % posters.length)
         setPosterVisible(true)
       }, 300)
-    }, 8_000)
+    }, rotationSeconds * 1000)
     return () => { if (posterTimer.current) clearInterval(posterTimer.current) }
-  }, [posters.length])
+  }, [posters.length, rotatePosters, rotationSeconds])
 
   const items = data?.queue || []
   const queueNowPlaying = data?.now_playing ?? null

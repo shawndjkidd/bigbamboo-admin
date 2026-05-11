@@ -32,6 +32,8 @@ interface Settings {
   wifi_network?: string | null
   wifi_password?: string | null
   blocked_genres?: string[] | null
+  rotate_posters?: boolean | null
+  poster_rotation_seconds?: number | null
 }
 
 interface ReqRow {
@@ -63,7 +65,7 @@ interface BlockEntry {
   created_at: string
 }
 
-type Tab = 'queue' | 'history' | 'blocklist' | 'spotify' | 'settings'
+type Tab = 'queue' | 'history' | 'blocklist' | 'branding' | 'spotify' | 'settings'
 
 export default function JukeboxAdminPage() {
   const router = useRouter()
@@ -177,6 +179,14 @@ export default function JukeboxAdminPage() {
         {tab === 'queue' && <QueueTab apiFetch={apiFetch} onAction={showToast} mode={settings?.mode ?? null} />}
         {tab === 'history' && <HistoryTab apiFetch={apiFetch} />}
         {tab === 'blocklist' && <BlocklistTab apiFetch={apiFetch} onAction={showToast} />}
+        {tab === 'branding' && (
+          <BrandingTab
+            apiFetch={apiFetch}
+            onAction={showToast}
+            settings={settings}
+            setSettings={setSettings}
+          />
+        )}
         {tab === 'spotify' && <SpotifyTab apiFetch={apiFetch} onAction={showToast} />}
         {tab === 'settings' && (
           <SettingsTab
@@ -200,6 +210,7 @@ function Tabs({ tab, onChange }: { tab: Tab; onChange: (t: Tab) => void }) {
     { id: 'queue', label: copy.admin.queueTab },
     { id: 'history', label: copy.admin.historyTab },
     { id: 'blocklist', label: copy.admin.blocklistTab },
+    { id: 'branding', label: copy.admin.brandingTab },
     { id: 'spotify', label: copy.admin.spotifyTab },
     { id: 'settings', label: copy.admin.settingsTab },
   ]
@@ -654,8 +665,6 @@ function SettingsTab({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <PostersSection apiFetch={apiFetch} onAction={onAction} />
-
       <Card>
         <div className="section-title" style={{ marginBottom: 16 }}>Options</div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
@@ -764,17 +773,41 @@ function SettingsTab({
         </div>
       </Card>
 
-      <Card>
-        <div className="section-title" style={{ marginBottom: 4 }}>Display info</div>
-        <div style={{ fontSize: 12, color: 'var(--adm-text-muted)', marginBottom: 12 }}>
-          WiFi credentials shown on the kiosk header strip. Leave blank to hide the pill.
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-          <WifiField label="Network name (SSID)" field="wifi_network" settings={s} patch={patch} />
-          <WifiField label="Password" field="wifi_password" settings={s} patch={patch} />
-        </div>
-      </Card>
+    </div>
+  )
+}
 
+// ── Branding tab ──────────────────────────────────────────────
+interface BrandingTabProps {
+  apiFetch: (p: string, i?: RequestInit) => Promise<{ ok: boolean; data?: unknown; error?: { message: string } }>
+  onAction: (m: string) => void
+  settings: Settings | null
+  setSettings: (s: Settings) => void
+}
+
+function BrandingTab({ apiFetch, onAction, settings: s, setSettings }: BrandingTabProps) {
+  const [saving, setSaving] = useState(false)
+
+  async function patchSettings(patchBody: Partial<Settings>) {
+    setSaving(true)
+    try {
+      const j = await apiFetch('/api/admin/jukebox/settings', {
+        method: 'PATCH',
+        body: JSON.stringify(patchBody),
+      })
+      if (j.ok) { setSettings(j.data as Settings); onAction('Saved') }
+      else onAction(j.error?.message || 'Save failed')
+    } catch {
+      onAction('Network error — try again')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (!s) return <SettingsSkeleton />
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <Card>
         <div className="section-title" style={{ marginBottom: 4 }}>Branding</div>
         <div style={{ fontSize: 12, color: 'var(--adm-text-muted)', marginBottom: 12 }}>
@@ -787,6 +820,19 @@ function SettingsTab({
           onSaved={(url) => setSettings({ ...s, logo_url: url })}
         />
       </Card>
+
+      <Card>
+        <div className="section-title" style={{ marginBottom: 4 }}>Display info</div>
+        <div style={{ fontSize: 12, color: 'var(--adm-text-muted)', marginBottom: 12 }}>
+          WiFi credentials shown on the kiosk header strip. Leave blank to hide.
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <WifiField label="Network name (SSID)" field="wifi_network" settings={s} patch={patchSettings} disabled={saving} />
+          <WifiField label="Password" field="wifi_password" settings={s} patch={patchSettings} disabled={saving} />
+        </div>
+      </Card>
+
+      <PostersSection apiFetch={apiFetch} onAction={onAction} settings={s} setSettings={setSettings} />
     </div>
   )
 }
@@ -887,11 +933,12 @@ function SegmentedControl({
   )
 }
 
-function WifiField({ label, field, settings, patch }: {
+function WifiField({ label, field, settings, patch, disabled }: {
   label: string
   field: 'wifi_network' | 'wifi_password'
   settings: Settings
   patch: (b: Partial<Settings>) => void
+  disabled?: boolean
 }) {
   const [v, setV] = useState(settings[field] ?? '')
   useEffect(() => { setV(settings[field] ?? '') }, [settings, field])
@@ -902,6 +949,7 @@ function WifiField({ label, field, settings, patch }: {
         className="input"
         type="text"
         value={v}
+        disabled={disabled}
         onChange={(e) => setV(e.target.value)}
         onBlur={() => {
           const trimmed = v.trim()
@@ -1002,23 +1050,45 @@ interface PosterRow {
 function PostersSection({
   apiFetch,
   onAction,
+  settings,
+  setSettings,
 }: {
   apiFetch: (p: string, i?: RequestInit) => Promise<{ ok: boolean; data?: unknown; error?: { message: string } }>
   onAction: (m: string) => void
+  settings: Settings
+  setSettings: (s: Settings) => void
 }) {
   const [posters, setPosters] = useState<PosterRow[]>([])
   const [uploading, setUploading] = useState(false)
   const [busy, setBusy] = useState<string | null>(null)
   const [dragOver, setDragOver] = useState(false)
+  const [rotSecs, setRotSecs] = useState(String(settings.poster_rotation_seconds ?? 8))
   const fileRef = useRef<HTMLInputElement>(null)
   const dragIdx = useRef<number | null>(null)
 
+  useEffect(() => {
+    setRotSecs(String(settings.poster_rotation_seconds ?? 8))
+  }, [settings.poster_rotation_seconds])
+
   const load = useCallback(async () => {
-    const j = await apiFetch('/api/admin/jukebox/posters')
+    const j = await apiFetch('/api/admin/jukebox/branding/posters')
     if (j.ok) setPosters((j.data as { posters: PosterRow[] }).posters)
   }, [apiFetch])
 
   useEffect(() => { load() }, [load])
+
+  async function patchRotation(body: { rotate_posters?: boolean; poster_rotation_seconds?: number }) {
+    const j = await apiFetch('/api/admin/jukebox/branding/settings', {
+      method: 'PATCH',
+      body: JSON.stringify(body),
+    })
+    if (j.ok) {
+      setSettings({ ...settings, ...(j.data as Pick<Settings, 'rotate_posters' | 'poster_rotation_seconds'>) })
+      onAction('Saved')
+    } else {
+      onAction(j.error?.message || 'Save failed')
+    }
+  }
 
   async function uploadFile(file: File) {
     if (!['image/png', 'image/jpeg'].includes(file.type)) { onAction('Only PNG or JPEG allowed.'); return }
@@ -1027,7 +1097,7 @@ function PostersSection({
     const form = new FormData()
     form.append('file', file)
     try {
-      const j = await apiFetch('/api/admin/jukebox/posters', { method: 'POST', body: form }) as { ok: boolean; data?: { poster: PosterRow }; error?: { message: string } }
+      const j = await apiFetch('/api/admin/jukebox/branding/posters', { method: 'POST', body: form }) as { ok: boolean; data?: { poster: PosterRow }; error?: { message: string } }
       if (j.ok && j.data?.poster) {
         setPosters(p => [...p, j.data!.poster])
         onAction('Poster uploaded')
@@ -1043,15 +1113,16 @@ function PostersSection({
 
   async function toggle(id: string, is_active: boolean) {
     setBusy(id + ':toggle')
-    const j = await apiFetch(`/api/admin/jukebox/posters/${id}`, { method: 'PATCH', body: JSON.stringify({ is_active }) })
+    const j = await apiFetch(`/api/admin/jukebox/branding/posters/${id}`, { method: 'PATCH', body: JSON.stringify({ is_active }) })
     setBusy(null)
     if (j.ok) setPosters(p => p.map(x => x.id === id ? { ...x, is_active } : x))
     else onAction(j.error?.message || 'Update failed')
   }
 
   async function remove(id: string) {
+    if (!confirm('Delete this poster?')) return
     setBusy(id + ':del')
-    const j = await apiFetch(`/api/admin/jukebox/posters/${id}`, { method: 'DELETE' })
+    const j = await apiFetch(`/api/admin/jukebox/branding/posters/${id}`, { method: 'DELETE' })
     setBusy(null)
     if (j.ok) setPosters(p => p.filter(x => x.id !== id))
     else onAction(j.error?.message || 'Delete failed')
@@ -1064,11 +1135,10 @@ function PostersSection({
     next.splice(toIdx, 0, moved)
     const reindexed = next.map((p, i) => ({ ...p, position: i }))
     setPosters(reindexed)
-    // Persist new positions in parallel
     await Promise.all(
       reindexed
         .filter((p, i) => p.position !== posters[i]?.position)
-        .map(p => apiFetch(`/api/admin/jukebox/posters/${p.id}`, { method: 'PATCH', body: JSON.stringify({ position: p.position }) }))
+        .map(p => apiFetch(`/api/admin/jukebox/branding/posters/${p.id}`, { method: 'PATCH', body: JSON.stringify({ position: p.position }) }))
     )
   }
 
@@ -1085,15 +1155,53 @@ function PostersSection({
     if (file) uploadFile(file)
   }
 
+  const rotateOn = settings.rotate_posters !== false
+
   return (
     <Card>
       <div className="section-title" style={{ marginBottom: 4 }}>Display Posters</div>
-      <div style={{ fontSize: 12, color: 'var(--adm-text-muted)', marginBottom: 4 }}>
-        Upload event posters, drink specials, or any image. Auto-rotates on the kiosk TV every 8 seconds.
+      <div style={{ fontSize: 12, color: 'var(--adm-text-muted)', marginBottom: 14 }}>
+        Upload posters that rotate on the kiosk TV bottom-right panel. Recommended: <strong>1600 × 400 px</strong> (4:1 aspect ratio), PNG or JPG, max 2 MB.
       </div>
-      <div style={{ fontSize: 11, color: 'var(--adm-text-muted)', marginBottom: 14, lineHeight: 1.5 }}>
-        Recommended size: <strong>1600 × 400 px</strong> (4:1 aspect ratio). PNG or JPG, max 2 MB.
-        Images narrower than 1600px will be upscaled. Non-4:1 ratios are cropped to fit.
+
+      {/* Global rotation controls */}
+      <div style={{ display: 'flex', gap: 24, alignItems: 'flex-start', marginBottom: 18, flexWrap: 'wrap', paddingBottom: 16, borderBottom: '1px solid var(--adm-border)' }}>
+        <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+          <SegmentedControl
+            options={[{ value: 'on', label: 'On', color: 'green' }, { value: 'off', label: 'Off', color: 'red' }]}
+            value={rotateOn ? 'on' : 'off'}
+            onChange={(v) => patchRotation({ rotate_posters: v === 'on' })}
+          />
+          <div>
+            <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--adm-text)', marginBottom: 2 }}>Rotate posters</div>
+            <div style={{ fontSize: 11, color: 'var(--adm-text-muted)', lineHeight: 1.4 }}>
+              {rotateOn ? 'Kiosk cycles through active posters.' : 'Kiosk shows only the first active poster.'}
+            </div>
+          </div>
+        </div>
+        <div>
+          <label className="label" style={{ marginBottom: 4 }}>Seconds per poster</label>
+          <input
+            className="input"
+            type="number"
+            min={3}
+            max={60}
+            style={{ width: 80 }}
+            value={rotSecs}
+            disabled={!rotateOn}
+            onChange={(e) => setRotSecs(e.target.value)}
+            onBlur={() => {
+              const n = parseInt(rotSecs, 10)
+              const cur = settings.poster_rotation_seconds ?? 8
+              if (Number.isFinite(n) && n >= 3 && n <= 60 && n !== cur) {
+                patchRotation({ poster_rotation_seconds: n })
+              } else {
+                setRotSecs(String(cur))
+              }
+            }}
+          />
+          <div style={{ fontSize: 11, color: 'var(--adm-text-muted)', marginTop: 3 }}>3 – 60 seconds</div>
+        </div>
       </div>
 
       {/* Drop zone */}
@@ -1150,11 +1258,14 @@ function PostersSection({
               <img
                 src={poster.public_url}
                 alt=""
-                style={{ width: 160, height: 40, objectFit: 'cover', borderRadius: 4, flexShrink: 0, background: 'var(--adm-input-bg)' }}
+                style={{ width: 140, height: 35, objectFit: 'cover', borderRadius: 4, flexShrink: 0, background: 'var(--adm-input-bg)' }}
               />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 11, color: 'var(--adm-text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   #{idx + 1} · {poster.storage_path.split('/').pop()}
+                </div>
+                <div style={{ fontSize: 10, color: 'var(--adm-text-muted)', marginTop: 2 }}>
+                  {new Date(poster.created_at).toLocaleDateString()}
                 </div>
               </div>
               <SegmentedControl
