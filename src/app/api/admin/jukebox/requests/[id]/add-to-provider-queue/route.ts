@@ -79,8 +79,10 @@ export async function POST(
           ? 400
           : 502;
 
+    // Propagate message so the admin UI can surface it for unknown/specific errors.
+    const errorMessage = 'message' in result.error ? (result.error as { message: string }).message : undefined;
     return NextResponse.json(
-      { ok: false, error: { code: result.error.kind, meta: result.error } },
+      { ok: false, error: { code: result.error.kind, message: errorMessage, meta: result.error } },
       { status: httpStatus },
     );
   }

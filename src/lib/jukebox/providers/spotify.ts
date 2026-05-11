@@ -159,12 +159,13 @@ async function mapUserScopedError(res: Response): Promise<ProviderError> {
   // Map Spotify's reason codes before falling back on HTTP status.
   // Each reason is distinct — do NOT collapse all 403s to a single kind.
   if (reason === 'NO_ACTIVE_DEVICE') return { kind: 'no_active_device' };
+  if (reason === 'DEVICE_NOT_FOUND') return { kind: 'unknown', message: 'Active Spotify device disappeared — refresh and try again' };
   if (reason === 'PREMIUM_REQUIRED') return { kind: 'not_premium' };
   if (reason === 'PRODUCT_RESTRICTED') return { kind: 'product_restricted' };
 
   if (res.status === 403) {
-    // Unknown 403 reason — surface it rather than guess.
-    return { kind: 'unknown', message: `Spotify 403: ${reason || message || 'unknown reason'}` };
+    // Unknown 403 reason — surface the raw reason so logs and toasts show it.
+    return { kind: 'unknown', message: reason ? `Spotify 403: ${reason} (see logs)` : `Spotify 403: ${message || 'unknown reason'} (see logs)` };
   }
   if (res.status === 404) {
     // 404 on /me/player/queue means no active device; on /currently-playing
