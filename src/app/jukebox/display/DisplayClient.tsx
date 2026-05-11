@@ -169,6 +169,18 @@ export default function DisplayClient({ guestBase, guestToken, qr: initialQr, wi
   const activePoster = posters[posterIdx % Math.max(posters.length, 1)]
 
   return (
+    <>
+    <div className="kiosk-portrait-msg">
+      <div className="kiosk-portrait-tv" aria-hidden="true">📺</div>
+      <div className="kiosk-portrait-title">Designed for TV displays</div>
+      <div className="kiosk-portrait-body">
+        Rotate your device to landscape, or visit
+        <br />
+        <span className="kiosk-portrait-url">{displayUrl}</span>
+        <br />on your phone to request a song.
+      </div>
+    </div>
+
     <div className="kiosk-wrap">
 
       {/* ── Header strip ── */}
@@ -275,6 +287,7 @@ export default function DisplayClient({ guestBase, guestToken, qr: initialQr, wi
 
       </div>
     </div>
+    </>
   )
 }
 

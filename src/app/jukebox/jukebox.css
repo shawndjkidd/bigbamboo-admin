@@ -837,6 +837,50 @@
    Bottom: QR card (aspect-ratio 1, shrink 0) | Poster rotator (flex 1)
    ──────────────────────────────────────────────────────────────── */
 
+/* ── Portrait / too-narrow: redirect overlay ─────────────────────
+   Shown when aspect-ratio < 4/3 (portrait phones, portrait tablets).
+   Landscape viewports (4:3 → 21:9) show the normal kiosk layout.  */
+.kiosk-portrait-msg {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: var(--bbb-bg-deep);
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  padding: 40px 32px;
+  text-align: center;
+  z-index: 999;
+}
+.kiosk-portrait-tv {
+  font-size: 72px;
+  line-height: 1;
+}
+.kiosk-portrait-title {
+  font-family: var(--theme-display-font);
+  font-size: clamp(28px, 5vw, 52px);
+  font-weight: 800;
+  color: var(--bbb-cream-light);
+  letter-spacing: 0.02em;
+}
+.kiosk-portrait-body {
+  font-family: Inter, system-ui, sans-serif;
+  font-size: clamp(16px, 3vw, 24px);
+  color: rgba(245,232,208,0.75);
+  line-height: 1.55;
+}
+.kiosk-portrait-url {
+  font-family: var(--theme-mono-font);
+  font-size: clamp(18px, 3.5vw, 28px);
+  color: var(--bbb-yellow);
+  font-weight: 700;
+}
+@media (max-aspect-ratio: 4/3) {
+  .kiosk-portrait-msg { display: flex; }
+  .kiosk-wrap { display: none; }
+}
+
 /* ── Outer wrapper ───────────────────────────────────────────── */
 .kiosk-wrap {
   height: 100%;
