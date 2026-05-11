@@ -1329,50 +1329,50 @@
    Kiosk stays tropical.
    ════════════════════════════════════════════════════════ */
 
-/* ── Dark mode variables (default) ───────────────────── */
+/* ── Dark mode variables (default) — warm stone/gunmetal ─ */
 .admin-page {
-  --adm-bg:                 #0F172A;
-  --adm-card:               #1E293B;
-  --adm-border:             #334155;
-  --adm-text:               #F1F5F9;
-  --adm-text-sec:           #CBD5E1;
-  --adm-text-muted:         #94A3B8;
-  --adm-nav-bg:             #1E293B;
-  --adm-input-bg:           #0F172A;
-  --adm-input-border:       #475569;
-  --adm-subtle-bg:          #162032;
+  --adm-bg:                 #1C1917;
+  --adm-card:               #292524;
+  --adm-border:             #44403C;
+  --adm-text:               #F5F5F4;
+  --adm-text-sec:           #A8A29E;
+  --adm-text-muted:         #78716C;
+  --adm-nav-bg:             #292524;
+  --adm-input-bg:           #1C1917;
+  --adm-input-border:       #57534E;
+  --adm-subtle-bg:          #211F1D;
   --adm-accent:             #E89A4A;
   --adm-btn-primary-bg:     #E89A4A;
-  --adm-btn-primary-text:   #1F2937;
-  --adm-btn-sec-bg:         #1E293B;
-  --adm-btn-sec-text:       #CBD5E1;
-  --adm-btn-sec-border:     #475569;
-  --adm-btn-ghost-hover:    #273549;
-  --adm-seg-bg:             #0F172A;
-  --adm-seg-border:         #475569;
-  --adm-seg-text:           #94A3B8;
-  --adm-toast-bg:           #334155;
-  --adm-toast-text:         #F1F5F9;
-  --adm-success:            #4ADE80;
-  --adm-danger:             #F87171;
-  --adm-warning-bg:         rgba(251,191,36,0.08);
-  --adm-warning-border:     rgba(251,191,36,0.3);
-  --adm-skel-bg:            rgba(255,255,255,0.06);
-  --adm-badge-green-bg:     rgba(74,222,128,0.15);
+  --adm-btn-primary-text:   #1C1917;
+  --adm-btn-sec-bg:         #292524;
+  --adm-btn-sec-text:       #A8A29E;
+  --adm-btn-sec-border:     #57534E;
+  --adm-btn-ghost-hover:    #3C3836;
+  --adm-seg-bg:             #1C1917;
+  --adm-seg-border:         #57534E;
+  --adm-seg-text:           #78716C;
+  --adm-toast-bg:           #44403C;
+  --adm-toast-text:         #F5F5F4;
+  --adm-success:            #22C55E;
+  --adm-danger:             #DC2626;
+  --adm-warning-bg:         rgba(245,158,11,0.1);
+  --adm-warning-border:     rgba(245,158,11,0.35);
+  --adm-skel-bg:            rgba(255,255,255,0.05);
+  --adm-badge-green-bg:     rgba(34,197,94,0.15);
   --adm-badge-green-text:   #4ADE80;
-  --adm-badge-green-border: rgba(74,222,128,0.3);
-  --adm-badge-red-bg:       rgba(248,113,113,0.15);
+  --adm-badge-green-border: rgba(34,197,94,0.3);
+  --adm-badge-red-bg:       rgba(220,38,38,0.15);
   --adm-badge-red-text:     #F87171;
-  --adm-badge-red-border:   rgba(248,113,113,0.3);
-  --adm-badge-orange-bg:    rgba(252,211,77,0.15);
+  --adm-badge-red-border:   rgba(220,38,38,0.3);
+  --adm-badge-orange-bg:    rgba(245,158,11,0.15);
   --adm-badge-orange-text:  #FCD34D;
-  --adm-badge-orange-border:rgba(252,211,77,0.3);
-  --adm-badge-gray-bg:      rgba(148,163,184,0.15);
-  --adm-badge-gray-text:    #94A3B8;
-  --adm-badge-gray-border:  rgba(148,163,184,0.3);
-  --adm-badge-blue-bg:      rgba(96,165,250,0.15);
+  --adm-badge-orange-border:rgba(245,158,11,0.3);
+  --adm-badge-gray-bg:      rgba(120,113,108,0.2);
+  --adm-badge-gray-text:    #A8A29E;
+  --adm-badge-gray-border:  rgba(120,113,108,0.35);
+  --adm-badge-blue-bg:      rgba(59,130,246,0.15);
   --adm-badge-blue-text:    #60A5FA;
-  --adm-badge-blue-border:  rgba(96,165,250,0.3);
+  --adm-badge-blue-border:  rgba(59,130,246,0.3);
 
   min-height: 100vh;
   background: var(--adm-bg);

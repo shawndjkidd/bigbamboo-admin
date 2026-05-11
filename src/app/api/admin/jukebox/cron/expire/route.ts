@@ -35,7 +35,27 @@ export async function POST(req: NextRequest) {
   if (error) {
     return NextResponse.json({ ok: false, error: { code: 'server_error', message: error.message } }, { status: 500 });
   }
-  return NextResponse.json({ ok: true, data: { expired: (data || []).length, cutoff, ttl_minutes: ttl } });
+
+  // Also expire approved rows that failed to push to Spotify and have been stuck > 60 min.
+  const stuckCutoff = new Date(Date.now() - 60 * 60_000).toISOString();
+  const { data: stuck } = await sb
+    .from('jukebox_requests')
+    .update({ status: 'expired' })
+    .eq('venue_id', venueId)
+    .in('status', ['approved'])
+    .eq('provider_queue_status', 'failed')
+    .lt('created_at', stuckCutoff)
+    .select('id');
+
+  return NextResponse.json({
+    ok: true,
+    data: {
+      expired_pending: (data || []).length,
+      expired_stuck: (stuck || []).length,
+      cutoff,
+      ttl_minutes: ttl,
+    },
+  });
 }
 
 // GET allowed for manual smoke-tests with the same auth.

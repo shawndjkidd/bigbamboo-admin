@@ -63,13 +63,13 @@ interface BlockEntry {
   created_at: string
 }
 
-type Tab = 'pending' | 'queue' | 'history' | 'blocklist' | 'spotify' | 'settings'
+type Tab = 'queue' | 'history' | 'blocklist' | 'spotify' | 'settings'
 
 export default function JukeboxAdminPage() {
   const router = useRouter()
   const [staff, setStaff] = useState<{ id: string; role: string } | null>(null)
   const [loading, setLoading] = useState(true)
-  const [tab, setTab] = useState<Tab>('pending')
+  const [tab, setTab] = useState<Tab>('queue')
   const [toast, setToast] = useState('')
   const tokenRef = useRef<string | null>(null)
   const [isDark, setIsDark] = useState(true)
@@ -174,8 +174,7 @@ export default function JukeboxAdminPage() {
       </div>
 
       <div style={{ maxWidth: 1400, margin: '0 auto', padding: '24px 24px 60px' }}>
-        {tab === 'pending' && <PendingTab apiFetch={apiFetch} onAction={showToast} mode={settings?.mode ?? null} />}
-        {tab === 'queue' && <QueueTab apiFetch={apiFetch} onAction={showToast} />}
+        {tab === 'queue' && <QueueTab apiFetch={apiFetch} onAction={showToast} mode={settings?.mode ?? null} />}
         {tab === 'history' && <HistoryTab apiFetch={apiFetch} />}
         {tab === 'blocklist' && <BlocklistTab apiFetch={apiFetch} onAction={showToast} />}
         {tab === 'spotify' && <SpotifyTab apiFetch={apiFetch} onAction={showToast} />}
@@ -198,7 +197,6 @@ export default function JukeboxAdminPage() {
 // ── Tabs ───────────────────────────────────────────────────────
 function Tabs({ tab, onChange }: { tab: Tab; onChange: (t: Tab) => void }) {
   const items: { id: Tab; label: string }[] = [
-    { id: 'pending', label: copy.admin.pendingTab },
     { id: 'queue', label: copy.admin.queueTab },
     { id: 'history', label: copy.admin.historyTab },
     { id: 'blocklist', label: copy.admin.blocklistTab },
@@ -220,8 +218,8 @@ function Tabs({ tab, onChange }: { tab: Tab; onChange: (t: Tab) => void }) {
   )
 }
 
-// ── Pending ────────────────────────────────────────────────────
-function PendingTab({
+// ── Queue (merged pending + approved + queued) ─────────────────
+function QueueTab({
   apiFetch,
   onAction,
   mode,
@@ -230,8 +228,13 @@ function PendingTab({
   const [busy, setBusy] = useState<string | null>(null)
 
   const load = useCallback(async () => {
-    const j = await apiFetch('/api/admin/jukebox/requests?status=pending')
-    if (j.ok) setRows((j.data as { requests: ReqRow[] }).requests)
+    const [pj, qj] = await Promise.all([
+      apiFetch('/api/admin/jukebox/requests?status=pending'),
+      apiFetch('/api/admin/jukebox/requests?status=approved,queued'),
+    ])
+    const pending = pj.ok ? (pj.data as { requests: ReqRow[] }).requests : []
+    const queued = qj.ok ? (qj.data as { requests: ReqRow[] }).requests : []
+    setRows([...pending, ...queued])
   }, [apiFetch])
 
   useEffect(() => {
@@ -240,151 +243,105 @@ function PendingTab({
     return () => clearInterval(t)
   }, [load])
 
-  async function act(id: string, action: 'approve' | 'reject') {
+  async function act(id: string, action: 'approve' | 'reject' | 'remove' | 'skip' | 'mark-played' | 'hide-nickname') {
     setBusy(id + ':' + action)
     const j = await apiFetch(`/api/admin/jukebox/requests/${id}/${action}`, { method: 'POST', body: '{}' })
     setBusy(null)
     if (j.ok) {
-      onAction(action === 'approve' ? 'Approved' : 'Rejected')
-      setRows((r) => r.filter((x) => x.id !== id))
+      onAction(action === 'approve' ? 'Approved' : action === 'reject' ? 'Rejected' : action.replace(/-/g, ' '))
+      if (action === 'hide-nickname') load()
+      else setRows((r) => r.filter((x) => x.id !== id))
     } else {
       onAction(j.error?.message || 'Action failed')
     }
   }
 
-  async function blockAndReject(row: ReqRow, type: 'track' | 'artist') {
-    const providerId = type === 'track' ? row.provider_track_id : row.artist_ids?.[0]
-    const name = type === 'track' ? row.track_name : row.artist_name
-    if (!providerId) return
+  async function blockRow(row: ReqRow) {
+    if (!row.provider_track_id) return
+    setBusy(row.id + ':block')
     await apiFetch('/api/admin/jukebox/blocklist', {
       method: 'POST',
-      body: JSON.stringify({ type, provider_id: providerId, name, reason: 'blocked from pending' }),
+      body: JSON.stringify({ type: 'track', provider_id: row.provider_track_id, name: row.track_name, reason: 'blocked from queue' }),
     })
-    await act(row.id, 'reject')
-  }
-
-  if (rows.length === 0) {
-    const sub = mode === 'autopilot'
-      ? 'Autopilot is on — guest requests go straight to Up Next without needing your approval.'
-      : 'Approved requests show up under Up Next.'
-    return <EmptyCard title="Nothing pending." sub={sub} />
-  }
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-      {rows.map((r) => (
-        <RowCard key={r.id} row={r}>
-          <Button variant="secondary" disabled={!!busy} onClick={() => blockAndReject(r, 'track')}>
-            {copy.admin.blockTrack}
-          </Button>
-          <Button variant="secondary" disabled={!!busy} onClick={() => blockAndReject(r, 'artist')}>
-            {copy.admin.blockArtist}
-          </Button>
-          <Button variant="danger" disabled={!!busy} onClick={() => act(r.id, 'reject')}>
-            {busy === r.id + ':reject' ? '…' : copy.admin.reject}
-          </Button>
-          <Button variant="success" disabled={!!busy} onClick={() => act(r.id, 'approve')}>
-            {busy === r.id + ':approve' ? '…' : copy.admin.approve}
-          </Button>
-        </RowCard>
-      ))}
-    </div>
-  )
-}
-
-// ── Queue ──────────────────────────────────────────────────────
-function QueueTab({
-  apiFetch,
-  onAction,
-}: { apiFetch: (p: string, i?: RequestInit) => Promise<{ ok: boolean; data?: unknown; error?: { message: string } }>; onAction: (m: string) => void }) {
-  const [rows, setRows] = useState<ReqRow[]>([])
-  const [busy, setBusy] = useState<string | null>(null)
-
-  const load = useCallback(async () => {
-    const j = await apiFetch('/api/admin/jukebox/requests?status=approved,queued')
-    if (j.ok) setRows((j.data as { requests: ReqRow[] }).requests)
-  }, [apiFetch])
-
-  useEffect(() => {
-    load()
-    const t = setInterval(load, 7_000)
-    return () => clearInterval(t)
-  }, [load])
-
-  async function act(id: string, action: 'remove' | 'skip' | 'mark-played' | 'hide-nickname') {
-    setBusy(id + ':' + action)
-    const j = await apiFetch(`/api/admin/jukebox/requests/${id}/${action}`, { method: 'POST', body: '{}' })
+    const removeAction = row.status === 'pending' ? 'reject' : 'remove'
+    const j = await apiFetch(`/api/admin/jukebox/requests/${row.id}/${removeAction}`, { method: 'POST', body: '{}' })
     setBusy(null)
     if (j.ok) {
-      onAction(action.replace('-', ' '))
-      if (action !== 'hide-nickname') setRows((r) => r.filter((x) => x.id !== id))
-      else load()
+      onAction('Blocked')
+      setRows((r) => r.filter((x) => x.id !== row.id))
     } else {
-      onAction(j.error?.message || 'Action failed')
+      onAction(j.error?.message || 'Block failed')
     }
   }
 
   async function addToSpotify(id: string) {
     setBusy(id + ':spotify')
-    const j = await apiFetch(`/api/admin/jukebox/requests/${id}/add-to-provider-queue`, {
-      method: 'POST',
-      body: '{}',
-    })
+    const j = await apiFetch(`/api/admin/jukebox/requests/${id}/add-to-provider-queue`, { method: 'POST', body: '{}' })
     setBusy(null)
     if (j.ok) {
       onAction('Added to Spotify queue')
-      // Reload so the row's status flips to 'queued' and the position recomputes.
       load()
     } else {
       const code = (j.error as { code?: string } | undefined)?.code || ''
-      const friendly =
-        code === 'no_active_device'
-          ? 'No active Spotify device. Open Spotify and hit play, then try again.'
-          : code === 'token_invalid' || code === 'token_expired'
-            ? 'Spotify connection expired. Reconnect on the Spotify tab.'
-            : code === 'not_premium'
-              ? 'Connected Spotify account is not Premium.'
-              : code === 'rate_limited'
-                ? 'Spotify is throttling — try again in a moment.'
-                : j.error?.message || 'Add to Spotify failed'
-      onAction(friendly)
+      onAction(
+        code === 'no_active_device' ? 'No active Spotify device. Open Spotify and hit play, then try again.'
+        : code === 'token_invalid' || code === 'token_expired' ? 'Spotify connection expired. Reconnect on the Spotify tab.'
+        : code === 'not_premium' ? 'Connected Spotify account is not Premium.'
+        : code === 'rate_limited' ? 'Spotify is throttling — try again in a moment.'
+        : j.error?.message || 'Add to Spotify failed'
+      )
     }
   }
 
   if (rows.length === 0) {
-    return <EmptyCard title="Queue is empty." sub="Approved and queued requests appear here in order." />
+    return <EmptyCard title="Queue is empty." sub={mode === 'autopilot' ? 'Guest requests are auto-queued in Spotify.' : 'Guest requests land here for your approval.'} />
   }
+
+  let queuePos = 0
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-      {rows.map((r, i) => (
-        <RowCard key={r.id} row={r} position={i + 1}>
-          <Button variant="secondary" disabled={!!busy} onClick={() => act(r.id, 'hide-nickname')}>
-            {copy.admin.hideName}
-          </Button>
-          <Button variant="danger" disabled={!!busy} onClick={() => act(r.id, 'skip')}>
-            {copy.admin.skip}
-          </Button>
-          <Button variant="danger" disabled={!!busy} onClick={() => act(r.id, 'remove')}>
-            {copy.admin.remove}
-          </Button>
-          {r.status === 'queued' || r.provider_queue_status === 'queued' ? (
-            <span className="badge badge-green" style={{ alignSelf: 'center', fontSize: 11 }}>✓ Queued</span>
-          ) : r.status === 'approved' ? (
-            <Button
-              variant="secondary"
-              disabled={!!busy}
-              onClick={() => addToSpotify(r.id)}
-              title="Push this song into the venue's Spotify queue"
-            >
-              {busy === r.id + ':spotify' ? '…' : copy.admin.addToSpotify}
+      {rows.map((r) => {
+        const isPending = r.status === 'pending'
+        const isSpotifyQueued = r.status === 'queued' || r.provider_queue_status === 'queued'
+        const isFailed = r.provider_queue_status === 'failed' || r.status === 'failed'
+        if (!isPending) queuePos++
+
+        const badge = isPending
+          ? <span className="badge badge-orange" style={{ fontSize: 11 }}>Awaiting approval</span>
+          : isSpotifyQueued
+            ? <span className="badge badge-green" style={{ fontSize: 11 }}>✓ Queued in Spotify</span>
+            : isFailed
+              ? <span className="badge badge-red" style={{ fontSize: 11 }}>No Spotify device</span>
+              : null
+
+        return (
+          <RowCard key={r.id} row={r} position={isPending ? undefined : queuePos} badge={badge}>
+            {isPending && mode === 'approval' && (
+              <Button variant="success" disabled={!!busy} onClick={() => act(r.id, 'approve')}>
+                {busy === r.id + ':approve' ? '…' : 'Approve'}
+              </Button>
+            )}
+            <Button variant="secondary" disabled={!!busy} onClick={() => act(r.id, 'hide-nickname')}>
+              Hide nickname
             </Button>
-          ) : null}
-          <Button variant="success" disabled={!!busy} onClick={() => act(r.id, 'mark-played')}>
-            {copy.admin.markPlayed}
-          </Button>
-        </RowCard>
-      ))}
+            <Button variant="secondary" disabled={!!busy} onClick={() => act(r.id, 'skip')}>
+              Skip
+            </Button>
+            <Button variant="danger" disabled={!!busy} onClick={() => blockRow(r)}>
+              {busy === r.id + ':block' ? '…' : 'Block'}
+            </Button>
+            {!isSpotifyQueued && !isPending && (
+              <Button variant="secondary" disabled={!!busy} onClick={() => addToSpotify(r.id)} title="Push into Spotify queue">
+                {busy === r.id + ':spotify' ? '…' : 'Add to Spotify'}
+              </Button>
+            )}
+            <Button variant="secondary" disabled={!!busy} onClick={() => act(r.id, 'mark-played')}>
+              Mark played
+            </Button>
+          </RowCard>
+        )
+      })}
     </div>
   )
 }
@@ -632,13 +589,18 @@ function SettingsTab({
 
   async function patch(patchBody: Partial<Settings>) {
     setSaving(true)
-    const j = await apiFetch('/api/admin/jukebox/settings', {
-      method: 'PATCH',
-      body: JSON.stringify(patchBody),
-    })
-    setSaving(false)
-    if (j.ok) { setSettings(j.data as Settings); onAction('Saved') }
-    else onAction(j.error?.message || 'Save failed')
+    try {
+      const j = await apiFetch('/api/admin/jukebox/settings', {
+        method: 'PATCH',
+        body: JSON.stringify(patchBody),
+      })
+      if (j.ok) { setSettings(j.data as Settings); onAction('Saved') }
+      else onAction(j.error?.message || 'Save failed')
+    } catch {
+      onAction('Network error — try again')
+    } finally {
+      setSaving(false)
+    }
   }
 
   async function rotateToken() {
@@ -683,7 +645,7 @@ function SettingsTab({
 
           <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start', opacity: s.is_active ? 1 : 0.4 }}>
             <SegmentedControl
-              options={[{ value: 'approval', label: 'Active', color: 'green' }, { value: 'autopilot', label: 'Paused', color: 'red' }]}
+              options={[{ value: 'approval', label: 'Required', color: 'green' }, { value: 'autopilot', label: 'Autopilot', color: 'red' }]}
               value={s.mode === 'approval' ? 'approval' : 'autopilot'}
               onChange={(v) => patch({ mode: v as Settings['mode'] })}
               disabled={saving || !s.is_active}
@@ -692,8 +654,8 @@ function SettingsTab({
               <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--adm-text)', marginBottom: 3 }}>Approval</div>
               <div style={{ fontSize: 12, color: 'var(--adm-text-muted)', lineHeight: 1.5 }}>
                 {s.mode === 'approval'
-                  ? 'Each request lands in Pending. You approve manually before it joins the queue.'
-                  : 'Guest requests go straight to the Spotify queue automatically. No staff input needed.'}
+                  ? 'Each request lands in Queue for your approval before it reaches Spotify.'
+                  : 'Guest requests are auto-queued in Spotify. No staff input needed.'}
               </div>
             </div>
           </div>
@@ -802,10 +764,12 @@ function SettingsTab({
 function RowCard({
   row,
   position,
+  badge,
   children,
 }: {
   row: ReqRow
   position?: number
+  badge?: React.ReactNode
   children: React.ReactNode
 }) {
   return (
@@ -828,6 +792,7 @@ function RowCard({
         <div style={{ fontSize: 12, color: 'var(--adm-text-sec)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {row.artist_name} · <span style={{ color: row.requested_by_hidden ? 'var(--adm-text-muted)' : 'var(--adm-text-sec)' }}>{row.requested_by_hidden ? 'anonymous' : row.requested_by}</span>
         </div>
+        {badge && <div style={{ marginTop: 4 }}>{badge}</div>}
       </div>
       <div style={{ display: 'flex', gap: 6, flexShrink: 0, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
         {children}
