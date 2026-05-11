@@ -141,6 +141,7 @@ export default function JukeboxGuestPage() {
   const [submitOk, setSubmitOk] = useState<{ position: number | null; mode: PublicSettings['mode']; status: string } | null>(null)
 
   const [now, setNow] = useState(Date.now())
+  const [nowPlaying, setNowPlaying] = useState<{ track_name: string; artist_name: string; album_art_url: string | null } | null>(null)
   const debounceRef = useRef<number | null>(null)
 
   useEffect(() => {
@@ -148,6 +149,21 @@ export default function JukeboxGuestPage() {
     setNickname(localStorage.getItem(NICK_KEY) || '')
     const tick = setInterval(() => setNow(Date.now()), 1000)
     return () => clearInterval(tick)
+  }, [])
+
+  useEffect(() => {
+    let alive = true
+    async function fetchNP() {
+      try {
+        const r = await fetch('/api/jukebox/now-playing', { cache: 'no-store' })
+        const j = await r.json()
+        if (!alive) return
+        setNowPlaying(j.ok && j.data ? j.data : null)
+      } catch { /* strip stays hidden */ }
+    }
+    fetchNP()
+    const t = setInterval(fetchNP, 10_000)
+    return () => { alive = false; clearInterval(t) }
   }, [])
 
   useEffect(() => {
@@ -254,9 +270,38 @@ export default function JukeboxGuestPage() {
 
       {/* Brand header */}
       <header style={{ textAlign: 'center', padding: '4px 0 20px', position: 'relative' }}>
-        <div style={{ position: 'absolute', top: 0, right: 0 }}>
+        <div style={{ position: 'absolute', top: 0, right: 0, zIndex: 1 }}>
           <LangToggle lang={lang} onSwitch={switchLang} />
         </div>
+
+        {nowPlaying && (
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 10,
+            padding: '6px 10px', marginBottom: 14,
+            borderRadius: 10,
+            background: 'rgba(0,0,0,0.2)',
+            border: '1px solid rgba(255,248,231,0.1)',
+            textAlign: 'left',
+          }}>
+            {nowPlaying.album_art_url ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={nowPlaying.album_art_url} alt="" style={{ width: 32, height: 32, borderRadius: 4, flexShrink: 0, objectFit: 'cover' }} />
+            ) : (
+              <div style={{ width: 32, height: 32, borderRadius: 4, flexShrink: 0, background: 'rgba(255,248,231,0.1)' }} />
+            )}
+            <div style={{ minWidth: 0, flex: 1, overflow: 'hidden' }}>
+              <span style={{ fontFamily: 'Sigmar, sans-serif', fontSize: 11, color: 'rgba(255,248,231,0.55)', marginRight: 6, letterSpacing: '0.03em' }}>
+                Now playing:
+              </span>
+              <span style={{ fontSize: 13, color: 'rgba(255,248,231,0.88)', fontWeight: 500 }}>
+                {nowPlaying.track_name}
+              </span>
+              <span style={{ fontSize: 13, color: 'rgba(255,248,231,0.5)', marginLeft: 5 }}>
+                — {nowPlaying.artist_name}
+              </span>
+            </div>
+          </div>
+        )}
 
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
