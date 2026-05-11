@@ -1026,7 +1026,7 @@
   letter-spacing: 0.1em;
 }
 .kiosk-np-title {
-  font-size: clamp(32px, 4.5vw, 80px);
+  font-size: clamp(26px, 3.6vw, 64px);
   font-weight: 800;
   color: #3a2511;
   line-height: 1.05;
@@ -1264,6 +1264,11 @@
   overflow: hidden;
   transition: opacity 0.3s;
   color: #fff;
+}
+.kiosk-poster-panel--empty {
+  background: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
 }
 .kiosk-poster-decor {
   position: absolute;
