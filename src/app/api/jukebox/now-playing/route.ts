@@ -40,27 +40,44 @@ const CACHE = new Map<string, CacheEntry>();
 const TTL_MS = 10_000;
 
 /** Idempotent auto-mark: if Spotify says trackId is currently playing,
- *  find the oldest still-`queued` request matching this provider_track_id
- *  in this venue and stamp it `played`. Quiet on errors — this is best-effort
- *  housekeeping driven by the kiosk poll, not the contract of this endpoint. */
+ *  find the matching jukebox_request (queued or approved) and stamp it played.
+ *  Also marks any older approved/queued rows as skipped — they were bypassed.
+ *  Quiet on errors; this is best-effort housekeeping driven by the kiosk poll. */
 async function autoMarkPlayed(venueId: string, trackId: string): Promise<void> {
   try {
     const sb = getServiceClient();
-    const { data } = await sb
+    const now = new Date().toISOString();
+
+    // Find the matching active row (queued takes priority over approved)
+    const { data: rows } = await sb
       .from('jukebox_requests')
-      .select('id')
+      .select('id, status, approved_at')
       .eq('venue_id', venueId)
-      .eq('status', 'queued')
+      .in('status', ['queued', 'approved'])
       .eq('provider_track_id', trackId)
-      .order('queued_at', { ascending: true, nullsFirst: false })
+      .order('approved_at', { ascending: true, nullsFirst: false })
       .limit(1);
-    const target = data && data[0];
+
+    const target = rows?.[0];
     if (!target) return;
+
+    // Mark it played (in() guard makes this idempotent against concurrent calls)
     await sb
       .from('jukebox_requests')
-      .update({ status: 'played', played_at: new Date().toISOString() })
+      .update({ status: 'played', played_at: now })
       .eq('id', target.id)
-      .eq('status', 'queued'); // belt-and-suspenders: don't clobber if already changed
+      .in('status', ['queued', 'approved']);
+
+    // Any row approved BEFORE this one that's still active was skipped by Spotify
+    // (played out of order or bypassed by the DJ). Move them to History.
+    if (target.approved_at) {
+      await sb
+        .from('jukebox_requests')
+        .update({ status: 'skipped', skipped_at: now })
+        .eq('venue_id', venueId)
+        .in('status', ['queued', 'approved'])
+        .lt('approved_at', target.approved_at);
+    }
   } catch (e) {
     console.error('[now-playing autoMarkPlayed] failed:', e);
   }

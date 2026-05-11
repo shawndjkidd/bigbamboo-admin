@@ -36,22 +36,37 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: { code: 'server_error', message: error.message } }, { status: 500 });
   }
 
-  // Also expire approved rows that failed to push to Spotify and have been stuck > 60 min.
-  const stuckCutoff = new Date(Date.now() - 60 * 60_000).toISOString();
-  const { data: stuck } = await sb
+  // Expire approved rows stuck > 30 min — either Spotify push failed or was never attempted.
+  const stuckCutoff = new Date(Date.now() - 30 * 60_000).toISOString();
+
+  // Case A: Spotify push was attempted and failed.
+  const { data: stuckFailed } = await sb
     .from('jukebox_requests')
     .update({ status: 'expired' })
     .eq('venue_id', venueId)
-    .in('status', ['approved'])
+    .eq('status', 'approved')
     .eq('provider_queue_status', 'failed')
     .lt('created_at', stuckCutoff)
+    .select('id');
+
+  // Case B: Spotify push was never attempted (no active device at approval time,
+  // or Spotify was disconnected). queued_at and provider_queue_status both null.
+  const { data: stuckOrphaned } = await sb
+    .from('jukebox_requests')
+    .update({ status: 'expired' })
+    .eq('venue_id', venueId)
+    .eq('status', 'approved')
+    .is('queued_at', null)
+    .is('provider_queue_status', null)
+    .lt('approved_at', stuckCutoff)
     .select('id');
 
   return NextResponse.json({
     ok: true,
     data: {
       expired_pending: (data || []).length,
-      expired_stuck: (stuck || []).length,
+      expired_stuck_failed: (stuckFailed || []).length,
+      expired_stuck_orphaned: (stuckOrphaned || []).length,
       cutoff,
       ttl_minutes: ttl,
     },

@@ -588,7 +588,6 @@ function SettingsTab({
   const [saving, setSaving] = useState(false)
 
   async function patch(patchBody: Partial<Settings>) {
-    console.log('[SETTINGS PATCH] sending PATCH to /api/admin/jukebox/settings, body:', patchBody)
     setSaving(true)
     try {
       const j = await apiFetch('/api/admin/jukebox/settings', {
@@ -644,12 +643,12 @@ function SettingsTab({
             </div>
           </div>
 
-          <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start', opacity: s.is_active ? 1 : 0.4 }}>
+          <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start', opacity: s.is_active ? 1 : 0.5 }}>
             <SegmentedControl
-              options={[{ value: 'approval', label: 'Required', color: 'green' }, { value: 'autopilot', label: 'Autopilot', color: 'red' }]}
+              options={[{ value: 'approval', label: 'Required', color: 'red' }, { value: 'autopilot', label: 'Autopilot', color: 'green' }]}
               value={s.mode === 'approval' ? 'approval' : 'autopilot'}
               onChange={(v) => patch({ mode: v as Settings['mode'] })}
-              disabled={saving || !s.is_active}
+              disabled={saving}
             />
             <div>
               <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--adm-text)', marginBottom: 3 }}>Approval</div>
@@ -846,10 +845,7 @@ function SegmentedControl({
             value === o.value ? 'is-active' : '',
             o.color ? `seg-${o.color}` : '',
           ].filter(Boolean).join(' ')}
-          onClick={() => {
-            console.log('[SEG] clicked, target:', o.value, 'disabled:', disabled, 'current:', value)
-            if (!disabled) onChange(o.value)
-          }}
+          onClick={() => { if (!disabled) onChange(o.value) }}
           disabled={!!disabled && value !== o.value}
           type="button"
         >

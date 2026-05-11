@@ -1710,7 +1710,7 @@
 }
 
 /* Semantic color variants — applied on top of .is-active */
-.admin-seg-btn.seg-green.is-active { background: #16A34A; color: #FFFFFF; }
+.admin-seg-btn.seg-green.is-active { background: #22C55E; color: #FFFFFF; }
 .admin-seg-btn.seg-red.is-active   { background: #DC2626; color: #FFFFFF; }
 
 .admin-seg-btn:disabled { opacity: 0.45; cursor: not-allowed; }
