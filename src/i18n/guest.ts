@@ -10,7 +10,9 @@ export const LANG_KEY = 'vibequeue_lang'
 export const translations = {
   en: {
     poweredBy: 'powered by',
-    tagline: "Scan. Pick a song. Don't kill the vibe.",
+    tagBefore: 'Scan. ',
+    tagHighlight: 'Pick a song.',
+    tagAfter: " Don't kill the vibe.",
     searchPlaceholder: 'Search a song or artist…',
     pickASong: "— Pick a song. We'll queue it up —",
     nickname: 'Nickname',
@@ -40,7 +42,9 @@ export const translations = {
   vi: {
     // ⚠️  Translate-app quality — have a native speaker review before public launch.
     poweredBy: 'được hỗ trợ bởi',
-    tagline: 'Quét mã. Chọn bài hát. Đừng phá không khí.',
+    tagBefore: 'Quét mã. ',
+    tagHighlight: 'Chọn bài hát.',
+    tagAfter: ' Đừng phá không khí.',
     searchPlaceholder: 'Tìm bài hát hoặc nghệ sĩ…',
     pickASong: '— Chọn bài hát. Chúng tôi sẽ xếp hàng —',
     nickname: 'Biệt danh',

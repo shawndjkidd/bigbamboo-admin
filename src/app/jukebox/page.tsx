@@ -288,11 +288,7 @@ export default function JukeboxGuestPage() {
           <span className="jukebox-vibequeue">VibeQueue</span>
         </div>
         <div className="jukebox-tagline">
-          {lang === 'vi' ? (
-            t.tagline
-          ) : (
-            <>Scan. <span className="jukebox-tagline-accent">Pick a song.</span><br/>Don&apos;t kill the vibe.</>
-          )}
+          {t.tagBefore}<span className="jukebox-tagline-accent">{t.tagHighlight}</span>{t.tagAfter}
         </div>
       </header>
 
