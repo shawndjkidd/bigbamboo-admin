@@ -72,8 +72,13 @@
   --theme-card-text-muted: var(--bbb-wood);
   --theme-text:       var(--bbb-cream-light);
   --theme-text-muted: rgba(255,248,231,0.75);
+  /* THREE-FONT DISCIPLINE — display (Sigmar), body (Inter), mono (JetBrains).
+     Never introduce a 4th. If a CSS rule needs a font, use one of these vars
+     or 'Inter'/'JetBrains Mono' directly. Synthetic italics from a serif
+     fallback count as a 4th font — always set font-family explicitly when
+     using font-style: italic. */
   --theme-display-font: 'Sigmar', 'Bebas Neue', sans-serif;
-  --theme-body-font:    'DM Sans', system-ui, sans-serif;
+  --theme-body-font:    Inter, system-ui, sans-serif;
   --theme-mono-font:    'JetBrains Mono', 'Fira Mono', ui-monospace, monospace;
 }
 
@@ -83,7 +88,7 @@
 .jukebox-root {
   min-height: 100vh;
   color: var(--bbb-cream-light);
-  font-family: 'DM Sans', system-ui, sans-serif;
+  font-family: var(--theme-body-font);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   background-color: var(--bbb-bg-deep);
@@ -1126,40 +1131,43 @@
   font-weight: 700;
 }
 .kiosk-np-wifi {
-  margin-top: 8px;
-  padding-top: 8px;
+  margin-top: 10px;
+  padding-top: 10px;
   border-top: 1px dashed rgba(58,37,17,0.25);
   display: flex;
-  flex-direction: column;
-  gap: 2px;
+  flex-direction: row;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: clamp(14px, 1.6vw, 28px);
   flex-shrink: 0;
+  font-family: Inter, system-ui, sans-serif;
 }
 .kiosk-np-wifi-label {
-  font-size: clamp(9px, 0.85vw, 14px);
+  font-family: Inter, system-ui, sans-serif;
+  font-size: clamp(12px, 1.05vw, 18px);
   font-weight: 800;
   letter-spacing: 1.5px;
   color: #E89A4A;
   text-transform: uppercase;
-  margin-bottom: 2px;
 }
 .kiosk-np-wifi-row {
-  display: flex;
+  display: inline-flex;
   align-items: baseline;
-  gap: 6px;
+  gap: 8px;
 }
 .kiosk-np-wifi-k {
-  font-size: clamp(9px, 0.8vw, 13px);
+  font-family: Inter, system-ui, sans-serif;
+  font-size: clamp(11px, 0.95vw, 16px);
   color: rgba(58,37,17,0.5);
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  font-family: var(--theme-mono-font);
   flex-shrink: 0;
 }
 .kiosk-np-wifi-v {
-  font-size: clamp(11px, 1.1vw, 18px);
+  font-family: Inter, system-ui, sans-serif;
+  font-size: clamp(14px, 1.35vw, 22px);
   color: #3a2511;
   font-weight: 700;
-  font-family: var(--theme-mono-font);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
