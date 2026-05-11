@@ -405,7 +405,7 @@
   text-align: center;
   margin: 12px -4px 0;
   padding: 8px 0 4px;
-  font-family: 'Sigmar', sans-serif;
+  font-family: var(--theme-display-font);
   font-size: 15px;
   letter-spacing: 0.14em;
   color: var(--bbb-wood);
@@ -483,15 +483,14 @@
   font-weight: 600;
 }
 
-/* ── JUKEBOX wordmark (sits between logo and tagline) ── */
-/* Big negative margin pulls it up into the bbb-img-5 transparent padding. */
+/* ── Wordmark (tight under the BBB logo) */
 .jukebox-wordmark {
   display: flex;
   align-items: baseline;
   justify-content: center;
   gap: 8px;
-  margin-top: -24px;
-  margin-bottom: 10px;
+  margin-top: 6px;
+  margin-bottom: 0;
   position: relative;
   z-index: 2;
 }
@@ -518,12 +517,13 @@
 
 /* ── Tagline (split with yellow accent like the website) */
 .jukebox-tagline {
-  font-family: 'Sigmar', 'Bebas Neue', sans-serif;
+  font-family: var(--theme-display-font);
   font-size: 26px;
   letter-spacing: 0.02em;
   color: var(--bbb-cream-light);
   line-height: 1.08;
   text-shadow: 0 3px 10px rgba(0,0,0,0.75);
+  margin-top: 18px;
 }
 .jukebox-tagline-accent { color: var(--bbb-yellow); }
 @media (min-width: 600px) {

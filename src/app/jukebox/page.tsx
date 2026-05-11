@@ -184,7 +184,7 @@ export default function JukeboxGuestPage() {
     <div style={pageWrap}>
 
       {/* Brand logo from bigbamboo.app */}
-      <header style={{ textAlign: 'center', padding: '4px 0 8px' }}>
+      <header style={{ textAlign: 'center', padding: '4px 0 20px' }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src="https://bigbamboo.app/images/bbb-img-5.png"
@@ -281,7 +281,7 @@ export default function JukeboxGuestPage() {
             </div>
           )}
 
-          <div className="jukebox-marquee">— Pick a tune. We&apos;ll spin it up —</div>
+          <div className="jukebox-marquee">— Pick a song. We&apos;ll queue it up —</div>
         </div>
       )}
 
