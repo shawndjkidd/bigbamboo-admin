@@ -136,9 +136,9 @@ function mapHttpError(status: number, retryAfter?: string | null): ProviderError
 
 /** Like mapHttpError but inspects the response body for the few cases
  *  Spotify only signals via the JSON payload — namely "no active device"
- *  (404 with a specific reason) and "not premium" (403 with PREMIUM_REQUIRED).
+ *  (404 with a specific reason) and various 403 reasons.
  *  Use for user-scoped endpoints (player/queue, player/currently-playing,
- *  player/devices). */
+ *  player/devices). Always logs to Vercel function logs for visibility. */
 async function mapUserScopedError(res: Response): Promise<ProviderError> {
   let body = '';
   let parsed: { error?: { reason?: string; message?: string; status?: number } } = {};
@@ -151,31 +151,30 @@ async function mapUserScopedError(res: Response): Promise<ProviderError> {
   const reason = parsed.error?.reason || '';
   const message = parsed.error?.message || '';
 
-  // Spotify error reasons we care about:
-  //   NO_ACTIVE_DEVICE — needs Spotify open + playing somewhere
-  //   PREMIUM_REQUIRED — account isn't Premium
+  // Always log so Vercel function logs capture the exact Spotify error.
+  console.error('[spotify] user-scoped http', res.status, 'reason:', reason || '(none)', 'message:', message || '(none)', 'body:', body.slice(0, 300));
+
+  if (res.status === 401) return { kind: 'token_expired' };
+
+  // Map Spotify's reason codes before falling back on HTTP status.
+  // Each reason is distinct — do NOT collapse all 403s to a single kind.
   if (reason === 'NO_ACTIVE_DEVICE') return { kind: 'no_active_device' };
   if (reason === 'PREMIUM_REQUIRED') return { kind: 'not_premium' };
-  if (/premium/i.test(message)) return { kind: 'not_premium' };
-  if (res.status === 401) return { kind: 'token_expired' };
-  if (res.status === 403) return { kind: 'token_invalid' };
+  if (reason === 'PRODUCT_RESTRICTED') return { kind: 'product_restricted' };
+
+  if (res.status === 403) {
+    // Unknown 403 reason — surface it rather than guess.
+    return { kind: 'unknown', message: `Spotify 403: ${reason || message || 'unknown reason'}` };
+  }
   if (res.status === 404) {
-    // 404 on /me/player/queue often means "no active device"; on /currently-playing
-    // it means "nothing playing", which the caller handles before we get here.
+    // 404 on /me/player/queue means no active device; on /currently-playing
+    // it means nothing playing (caller handles that before we get here).
     return { kind: 'no_active_device' };
   }
   if (res.status === 429) {
     const r = Number(res.headers.get('retry-after') || '30');
     return { kind: 'rate_limited', retryAfterSec: Number.isFinite(r) ? r : 30 };
   }
-  console.error(
-    '[spotify] user-scoped http',
-    res.status,
-    'reason:',
-    reason,
-    'body:',
-    body.slice(0, 300),
-  );
   return { kind: 'unknown', message: `http ${res.status}` };
 }
 

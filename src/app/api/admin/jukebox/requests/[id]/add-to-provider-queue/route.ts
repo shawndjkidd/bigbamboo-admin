@@ -73,6 +73,7 @@ export async function POST(
         ? 429
         : result.error.kind === 'no_active_device' ||
             result.error.kind === 'not_premium' ||
+            result.error.kind === 'product_restricted' ||
             result.error.kind === 'token_invalid' ||
             result.error.kind === 'token_expired'
           ? 400

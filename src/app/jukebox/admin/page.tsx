@@ -304,6 +304,7 @@ function QueueTab({
         code === 'no_active_device' ? 'No active Spotify device. Open Spotify and hit play, then try again.'
         : code === 'token_invalid' || code === 'token_expired' ? 'Spotify connection expired. Reconnect on the Spotify tab.'
         : code === 'not_premium' ? 'Connected Spotify account is not Premium.'
+        : code === 'product_restricted' ? "This device doesn't allow queue adds — try a different Spotify player."
         : code === 'rate_limited' ? 'Spotify is throttling — try again in a moment.'
         : j.error?.message || 'Add to Spotify failed'
       )

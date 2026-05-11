@@ -29,6 +29,7 @@ export type ProviderError =
   | { kind: 'rate_limited'; retryAfterSec?: number }
   | { kind: 'track_unavailable' }
   | { kind: 'not_premium' }
+  | { kind: 'product_restricted' }
   | { kind: 'network_error'; message: string }
   | { kind: 'unknown'; message: string };
 
