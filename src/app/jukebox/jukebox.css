@@ -485,19 +485,34 @@
 /* ── JUKEBOX wordmark (sits between logo and tagline) ── */
 /* Big negative margin pulls it up into the bbb-img-5 transparent padding. */
 .jukebox-wordmark {
-  font-family: 'Sigmar', 'Bebas Neue', sans-serif;
-  font-size: 56px;
-  line-height: 0.95;
-  letter-spacing: 0.06em;
-  color: var(--bbb-cream-light);
-  text-shadow: 0 4px 14px rgba(0,0,0,0.75);
-  margin-top: -56px;
-  margin-bottom: 6px;
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 8px;
+  margin-top: -24px;
+  margin-bottom: 10px;
   position: relative;
   z-index: 2;
 }
+.jukebox-poweredby {
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  color: rgba(255,248,231,0.65);
+  letter-spacing: 0.01em;
+  text-shadow: 0 2px 6px rgba(0,0,0,0.6);
+}
+.jukebox-vibequeue {
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--bbb-cream-light);
+  letter-spacing: 0.01em;
+  text-shadow: 0 2px 8px rgba(0,0,0,0.7);
+}
 @media (min-width: 600px) {
-  .jukebox-wordmark { font-size: 72px; margin-top: -72px; }
+  .jukebox-poweredby { font-size: 15px; }
+  .jukebox-vibequeue { font-size: 26px; }
 }
 
 /* ── Tagline (split with yellow accent like the website) */
@@ -851,11 +866,23 @@
   filter: drop-shadow(0 2px 8px rgba(0,0,0,0.55));
 }
 .kiosk-strip-wordmark {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+.kiosk-poweredby {
+  font-family: Inter, system-ui, sans-serif;
+  font-size: clamp(11px, 1.1vw, 15px);
+  font-weight: 400;
+  color: rgba(245,232,208,0.65);
+  letter-spacing: 0.01em;
+}
+.kiosk-vibequeue {
+  font-family: Inter, system-ui, sans-serif;
+  font-size: clamp(16px, 1.7vw, 22px);
+  font-weight: 700;
   color: #F5E8D0;
-  font-weight: 800;
-  letter-spacing: 2.5px;
-  font-size: clamp(24px, 2.2vw, 36px);
-  font-family: var(--theme-display-font);
+  letter-spacing: 0.01em;
 }
 .kiosk-wifi-bar {
   display: flex;

@@ -7,7 +7,7 @@
 import './jukebox.css'
 
 export const metadata = {
-  title: 'BigBamBoo Jukebox',
+  title: 'VibeQueue · BigBamBoo',
   description: "Scan. Pick a song. Don't kill the vibe.",
 }
 

@@ -191,7 +191,10 @@ export default function JukeboxGuestPage() {
           alt="BigBamBoo"
           className="bbb-logo"
         />
-        <div className="jukebox-wordmark">JUKEBOX</div>
+        <div className="jukebox-wordmark">
+          <span className="jukebox-poweredby">powered by</span>
+          <span className="jukebox-vibequeue">VibeQueue</span>
+        </div>
         <div className="jukebox-tagline">
           Scan. <span className="jukebox-tagline-accent">Pick a song.</span><br/>
           Don&apos;t kill the vibe.

@@ -5,7 +5,7 @@
 
 export const copy = {
   brand: {
-    title: 'BigBamBoo Jukebox',
+    title: 'VibeQueue · BigBamBoo',
     tagline: "Scan. Pick a song. Don't kill the vibe.",
   },
   rules: {
@@ -36,14 +36,14 @@ export const copy = {
     explicitTag: 'Explicit',
     queueEmpty: 'Nothing queued yet — be the first.',
     requestsLocked: 'Requests are off right now.',
-    requestsPaused: 'The jukebox is paused right now.',
+    requestsPaused: 'VibeQueue is paused right now.',
   },
   rejection: {
     duplicate: 'This song was already requested recently.',
     too_long: 'This track is too long for regular jukebox mode.',
     same_artist: 'We already have this artist coming up. Try another track.',
     blocklisted: 'This song is blocked tonight.',
-    paused: 'The jukebox is paused right now.',
+    paused: 'VibeQueue is paused right now.',
     locked: 'Requests are off right now.',
     explicit: "Explicit tracks aren't allowed tonight.",
     queue_full: 'Queue is full right now. Try again in a few minutes.',
@@ -73,8 +73,8 @@ export const copy = {
     unknown: 'Spotify rejected this request. Try again or add manually.',
   },
   admin: {
-    statusActive: 'Jukebox active',
-    statusPaused: 'Jukebox paused',
+    statusActive: 'VibeQueue active',
+    statusPaused: 'VibeQueue paused',
     statusLocked: 'Requests locked',
     pendingTab: 'Pending',
     queueTab: 'Up next',

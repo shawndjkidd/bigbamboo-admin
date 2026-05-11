@@ -159,7 +159,7 @@ export default function JukeboxAdminPage() {
               // eslint-disable-next-line @next/next/no-img-element
               <img src={settings.logo_url} alt="Venue logo" style={{ height: 28, width: 'auto', borderRadius: 4 }} />
             )}
-            <span className="admin-nav-title">Jukebox</span>
+            <span className="admin-nav-title">VibeQueue</span>
           </div>
           <Tabs tab={tab} onChange={setTab} />
           <div className="admin-nav-end">
@@ -674,7 +674,7 @@ function SettingsTab({
               disabled={saving}
             />
             <div>
-              <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--adm-text)', marginBottom: 3 }}>Jukebox</div>
+              <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--adm-text)', marginBottom: 3 }}>VibeQueue</div>
               <div style={{ fontSize: 12, color: 'var(--adm-text-muted)', lineHeight: 1.5 }}>
                 When paused, guests can&apos;t request anything.
               </div>

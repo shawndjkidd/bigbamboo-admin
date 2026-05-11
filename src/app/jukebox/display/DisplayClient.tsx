@@ -148,7 +148,10 @@ export default function DisplayClient({ guestUrl, qr, wifiNetwork, wifiPassword,
             alt="Venue logo"
             className="kiosk-strip-logo"
           />
-          <div className="kiosk-strip-wordmark">JUKEBOX</div>
+          <div className="kiosk-strip-wordmark">
+            <span className="kiosk-poweredby">powered by</span>
+            <span className="kiosk-vibequeue">VibeQueue</span>
+          </div>
         </div>
         {(wifiNetwork || wifiPassword) && (
           <div className="kiosk-wifi-bar">
