@@ -62,13 +62,19 @@ export async function POST(req: NextRequest) {
   const sbEarly = getServiceClient();
 
   // Proximity check: validate guest_token against the venue's current token.
-  // If the column doesn't exist yet (pre-migration) the row will be null — skip.
+  // Tolerant rules so legitimate scans don't break:
+  //   - column missing (pre-migration): tokenRow is null → skip.
+  //   - client sent NO token (stale guest page cached from before rotation
+  //     shipped, or kiosk QR rendered before its first /guest-token poll
+  //     filled in the token): accept. Proximity is defense-in-depth, not the
+  //     primary auth — rate limiting + cooldowns still apply.
+  //   - client sent a token AND it doesn't match the DB: reject as expired_qr.
   const { data: tokenRow } = await sbEarly
     .from('jukebox_settings')
     .select('guest_token')
     .eq('venue_id', venueId)
     .maybeSingle();
-  if (tokenRow?.guest_token && guestToken !== tokenRow.guest_token) {
+  if (tokenRow?.guest_token && guestToken && guestToken !== tokenRow.guest_token) {
     return NextResponse.json(
       { ok: false, error: { code: 'expired_qr', message: 'This QR code has expired. Scan the QR on the venue TV to get a fresh link.' } },
       { status: 403 },

@@ -1,7 +1,7 @@
 // Temporary diagnostic endpoint — admin auth gated. Will delete once
 // the connect/status flow is sorted.
 import { NextRequest, NextResponse } from 'next/server';
-import { requireStaff } from '@/lib/jukebox/auth';
+import { hasAdminRole, requireStaff } from '@/lib/jukebox/auth';
 import { getServiceClient } from '@/lib/supabase';
 import { getJukeboxVenueId } from '@/lib/jukebox/venue';
 
@@ -16,6 +16,13 @@ function charCodes(s: string | null | undefined): number[] {
 export async function GET(req: NextRequest) {
   const auth = await requireStaff(req);
   if ('error' in auth) return auth.error;
+  // Diag dumps env metadata + token state — restrict to admin tier only.
+  if (!hasAdminRole(auth.staff.role)) {
+    return NextResponse.json(
+      { ok: false, error: { code: 'forbidden', message: 'Admin role required for diag.' } },
+      { status: 403 },
+    );
+  }
 
   const venueIdResolved = await getJukeboxVenueId();
   const sb = getServiceClient();
