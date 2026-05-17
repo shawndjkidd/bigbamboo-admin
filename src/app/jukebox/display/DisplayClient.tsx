@@ -77,6 +77,23 @@ export default function DisplayClient({ guestBase, guestToken, qr: initialQr, wi
   const [posterVisible, setPosterVisible] = useState(true)
   const posterTimer = useRef<ReturnType<typeof setInterval> | null>(null)
 
+  // Staff "Open Spotify" banner — fires when no Spotify state for >90s.
+  // Whenever spotifyNow is non-null (playing OR paused on an active device),
+  // we reset the clock. When spotifyNow stays null past the threshold, the
+  // kiosk shows a bright banner prompting staff to open Spotify on the
+  // venue device. Solves the silent-failure case where guests submit but
+  // nothing actually reaches Spotify.
+  const [lastSpotifyAt, setLastSpotifyAt] = useState<number>(Date.now())
+  const [staffTick, setStaffTick] = useState<number>(Date.now())
+  useEffect(() => {
+    if (spotifyNow !== null) setLastSpotifyAt(Date.now())
+  }, [spotifyNow])
+  useEffect(() => {
+    const t = setInterval(() => setStaffTick(Date.now()), 15_000)
+    return () => clearInterval(t)
+  }, [])
+  const showStaffBanner = staffTick - lastSpotifyAt > 90_000
+
   useEffect(() => {
     let alive = true
     async function loadQueue() {
@@ -182,6 +199,23 @@ export default function DisplayClient({ guestBase, guestToken, qr: initialQr, wi
     </div>
 
     <div className="kiosk-wrap">
+
+      {/* ── Staff banner: Spotify not reachable ── */}
+      {showStaffBanner && (
+        <div className="kiosk-staff-banner" role="alert">
+          <span className="kiosk-staff-banner-dot" aria-hidden="true" />
+          <div className="kiosk-staff-banner-copy">
+            <div className="kiosk-staff-banner-headline">
+              OPEN SPOTIFY ON THE VENUE DEVICE — TAP PLAY ONCE
+            </div>
+            <div className="kiosk-staff-banner-sub">
+              Guest requests can&rsquo;t reach Spotify right now. Open the
+              Spotify desktop or mobile app on the venue device and play
+              anything for a second.
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Header strip ── */}
       <div className="kiosk-strip">

@@ -898,6 +898,56 @@
   gap: 8px;
 }
 
+/* ── Staff banner: Spotify not reachable ──────────────────────────
+   Fires when the kiosk has gone 90+ seconds without any Spotify
+   state (no active device). Bright coral attention bar with pulse,
+   inline at the top so it overlays nothing. */
+.kiosk-staff-banner {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 22px;
+  background: linear-gradient(90deg, var(--bbb-coral), #d04638);
+  color: var(--bbb-cream-light);
+  border-radius: 12px;
+  margin: 8px 12px 0;
+  box-shadow:
+    0 4px 20px rgba(208,70,56,0.55),
+    inset 0 0 0 2px var(--bbb-yellow);
+  animation: kiosk-staff-banner-pulse 2.2s ease-in-out infinite;
+  flex-shrink: 0;
+}
+.kiosk-staff-banner-dot {
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  background: var(--bbb-yellow);
+  box-shadow: 0 0 12px var(--bbb-yellow);
+  animation: kiosk-staff-banner-dot 1.2s ease-in-out infinite;
+  flex-shrink: 0;
+}
+.kiosk-staff-banner-copy { min-width: 0; }
+.kiosk-staff-banner-headline {
+  font-family: var(--theme-display-font);
+  font-size: 22px;
+  letter-spacing: 0.06em;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.45);
+  line-height: 1.1;
+}
+.kiosk-staff-banner-sub {
+  font-family: var(--theme-body-font);
+  font-size: 13px;
+  color: rgba(255,248,231,0.92);
+  margin-top: 3px;
+}
+@keyframes kiosk-staff-banner-pulse {
+  0%, 100% { box-shadow: 0 4px 20px rgba(208,70,56,0.55), inset 0 0 0 2px var(--bbb-yellow); }
+  50%      { box-shadow: 0 4px 32px rgba(232,93,74,0.85), inset 0 0 0 2px var(--bbb-yellow); }
+}
+@keyframes kiosk-staff-banner-dot {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50%      { transform: scale(0.55); opacity: 0.4; }
+}
+
 /* ── Header strip ─────────────────────────────────────────────── */
 .kiosk-strip {
   display: flex;
