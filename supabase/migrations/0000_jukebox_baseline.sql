@@ -29,7 +29,7 @@ create table if not exists jukebox_settings (
   venue_id                        text        not null default 'bigbamboo',
   is_active                       boolean     not null default true,
   mode                            text        not null default 'approval'
-                                              check (mode in ('approval','open','locked','event')),
+                                              check (mode in ('approval','open','locked','event','autopilot')),
   guest_cooldown_minutes          integer     not null default 20,
   member_cooldown_minutes         integer     not null default 10,
   max_song_length_seconds         integer     not null default 420,
