@@ -66,6 +66,10 @@ export async function GET(req: NextRequest) {
   authorizeUrl.searchParams.set('code_challenge_method', 'S256');
   authorizeUrl.searchParams.set('code_challenge', challenge);
   authorizeUrl.searchParams.set('scope', SCOPES.join(' '));
+  // Force Spotify's consent screen every time. Without this, Spotify
+  // silently re-approves the previously-authorized account, which makes
+  // switching accounts impossible from this UI.
+  authorizeUrl.searchParams.set('show_dialog', 'true');
 
   const res = NextResponse.redirect(authorizeUrl.toString());
   res.cookies.set(OAUTH_COOKIE, signed, {
