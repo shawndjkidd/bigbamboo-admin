@@ -19,14 +19,18 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { router.push('/login'); return }
 
-    const { data: staffUser } = await supabase
+    const { data: staffUser, error } = await supabase
       .from('staff_users')
-      .select('*, venue:venues(*)')
+      .select('*')
       .eq('email', user.email)
-      .single()
+      .maybeSingle()
 
+    if (error) console.error('[dashboard] staff_users lookup error:', error)
     if (!staffUser) { router.push('/login'); return }
-    setStaff(staffUser)
+    if (!staffUser.active) { router.push('/login'); return }
+
+    // single-tenant: hardcoded venue name (was previously a broken join into venues)
+    setStaff({ ...staffUser, venue: { name: 'BigBamBoo' } })
     setLoading(false)
   }
 
