@@ -10,29 +10,42 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    let mounted = true
+
+    async function checkAuth() {
+      // getSession() uses cached state — no auth lock contention.
+      // getUser() acquires a lock that races with React Strict Mode's double-invoke
+      // and onAuthStateChange's initial fire, producing AbortError that leaves
+      // the page stuck on "Loading...".
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!mounted) return
+      if (!session?.user) { router.push('/login'); return }
+
+      const { data: staffUser, error } = await supabase
+        .from('staff_users')
+        .select('*')
+        .eq('email', session.user.email)
+        .maybeSingle()
+
+      if (!mounted) return
+      if (error) console.error('[dashboard] staff_users lookup error:', error)
+      if (!staffUser) { router.push('/login'); return }
+      if (!staffUser.active) { router.push('/login'); return }
+
+      // single-tenant: hardcoded venue name (was previously a broken join into venues)
+      setStaff({ ...staffUser, venue: { name: 'BigBamBoo' } })
+      setLoading(false)
+    }
+
     checkAuth()
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(() => checkAuth())
-    return () => subscription.unsubscribe()
+
+    // Only react to real auth state changes (not the immediate initial-fire) — and
+    // only for sign-out, where we need to bounce the user. Avoids the double lock.
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_OUT') router.push('/login')
+    })
+    return () => { mounted = false; subscription.unsubscribe() }
   }, [])
-
-  async function checkAuth() {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) { router.push('/login'); return }
-
-    const { data: staffUser, error } = await supabase
-      .from('staff_users')
-      .select('*')
-      .eq('email', user.email)
-      .maybeSingle()
-
-    if (error) console.error('[dashboard] staff_users lookup error:', error)
-    if (!staffUser) { router.push('/login'); return }
-    if (!staffUser.active) { router.push('/login'); return }
-
-    // single-tenant: hardcoded venue name (was previously a broken join into venues)
-    setStaff({ ...staffUser, venue: { name: 'BigBamBoo' } })
-    setLoading(false)
-  }
 
   if (loading) {
     return (

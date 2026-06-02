@@ -39,7 +39,9 @@ export default function PurchasePage() {
   useEffect(() => { init() }, [])
 
   async function init() {
-    const { data: { user } } = await supabase.auth.getUser()
+    const { data: { session } } = await supabase.auth.getSession()
+
+    const user = session?.user
     if (!user) return
     const { data: su } = await supabase.from('staff_users').select('venue_id').eq('email', user.email).single()
     setVenueId(su?.venue_id || null)

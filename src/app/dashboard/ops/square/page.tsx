@@ -34,7 +34,9 @@ export default function SquarePage() {
   useEffect(() => { load() }, [])
 
   async function load() {
-    const { data: { user } } = await supabase.auth.getUser()
+    const { data: { session } } = await supabase.auth.getSession()
+
+    const user = session?.user
     if (!user) return
     const { data: su } = await supabase.from('staff_users').select('role').eq('email', user.email).single()
     setRole(su?.role || 'staff')
