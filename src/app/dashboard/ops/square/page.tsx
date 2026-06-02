@@ -151,7 +151,7 @@ export default function SquarePage() {
 SQUARE_APP_ID
 SQUARE_APP_SECRET
 SQUARE_ENVIRONMENT=production
-SQUARE_OAUTH_REDIRECT=https://bigbamboo.app/api/admin/ops/square/callback
+SQUARE_OAUTH_REDIRECT=https://admin.bigbamboo.app/api/admin/ops/square/callback
 CRON_SECRET=&lt;random string for Vercel Cron auth&gt;
         </pre>
       </div>

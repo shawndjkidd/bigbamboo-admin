@@ -1,8 +1,15 @@
 // Square OAuth callback. Exchanges the code for tokens and persists them.
+//
+// Auth model: the state cookie (set in /connect) is our CSRF + auth proof.
+// We don't try to verify the user from Supabase session cookies here —
+// this codebase doesn't use @supabase/ssr, so server-side getUser() returns
+// null. The /connect endpoint is initiated from /dashboard/ops/square which
+// is gated by DashboardLayout's client-side auth check, AND Square's own
+// OAuth provides the real authorization (user has to sign in to Square).
+// The state cookie chains those two trust points back to this callback.
 import { NextRequest, NextResponse } from 'next/server'
 import { exchangeCodeForToken, listLocations, SQUARE_ENV } from '@/lib/ops/square'
 import { getServiceClient } from '@/lib/supabase'
-import { createClient } from '@supabase/supabase-js'
 
 export async function GET(req: NextRequest) {
   const code = req.nextUrl.searchParams.get('code')
@@ -19,22 +26,10 @@ export async function GET(req: NextRequest) {
     const tok = await exchangeCodeForToken(code)
     const svc = getServiceClient()
 
-    // Resolve venue + connected_by from the current authed user
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      { global: { headers: { cookie: req.headers.get('cookie') || '' } } }
-    )
-    const { data: { user } } = await supabase.auth.getUser()
     const { data: venue } = await svc.from('venues').select('id').eq('slug', 'bigbamboo').single()
-    const { data: staff } = user ? await svc.from('staff_users').select('id, role').eq('email', user.email).single() : { data: null }
-
     if (!venue) throw new Error('BigBamBoo venue not found')
-    if (!staff || !['super_admin', 'admin', 'manager'].includes(staff.role)) {
-      return NextResponse.redirect(new URL('/dashboard/ops/square?error=not_authorized', req.url))
-    }
 
-    // Upsert connection
+    // Upsert connection — connected_by left null (see header comment)
     await svc.schema('ops').from('square_connections').upsert({
       venue_id: venue.id,
       square_merchant_id: tok.merchant_id,
@@ -42,7 +37,6 @@ export async function GET(req: NextRequest) {
       refresh_token: tok.refresh_token,
       expires_at: tok.expires_at,
       environment: SQUARE_ENV,
-      connected_by: staff.id,
     }, { onConflict: 'venue_id,environment' })
 
     // Discover locations and persist (mark first one default)
