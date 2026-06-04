@@ -13,6 +13,9 @@ interface NavItem {
 const NAV: NavItem[] = [
   { href: '/dashboard', label: 'Overview' },
 
+  { href: '/dashboard/menu', label: 'Menu', section: true },
+  { href: '/dashboard/menu', label: 'Edit Menu' },
+
   { href: '/dashboard/giveaway', label: 'QR Giveaway', section: true },
   { href: '/dashboard/giveaway/prizes', label: 'Prize Setup' },
   { href: '/dashboard/giveaway/photos', label: 'Spin Photos' },
