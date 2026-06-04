@@ -108,7 +108,11 @@ export default function IngredientsPage() {
           {filtered.length === 0 && <tr><td colSpan={6} style={{ padding: 12, color: 'var(--text-muted, #999)' }}>No ingredients yet. {canManage && 'Click "Add ingredient" to start.'}</td></tr>}
           {filtered.map(r => (
             <tr key={r.id} style={{ borderTop: '1px solid var(--border, #eee)' }}>
-              <td style={td}><strong>{r.name}</strong></td>
+              <td style={td}>
+                {canManage
+                  ? <button onClick={() => { setEditing(r); setShowForm(true) }} style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', color: 'var(--text)', fontWeight: 600, cursor: 'pointer', textAlign: 'left' }}>{r.name}</button>
+                  : <strong>{r.name}</strong>}
+              </td>
               <td style={{ ...td, fontSize: 11, color: 'var(--text-muted, #999)' }}>{r.category}</td>
               <td style={{ ...td, color: 'var(--text-muted, #666)' }}>{r.purchase_unit_label} = {r.purchase_unit_size} {r.base_unit}</td>
               <td style={{ ...td, textAlign: 'right' }}>{vnd(r.current_cost_per_base)} / {r.base_unit}</td>
