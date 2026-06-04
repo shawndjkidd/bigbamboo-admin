@@ -93,21 +93,25 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-.card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow); }
-.input { background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; color: var(--text); font-size: 14px; width: 100%; transition: border-color 0.15s; }
-.input:focus { border-color: var(--accent); outline: none; box-shadow: 0 0 0 3px var(--accent-light); }
+.card { background: var(--bg-card); border: 1px solid var(--border-light); border-radius: 14px; box-shadow: var(--shadow); }
+.input { height: 40px; background: var(--bg-input); border: 1px solid var(--border); border-radius: 9px; padding: 0 13px; color: var(--text); font-size: 14px; width: 100%; transition: border-color .15s, box-shadow .15s, background .15s; }
+.input:hover { border-color: var(--text-muted); }
+.input:focus { border-color: var(--accent); outline: none; box-shadow: 0 0 0 3px var(--accent-light); background: var(--bg-card); }
 .input::placeholder { color: var(--text-muted); }
-select.input { cursor: pointer; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%239ca3af' d='M6 8L1 3h10z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; padding-right: 32px; }
-.btn-accent { background: var(--accent); color: #fff; font-weight: 600; padding: 10px 20px; border-radius: 8px; border: none; cursor: pointer; font-size: 14px; transition: background 0.15s; }
-.btn-accent:hover { background: var(--accent-hover); }
-.btn-accent:disabled { opacity: 0.5; cursor: not-allowed; }
-.btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text-secondary); padding: 9px 16px; border-radius: 8px; cursor: pointer; font-size: 13px; transition: all 0.15s; }
+textarea.input { height: auto; padding: 10px 13px; }
+select.input { height: 40px; }
+.btn-accent, .btn-outline, .btn-red, .btn-green { height: 40px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; border-radius: 9px; font-size: 14px; font-weight: 600; cursor: pointer; padding: 0 18px; line-height: 1; transition: all .15s; white-space: nowrap; }
+.btn-accent { background: var(--accent); color: #fff; border: 1px solid var(--accent); }
+.btn-accent:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+.btn-accent:active { transform: translateY(1px); }
+.btn-accent:disabled { opacity: .5; cursor: not-allowed; }
+.btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text-secondary); font-weight: 500; }
 .btn-outline:hover { border-color: var(--text-muted); color: var(--text); background: var(--bg-hover); }
-.btn-red { background: var(--badge-red-bg); color: var(--badge-red-text); border: 1px solid var(--badge-red-border); padding: 8px 14px; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 500; }
-.btn-red:hover { opacity: 0.85; }
-.btn-green { background: var(--badge-green-bg); color: var(--badge-green-text); border: 1px solid var(--badge-green-border); padding: 8px 14px; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 500; }
-.btn-green:hover { opacity: 0.85; }
-.label { font-size: 12px; font-weight: 500; letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 6px; display: block; }
+.btn-red { background: var(--badge-red-bg); color: var(--badge-red-text); border: 1px solid var(--badge-red-border); font-weight: 500; }
+.btn-red:hover { background: var(--badge-red-text); color: #fff; border-color: var(--badge-red-text); }
+.btn-green { background: var(--badge-green-bg); color: var(--badge-green-text); border: 1px solid var(--badge-green-border); font-weight: 500; }
+.btn-green:hover { opacity: .9; }
+.label { font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 7px; display: block; }
 .badge { font-size: 11px; font-weight: 500; letter-spacing: 0.04em; text-transform: uppercase; padding: 3px 10px; border-radius: 100px; display: inline-flex; align-items: center; }
 .badge-orange { background: var(--badge-orange-bg); color: var(--badge-orange-text); border: 1px solid var(--badge-orange-border); }
 .badge-green { background: var(--badge-green-bg); color: var(--badge-green-text); border: 1px solid var(--badge-green-border); }
@@ -116,9 +120,14 @@ select.input { cursor: pointer; appearance: none; background-image: url("data:im
 .badge-blue { background: var(--badge-blue-bg); color: var(--badge-blue-text); border: 1px solid var(--badge-blue-border); }
 .section-title { font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted); }
 .page-title { font-family: 'Bebas Neue', sans-serif; font-size: 32px; letter-spacing: 0.04em; color: var(--bbb-yellow); line-height: 1; text-shadow: 0 3px 10px rgba(0,0,0,0.7); }
+.menu-pill-active, .menu-pill-inactive { height: 38px; display: inline-flex; align-items: center; border-radius: 100px; font-size: 14px; font-weight: 600; padding: 0 18px; cursor: pointer; transition: all .15s; }
 .menu-pill-active { background: var(--accent); color: #fff; border: 1.5px solid var(--accent); }
-.menu-pill-inactive { background: rgba(255,248,231,0.08); color: var(--bbb-cream-light); border: 1.5px solid var(--bbb-cream-light); }
-.menu-pill-inactive:hover { background: rgba(255,248,231,0.18); }
+.menu-pill-inactive { background: var(--bg-hover); color: var(--text-secondary); border: 1.5px solid var(--border); }
+.menu-pill-inactive:hover { border-color: var(--text-muted); color: var(--text); }
+input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); cursor: pointer; }
+.reorder-arrow { opacity: 0; transition: opacity .15s; }
+.pill-group:hover .reorder-arrow { opacity: .55; }
+.reorder-arrow:hover { opacity: 1 !important; }
 .toast { position: fixed; bottom: 24px; right: 24px; background: var(--green); color: #fff; padding: 12px 22px; border-radius: 10px; font-size: 13px; font-weight: 500; z-index: 9999; box-shadow: var(--shadow-lg); }
 .kpi-card { padding: 20px 24px; }
 .kpi-label { font-size: 13px; font-weight: 500; color: var(--text-secondary); margin-bottom: 8px; }

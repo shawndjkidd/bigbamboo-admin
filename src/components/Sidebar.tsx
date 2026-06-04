@@ -13,22 +13,18 @@ interface NavItem {
 const NAV: NavItem[] = [
   { href: '/dashboard', label: 'Overview' },
 
-  { href: '/dashboard/menu', label: 'Menu', section: true },
-  { href: '/dashboard/menu', label: 'Edit Menu' },
+  { href: '#menu-events', label: 'Menu & Events', section: true },
+  { href: '/dashboard/menu', label: 'Menu' },
+  { href: '/dashboard/events', label: 'Events' },
+  { href: '/dashboard/tickets', label: 'Tickets' },
 
-  { href: '/dashboard/giveaway', label: 'QR Giveaway', section: true },
-  { href: '/dashboard/giveaway/prizes', label: 'Prize Setup' },
-  { href: '/dashboard/giveaway/photos', label: 'Spin Photos' },
-  { href: '/dashboard/giveaway/stats', label: 'Game Stats' },
+  { href: '#engagement', label: 'Engagement', section: true },
+  { href: '/dashboard/game', label: 'QR Game' },
+  { href: '/dashboard/loyalty', label: 'Loyalty' },
+  { href: '/dashboard/claims', label: 'Prize Claims' },
+  { href: '/dashboard/scan', label: 'Scan / Redeem' },
 
-  { href: '/dashboard/stamps', label: 'Stamp Card', section: true },
-  { href: '/dashboard/stamps', label: 'Card Settings' },
-
-  { href: '/dashboard/operations', label: 'Operations', section: true },
-  { href: '/dashboard/redeem', label: 'Redeem Prize' },
-  { href: '/dashboard/customers', label: 'Customers' },
-
-  { href: '/dashboard/ops', label: 'Ops / Financials', section: true },
+  { href: '#ops', label: 'Ops / Financials', section: true },
   { href: '/dashboard/ops', label: 'Dashboard' },
   { href: '/dashboard/ops/today', label: 'Daily Sales' },
   { href: '/dashboard/ops/purchase', label: 'Add Purchase' },
@@ -36,9 +32,13 @@ const NAV: NavItem[] = [
   { href: '/dashboard/ops/recipes', label: 'Recipes' },
   { href: '/dashboard/ops/square', label: 'Square POS' },
 
-  { href: '/jukebox', label: 'Jukebox', section: true },
+  { href: '#jukebox', label: 'Jukebox', section: true },
   { href: '/jukebox/admin', label: 'Requests & Queue' },
 
+  { href: '#admin', label: 'Admin', section: true },
+  { href: '/dashboard/hours', label: 'Opening Hours' },
+  { href: '/dashboard/profile', label: 'Profile' },
+  { href: '/dashboard/staff', label: 'Staff', adminOnly: true },
   { href: '/dashboard/settings', label: 'Settings', adminOnly: true },
 ]
 

@@ -262,10 +262,11 @@ export default function MenuPage() {
       {/* Section tabs */}
       <div style={{ display: 'flex', gap: 6, marginBottom: 24, flexWrap: 'wrap', alignItems: 'center' }}>
         {sections.map((s, idx) => (
-          <div key={s.key} style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          <div key={s.key} className="pill-group" style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
             <button
               onClick={() => moveSection(idx, -1)}
               title="Move left"
+              className="reorder-arrow"
               style={{
                 visibility: idx === 0 ? 'hidden' : 'visible',
                 padding: '6px 5px', fontSize: 10, lineHeight: 1, cursor: 'pointer',
@@ -281,6 +282,7 @@ export default function MenuPage() {
             <button
               onClick={() => moveSection(idx, 1)}
               title="Move right"
+              className="reorder-arrow"
               style={{
                 visibility: idx === sections.length - 1 ? 'hidden' : 'visible',
                 padding: '6px 5px', fontSize: 10, lineHeight: 1, cursor: 'pointer',
@@ -426,7 +428,7 @@ export default function MenuPage() {
                   )}
                 </div>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-end', flexShrink: 0 }}>
+                <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 16, flexShrink: 0, paddingTop: 2 }}>
                   {showOnTap(section) && (
                     <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text-secondary)', cursor: 'pointer' }}>
                       <input type="checkbox" checked={item.is_draft} onChange={e => updateItem(item.id, { is_draft: e.target.checked })} style={{ accentColor: 'var(--accent)' }} /> On Tap
