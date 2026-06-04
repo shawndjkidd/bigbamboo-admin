@@ -58,6 +58,18 @@ export default function IngredientsPage() {
     setLoading(false)
   }
 
+  async function deleteRow(r: Row) {
+    if (!confirm(`Delete "${r.name}"? This can't be undone.`)) return
+    const { error } = await ops().from('ingredients').delete().eq('id', r.id)
+    if (error) {
+      alert(error.code === '23503'
+        ? `Can't delete "${r.name}" — it's used in a recipe. Remove it from that recipe first.`
+        : error.message)
+      return
+    }
+    load()
+  }
+
   const canManage = role && canManageRecipes(role)
   const filtered = rows.filter(r =>
     !filter || r.name.toLowerCase().includes(filter.toLowerCase()) || r.category.toLowerCase().includes(filter.toLowerCase()))
@@ -101,8 +113,13 @@ export default function IngredientsPage() {
               <td style={{ ...td, color: 'var(--text-muted, #666)' }}>{r.purchase_unit_label} = {r.purchase_unit_size} {r.base_unit}</td>
               <td style={{ ...td, textAlign: 'right' }}>{vnd(r.current_cost_per_base)} / {r.base_unit}</td>
               <td style={{ ...td, fontSize: 11, color: 'var(--text-muted, #999)' }}>{r.cost_method}</td>
-              <td style={{ ...td, textAlign: 'right' }}>
-                {canManage && <button onClick={() => { setEditing(r); setShowForm(true) }} style={btnLink}>edit</button>}
+              <td style={{ ...td, textAlign: 'right', whiteSpace: 'nowrap' }}>
+                {canManage && (
+                  <>
+                    <button onClick={() => { setEditing(r); setShowForm(true) }} style={btnLink}>Edit</button>
+                    <button onClick={() => deleteRow(r)} style={btnTrash} title="Delete ingredient" aria-label="Delete ingredient">🗑</button>
+                  </>
+                )}
               </td>
             </tr>
           ))}
@@ -224,5 +241,6 @@ const td  = { padding: '8px 12px', color: 'var(--text, #333)' }
 const btnPrimary = { padding: '8px 14px', background: 'var(--accent, #e87830)', color: '#fff', border: 'none', borderRadius: 6, fontSize: 13, fontWeight: 600, cursor: 'pointer' }
 const btnSecondary = { padding: '8px 14px', background: 'transparent', color: 'var(--text-muted, #666)', border: '1px solid var(--border, #e5e5e5)', borderRadius: 6, fontSize: 13, cursor: 'pointer' }
 const btnLink = { padding: '4px 8px', background: 'transparent', color: 'var(--accent, #e87830)', border: 'none', cursor: 'pointer', fontSize: 12 }
+const btnTrash = { padding: '4px 8px', background: 'transparent', color: 'var(--badge-red-text, #C00000)', border: 'none', cursor: 'pointer', fontSize: 14 }
 const modalBg = { position: 'fixed' as const, inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }
 const modal = { background: 'var(--bg-card, #fff)', padding: 20, borderRadius: 8, width: 'min(480px, 92vw)', maxHeight: '90vh', overflowY: 'auto' as const }
