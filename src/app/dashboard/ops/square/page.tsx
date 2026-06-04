@@ -144,17 +144,6 @@ export default function SquarePage() {
           </div>
         </>
       )}
-
-      <div style={{ marginTop: 32, padding: 16, background: 'var(--bg-sidebar, #fafafa)', borderRadius: 8, fontSize: 12, color: 'var(--text-muted, #666)' }}>
-        <strong style={{ color: 'var(--text, #333)' }}>Required env vars (Vercel):</strong>
-        <pre style={{ fontFamily: 'monospace', marginTop: 6, fontSize: 11 }}>
-SQUARE_APP_ID
-SQUARE_APP_SECRET
-SQUARE_ENVIRONMENT=production
-SQUARE_OAUTH_REDIRECT=https://admin.bigbamboo.app/api/admin/ops/square/callback
-CRON_SECRET=&lt;random string for Vercel Cron auth&gt;
-        </pre>
-      </div>
     </div>
   )
 }
