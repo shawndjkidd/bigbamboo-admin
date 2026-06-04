@@ -34,6 +34,7 @@ export default function IngredientsPage() {
   const [rows, setRows] = useState<Row[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState('')
+  const [view, setView] = useState<'ingredients' | 'consumables' | 'all'>('ingredients')
   const [showForm, setShowForm] = useState(false)
   const [editing, setEditing] = useState<Row | null>(null)
 
@@ -71,8 +72,12 @@ export default function IngredientsPage() {
   }
 
   const canManage = role && canManageRecipes(role)
-  const filtered = rows.filter(r =>
-    !filter || r.name.toLowerCase().includes(filter.toLowerCase()) || r.category.toLowerCase().includes(filter.toLowerCase()))
+  const filtered = rows.filter(r => {
+    if (view === 'ingredients' && r.category === 'consumable') return false
+    if (view === 'consumables' && r.category !== 'consumable') return false
+    if (filter && !(r.name.toLowerCase().includes(filter.toLowerCase()) || r.category.toLowerCase().includes(filter.toLowerCase()))) return false
+    return true
+  })
 
   if (loading) return <div style={{ color: '#999', fontSize: 14 }}>Loading…</div>
 
@@ -82,7 +87,7 @@ export default function IngredientsPage() {
         <div>
           <h2 style={{ fontSize: 22, fontWeight: 600 }}>Ingredients</h2>
           <div style={{ fontSize: 12, color: 'var(--text-muted, #999)', marginTop: 2 }}>
-            {rows.length} ingredients · cost auto-updates when you log purchases linked to them
+            {filtered.length} {view === 'consumables' ? 'consumables' : 'ingredients'} · cost auto-updates when you log purchases linked to them
           </div>
         </div>
         {canManage && (
@@ -90,6 +95,11 @@ export default function IngredientsPage() {
         )}
       </div>
 
+      <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+        {(['ingredients', 'consumables', 'all'] as const).map(v => (
+          <button key={v} onClick={() => setView(v)} style={{ padding: '8px 16px', borderRadius: 100, fontSize: 13, fontWeight: 500, cursor: 'pointer', textTransform: 'capitalize', background: view === v ? 'var(--accent)' : 'transparent', color: view === v ? '#fff' : 'var(--text-secondary)', border: `1px solid ${view === v ? 'var(--accent)' : 'var(--border)'}` }}>{v === 'all' ? 'All' : v}</button>
+        ))}
+      </div>
       <input
         type="text"
         placeholder="Search by name or category…"

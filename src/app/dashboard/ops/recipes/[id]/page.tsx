@@ -118,6 +118,14 @@ export default function RecipeDetailPage() {
     await ops().from('recipes').update({ image_url: v || null }).eq('id', recipeId)
     setRecipe(r => (r ? { ...r, image_url: v || null } : r))
   }
+  async function uploadPhoto(file: File) {
+    const ext = (file.name.split('.').pop() || 'jpg').toLowerCase()
+    const path = `recipes/${recipeId}-${Date.now()}.${ext}`
+    const { error } = await supabase.storage.from('venue-assets').upload(path, file, { upsert: true, contentType: file.type })
+    if (error) { alert(error.message); return }
+    const { data } = supabase.storage.from('venue-assets').getPublicUrl(path)
+    await savePhoto(data.publicUrl)
+  }
   async function publishVersion() {
     if (!recipe) return
     const nextV = (recipe.published_version || 0) + 1
@@ -172,7 +180,7 @@ export default function RecipeDetailPage() {
         <Stat label="Total cost" value={vnd(cost?.total_cost)} />
         <Stat label={`Cost / ${recipe.yield_unit}`} value={vnd(cost?.cost_per_unit)} />
         <Stat label="Sale price" value={recipe.sale_price ? vnd(recipe.sale_price) : '—'} />
-        <Stat label="Margin %" value={pct(marginPct)} accent={marginPct == null ? '#999' : marginPct < 0.5 ? '#C00000' : marginPct < 0.7 ? '#C65911' : '#548235'} />
+        <Stat label="Margin %" value={pct(marginPct)} accent={marginPct == null ? '#999' : marginPct < 0.5 ? 'var(--burgundy, #7b2d3a)' : marginPct < 0.7 ? '#C65911' : '#6b7280'} />
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
@@ -183,7 +191,15 @@ export default function RecipeDetailPage() {
       <div style={{ marginBottom: 24 }}>
         <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>Serving photo</h3>
         {recipe.image_url && <img src={recipe.image_url} alt="serving" style={{ maxWidth: 220, borderRadius: 8, marginBottom: 8, display: 'block', border: '1px solid var(--border, #eee)' }} />}
-        {canManage && <input defaultValue={recipe.image_url || ''} onBlur={e => savePhoto(e.target.value)} placeholder="Paste an image URL" style={{ ...inp, width: '100%', maxWidth: 440 }} />}
+        {canManage && (
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+            <label style={{ ...btnPrimary, display: 'inline-block' }}>
+              {recipe.image_url ? 'Replace photo' : 'Upload photo'}
+              <input type="file" accept="image/*" onChange={e => { const f = e.target.files?.[0]; if (f) uploadPhoto(f) }} style={{ display: 'none' }} />
+            </label>
+            {recipe.image_url && <button onClick={() => savePhoto('')} style={btnLink}>Remove</button>}
+          </div>
+        )}
       </div>
 
       {versions.length > 0 && (
