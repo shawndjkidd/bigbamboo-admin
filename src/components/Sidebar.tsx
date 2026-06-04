@@ -18,9 +18,12 @@ const NAV: NavItem[] = [
   { href: '/dashboard/events', label: 'Events' },
   { href: '/dashboard/tickets', label: 'Tickets' },
 
-  { href: '#kitchen-bar', label: 'Kitchen & Bar', section: true },
-  { href: '/dashboard/ops/recipes', label: 'Recipes' },
+  { href: '#kitchen', label: 'Kitchen', section: true },
+  { href: '/dashboard/ops/recipes?dept=kitchen', label: 'Food recipes' },
   { href: '/dashboard/ops/ingredients', label: 'Ingredients' },
+
+  { href: '#bar', label: 'Bar', section: true },
+  { href: '/dashboard/ops/recipes?dept=bar', label: 'Drink recipes' },
 
   { href: '#financials', label: 'Financials', section: true },
   { href: '/dashboard/ops', label: 'Dashboard' },
