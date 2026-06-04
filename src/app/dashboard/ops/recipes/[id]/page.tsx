@@ -11,6 +11,7 @@ type Recipe = {
   is_kegged: boolean; keg_size_ml: number | null; pour_size_ml: number | null;
   description: string | null; active: boolean;
   method: string | null; subtitle: string | null; image_url: string | null;
+  published_version: number | null;
 }
 
 type Component = {
@@ -37,6 +38,7 @@ export default function RecipeDetailPage() {
   const [ingOptions, setIngOptions] = useState<IngOption[]>([])
   const [recOptions, setRecOptions] = useState<RecOption[]>([])
   const [loading, setLoading] = useState(true)
+  const [versions, setVersions] = useState<any[]>([])
 
   // add-component form
   const [addType, setAddType] = useState<'ingredient' | 'sub_recipe'>('ingredient')
@@ -60,12 +62,13 @@ export default function RecipeDetailPage() {
 
   async function loadAll() {
     setLoading(true)
-    const [r, comps, c, ings, recs] = await Promise.all([
+    const [r, comps, c, ings, recs, vers] = await Promise.all([
       ops().from('recipes').select('*').eq('id', recipeId).single(),
       ops().from('recipe_components').select('id, recipe_id, ingredient_id, sub_recipe_id, qty, unit, notes, sort_order').eq('recipe_id', recipeId).order('sort_order'),
       ops().from('v_recipe_cost').select('recipe_id, total_cost, cost_per_unit, margin_per_unit').eq('recipe_id', recipeId).single(),
       ops().from('ingredients').select('id, name, base_unit, current_cost_per_base').order('name'),
       ops().from('recipes').select('id, name').neq('id', recipeId).order('name'),
+      ops().from('recipe_versions').select('*').eq('recipe_id', recipeId).order('version', { ascending: false }),
     ])
     setRecipe(r.data as Recipe)
     setIngOptions((ings.data as IngOption[]) || [])
@@ -78,6 +81,7 @@ export default function RecipeDetailPage() {
       sub_recipe: c.sub_recipe_id ? recMap.get(c.sub_recipe_id) : null,
     })))
     setCost(c.data as Cost)
+    setVersions((vers.data as any[]) || [])
     setLoading(false)
   }
 
@@ -108,6 +112,33 @@ export default function RecipeDetailPage() {
   async function saveMethod(v: string) {
     await ops().from('recipes').update({ method: v }).eq('id', recipeId)
     setRecipe(r => (r ? { ...r, method: v } : r))
+  }
+
+  async function savePhoto(v: string) {
+    await ops().from('recipes').update({ image_url: v || null }).eq('id', recipeId)
+    setRecipe(r => (r ? { ...r, image_url: v || null } : r))
+  }
+  async function publishVersion() {
+    if (!recipe) return
+    const nextV = (recipe.published_version || 0) + 1
+    const snapshot = {
+      recipe: { name: recipe.name, category: recipe.category, subtitle: recipe.subtitle, method: recipe.method, image_url: recipe.image_url, sale_price: recipe.sale_price },
+      components: components.map(c => ({ ingredient_id: c.ingredient_id, sub_recipe_id: c.sub_recipe_id, qty: c.qty, unit: c.unit, sort_order: c.sort_order })),
+    }
+    const venueId = (await supabase.from('venues').select('id').eq('slug', 'bigbamboo').single()).data?.id
+    const { error } = await ops().from('recipe_versions').insert({ recipe_id: recipeId, venue_id: venueId, version: nextV, snapshot })
+    if (error) { alert(error.message); return }
+    await ops().from('recipes').update({ published_version: nextV }).eq('id', recipeId)
+    await loadAll()
+  }
+  async function restoreVersion(v: any) {
+    if (!confirm(`Restore version ${v.version}? The current state is saved as a new version first, so nothing is lost.`)) return
+    await publishVersion()
+    const s = v.snapshot
+    await ops().from('recipes').update({ method: s.recipe.method, image_url: s.recipe.image_url, subtitle: s.recipe.subtitle, category: s.recipe.category, sale_price: s.recipe.sale_price }).eq('id', recipeId)
+    await ops().from('recipe_components').delete().eq('recipe_id', recipeId)
+    if (s.components?.length) await ops().from('recipe_components').insert(s.components.map((c: any) => ({ ...c, recipe_id: recipeId })))
+    await loadAll()
   }
 
   async function buildBatch() {
@@ -143,6 +174,29 @@ export default function RecipeDetailPage() {
         <Stat label="Sale price" value={recipe.sale_price ? vnd(recipe.sale_price) : '—'} />
         <Stat label="Margin %" value={pct(marginPct)} accent={marginPct == null ? '#999' : marginPct < 0.5 ? '#C00000' : marginPct < 0.7 ? '#C65911' : '#548235'} />
       </div>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
+        {canManage && <button onClick={publishVersion} style={btnPrimary}>Publish new version</button>}
+        {recipe.published_version ? <span style={{ fontSize: 12, color: 'var(--text-muted, #999)' }}>Current: v{recipe.published_version} · {versions.length} saved</span> : null}
+      </div>
+
+      <div style={{ marginBottom: 24 }}>
+        <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>Serving photo</h3>
+        {recipe.image_url && <img src={recipe.image_url} alt="serving" style={{ maxWidth: 220, borderRadius: 8, marginBottom: 8, display: 'block', border: '1px solid var(--border, #eee)' }} />}
+        {canManage && <input defaultValue={recipe.image_url || ''} onBlur={e => savePhoto(e.target.value)} placeholder="Paste an image URL" style={{ ...inp, width: '100%', maxWidth: 440 }} />}
+      </div>
+
+      {versions.length > 0 && (
+        <div style={{ marginBottom: 24 }}>
+          <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>Version history</h3>
+          {versions.map(v => (
+            <div key={v.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderTop: '1px solid var(--border, #eee)', fontSize: 13 }}>
+              <span>v{v.version} · {new Date(v.published_at).toLocaleDateString()}</span>
+              {canManage && <button onClick={() => restoreVersion(v)} style={btnLink}>Restore</button>}
+            </div>
+          ))}
+        </div>
+      )}
 
       {recipe.is_kegged && canManage && (
         <button onClick={buildBatch} style={{ ...btnPrimary, marginBottom: 24 }}>+ Build a batch (log keg production)</button>
