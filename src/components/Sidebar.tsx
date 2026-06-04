@@ -18,12 +18,6 @@ const NAV: NavItem[] = [
   { href: '/dashboard/events', label: 'Events' },
   { href: '/dashboard/tickets', label: 'Tickets' },
 
-  { href: '#engagement', label: 'Engagement', section: true },
-  { href: '/dashboard/game', label: 'QR Game' },
-  { href: '/dashboard/loyalty', label: 'Loyalty' },
-  { href: '/dashboard/claims', label: 'Prize Claims' },
-  { href: '/dashboard/scan', label: 'Scan / Redeem' },
-
   { href: '#ops', label: 'Ops / Financials', section: true },
   { href: '/dashboard/ops', label: 'Dashboard' },
   { href: '/dashboard/ops/today', label: 'Daily Sales' },
@@ -40,6 +34,12 @@ const NAV: NavItem[] = [
   { href: '/dashboard/profile', label: 'Profile' },
   { href: '/dashboard/staff', label: 'Staff', adminOnly: true },
   { href: '/dashboard/settings', label: 'Settings', adminOnly: true },
+
+  { href: '#engagement', label: 'Engagement', section: true },
+  { href: '/dashboard/game', label: 'QR Game' },
+  { href: '/dashboard/loyalty', label: 'Loyalty' },
+  { href: '/dashboard/claims', label: 'Prize Claims' },
+  { href: '/dashboard/scan', label: 'Scan / Redeem' },
 ]
 
 export default function Sidebar({ role, venueName }: { role: string; venueName: string }) {
