@@ -109,6 +109,12 @@ export default function RecipeDetailPage() {
     await loadAll()
   }
 
+  async function updateComponent(id: string, changes: { qty?: number; unit?: string }) {
+    const { error } = await ops().from('recipe_components').update(changes).eq('id', id)
+    if (error) { alert(error.message); return }
+    await loadAll()
+  }
+
   async function saveMethod(v: string) {
     await ops().from('recipes').update({ method: v }).eq('id', recipeId)
     setRecipe(r => (r ? { ...r, method: v } : r))
@@ -246,8 +252,18 @@ export default function RecipeDetailPage() {
               <tr key={c.id} style={{ borderTop: '1px solid var(--border, #eee)' }}>
                 <td style={td}>{c.ingredient?.name || c.sub_recipe?.name || '—'}</td>
                 <td style={{ ...td, fontSize: 11, color: 'var(--text-muted, #999)' }}>{c.ingredient_id ? 'ingredient' : 'sub-recipe'}</td>
-                <td style={{ ...td, textAlign: 'right' }}>{Number(c.qty)}</td>
-                <td style={td}>{c.unit}</td>
+                <td style={{ ...td, textAlign: 'right' }}>
+                  {canManage
+                    ? <input type="number" step="0.0001" defaultValue={Number(c.qty)} onBlur={e => { const v = Number(e.target.value); if (!Number.isNaN(v) && v !== Number(c.qty)) updateComponent(c.id, { qty: v }) }} style={{ ...inp, width: 80, textAlign: 'right', padding: '4px 8px' }} />
+                    : Number(c.qty)}
+                </td>
+                <td style={td}>
+                  {canManage
+                    ? <select defaultValue={c.unit} onChange={e => updateComponent(c.id, { unit: e.target.value })} style={{ ...inp, width: 72, padding: '4px 8px' }}>
+                        <option value="ml">ml</option><option value="g">g</option><option value="each">each</option>
+                      </select>
+                    : c.unit}
+                </td>
                 <td style={{ ...td, textAlign: 'right', color: 'var(--text-muted, #666)' }}>{c.ingredient ? `${vnd(unitCost)}/${c.ingredient.base_unit}` : '—'}</td>
                 <td style={{ ...td, textAlign: 'right' }}>{c.ingredient ? vnd(compCost) : '—'}</td>
                 <td style={{ ...td, textAlign: 'right' }}>
