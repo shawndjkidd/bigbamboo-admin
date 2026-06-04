@@ -7,7 +7,7 @@ export default function SettingsPage() {
   const [currentUser, setCurrentUser] = useState<any>(null)
   const [toast, setToast] = useState('')
   const [showAdd, setShowAdd] = useState(false)
-  const [newStaff, setNewStaff] = useState({ name: '', email: '', role: 'manager', password: '' })
+  const [newStaff, setNewStaff] = useState({ name: '', email: '', role: 'manager', password: '', department: '' })
 
   useEffect(() => { loadData() }, [])
 
@@ -24,8 +24,8 @@ export default function SettingsPage() {
     if (!newStaff.name || !newStaff.email || !newStaff.password) return
     const { error: authError } = await supabase.auth.signUp({ email: newStaff.email, password: newStaff.password })
     if (authError) { showToast('Error: ' + authError.message); return }
-    await supabase.from('staff_users').insert({ name: newStaff.name, email: newStaff.email, role: newStaff.role })
-    setNewStaff({ name: '', email: '', role: 'manager', password: '' })
+    await supabase.from('staff_users').insert({ name: newStaff.name, email: newStaff.email, role: newStaff.role, department: newStaff.department || null })
+    setNewStaff({ name: '', email: '', role: 'manager', password: '', department: '' })
     setShowAdd(false)
     showToast('Staff member added')
     loadData()
@@ -43,12 +43,21 @@ export default function SettingsPage() {
     showToast('Role updated')
   }
 
+  async function updateDepartment(id: string, department: string) {
+    await supabase.from('staff_users').update({ department: department || null }).eq('id', id)
+    setStaff(prev => prev.map(s => s.id === id ? { ...s, department: department || null } : s))
+    showToast('Department updated')
+  }
+
   function showToast(msg: string) { setToast(msg); setTimeout(() => setToast(''), 3000) }
 
   function roleLabel(role: string) {
     if (role === 'super_admin') return 'Super Admin'
+    if (role === 'admin') return 'Admin'
+    if (role === 'manager') return 'Manager'
+    if (role === 'staff') return 'Staff (view)'
     if (role === 'scanner') return 'Door Staff'
-    return 'Manager'
+    return role
   }
 
   function roleBadge(role: string) {
@@ -89,11 +98,21 @@ export default function SettingsPage() {
                 <label className="label">Role</label>
                 <select className="input" value={newStaff.role} onChange={e => setNewStaff(p => ({ ...p, role: e.target.value }))}>
                   <option value="manager">Manager</option>
+                  <option value="staff">Staff — view only (Kitchen/Bar)</option>
                   <option value="scanner">Door Staff (Scanner Only)</option>
                   <option value="super_admin">Super Admin</option>
                 </select>
               </div>
               <div><label className="label">Temporary Password</label><input className="input" type="password" value={newStaff.password} onChange={e => setNewStaff(p => ({ ...p, password: e.target.value }))} placeholder="They can change later" /></div>
+            </div>
+            <div style={{ marginBottom: 16 }}>
+              <label className="label">Department (what a Staff member can see)</label>
+              <select className="input" value={newStaff.department} onChange={e => setNewStaff(p => ({ ...p, department: e.target.value }))} style={{ maxWidth: 260 }}>
+                <option value="">— None / all (managers)</option>
+                <option value="kitchen">Kitchen</option>
+                <option value="bar">Bar</option>
+                <option value="floor">Floor</option>
+              </select>
             </div>
             <div style={{ display: 'flex', gap: 10 }}>
               <button className="btn-accent" onClick={addStaff}>Create Account</button>
@@ -106,7 +125,7 @@ export default function SettingsPage() {
         <div className="card" style={{ overflow: 'hidden' }}>
           <table className="data-table">
             <thead>
-              <tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th style={{ textAlign: 'right' }}>Actions</th></tr>
+              <tr><th>Name</th><th>Email</th><th>Role</th><th>Department</th><th>Status</th><th style={{ textAlign: 'right' }}>Actions</th></tr>
             </thead>
             <tbody>
               {staff.map(s => (
@@ -119,10 +138,19 @@ export default function SettingsPage() {
                     ) : (
                       <select className="input" value={s.role} onChange={e => updateRole(s.id, e.target.value)} style={{ width: 140, padding: '4px 8px', fontSize: 12 }}>
                         <option value="manager">Manager</option>
+                        <option value="staff">Staff (view)</option>
                         <option value="scanner">Door Staff</option>
                         <option value="super_admin">Super Admin</option>
                       </select>
                     )}
+                  </td>
+                  <td>
+                    <select className="input" value={s.department || ''} onChange={e => updateDepartment(s.id, e.target.value)} style={{ width: 120, padding: '4px 8px', fontSize: 12 }}>
+                      <option value="">—</option>
+                      <option value="kitchen">Kitchen</option>
+                      <option value="bar">Bar</option>
+                      <option value="floor">Floor</option>
+                    </select>
                   </td>
                   <td><span className={`badge ${s.active ? 'badge-green' : 'badge-red'}`}>{s.active ? 'Active' : 'Inactive'}</span></td>
                   <td style={{ textAlign: 'right' }}>
