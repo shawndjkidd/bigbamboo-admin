@@ -10,6 +10,7 @@ type Recipe = {
   yield_qty: number; yield_unit: string; sale_price: number | null;
   is_kegged: boolean; keg_size_ml: number | null; pour_size_ml: number | null;
   description: string | null; active: boolean;
+  method: string | null; subtitle: string | null; image_url: string | null;
 }
 
 type Component = {
@@ -104,6 +105,11 @@ export default function RecipeDetailPage() {
     await loadAll()
   }
 
+  async function saveMethod(v: string) {
+    await ops().from('recipes').update({ method: v }).eq('id', recipeId)
+    setRecipe(r => (r ? { ...r, method: v } : r))
+  }
+
   async function buildBatch() {
     if (!recipe || !cost) return
     const planned = recipe.keg_size_ml && recipe.pour_size_ml
@@ -141,6 +147,16 @@ export default function RecipeDetailPage() {
       {recipe.is_kegged && canManage && (
         <button onClick={buildBatch} style={{ ...btnPrimary, marginBottom: 24 }}>+ Build a batch (log keg production)</button>
       )}
+
+      <div style={{ marginBottom: 24 }} className="recipe-method">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+          <h3 style={{ fontSize: 14, fontWeight: 600 }}>Method</h3>
+          <button onClick={() => window.print()} style={btnPrimary}>Print SOP</button>
+        </div>
+        {canManage
+          ? <textarea defaultValue={recipe.method || ''} onBlur={e => saveMethod(e.target.value)} placeholder="Step-by-step method, one step per line…" rows={8} style={{ ...inp, width: '100%', fontFamily: 'inherit', lineHeight: 1.6, resize: 'vertical' }} />
+          : <div style={{ whiteSpace: 'pre-wrap', fontSize: 14, lineHeight: 1.7 }}>{recipe.method || '—'}</div>}
+      </div>
 
       <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 10 }}>Components</h3>
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, marginBottom: 16 }}>
@@ -214,4 +230,4 @@ const inp = { padding: '8px 10px', fontSize: 13, border: '1px solid var(--border
 const th  = { padding: '8px 12px', textAlign: 'left' as const, fontWeight: 600, fontSize: 11, textTransform: 'uppercase' as const, color: 'var(--text-muted, #999)', letterSpacing: '0.05em' }
 const td  = { padding: '8px 12px', color: 'var(--text, #333)' }
 const btnPrimary = { padding: '8px 14px', background: 'var(--accent, #e87830)', color: '#fff', border: 'none', borderRadius: 6, fontSize: 13, fontWeight: 600, cursor: 'pointer' }
-const btnLink = { padding: '4px 8px', background: 'transparent', color: '#C00000', border: 'none', cursor: 'pointer', fontSize: 12 }
+const btnLink = { padding: '4px 8px', background: 'transparent', color: 'var(--burgundy, #7b2d3a)', border: 'none', cursor: 'pointer', fontSize: 12 }
