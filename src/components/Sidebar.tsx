@@ -18,28 +18,30 @@ const NAV: NavItem[] = [
   { href: '/dashboard/events', label: 'Events' },
   { href: '/dashboard/tickets', label: 'Tickets' },
 
-  { href: '#ops', label: 'Ops / Financials', section: true },
+  { href: '#kitchen-bar', label: 'Kitchen & Bar', section: true },
+  { href: '/dashboard/ops/recipes', label: 'Recipes' },
+  { href: '/dashboard/ops/ingredients', label: 'Ingredients' },
+
+  { href: '#financials', label: 'Financials', section: true },
   { href: '/dashboard/ops', label: 'Dashboard' },
   { href: '/dashboard/ops/today', label: 'Daily Sales' },
   { href: '/dashboard/ops/purchase', label: 'Add Purchase' },
-  { href: '/dashboard/ops/ingredients', label: 'Ingredients' },
-  { href: '/dashboard/ops/recipes', label: 'Recipes' },
   { href: '/dashboard/ops/square', label: 'Square POS' },
 
   { href: '#jukebox', label: 'Jukebox', section: true },
   { href: '/jukebox/admin', label: 'Requests & Queue' },
-
-  { href: '#admin', label: 'Admin', section: true },
-  { href: '/dashboard/hours', label: 'Opening Hours' },
-  { href: '/dashboard/profile', label: 'Profile' },
-  { href: '/dashboard/staff', label: 'Staff', adminOnly: true },
-  { href: '/dashboard/settings', label: 'Settings', adminOnly: true },
 
   { href: '#engagement', label: 'Engagement', section: true },
   { href: '/dashboard/game', label: 'QR Game' },
   { href: '/dashboard/loyalty', label: 'Loyalty' },
   { href: '/dashboard/claims', label: 'Prize Claims' },
   { href: '/dashboard/scan', label: 'Scan / Redeem' },
+
+  { href: '#admin', label: 'Admin', section: true },
+  { href: '/dashboard/hours', label: 'Opening Hours' },
+  { href: '/dashboard/profile', label: 'Profile' },
+  { href: '/dashboard/staff', label: 'Staff', adminOnly: true },
+  { href: '/dashboard/settings', label: 'Settings', adminOnly: true },
 ]
 
 export default function Sidebar({ role, venueName }: { role: string; venueName: string }) {
