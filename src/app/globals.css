@@ -40,6 +40,7 @@
   --shadow-lg: 0 4px 12px rgba(0,0,0,0.08);
   --bbb-yellow: #ea580c;
   --bbb-cream-light: #71717a;
+  --burgundy: #7b2d3a;
 }
 
 [data-theme="dark"] {
@@ -80,6 +81,7 @@
   --shadow-lg: 0 4px 12px rgba(0,0,0,0.3);
   --bbb-yellow: #f4b942;
   --bbb-cream-light: #8a8170;
+  --burgundy: #a83f50;
 }
 
 * { box-sizing: border-box; }
@@ -128,7 +130,7 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); c
 .reorder-arrow { opacity: 0; transition: opacity .15s; }
 .pill-group:hover .reorder-arrow { opacity: .55; }
 .reorder-arrow:hover { opacity: 1 !important; }
-.toast { position: fixed; bottom: 24px; right: 24px; background: var(--green); color: #fff; padding: 12px 22px; border-radius: 10px; font-size: 13px; font-weight: 500; z-index: 9999; box-shadow: var(--shadow-lg); }
+.toast { position: fixed; bottom: 24px; right: 24px; background: var(--burgundy); color: #fff; padding: 12px 22px; border-radius: 10px; font-size: 13px; font-weight: 500; z-index: 9999; box-shadow: var(--shadow-lg); }
 .kpi-card { padding: 20px 24px; }
 .kpi-label { font-size: 13px; font-weight: 500; color: var(--text-secondary); margin-bottom: 8px; }
 .kpi-value { font-family: 'Bebas Neue', sans-serif; font-size: 42px; letter-spacing: 0.02em; color: var(--text); line-height: 1; }
