@@ -49,6 +49,8 @@ const NAV: NavItem[] = [
 
 export default function Sidebar({ role, venueName }: { role: string; venueName: string }) {
   const pathname = usePathname()
+  const navHrefs = NAV.filter(i => !i.section).map(i => i.href.split('?')[0])
+  const bestMatch = navHrefs.filter(h => h !== '/dashboard' && (pathname === h || pathname.startsWith(h + '/'))).sort((a, b) => b.length - a.length)[0] || null
   const router = useRouter()
 
   async function handleSignOut() {
@@ -91,7 +93,7 @@ export default function Sidebar({ role, venueName }: { role: string; venueName: 
         {NAV.filter(item => !item.adminOnly || ['super_admin', 'admin'].includes(role)).map((item, i) => {
           const active = item.href === '/dashboard'
             ? pathname === '/dashboard'
-            : !item.section && pathname.startsWith(item.href)
+            : (!item.section && item.href.split('?')[0] === bestMatch)
 
           if (item.section) {
             return (

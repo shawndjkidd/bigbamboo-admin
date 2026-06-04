@@ -132,7 +132,7 @@ export default function SquarePage() {
                   <td style={{ padding: '6px 0', width: 80 }}>
                     <span style={{
                       fontSize: 10, padding: '2px 6px', borderRadius: 3, color: '#fff',
-                      background: l.status === 'success' ? '#548235' : l.status === 'partial' ? '#C65911' : l.status === 'failed' ? '#C00000' : '#666',
+                      background: l.status === 'success' ? '#6b7280' : l.status === 'partial' ? '#C65911' : l.status === 'failed' ? '#C00000' : '#666',
                     }}>{l.status}</span>
                   </td>
                   <td style={{ padding: '6px 0', color: 'var(--text-muted, #666)' }}>{new Date(l.started_at).toLocaleString()}</td>
