@@ -200,6 +200,18 @@ export default function MenuPage() {
     showToast('Removed')
   }
 
+  async function moveItem(idx: number, dir: -1 | 1) {
+    const j = idx + dir
+    if (j < 0 || j >= items.length) return
+    const next = [...items]
+    ;[next[idx], next[j]] = [next[j], next[idx]]
+    setItems(next)
+    await Promise.all(next.map((it, i) =>
+      supabase.from('menu_items').update({ sort_order: i, updated_at: new Date().toISOString() }).eq('id', it.id)
+    ))
+    showToast('Order saved')
+  }
+
   function handleAddSection() {
     if (!newSectionLabel.trim()) return
     const key = toKey(newSectionLabel)
@@ -399,7 +411,7 @@ export default function MenuPage() {
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {items.map(item => (
+          {items.map((item, idx) => (
             <div key={item.id} className="card" style={{ padding: 20 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
                 <div style={{ flex: 1, marginRight: 16 }}>
@@ -438,6 +450,10 @@ export default function MenuPage() {
                     <input type="checkbox" checked={item.is_available} onChange={e => updateItem(item.id, { is_available: e.target.checked })} style={{ accentColor: 'var(--accent)' }} /> Available
                   </label>
                   {saving === item.id && <span style={{ fontSize: 12, color: 'var(--accent)' }}>Saving...</span>}
+                  <div style={{ display: 'flex', gap: 4 }}>
+                    <button onClick={() => moveItem(idx, -1)} disabled={idx === 0} title="Move up" aria-label="Move up" style={reorderBtn}>↑</button>
+                    <button onClick={() => moveItem(idx, 1)} disabled={idx === items.length - 1} title="Move down" aria-label="Move down" style={reorderBtn}>↓</button>
+                  </div>
                   <button className="btn-red" onClick={() => deleteItem(item.id)} style={{ fontSize: 12, padding: '5px 10px' }}>Remove</button>
                 </div>
               </div>
@@ -502,3 +518,5 @@ export default function MenuPage() {
     </div>
   )
 }
+
+const reorderBtn = { background: 'none', border: '1px solid var(--border)', borderRadius: 6, cursor: 'pointer', color: 'var(--text-muted)', width: 26, height: 26, lineHeight: 1, fontSize: 13 } as const
