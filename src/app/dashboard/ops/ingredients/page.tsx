@@ -16,6 +16,12 @@ type Row = {
   id: string; name: string; category: string; purchase_unit_label: string; purchase_unit_size: number
   base_unit: string; current_cost_per_base: number; cost_method: string
   manual_cost_per_base: number | null; par_level_base: number | null; supplier: string | null; notes: string | null; active: boolean
+  on_hand_base: number | null; counted_at: string | null
+}
+
+type VendorRow = {
+  id?: string; name: string; contact_name: string | null; phone: string | null
+  email: string | null; order_notes: string | null; delivery_days: string | null
 }
 
 export default function IngredientsPage() {
@@ -24,10 +30,13 @@ export default function IngredientsPage() {
   const [rows, setRows] = useState<Row[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState('')
-  const [view, setView] = useState<'ingredients' | 'consumables' | 'vendors' | 'all'>('ingredients')
+  const [view, setView] = useState<'ingredients' | 'consumables' | 'stock' | 'vendors' | 'all'>('ingredients')
   const [supplierFilter, setSupplierFilter] = useState('all')
   const [openVendor, setOpenVendor] = useState<string | null>(null)
   const [orderQty, setOrderQty] = useState<Record<string, string>>({})
+  const [vendors, setVendors] = useState<VendorRow[]>([])
+  const [editVendor, setEditVendor] = useState<VendorRow | null>(null)
+  const [showVendorForm, setShowVendorForm] = useState(false)
   const [showForm, setShowForm] = useState(false)
   const [editing, setEditing] = useState<Row | null>(null)
 
@@ -43,8 +52,13 @@ export default function IngredientsPage() {
   }
   async function load() {
     setLoading(true)
-    const { data } = await ops().from('ingredients').select('*').order('name')
-    setRows((data as Row[]) || []); setLoading(false)
+    const [{ data: ing }, { data: vend }] = await Promise.all([
+      ops().from('ingredients').select('*').order('name'),
+      ops().from('vendors').select('*').order('name'),
+    ])
+    setRows((ing as Row[]) || [])
+    setVendors((vend as VendorRow[]) || [])
+    setLoading(false)
   }
   async function deleteRow(r: Row) {
     if (!confirm(`Delete "${r.name}"? This can't be undone.`)) return
@@ -57,6 +71,7 @@ export default function IngredientsPage() {
   // Distinct suppliers, alphabetical — powers the supplier toggle
   const suppliers = Array.from(new Set(rows.map(r => (r.supplier || '').trim()).filter(Boolean)))
     .sort((a, b) => a.localeCompare(b))
+  const vendorMap = new Map(vendors.map(v => [v.name, v]))
 
   const filtered = rows.filter(r => {
     if (view === 'ingredients' && r.category === 'consumable') return false
@@ -90,11 +105,51 @@ export default function IngredientsPage() {
   // --- Per-vendor order form helpers ---
   function buyAs(r: Row) { return r.purchase_unit_label || ('1 ' + r.base_unit) }
   function packPriceOf(r: Row) { return (r.current_cost_per_base || 0) * (r.purchase_unit_size || 1) }
+  // --- Stock helpers (counts kept in base units, shown/entered in purchase units) ---
+  function parInPurchase(r: Row) { return r.par_level_base != null && r.purchase_unit_size ? r.par_level_base / r.purchase_unit_size : null }
+  function onHandInPurchase(r: Row) { return r.on_hand_base != null && r.purchase_unit_size ? r.on_hand_base / r.purchase_unit_size : null }
+  function isLow(r: Row) { return r.par_level_base != null && r.on_hand_base != null && r.on_hand_base < r.par_level_base }
+  function suggestedQty(r: Row) {
+    if (r.par_level_base == null || r.on_hand_base == null || !r.purchase_unit_size) return 0
+    const deficit = r.par_level_base - r.on_hand_base
+    return deficit > 0 ? Math.ceil(deficit / r.purchase_unit_size) : 0
+  }
+  async function saveOnHand(r: Row, purchaseUnits: string) {
+    const raw = purchaseUnits.trim()
+    const v = raw === '' ? null : Number(raw)
+    const base = v == null || Number.isNaN(v) ? null : v * (r.purchase_unit_size || 1)
+    const { error } = await ops().from('ingredients').update({ on_hand_base: base, counted_at: new Date().toISOString() }).eq('id', r.id)
+    if (error) { alert(error.message); return }
+    setRows(rs => rs.map(x => x.id === r.id ? { ...x, on_hand_base: base, counted_at: new Date().toISOString() } : x))
+  }
+  function fmtNum(n: number) { return Number.isInteger(n) ? String(n) : n.toFixed(1) }
   function orderLinesFor(items: Row[]) {
     return items.map(r => ({ r, q: Number(orderQty[r.id] || 0) })).filter(x => x.q > 0)
   }
   function orderTotal(items: Row[]) {
     return items.reduce((s, r) => s + packPriceOf(r) * Number(orderQty[r.id] || 0), 0)
+  }
+  function fillSuggested(items: Row[]) {
+    setOrderQty(s => {
+      const next = { ...s }
+      items.forEach(r => { const sug = suggestedQty(r); if (sug > 0) next[r.id] = String(sug) })
+      return next
+    })
+  }
+  function sendOrder(vendor: string, items: Row[]) {
+    const t = buildOrderText(vendor, items)
+    if (!t) { alert('Set a quantity on at least one item first.'); return }
+    const v = vendorMap.get(vendor)
+    const phone = (v?.phone || '').replace(/[^0-9]/g, '')
+    if (phone) { window.open(`https://wa.me/${phone}?text=${encodeURIComponent(t)}`, '_blank'); return }
+    if (v?.email) { window.open(`mailto:${v.email}?subject=${encodeURIComponent('Order — ' + vendor)}&body=${encodeURIComponent(t)}`, '_blank'); return }
+    alert('Add a phone or email to this vendor (Edit) to send directly — for now use Copy order.')
+  }
+  function openVendorEdit(name: string) {
+    if (!canManage) return
+    const existing = vendorMap.get(name)
+    setEditVendor(existing || { name, contact_name: null, phone: null, email: null, order_notes: null, delivery_days: null })
+    setShowVendorForm(true)
   }
   function buildOrderText(vendor: string, items: Row[]) {
     const lines = orderLinesFor(items)
@@ -126,13 +181,13 @@ export default function IngredientsPage() {
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 16 }}>
         <div>
           <h2 style={{ fontSize: 22, fontWeight: 600 }}>Ingredients</h2>
-          <div style={{ fontSize: 13, color: 'var(--text-muted, #999)', marginTop: 2 }}>{view === 'vendors' ? `${vendorGroups.length} supplier${vendorGroups.length === 1 ? '' : 's'} · tap a supplier to see what you buy from them` : `${filtered.length} ${view === 'consumables' ? 'consumables' : 'items'} · tap a row to edit, set supplier & see price history`}</div>
+          <div style={{ fontSize: 13, color: 'var(--text-muted, #999)', marginTop: 2 }}>{view === 'vendors' ? `${vendorGroups.length} supplier${vendorGroups.length === 1 ? '' : 's'} · tap a supplier to build an order` : view === 'stock' ? `Count what you have in the units you buy · ${filtered.filter(isLow).length} below par` : `${filtered.length} ${view === 'consumables' ? 'consumables' : 'items'} · tap a row to edit, set supplier & see price history`}</div>
         </div>
         {canManage && <button onClick={() => { setEditing(null); setShowForm(true) }} style={btnPrimary}>+ Add ingredient</button>}
       </div>
 
       <div style={{ display: 'flex', gap: 8, marginBottom: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-        {(['ingredients','consumables','vendors','all'] as const).map(v => (
+        {(['ingredients','consumables','stock','vendors','all'] as const).map(v => (
           <button key={v} onClick={() => setView(v)} style={{ padding: '8px 16px', borderRadius: 100, fontSize: 14, fontWeight: 500, cursor: 'pointer', textTransform: 'capitalize', background: view === v ? 'var(--accent)' : 'transparent', color: view === v ? '#fff' : 'var(--text-secondary)', border: '1px solid ' + (view === v ? 'var(--accent)' : 'var(--border)') }}>{v === 'all' ? 'All' : v}</button>
         ))}
         <div style={{ flex: 1 }} />
@@ -156,12 +211,30 @@ export default function IngredientsPage() {
             const isOpen = openVendor === vendor
             return (
               <div key={vendor} style={{ border: '1px solid var(--border, #eee)', borderRadius: 10, overflow: 'hidden' }}>
-                <button onClick={() => setOpenVendor(isOpen ? null : vendor)} style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', background: 'var(--bg-sidebar, #fafafa)', border: 'none', cursor: 'pointer', fontSize: 15, fontWeight: 600, color: 'var(--text, #333)' }}>
-                  <span>{vendor === 'No supplier set' ? '— No supplier set —' : vendor}</span>
-                  <span style={{ fontSize: 13, fontWeight: 400, color: 'var(--text-muted, #999)' }}>{items.length} item{items.length === 1 ? '' : 's'}  {isOpen ? '▾' : '▸'}</span>
-                </button>
+                <div style={{ display: 'flex', alignItems: 'center', background: 'var(--bg-sidebar, #fafafa)' }}>
+                  <button onClick={() => setOpenVendor(isOpen ? null : vendor)} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', background: 'transparent', border: 'none', cursor: 'pointer', fontSize: 15, fontWeight: 600, color: 'var(--text, #333)' }}>
+                    <span>{vendor === 'No supplier set' ? '— No supplier set —' : vendor}</span>
+                    <span style={{ fontSize: 13, fontWeight: 400, color: 'var(--text-muted, #999)' }}>{items.length} item{items.length === 1 ? '' : 's'}  {isOpen ? '▾' : '▸'}</span>
+                  </button>
+                  {canManage && vendor !== 'No supplier set' && (
+                    <button onClick={() => openVendorEdit(vendor)} style={{ ...btnSecondary, margin: '0 10px', padding: '6px 12px' }}>Edit vendor</button>
+                  )}
+                </div>
                 {isOpen && (
                   <div>
+                    {(() => {
+                      const v = vendorMap.get(vendor)
+                      if (!v) return (canManage && vendor !== 'No supplier set')
+                        ? <div style={{ padding: '8px 14px', fontSize: 12, color: 'var(--text-muted, #999)', borderBottom: '1px solid var(--border, #eee)' }}>No contact saved yet — tap “Edit vendor” to add phone / email so you can send orders.</div>
+                        : null
+                      const bits = [v.contact_name, v.phone, v.email, v.delivery_days && ('Delivery: ' + v.delivery_days)].filter(Boolean)
+                      return (
+                        <div style={{ padding: '8px 14px', fontSize: 12, color: 'var(--text-secondary, #666)', borderBottom: '1px solid var(--border, #eee)' }}>
+                          {bits.length ? bits.join('  ·  ') : 'No contact details yet'}
+                          {v.order_notes && <div style={{ marginTop: 2, color: 'var(--text-muted, #999)' }}>{v.order_notes}</div>}
+                        </div>
+                      )
+                    })()}
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
                       <thead><tr>
                         <th style={th}>Item</th>
@@ -176,11 +249,12 @@ export default function IngredientsPage() {
                             <tr key={r.id} style={{ borderTop: '1px solid var(--border, #eee)' }}>
                               <td style={td}>
                                 <span style={{ fontWeight: 600 }}>{r.name}</span>
+                                {isLow(r) && <span style={{ marginLeft: 8, fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 100, background: 'var(--bg-hover, #f3e6e9)', color: 'var(--burgundy, #7b2d3a)' }}>low</span>}
                                 {canManage && <button onClick={() => openEdit(r)} style={{ marginLeft: 8, background: 'transparent', border: 'none', color: 'var(--text-muted, #999)', cursor: 'pointer', fontSize: 12 }}>edit</button>}
                               </td>
                               <td style={{ ...td, color: 'var(--text-muted, #999)' }}>{buyAs(r)}</td>
                               <td style={{ ...td, textAlign: 'right' }}>
-                                <input inputMode="decimal" value={orderQty[r.id] || ''} onChange={e => setOrderQty(s => ({ ...s, [r.id]: e.target.value }))} placeholder="0" style={{ ...inp, width: 72, textAlign: 'right', padding: '6px 8px' }} />
+                                <input inputMode="decimal" value={orderQty[r.id] || ''} onChange={e => setOrderQty(s => ({ ...s, [r.id]: e.target.value }))} placeholder={suggestedQty(r) > 0 ? String(suggestedQty(r)) : '0'} style={{ ...inp, width: 72, textAlign: 'right', padding: '6px 8px' }} />
                               </td>
                               <td style={{ ...td, textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: q > 0 ? 'var(--text, #333)' : 'var(--text-muted, #bbb)' }}>{q > 0 ? vnd(packPriceOf(r) * q) : '—'}</td>
                             </tr>
@@ -191,8 +265,10 @@ export default function IngredientsPage() {
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 14px', borderTop: '1px solid var(--border, #eee)', flexWrap: 'wrap', gap: 8, background: 'var(--bg-card, #fff)' }}>
                       <span style={{ fontSize: 14, fontWeight: 600 }}>Order total: <span style={{ fontVariantNumeric: 'tabular-nums' }}>{vnd(orderTotal(items))}</span></span>
                       {canManage && (
-                        <div style={{ display: 'flex', gap: 8 }}>
-                          <button onClick={() => copyOrder(vendor, items)} style={btnPrimary}>Copy order</button>
+                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                          {items.some(r => suggestedQty(r) > 0) && <button onClick={() => fillSuggested(items)} style={btnSecondary}>Fill low items</button>}
+                          {(vendorMap.get(vendor)?.phone || vendorMap.get(vendor)?.email) && <button onClick={() => sendOrder(vendor, items)} style={btnPrimary}>Send</button>}
+                          <button onClick={() => copyOrder(vendor, items)} style={btnSecondary}>Copy order</button>
                           <button onClick={() => printOrder(vendor, items)} style={btnSecondary}>Print</button>
                         </div>
                       )}
@@ -203,6 +279,45 @@ export default function IngredientsPage() {
             )
           })}
         </div>
+      ) : view === 'stock' ? (
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
+          <thead><tr style={{ background: 'var(--bg-sidebar, #fafafa)' }}>
+            <th style={th}>Item</th>
+            <th style={{ ...th, textAlign: 'right' }}>Par</th>
+            <th style={{ ...th, textAlign: 'right' }}>On hand</th>
+            <th style={{ ...th, textAlign: 'right' }}>Status</th>
+          </tr></thead>
+          <tbody>
+            {filtered.length === 0 && <tr><td colSpan={4} style={{ padding: 14, color: 'var(--text-muted, #999)' }}>Nothing to count yet.</td></tr>}
+            {filtered.map(r => {
+              const par = parInPurchase(r)
+              const oh = onHandInPurchase(r)
+              const low = isLow(r)
+              const sug = suggestedQty(r)
+              return (
+                <tr key={r.id} style={{ borderTop: '1px solid var(--border, #eee)' }}>
+                  <td style={td}>
+                    <span style={{ fontWeight: 600 }}>{r.name}</span>
+                    <div style={{ fontSize: 11, color: 'var(--text-muted, #999)' }}>{buyAs(r)}{r.supplier ? ' · ' + r.supplier : ''}</div>
+                  </td>
+                  <td style={{ ...td, textAlign: 'right', color: 'var(--text-muted, #666)' }}>{par != null ? fmtNum(par) : '—'}</td>
+                  <td style={{ ...td, textAlign: 'right' }}>
+                    {canManage
+                      ? <input inputMode="decimal" defaultValue={oh != null ? fmtNum(oh) : ''} onBlur={e => saveOnHand(r, e.target.value)} placeholder="—" style={{ ...inp, width: 84, textAlign: 'right', padding: '6px 8px' }} />
+                      : (oh != null ? fmtNum(oh) : '—')}
+                  </td>
+                  <td style={{ ...td, textAlign: 'right' }}>
+                    {r.on_hand_base == null
+                      ? <span style={{ fontSize: 12, color: 'var(--text-muted, #bbb)' }}>not counted</span>
+                      : low
+                        ? <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--burgundy, #7b2d3a)' }}>Low · order {sug}</span>
+                        : <span style={{ fontSize: 12, color: '#6b7280' }}>OK</span>}
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
       ) : (
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
           <thead><tr style={{ background: 'var(--bg-sidebar, #fafafa)' }}>
@@ -229,6 +344,72 @@ export default function IngredientsPage() {
       {showForm && venueId && (
         <IngredientForm venueId={venueId} editing={editing} onClose={() => { setShowForm(false); setEditing(null) }} onSaved={() => { setShowForm(false); setEditing(null); load() }} />
       )}
+      {showVendorForm && venueId && editVendor && (
+        <VendorForm venueId={venueId} editing={editVendor} onClose={() => { setShowVendorForm(false); setEditVendor(null) }} onSaved={() => { setShowVendorForm(false); setEditVendor(null); load() }} />
+      )}
+    </div>
+  )
+}
+
+function VendorForm({ venueId, editing, onClose, onSaved }: { venueId: string; editing: VendorRow; onClose: () => void; onSaved: () => void }) {
+  const [name, setName] = useState(editing.name === 'No supplier set' ? '' : editing.name)
+  const [contactName, setContactName] = useState(editing.contact_name || '')
+  const [phone, setPhone] = useState(editing.phone || '')
+  const [email, setEmail] = useState(editing.email || '')
+  const [delivery, setDelivery] = useState(editing.delivery_days || '')
+  const [notes, setNotes] = useState(editing.order_notes || '')
+  const [saving, setSaving] = useState(false)
+  const [msg, setMsg] = useState<string | null>(null)
+  const renaming = !!editing.name && editing.name !== 'No supplier set'
+
+  async function save(e: React.FormEvent) {
+    e.preventDefault()
+    if (!name.trim()) { setMsg('Vendor name is required.'); return }
+    setSaving(true); setMsg(null)
+    const newName = name.trim()
+    const payload: any = {
+      venue_id: venueId, name: newName,
+      contact_name: contactName.trim() || null, phone: phone.trim() || null,
+      email: email.trim() || null, order_notes: notes.trim() || null, delivery_days: delivery.trim() || null,
+    }
+    const res = editing.id
+      ? await ops().from('vendors').update(payload).eq('id', editing.id)
+      : await ops().from('vendors').insert(payload)
+    if (res.error) { setSaving(false); setMsg(res.error.message); return }
+    // Rename: propagate to every ingredient pointing at the old supplier name
+    if (renaming && editing.name !== newName) {
+      const { error } = await ops().from('ingredients').update({ supplier: newName }).eq('supplier', editing.name)
+      if (error) { setSaving(false); setMsg('Vendor saved, but renaming its items failed: ' + error.message); return }
+    }
+    setSaving(false); onSaved()
+  }
+
+  return (
+    <div style={modalBg} onClick={onClose}>
+      <div style={modal} onClick={e => e.stopPropagation()}>
+        <h3 style={{ fontSize: 17, fontWeight: 600, marginBottom: 14 }}>{renaming ? 'Edit vendor' : 'New vendor'}</h3>
+        <form onSubmit={save} style={{ display: 'grid', gap: 12 }}>
+          <Field label="Vendor name"><input value={name} onChange={e => setName(e.target.value)} style={inp} placeholder="e.g. Mega Market" autoFocus /></Field>
+          {renaming && editing.name !== name.trim() && name.trim() !== '' && (
+            <div style={{ fontSize: 12, color: 'var(--burgundy, #7b2d3a)' }}>Renaming will update every ingredient currently set to “{editing.name}”.</div>
+          )}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <Field label="Contact name"><input value={contactName} onChange={e => setContactName(e.target.value)} style={inp} placeholder="Sales rep" /></Field>
+            <Field label="Phone / WhatsApp"><input value={phone} onChange={e => setPhone(e.target.value)} style={inp} placeholder="e.g. 84901234567" /></Field>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <Field label="Email"><input value={email} onChange={e => setEmail(e.target.value)} style={inp} placeholder="orders@vendor.com" /></Field>
+            <Field label="Delivery days"><input value={delivery} onChange={e => setDelivery(e.target.value)} style={inp} placeholder="e.g. Mon & Thu" /></Field>
+          </div>
+          <Field label="Order notes"><textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2} style={{ ...inp, fontFamily: 'inherit', resize: 'vertical' }} placeholder="Min order, account number, cut-off time…" /></Field>
+          <div style={{ fontSize: 12, color: 'var(--text-muted, #999)', marginTop: -4 }}>Add a phone (digits only, with country code) or email to enable the “Send” button on orders.</div>
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 4 }}>
+            <button type="button" onClick={onClose} style={btnSecondary}>Cancel</button>
+            <button type="submit" disabled={saving} style={btnPrimary}>{saving ? 'Saving…' : 'Save vendor'}</button>
+          </div>
+          {msg && <div style={{ fontSize: 12, color: 'var(--burgundy, #7b2d3a)' }}>{msg}</div>}
+        </form>
+      </div>
     </div>
   )
 }
