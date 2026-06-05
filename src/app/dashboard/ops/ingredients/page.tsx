@@ -27,6 +27,7 @@ export default function IngredientsPage() {
   const [view, setView] = useState<'ingredients' | 'consumables' | 'vendors' | 'all'>('ingredients')
   const [supplierFilter, setSupplierFilter] = useState('all')
   const [openVendor, setOpenVendor] = useState<string | null>(null)
+  const [orderQty, setOrderQty] = useState<Record<string, string>>({})
   const [showForm, setShowForm] = useState(false)
   const [editing, setEditing] = useState<Row | null>(null)
 
@@ -86,6 +87,38 @@ export default function IngredientsPage() {
 
   function openEdit(r: Row) { if (!canManage) return; setEditing(r); setShowForm(true) }
 
+  // --- Per-vendor order form helpers ---
+  function buyAs(r: Row) { return r.purchase_unit_label || ('1 ' + r.base_unit) }
+  function packPriceOf(r: Row) { return (r.current_cost_per_base || 0) * (r.purchase_unit_size || 1) }
+  function orderLinesFor(items: Row[]) {
+    return items.map(r => ({ r, q: Number(orderQty[r.id] || 0) })).filter(x => x.q > 0)
+  }
+  function orderTotal(items: Row[]) {
+    return items.reduce((s, r) => s + packPriceOf(r) * Number(orderQty[r.id] || 0), 0)
+  }
+  function buildOrderText(vendor: string, items: Row[]) {
+    const lines = orderLinesFor(items)
+    if (!lines.length) return ''
+    const body = lines.map(({ r, q }) => `- ${q} x ${buyAs(r)} — ${r.name}`).join('\n')
+    const total = lines.reduce((s, { r, q }) => s + packPriceOf(r) * q, 0)
+    return `Order — ${vendor}\n${new Date().toLocaleDateString()}\n\n${body}\n\nEst. total: ${vnd(total)}`
+  }
+  async function copyOrder(vendor: string, items: Row[]) {
+    const t = buildOrderText(vendor, items)
+    if (!t) { alert('Set a quantity on at least one item first.'); return }
+    try { await navigator.clipboard.writeText(t); alert('Order copied — paste it to your supplier.') }
+    catch { window.prompt('Copy this order:', t) }
+  }
+  function printOrder(vendor: string, items: Row[]) {
+    const lines = orderLinesFor(items)
+    if (!lines.length) { alert('Set a quantity on at least one item first.'); return }
+    const w = window.open('', '_blank'); if (!w) return
+    const rows = lines.map(({ r, q }) => `<tr><td style="text-align:right">${q}</td><td>${buyAs(r)}</td><td>${r.name.replace(/</g, '&lt;')}</td><td style="text-align:right">${vnd(packPriceOf(r) * q)}</td></tr>`).join('')
+    const total = lines.reduce((s, { r, q }) => s + packPriceOf(r) * q, 0)
+    w.document.write(`<html><head><title>Order — ${vendor}</title><style>body{font-family:Inter,Arial,sans-serif;max-width:640px;margin:30px auto;color:#1a1a1a;padding:0 20px}h1{margin:0 0 2px;font-size:20px}.sub{color:#666;font-size:13px;margin-bottom:16px}table{width:100%;border-collapse:collapse;font-size:14px}td,th{padding:7px 6px;border-bottom:1px solid #eee;text-align:left}tfoot td{font-weight:700;border-top:2px solid #333;border-bottom:none}</style></head><body><h1>Order — ${vendor}</h1><div class="sub">BigBamBoo · ${new Date().toLocaleDateString()}</div><table><thead><tr><th style="text-align:right">Qty</th><th>Buy as</th><th>Item</th><th style="text-align:right">Est. cost</th></tr></thead><tbody>${rows}</tbody><tfoot><tr><td colspan="3">Est. total</td><td style="text-align:right">${vnd(total)}</td></tr></tfoot></table></body></html>`)
+    w.document.close(); w.focus(); setTimeout(() => w.print(), 300)
+  }
+
   if (loading) return <div style={{ color: 'var(--text-muted, #999)', fontSize: 14 }}>Loading…</div>
 
   return (
@@ -128,17 +161,43 @@ export default function IngredientsPage() {
                   <span style={{ fontSize: 13, fontWeight: 400, color: 'var(--text-muted, #999)' }}>{items.length} item{items.length === 1 ? '' : 's'}  {isOpen ? '▾' : '▸'}</span>
                 </button>
                 {isOpen && (
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
-                    <tbody>
-                      {items.map(r => (
-                        <tr key={r.id} onClick={() => openEdit(r)} style={{ borderTop: '1px solid var(--border, #eee)', cursor: canManage ? 'pointer' : 'default' }}>
-                          <td style={{ ...td, fontWeight: 600 }}>{r.name}</td>
-                          <td style={{ ...td, color: 'var(--text-muted, #999)' }}>{r.category}</td>
-                          <td style={{ ...td, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{vnd(r.current_cost_per_base)} / {r.base_unit}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                  <div>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
+                      <thead><tr>
+                        <th style={th}>Item</th>
+                        <th style={th}>Buy as</th>
+                        <th style={{ ...th, textAlign: 'right' }}>Order qty</th>
+                        <th style={{ ...th, textAlign: 'right' }}>Est. cost</th>
+                      </tr></thead>
+                      <tbody>
+                        {items.map(r => {
+                          const q = Number(orderQty[r.id] || 0)
+                          return (
+                            <tr key={r.id} style={{ borderTop: '1px solid var(--border, #eee)' }}>
+                              <td style={td}>
+                                <span style={{ fontWeight: 600 }}>{r.name}</span>
+                                {canManage && <button onClick={() => openEdit(r)} style={{ marginLeft: 8, background: 'transparent', border: 'none', color: 'var(--text-muted, #999)', cursor: 'pointer', fontSize: 12 }}>edit</button>}
+                              </td>
+                              <td style={{ ...td, color: 'var(--text-muted, #999)' }}>{buyAs(r)}</td>
+                              <td style={{ ...td, textAlign: 'right' }}>
+                                <input inputMode="decimal" value={orderQty[r.id] || ''} onChange={e => setOrderQty(s => ({ ...s, [r.id]: e.target.value }))} placeholder="0" style={{ ...inp, width: 72, textAlign: 'right', padding: '6px 8px' }} />
+                              </td>
+                              <td style={{ ...td, textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: q > 0 ? 'var(--text, #333)' : 'var(--text-muted, #bbb)' }}>{q > 0 ? vnd(packPriceOf(r) * q) : '—'}</td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 14px', borderTop: '1px solid var(--border, #eee)', flexWrap: 'wrap', gap: 8, background: 'var(--bg-card, #fff)' }}>
+                      <span style={{ fontSize: 14, fontWeight: 600 }}>Order total: <span style={{ fontVariantNumeric: 'tabular-nums' }}>{vnd(orderTotal(items))}</span></span>
+                      {canManage && (
+                        <div style={{ display: 'flex', gap: 8 }}>
+                          <button onClick={() => copyOrder(vendor, items)} style={btnPrimary}>Copy order</button>
+                          <button onClick={() => printOrder(vendor, items)} style={btnSecondary}>Print</button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 )}
               </div>
             )
