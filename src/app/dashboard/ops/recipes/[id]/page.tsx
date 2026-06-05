@@ -199,10 +199,10 @@ export default function RecipeDetailPage() {
   return (
     <div>
       {/* 1. Back link + title + meta */}
-      <Link href="/dashboard/ops/recipes" style={{ fontSize: 12, color: 'var(--text-muted, #999)', textDecoration: 'none' }}>← Recipes</Link>
+      <Link href="/dashboard/ops/recipes" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text-secondary)', textDecoration: 'none', border: '1px solid var(--border)', borderRadius: 8, padding: '6px 12px', marginBottom: 14 }}>← Back to recipes</Link>
       {canManage
-        ? <input defaultValue={recipe.name} onBlur={e => e.target.value !== recipe.name && saveRecipe({ name: e.target.value })} style={{ ...inp, fontSize: 22, fontWeight: 600, marginTop: 8, maxWidth: 480 }} />
-        : <h2 style={{ fontSize: 22, fontWeight: 600, marginTop: 8 }}>{recipe.name}</h2>}
+        ? <input defaultValue={recipe.name} onBlur={e => e.target.value !== recipe.name && saveRecipe({ name: e.target.value })} style={{ ...inp, fontSize: 26, fontWeight: 700, maxWidth: 560, display: 'block' }} />
+        : <h2 style={{ fontSize: 26, fontWeight: 700, margin: 0 }}>{recipe.name}</h2>}
       <div style={{ fontSize: 12, color: 'var(--text-muted, #999)', marginTop: 2, marginBottom: 20 }}>
         {recipe.type} · {recipe.category} · yields {Number(recipe.yield_qty)} {recipe.yield_unit}
         {recipe.is_kegged && ` · ${recipe.keg_size_ml}ml keg / ${recipe.pour_size_ml}ml pour`}

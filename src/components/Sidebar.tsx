@@ -1,6 +1,7 @@
 'use client'
+import { Suspense } from 'react'
 import Link from 'next/link'
-import { usePathname, useRouter } from 'next/navigation'
+import { usePathname, useSearchParams, useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 
 interface NavItem {
@@ -47,8 +48,10 @@ const NAV: NavItem[] = [
   { href: '/dashboard/settings', label: 'Settings', adminOnly: true },
 ]
 
-export default function Sidebar({ role, venueName }: { role: string; venueName: string }) {
+function SidebarInner({ role, venueName }: { role: string; venueName: string }) {
   const pathname = usePathname()
+  const sp = useSearchParams()
+  const curDept = sp.get('dept')
   const navHrefs = NAV.filter(i => !i.section).map(i => i.href.split('?')[0])
   const bestMatch = navHrefs.filter(h => h !== '/dashboard' && (pathname === h || pathname.startsWith(h + '/'))).sort((a, b) => b.length - a.length)[0] || null
   const router = useRouter()
@@ -91,9 +94,10 @@ export default function Sidebar({ role, venueName }: { role: string; venueName: 
       {/* Nav */}
       <nav style={{ flex: 1, overflowY: 'auto', padding: '8px 0' }}>
         {NAV.filter(item => !item.adminOnly || ['super_admin', 'admin'].includes(role)).map((item, i) => {
+          const itemDept = item.href.includes('dept=bar') ? 'bar' : item.href.includes('dept=kitchen') ? 'kitchen' : null
           const active = item.href === '/dashboard'
             ? pathname === '/dashboard'
-            : (!item.section && item.href.split('?')[0] === bestMatch)
+            : (!item.section && item.href.split('?')[0] === bestMatch && itemDept === curDept)
 
           if (item.section) {
             return (
@@ -137,5 +141,13 @@ export default function Sidebar({ role, venueName }: { role: string; venueName: 
         }}>Sign out</button>
       </div>
     </aside>
+  )
+}
+
+export default function Sidebar({ role, venueName }: { role: string; venueName: string }) {
+  return (
+    <Suspense fallback={null}>
+      <SidebarInner role={role} venueName={venueName} />
+    </Suspense>
   )
 }
