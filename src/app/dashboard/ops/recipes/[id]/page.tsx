@@ -115,6 +115,11 @@ export default function RecipeDetailPage() {
     await loadAll()
   }
 
+  async function saveRecipe(changes: Partial<Recipe>) {
+    await ops().from('recipes').update(changes).eq('id', recipeId)
+    setRecipe(r => (r ? { ...r, ...changes } : r))
+  }
+
   async function saveMethod(v: string) {
     await ops().from('recipes').update({ method: v }).eq('id', recipeId)
     setRecipe(r => (r ? { ...r, method: v } : r))
@@ -195,11 +200,20 @@ export default function RecipeDetailPage() {
     <div>
       {/* 1. Back link + title + meta */}
       <Link href="/dashboard/ops/recipes" style={{ fontSize: 12, color: 'var(--text-muted, #999)', textDecoration: 'none' }}>← Recipes</Link>
-      <h2 style={{ fontSize: 22, fontWeight: 600, marginTop: 8 }}>{recipe.name}</h2>
+      {canManage
+        ? <input defaultValue={recipe.name} onBlur={e => e.target.value !== recipe.name && saveRecipe({ name: e.target.value })} style={{ ...inp, fontSize: 22, fontWeight: 600, marginTop: 8, maxWidth: 480 }} />
+        : <h2 style={{ fontSize: 22, fontWeight: 600, marginTop: 8 }}>{recipe.name}</h2>}
       <div style={{ fontSize: 12, color: 'var(--text-muted, #999)', marginTop: 2, marginBottom: 20 }}>
         {recipe.type} · {recipe.category} · yields {Number(recipe.yield_qty)} {recipe.yield_unit}
         {recipe.is_kegged && ` · ${recipe.keg_size_ml}ml keg / ${recipe.pour_size_ml}ml pour`}
       </div>
+      {canManage && (
+        <div style={{ display: 'grid', gridTemplateColumns: '160px 1fr 150px', gap: 10, margin: '4px 0 20px' }}>
+          <div><label className="label">Category</label><select defaultValue={recipe.category} onChange={e => saveRecipe({ category: e.target.value })} style={inp}>{['cocktail','beer','wine','na_drink','food','snack','syrup','garnish','other'].map(c => <option key={c} value={c}>{c}</option>)}</select></div>
+          <div><label className="label">Subtitle</label><input defaultValue={recipe.subtitle || ''} onBlur={e => saveRecipe({ subtitle: e.target.value })} style={inp} /></div>
+          <div><label className="label">Sale price (₫)</label><input defaultValue={recipe.sale_price ?? ''} inputMode="decimal" onBlur={e => { const v = e.target.value.replace(/[^0-9.]/g, ''); saveRecipe({ sale_price: v ? Number(v) : null }) }} style={inp} /></div>
+        </div>
+      )}
 
       {/* 2. Cost stats */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 24 }}>
@@ -233,7 +247,7 @@ export default function RecipeDetailPage() {
                 <td style={{ ...td, fontSize: 11, color: 'var(--text-muted, #999)' }}>{c.ingredient_id ? 'ingredient' : 'sub-recipe'}</td>
                 <td style={{ ...td, textAlign: 'right' }}>
                   {canManage
-                    ? <input type="number" step="0.0001" defaultValue={Number(c.qty)} onBlur={e => { const v = Number(e.target.value); if (!Number.isNaN(v) && v !== Number(c.qty)) updateComponent(c.id, { qty: v }) }} style={{ ...inp, width: 80, textAlign: 'right', padding: '4px 8px' }} />
+                    ? <input type="text" inputMode="decimal" defaultValue={Number(c.qty)} onBlur={e => { const v = parseFloat(e.target.value); if (!Number.isNaN(v) && v !== Number(c.qty)) updateComponent(c.id, { qty: v }) }} style={{ ...inp, width: 80, textAlign: 'right', padding: '4px 8px' }} />
                     : Number(c.qty)}
                 </td>
                 <td style={td}>
@@ -271,7 +285,7 @@ export default function RecipeDetailPage() {
               ? ingOptions.map(i => <option key={i.id} value={i.id}>{i.name} ({i.base_unit})</option>)
               : recOptions.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
           </select>
-          <input type="number" step="0.0001" placeholder="qty" value={addQty} onChange={e => setAddQty(e.target.value)} style={inp} />
+          <input type="text" inputMode="decimal" placeholder="qty" value={addQty} onChange={e => setAddQty(e.target.value)} style={inp} />
           <select value={addUnit} onChange={e => setAddUnit(e.target.value)} style={inp}>
             <option value="ml">ml</option><option value="g">g</option><option value="each">each</option>
           </select>
