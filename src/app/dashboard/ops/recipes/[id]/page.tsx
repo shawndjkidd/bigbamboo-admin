@@ -54,7 +54,7 @@ export default function RecipeDetailPage() {
   const [msg, setMsg] = useState<string | null>(null)
 
   useEffect(() => { init() }, [recipeId])
-  useEffect(() => { if (recipe?.keg_size_ml != null) setKegInput(String(Number(recipe.keg_size_ml))) }, [recipe?.keg_size_ml])
+  useEffect(() => { if (recipe?.yield_qty != null) setKegInput(String(Number(recipe.yield_qty))) }, [recipe?.yield_qty])
 
   async function init() {
     const { data: { session } } = await supabase.auth.getSession()
@@ -131,19 +131,22 @@ export default function RecipeDetailPage() {
     setRecipe(r => (r ? { ...r, method: v } : r))
   }
 
-  // Rescale a keg: multiply every component qty by (newSize / oldSize) and update keg size + pours
-  async function rescaleKeg(newSizeStr: string) {
+  // Rescale a batch: multiply every INGREDIENT component by (newSize / oldSize) and update the batch size.
+  // Works for any recipe — yield_qty is the batch size. For kegged drinks, keg_size_ml is kept in sync.
+  async function rescaleBatch(newSizeStr: string) {
     if (!recipe) return
     const newSize = Number(newSizeStr)
-    const oldSize = Number(recipe.keg_size_ml)
+    const oldSize = Number(recipe.yield_qty)
     if (!newSize || newSize <= 0 || !oldSize || newSize === oldSize) return
-    if (!confirm(`Rescale this keg from ${oldSize} ml to ${newSize} ml? Every ingredient amount will be scaled to match.`)) return
+    if (!confirm(`Rescale this batch from ${oldSize} to ${newSize} ${recipe.yield_unit}? Every ingredient amount will be scaled to match.`)) return
     const f = newSize / oldSize
     for (const c of components) {
+      if (!c.ingredient_id) continue // never scale sub-recipe references
       await ops().from('recipe_components').update({ qty: Number((Number(c.qty) * f).toFixed(3)) }).eq('id', c.id)
     }
-    const newYield = recipe.pour_size_ml ? Math.floor(newSize / Number(recipe.pour_size_ml)) : recipe.yield_qty
-    await ops().from('recipes').update({ keg_size_ml: newSize, yield_qty: newYield }).eq('id', recipeId)
+    const upd: any = { yield_qty: newSize }
+    if (recipe.is_kegged) upd.keg_size_ml = newSize
+    await ops().from('recipes').update(upd).eq('id', recipeId)
     await loadAll()
   }
 
@@ -245,6 +248,10 @@ export default function RecipeDetailPage() {
   const dineInCost = Math.max(0, toGoCost - packagingCost)
   const cogsPct = (cost?.cost_per_unit && recipe.sale_price) ? cost.cost_per_unit / recipe.sale_price : null
   const isDrink = DRINK_CATS.includes(recipe.category)
+  // For kegged drinks, yield_qty is the keg volume (ml) and cost_per_unit is per ml → cost per pour = per-ml × pour size
+  const costPerPour = (isDrink && cost?.cost_per_unit != null && recipe.pour_size_ml) ? cost.cost_per_unit * Number(recipe.pour_size_ml) : (cost?.cost_per_unit ?? null)
+  const cogsDisplay = isDrink ? (costPerPour && recipe.sale_price ? costPerPour / recipe.sale_price : null) : cogsPct
+  const poursPerKeg = (recipe.keg_size_ml && recipe.pour_size_ml) ? Math.floor(Number(recipe.keg_size_ml) / Number(recipe.pour_size_ml)) : null
 
   return (
     <div>
@@ -269,8 +276,8 @@ export default function RecipeDetailPage() {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 24 }}>
         {isDrink ? (
           <>
-            <Stat label="Keg cost" value={vnd(cost?.total_cost ?? 0)} />
-            <Stat label="Cost / pour" value={vnd(cost?.cost_per_unit)} accent="var(--accent, #e87830)" />
+            <Stat label="Keg cost" value={vnd(cost?.total_cost ?? 0)} sub={poursPerKeg ? `${poursPerKeg} pours` : undefined} />
+            <Stat label="Cost / pour" value={vnd(costPerPour)} accent="var(--accent, #e87830)" />
           </>
         ) : (
           <>
@@ -279,12 +286,25 @@ export default function RecipeDetailPage() {
           </>
         )}
         <Stat label={isDrink ? 'Price / drink' : 'Sale price'} value={recipe.sale_price ? vnd(recipe.sale_price) : '—'} />
-        <Stat label="COGS %" value={pct(cogsPct)} accent={cogsPct == null ? '#999' : cogsPct > 0.45 ? 'var(--burgundy, #7b2d3a)' : cogsPct > 0.35 ? '#C65911' : '#6b7280'} />
+        <Stat label="COGS %" value={pct(cogsDisplay)} accent={cogsDisplay == null ? '#999' : cogsDisplay > 0.45 ? 'var(--burgundy, #7b2d3a)' : cogsDisplay > 0.35 ? '#C65911' : '#6b7280'} />
       </div>
 
       {/* 3. Components + add form */}
       {recipe.is_kegged && canManage && (
         <button onClick={buildBatch} style={{ ...btnPrimary, marginBottom: 24 }}>+ Build a batch (log keg production)</button>
+      )}
+      {canManage && !recipe.is_kegged && (recipe.type === 'batch' || recipe.type === 'sub_recipe' || Number(recipe.yield_qty) > 1) && (
+        <div className="card" style={{ padding: 16, marginBottom: 16 }}>
+          <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 10 }}>📦 Batch size</h3>
+          <div style={{ display: 'flex', gap: 12, alignItems: 'end', flexWrap: 'wrap' }}>
+            <div>
+              <label className="label">Batch yields ({recipe.yield_unit})</label>
+              <input inputMode="decimal" value={kegInput} onChange={e => setKegInput(e.target.value)} style={{ ...inp, width: 140 }} />
+            </div>
+            <button onClick={() => rescaleBatch(kegInput)} style={btnPrimary} disabled={Number(kegInput) === Number(recipe.yield_qty)}>Rescale ingredients</button>
+            <span style={{ fontSize: 12, color: 'var(--text-muted, #999)' }}>Scale the whole batch up or down — every ingredient below adjusts proportionally.</span>
+          </div>
+        </div>
       )}
       <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 10 }}>Components</h3>
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, marginBottom: 16 }}>
@@ -369,28 +389,28 @@ export default function RecipeDetailPage() {
           {/* Keg control — rescale ingredients to a new keg size */}
           {recipe.is_kegged && (
             <div className="card" style={{ padding: 16, marginBottom: 16 }}>
-              <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 10 }}>🛢 Keg</h3>
+              <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 10 }}>🛢 Keg / batch size</h3>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, alignItems: 'end' }}>
                 <div>
-                  <label className="label">Keg size (ml)</label>
+                  <label className="label">Batch size (ml)</label>
                   {canManage
                     ? <input inputMode="decimal" value={kegInput} onChange={e => setKegInput(e.target.value)} style={inp} />
-                    : <div style={{ fontSize: 14 }}>{Number(recipe.keg_size_ml)} ml</div>}
+                    : <div style={{ fontSize: 14 }}>{Number(recipe.yield_qty)} ml</div>}
                 </div>
                 <div>
                   <label className="label">Pour size (ml)</label>
                   {canManage
-                    ? <input defaultValue={recipe.pour_size_ml ?? ''} inputMode="decimal" onBlur={e => { const v = Number(e.target.value); if (v) saveRecipe({ pour_size_ml: v, yield_qty: recipe.keg_size_ml ? Math.floor(Number(recipe.keg_size_ml) / v) : recipe.yield_qty }) }} style={inp} />
+                    ? <input defaultValue={recipe.pour_size_ml ?? ''} inputMode="decimal" onBlur={e => { const v = Number(e.target.value); if (v) saveRecipe({ pour_size_ml: v }) }} style={inp} />
                     : <div style={{ fontSize: 14 }}>{Number(recipe.pour_size_ml)} ml</div>}
                 </div>
                 <div>
                   <label className="label">Pours per keg</label>
-                  <div style={{ fontSize: 18, fontWeight: 600 }}>{Number(recipe.yield_qty)}</div>
+                  <div style={{ fontSize: 18, fontWeight: 600 }}>{poursPerKeg ?? '—'}</div>
                 </div>
               </div>
               {canManage && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 12 }}>
-                  <button onClick={() => rescaleKeg(kegInput)} style={btnPrimary} disabled={Number(kegInput) === Number(recipe.keg_size_ml)}>Rescale ingredients to this keg size</button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 12, flexWrap: 'wrap' }}>
+                  <button onClick={() => rescaleBatch(kegInput)} style={btnPrimary} disabled={Number(kegInput) === Number(recipe.yield_qty)}>Rescale ingredients to this batch size</button>
                   <span style={{ fontSize: 12, color: 'var(--text-muted, #999)' }}>Scales every ingredient below proportionally.</span>
                 </div>
               )}
@@ -539,10 +559,11 @@ export default function RecipeDetailPage() {
   )
 }
 
-const Stat = ({ label, value, accent }: { label: string; value: string; accent?: string }) => (
+const Stat = ({ label, value, accent, sub }: { label: string; value: string; accent?: string; sub?: string }) => (
   <div style={{ padding: 12, background: 'var(--bg-card, #fff)', border: '1px solid var(--border, #e5e5e5)', borderRadius: 8, borderLeft: `3px solid ${accent || 'var(--accent, #e87830)'}` }}>
     <div style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-muted, #999)' }}>{label}</div>
     <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--text, #333)', marginTop: 4 }}>{value}</div>
+    {sub && <div style={{ fontSize: 10, color: 'var(--text-muted, #bbb)', marginTop: 2 }}>{sub}</div>}
   </div>
 )
 
