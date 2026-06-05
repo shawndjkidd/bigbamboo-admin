@@ -189,10 +189,11 @@ export default function RecipeDetailPage() {
 
   if (loading || !recipe) return <div style={{ color: '#999', fontSize: 14 }}>Loading…</div>
   const canManage = role && canManageRecipes(role)
-  const marginPct = recipe.sale_price && cost?.margin_per_unit != null ? cost.margin_per_unit / recipe.sale_price : null
+  const cogsPct = (cost?.cost_per_unit && recipe.sale_price) ? cost.cost_per_unit / recipe.sale_price : null
 
   return (
     <div>
+      {/* 1. Back link + title + meta */}
       <Link href="/dashboard/ops/recipes" style={{ fontSize: 12, color: 'var(--text-muted, #999)', textDecoration: 'none' }}>← Recipes</Link>
       <h2 style={{ fontSize: 22, fontWeight: 600, marginTop: 8 }}>{recipe.name}</h2>
       <div style={{ fontSize: 12, color: 'var(--text-muted, #999)', marginTop: 2, marginBottom: 20 }}>
@@ -200,52 +201,26 @@ export default function RecipeDetailPage() {
         {recipe.is_kegged && ` · ${recipe.keg_size_ml}ml keg / ${recipe.pour_size_ml}ml pour`}
       </div>
 
+      {/* 2. Cost stats */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 24 }}>
         <Stat label="Total cost" value={vnd(cost?.total_cost)} />
         <Stat label={`Cost / ${recipe.yield_unit}`} value={vnd(cost?.cost_per_unit)} />
         <Stat label="Sale price" value={recipe.sale_price ? vnd(recipe.sale_price) : '—'} />
-        <Stat label="Margin %" value={pct(marginPct)} accent={marginPct == null ? '#999' : marginPct < 0.5 ? 'var(--burgundy, #7b2d3a)' : marginPct < 0.7 ? '#C65911' : '#6b7280'} />
+        <Stat label="COGS %" value={pct(cogsPct)} accent={cogsPct == null ? '#999' : cogsPct > 0.45 ? 'var(--burgundy, #7b2d3a)' : cogsPct > 0.35 ? '#C65911' : '#6b7280'} />
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
-        {canManage && <button onClick={publishVersion} style={btnPrimary}>Publish new version</button>}
-        {recipe.published_version ? <span style={{ fontSize: 12, color: 'var(--text-muted, #999)' }}>Current: v{recipe.published_version} · {versions.length} saved</span> : null}
+      {/* 3. Method */}
+      <div style={{ marginBottom: 24 }} className="recipe-method">
+        <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 10 }}>Method</h3>
+        {canManage
+          ? <textarea defaultValue={recipe.method || ''} onBlur={e => saveMethod(e.target.value)} placeholder="Step-by-step method, one step per line…" rows={8} style={{ ...inp, width: '100%', fontFamily: 'inherit', lineHeight: 1.6, resize: 'vertical' }} />
+          : <div style={{ whiteSpace: 'pre-wrap', fontSize: 14, lineHeight: 1.7 }}>{recipe.method || '—'}</div>}
       </div>
 
-      <div style={{ marginBottom: 24 }}>
-        <button onClick={() => openPrint(true)} style={btnOutline}>Print recipe (with cost)</button>
-      </div>
-
-      <div style={{ marginBottom: 24 }}>
-        <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>Serving photo</h3>
-        {recipe.image_url && <img src={recipe.image_url} alt="serving" style={{ maxWidth: 220, borderRadius: 8, marginBottom: 8, display: 'block', border: '1px solid var(--border, #eee)' }} />}
-        {canManage && (
-          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-            <label style={{ ...btnPrimary, display: 'inline-block' }}>
-              {recipe.image_url ? 'Replace photo' : 'Upload photo'}
-              <input type="file" accept="image/*" onChange={e => { const f = e.target.files?.[0]; if (f) uploadPhoto(f) }} style={{ display: 'none' }} />
-            </label>
-            {recipe.image_url && <button onClick={() => savePhoto('')} style={btnLink}>Remove</button>}
-          </div>
-        )}
-      </div>
-
-      {versions.length > 0 && (
-        <div style={{ marginBottom: 24 }}>
-          <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>Version history</h3>
-          {versions.map(v => (
-            <div key={v.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderTop: '1px solid var(--border, #eee)', fontSize: 13 }}>
-              <span>v{v.version} · {new Date(v.published_at).toLocaleDateString()}</span>
-              {canManage && <button onClick={() => restoreVersion(v)} style={btnLink}>Restore</button>}
-            </div>
-          ))}
-        </div>
-      )}
-
+      {/* 4. Components + add form */}
       {recipe.is_kegged && canManage && (
         <button onClick={buildBatch} style={{ ...btnPrimary, marginBottom: 24 }}>+ Build a batch (log keg production)</button>
       )}
-
       <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 10 }}>Components</h3>
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, marginBottom: 16 }}>
         <thead><tr style={{ background: 'var(--bg-sidebar, #fafafa)' }}>
@@ -286,7 +261,6 @@ export default function RecipeDetailPage() {
           })}
         </tbody>
       </table>
-
       {canManage && (
         <form onSubmit={addComponent} style={{ display: 'grid', gridTemplateColumns: '110px 2fr 80px 80px auto', gap: 8, alignItems: 'end', padding: 12, background: 'var(--bg-sidebar, #fafafa)', borderRadius: 6 }}>
           <select value={addType} onChange={e => { setAddType(e.target.value as any); setAddRefId('') }} style={inp}>
@@ -314,13 +288,7 @@ export default function RecipeDetailPage() {
         </form>
       )}
 
-      <div style={{ marginBottom: 24 }} className="recipe-method">
-        <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 10 }}>Method</h3>
-        {canManage
-          ? <textarea defaultValue={recipe.method || ''} onBlur={e => saveMethod(e.target.value)} placeholder="Step-by-step method, one step per line…" rows={8} style={{ ...inp, width: '100%', fontFamily: 'inherit', lineHeight: 1.6, resize: 'vertical' }} />
-          : <div style={{ whiteSpace: 'pre-wrap', fontSize: 14, lineHeight: 1.7 }}>{recipe.method || '—'}</div>}
-      </div>
-
+      {/* 5. SOP — staff card */}
       <div style={{ marginTop: 32, paddingTop: 24, borderTop: '2px solid var(--border, #e5e5e5)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
           <h3 style={{ fontSize: 16, fontWeight: 700 }}>SOP — staff card</h3>
@@ -350,6 +318,45 @@ export default function RecipeDetailPage() {
             {!recipe.method && <li style={{ listStyle: 'none', color: 'var(--text-muted, #999)' }}>No method yet — add it in the Method box above.</li>}
           </ol>
         </div>
+      </div>
+
+      {/* 6. Publish new version */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 32, marginBottom: 16 }}>
+        {canManage && <button onClick={publishVersion} style={btnPrimary}>Publish new version</button>}
+        {recipe.published_version ? <span style={{ fontSize: 12, color: 'var(--text-muted, #999)' }}>Current: v{recipe.published_version} · {versions.length} saved</span> : null}
+      </div>
+
+      {/* 7. Version history */}
+      {versions.length > 0 && (
+        <div style={{ marginBottom: 24 }}>
+          <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>Version history</h3>
+          {versions.map(v => (
+            <div key={v.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderTop: '1px solid var(--border, #eee)', fontSize: 13 }}>
+              <span>v{v.version} · {new Date(v.published_at).toLocaleDateString()}</span>
+              {canManage && <button onClick={() => restoreVersion(v)} style={btnLink}>Restore</button>}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* 8. Print recipe (with cost) */}
+      <div style={{ marginBottom: 24 }}>
+        <button onClick={() => openPrint(true)} style={btnOutline}>Print recipe (with cost)</button>
+      </div>
+
+      {/* 9. Serving photo */}
+      <div style={{ marginBottom: 24 }}>
+        <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>Serving photo</h3>
+        {recipe.image_url && <img src={recipe.image_url} alt="serving" style={{ maxWidth: 220, borderRadius: 8, marginBottom: 8, display: 'block', border: '1px solid var(--border, #eee)' }} />}
+        {canManage && (
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+            <label style={{ ...btnPrimary, display: 'inline-block' }}>
+              {recipe.image_url ? 'Replace photo' : 'Upload photo'}
+              <input type="file" accept="image/*" onChange={e => { const f = e.target.files?.[0]; if (f) uploadPhoto(f) }} style={{ display: 'none' }} />
+            </label>
+            {recipe.image_url && <button onClick={() => savePhoto('')} style={btnLink}>Remove</button>}
+          </div>
+        )}
       </div>
     </div>
   )
