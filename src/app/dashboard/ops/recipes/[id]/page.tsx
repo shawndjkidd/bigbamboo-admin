@@ -39,7 +39,6 @@ export default function RecipeDetailPage() {
   const [recOptions, setRecOptions] = useState<RecOption[]>([])
   const [loading, setLoading] = useState(true)
   const [versions, setVersions] = useState<any[]>([])
-  const [showSop, setShowSop] = useState(false)
 
   // add-component form
   const [addType, setAddType] = useState<'ingredient' | 'sub_recipe'>('ingredient')
@@ -213,9 +212,7 @@ export default function RecipeDetailPage() {
         {recipe.published_version ? <span style={{ fontSize: 12, color: 'var(--text-muted, #999)' }}>Current: v{recipe.published_version} · {versions.length} saved</span> : null}
       </div>
 
-      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 24 }}>
-        <button onClick={() => setShowSop(true)} style={btnPrimary}>View SOP</button>
-        <button onClick={() => openPrint(false)} style={btnOutline}>Print SOP</button>
+      <div style={{ marginBottom: 24 }}>
         <button onClick={() => openPrint(true)} style={btnOutline}>Print recipe (with cost)</button>
       </div>
 
@@ -324,36 +321,36 @@ export default function RecipeDetailPage() {
           : <div style={{ whiteSpace: 'pre-wrap', fontSize: 14, lineHeight: 1.7 }}>{recipe.method || '—'}</div>}
       </div>
 
-      {showSop && (
-        <div onClick={() => setShowSop(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: 20 }}>
-          <div onClick={e => e.stopPropagation()} style={{ background: 'var(--bg-card, #fff)', borderRadius: 12, padding: '24px 28px', maxWidth: 560, width: '100%', maxHeight: '85vh', overflowY: 'auto' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
-              <h2 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>{recipe.name}</h2>
-              <button onClick={() => setShowSop(false)} style={{ background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', color: 'var(--text-muted, #999)' }}>×</button>
-            </div>
-            <div style={{ fontSize: 12, color: 'var(--text-muted, #999)', marginBottom: 16 }}>{recipe.category}{recipe.subtitle ? ' · ' + recipe.subtitle : ''} · SOP</div>
-            {recipe.image_url && <img src={recipe.image_url} alt="" style={{ maxWidth: '100%', borderRadius: 8, marginBottom: 16 }} />}
-            <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted, #999)', marginBottom: 8 }}>Components</div>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, marginBottom: 16 }}><tbody>
-              {components.map(c => (
-                <tr key={c.id} style={{ borderTop: '1px solid var(--border, #eee)' }}>
-                  <td style={{ padding: '6px 0' }}>{c.ingredient?.name || c.sub_recipe?.name || '—'}</td>
-                  <td style={{ padding: '6px 0', textAlign: 'right', fontFamily: 'DM Mono, monospace' }}>{Number(c.qty)} {c.unit}</td>
-                </tr>
-              ))}
-            </tbody></table>
-            <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted, #999)', marginBottom: 8 }}>Method</div>
-            <ol style={{ fontSize: 14, lineHeight: 1.7, paddingLeft: 20, margin: 0 }}>
-              {(recipe.method || '').split('\n').filter(Boolean).map((t, i) => <li key={i}>{t}</li>)}
-              {!recipe.method && <li style={{ listStyle: 'none', color: 'var(--text-muted, #999)' }}>No method yet.</li>}
-            </ol>
-            <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
-              <button onClick={() => openPrint(false)} style={btnPrimary}>Print SOP</button>
-              <button onClick={() => setShowSop(false)} style={btnOutline}>Close</button>
-            </div>
-          </div>
+      <div style={{ marginTop: 32, paddingTop: 24, borderTop: '2px solid var(--border, #e5e5e5)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+          <h3 style={{ fontSize: 16, fontWeight: 700 }}>SOP — staff card</h3>
+          <button onClick={() => openPrint(false)} style={btnPrimary}>Print SOP</button>
         </div>
-      )}
+        <div className="card" style={{ padding: 20 }}>
+          <div style={{ fontWeight: 700, fontSize: 18, marginBottom: 2 }}>{recipe.name}</div>
+          <div style={{ fontSize: 12, color: 'var(--text-muted, #999)', marginBottom: 16 }}>{recipe.category}{recipe.subtitle ? ' · ' + recipe.subtitle : ''}</div>
+          <div style={{ display: 'grid', gridTemplateColumns: recipe.image_url ? '1fr 200px' : '1fr', gap: 20, alignItems: 'start' }}>
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted, #999)', marginBottom: 8 }}>Components</div>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, marginBottom: 8 }}><tbody>
+                {components.length === 0 && <tr><td style={{ color: 'var(--text-muted, #999)', padding: '6px 0' }}>No components</td></tr>}
+                {components.map(c => (
+                  <tr key={c.id} style={{ borderTop: '1px solid var(--border, #eee)' }}>
+                    <td style={{ padding: '6px 0' }}>{c.ingredient?.name || c.sub_recipe?.name || '—'}</td>
+                    <td style={{ padding: '6px 0', textAlign: 'right', fontFamily: 'DM Mono, monospace' }}>{Number(c.qty)} {c.unit}</td>
+                  </tr>
+                ))}
+              </tbody></table>
+            </div>
+            {recipe.image_url && <img src={recipe.image_url} alt="" style={{ width: '100%', borderRadius: 8, border: '1px solid var(--border, #eee)' }} />}
+          </div>
+          <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted, #999)', margin: '8px 0' }}>Method</div>
+          <ol style={{ fontSize: 14, lineHeight: 1.8, paddingLeft: 20, margin: 0 }}>
+            {(recipe.method || '').split('\n').filter(Boolean).map((t, i) => <li key={i}>{t}</li>)}
+            {!recipe.method && <li style={{ listStyle: 'none', color: 'var(--text-muted, #999)' }}>No method yet — add it in the Method box above.</li>}
+          </ol>
+        </div>
+      </div>
     </div>
   )
 }
