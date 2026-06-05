@@ -116,6 +116,7 @@ function IngredientForm({ venueId, editing, onClose, onSaved }: { venueId: strin
   const [baseUnit, setBaseUnit] = useState(editing?.base_unit || 'g')
   const [costMethod, setCostMethod] = useState(editing?.cost_method || 'manual')
   const [manualCost, setManualCost] = useState(String(editing?.manual_cost_per_base ?? editing?.current_cost_per_base ?? ''))
+  const [packPrice, setPackPrice] = useState(editing && (editing.manual_cost_per_base ?? editing.current_cost_per_base) ? String(Math.round((editing.manual_cost_per_base ?? editing.current_cost_per_base) * (editing.purchase_unit_size || 1))) : '')
   const [parLevel, setParLevel] = useState(String(editing?.par_level_base ?? ''))
   const [history, setHistory] = useState<any[]>([])
   const [saving, setSaving] = useState(false)
@@ -129,12 +130,14 @@ function IngredientForm({ venueId, editing, onClose, onSaved }: { venueId: strin
     e.preventDefault()
     if (!name || !purchaseUnitLabel || !purchaseUnitSize) { setMsg('Name, purchase unit and size are required'); return }
     setSaving(true); setMsg(null)
-    const newCost = costMethod === 'manual' && manualCost ? Number(manualCost) : (editing?.current_cost_per_base ?? null)
+    const sizeNum = Number(purchaseUnitSize) || 0
+    const perBaseFromPack = packPrice && sizeNum ? Number(packPrice) / sizeNum : null
+    const newCost = costMethod === 'manual' ? (perBaseFromPack != null ? perBaseFromPack : (manualCost ? Number(manualCost) : null)) : (editing?.current_cost_per_base ?? null)
     const payload: any = {
       venue_id: venueId, name, category, supplier: supplier || null, notes: notes || null,
       purchase_unit_label: purchaseUnitLabel, purchase_unit_size: Number(purchaseUnitSize),
       base_unit: baseUnit, cost_method: costMethod,
-      manual_cost_per_base: costMethod === 'manual' && manualCost ? Number(manualCost) : null,
+      manual_cost_per_base: costMethod === 'manual' ? newCost : null,
       par_level_base: parLevel ? Number(parLevel) : null,
     }
     let id = editing?.id
@@ -170,7 +173,12 @@ function IngredientForm({ venueId, editing, onClose, onSaved }: { venueId: strin
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
             <Field label="Cost method"><select value={costMethod} onChange={e => setCostMethod(e.target.value)} style={inp}>{COST_METHODS.map(m => <option key={m.v} value={m.v}>{m.label}</option>)}</select></Field>
-            <Field label={'Cost per ' + baseUnit + ' (₫)'}><input inputMode="decimal" value={manualCost} onChange={e => setManualCost(e.target.value)} style={inp} placeholder="e.g. 120" /></Field>
+            <Field label="Price you paid for the pack (₫)"><input inputMode="decimal" value={packPrice} onChange={e => setPackPrice(e.target.value)} style={inp} placeholder="e.g. 600000" /></Field>
+          </div>
+          <div style={{ fontSize: 13, color: 'var(--text-secondary, #999)', marginTop: -4 }}>
+            {packPrice && Number(purchaseUnitSize) > 0
+              ? '= ' + vnd(Number(packPrice) / Number(purchaseUnitSize)) + ' per ' + baseUnit + ' (' + vnd(Number(packPrice)) + ' ÷ ' + Number(purchaseUnitSize) + ' ' + baseUnit + ')'
+              : 'Enter the pack price + the size above and the cost per ' + baseUnit + ' is worked out for you.'}
           </div>
           <Field label={'Par level (' + baseUnit + ', optional)'}><input inputMode="decimal" value={parLevel} onChange={e => setParLevel(e.target.value)} style={inp} /></Field>
 
