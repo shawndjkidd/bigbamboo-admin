@@ -18,7 +18,7 @@ type Component = {
   id: string; recipe_id: string;
   ingredient_id: string | null; sub_recipe_id: string | null;
   qty: number; unit: string; notes: string | null; sort_order: number;
-  ingredient?: { name: string; current_cost_per_base: number; base_unit: string } | null;
+  ingredient?: { name: string; current_cost_per_base: number; base_unit: string; category: string } | null;
   sub_recipe?: { name: string } | null;
 }
 
@@ -66,7 +66,7 @@ export default function RecipeDetailPage() {
       ops().from('recipes').select('*').eq('id', recipeId).single(),
       ops().from('recipe_components').select('id, recipe_id, ingredient_id, sub_recipe_id, qty, unit, notes, sort_order').eq('recipe_id', recipeId).order('sort_order'),
       ops().from('v_recipe_cost').select('recipe_id, total_cost, cost_per_unit, margin_per_unit').eq('recipe_id', recipeId).single(),
-      ops().from('ingredients').select('id, name, base_unit, current_cost_per_base').order('name'),
+      ops().from('ingredients').select('id, name, base_unit, current_cost_per_base, category').order('name'),
       ops().from('recipes').select('id, name').neq('id', recipeId).order('name'),
       ops().from('recipe_versions').select('*').eq('recipe_id', recipeId).order('version', { ascending: false }),
     ])
@@ -194,6 +194,12 @@ export default function RecipeDetailPage() {
 
   if (loading || !recipe) return <div style={{ color: '#999', fontSize: 14 }}>Loading…</div>
   const canManage = role && canManageRecipes(role)
+  const packagingCost = components.reduce((sum, c) => {
+    const isPkg = c.ingredient && c.ingredient.category === 'consumable'
+    return isPkg ? sum + Number(c.qty) * (c.ingredient!.current_cost_per_base || 0) : sum
+  }, 0)
+  const toGoCost = cost?.total_cost ?? 0
+  const dineInCost = Math.max(0, toGoCost - packagingCost)
   const cogsPct = (cost?.cost_per_unit && recipe.sale_price) ? cost.cost_per_unit / recipe.sale_price : null
 
   return (
@@ -217,8 +223,8 @@ export default function RecipeDetailPage() {
 
       {/* 2. Cost stats */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 24 }}>
-        <Stat label="Total cost" value={vnd(cost?.total_cost)} />
-        <Stat label={`Cost / ${recipe.yield_unit}`} value={vnd(cost?.cost_per_unit)} />
+        <Stat label="Dine-in cost" value={vnd(dineInCost)} />
+        <Stat label="To-go cost" value={vnd(toGoCost)} accent={packagingCost > 0 ? 'var(--accent, #e87830)' : undefined} />
         <Stat label="Sale price" value={recipe.sale_price ? vnd(recipe.sale_price) : '—'} />
         <Stat label="COGS %" value={pct(cogsPct)} accent={cogsPct == null ? '#999' : cogsPct > 0.45 ? 'var(--burgundy, #7b2d3a)' : cogsPct > 0.35 ? '#C65911' : '#6b7280'} />
       </div>
@@ -243,7 +249,10 @@ export default function RecipeDetailPage() {
             const compCost = Number(c.qty) * unitCost
             return (
               <tr key={c.id} style={{ borderTop: '1px solid var(--border, #eee)' }}>
-                <td style={td}>{c.ingredient?.name || c.sub_recipe?.name || '—'}</td>
+                <td style={td}>
+                  {c.ingredient?.name || c.sub_recipe?.name || '—'}
+                  {c.ingredient && c.ingredient.category === 'consumable' && <span style={{ marginLeft: 8, fontSize: 10, padding: '2px 8px', borderRadius: 100, background: 'var(--bg-hover, #eee)', color: 'var(--text-secondary, #666)' }}>packaging</span>}
+                </td>
                 <td style={{ ...td, fontSize: 11, color: 'var(--text-muted, #999)' }}>{c.ingredient_id ? 'ingredient' : 'sub-recipe'}</td>
                 <td style={{ ...td, textAlign: 'right' }}>
                   {canManage
