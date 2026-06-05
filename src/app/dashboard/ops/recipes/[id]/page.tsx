@@ -39,6 +39,7 @@ export default function RecipeDetailPage() {
   const [recOptions, setRecOptions] = useState<RecOption[]>([])
   const [loading, setLoading] = useState(true)
   const [versions, setVersions] = useState<any[]>([])
+  const [showSop, setShowSop] = useState(false)
 
   // add-component form
   const [addType, setAddType] = useState<'ingredient' | 'sub_recipe'>('ingredient')
@@ -155,6 +156,24 @@ export default function RecipeDetailPage() {
     await loadAll()
   }
 
+  function buildCompRows(withCost: boolean) {
+    return components.map(c => {
+      const name = c.ingredient?.name || c.sub_recipe?.name || '—'
+      const compCost = Number(c.qty) * (c.ingredient?.current_cost_per_base || 0)
+      return `<tr><td>${name}</td><td style="text-align:right">${Number(c.qty)} ${c.unit}</td>${withCost ? `<td style="text-align:right">${c.ingredient ? vnd(compCost) : '—'}</td>` : ''}</tr>`
+    }).join('')
+  }
+  function openPrint(withCost: boolean) {
+    if (!recipe) return
+    const w = window.open('', '_blank'); if (!w) return
+    const steps = (recipe.method || '').split('\n').filter(Boolean).map(t => `<li>${t.replace(/</g, '&lt;')}</li>`).join('')
+    const costHead = withCost ? '<th style="text-align:right">Cost</th>' : ''
+    const costLine = withCost && cost ? `<p style="font-weight:600;margin-top:4px">Cost / portion: ${vnd(cost.cost_per_unit)}</p>` : ''
+    const img = (!withCost && recipe.image_url) ? `<img src="${recipe.image_url}" style="max-width:240px;border-radius:8px;margin:8px 0"/>` : ''
+    w.document.write(`<html><head><title>${recipe.name}</title><style>body{font-family:Inter,Arial,sans-serif;max-width:700px;margin:30px auto;color:#1a1a1a;padding:0 20px}h1{margin:0 0 2px}.sub{color:#666;font-size:13px;margin-bottom:16px}table{width:100%;border-collapse:collapse;font-size:14px;margin:8px 0}td,th{padding:6px 4px;border-bottom:1px solid #eee;text-align:left}ol{line-height:1.7}</style></head><body><h1>${recipe.name}</h1><div class="sub">${recipe.category}${recipe.subtitle ? ' · ' + recipe.subtitle : ''}${withCost ? ' · internal' : ''}</div>${img}<h3>Components</h3><table><thead><tr><th>Item</th><th style="text-align:right">Amount</th>${costHead}</tr></thead><tbody>${buildCompRows(withCost)}</tbody></table>${costLine}<h3>Method</h3><ol>${steps}</ol><p style="margin-top:24px;color:#999;font-size:11px">BigBamBoo · ${withCost ? 'Recipe (with cost)' : 'SOP'}</p></body></html>`)
+    w.document.close(); w.focus(); setTimeout(() => w.print(), 300)
+  }
+
   async function buildBatch() {
     if (!recipe || !cost) return
     const planned = recipe.keg_size_ml && recipe.pour_size_ml
@@ -194,6 +213,12 @@ export default function RecipeDetailPage() {
         {recipe.published_version ? <span style={{ fontSize: 12, color: 'var(--text-muted, #999)' }}>Current: v{recipe.published_version} · {versions.length} saved</span> : null}
       </div>
 
+      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 24 }}>
+        <button onClick={() => setShowSop(true)} style={btnPrimary}>View SOP</button>
+        <button onClick={() => openPrint(false)} style={btnOutline}>Print SOP</button>
+        <button onClick={() => openPrint(true)} style={btnOutline}>Print recipe (with cost)</button>
+      </div>
+
       <div style={{ marginBottom: 24 }}>
         <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>Serving photo</h3>
         {recipe.image_url && <img src={recipe.image_url} alt="serving" style={{ maxWidth: 220, borderRadius: 8, marginBottom: 8, display: 'block', border: '1px solid var(--border, #eee)' }} />}
@@ -225,10 +250,7 @@ export default function RecipeDetailPage() {
       )}
 
       <div style={{ marginBottom: 24 }} className="recipe-method">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-          <h3 style={{ fontSize: 14, fontWeight: 600 }}>Method</h3>
-          <button onClick={() => window.print()} style={btnPrimary}>Print SOP</button>
-        </div>
+        <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 10 }}>Method</h3>
         {canManage
           ? <textarea defaultValue={recipe.method || ''} onBlur={e => saveMethod(e.target.value)} placeholder="Step-by-step method, one step per line…" rows={8} style={{ ...inp, width: '100%', fontFamily: 'inherit', lineHeight: 1.6, resize: 'vertical' }} />
           : <div style={{ whiteSpace: 'pre-wrap', fontSize: 14, lineHeight: 1.7 }}>{recipe.method || '—'}</div>}
@@ -301,6 +323,37 @@ export default function RecipeDetailPage() {
           {msg && <div style={{ gridColumn: '1 / -1', fontSize: 12, color: '#C00000' }}>{msg}</div>}
         </form>
       )}
+
+      {showSop && (
+        <div onClick={() => setShowSop(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: 20 }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: 'var(--bg-card, #fff)', borderRadius: 12, padding: '24px 28px', maxWidth: 560, width: '100%', maxHeight: '85vh', overflowY: 'auto' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
+              <h2 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>{recipe.name}</h2>
+              <button onClick={() => setShowSop(false)} style={{ background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', color: 'var(--text-muted, #999)' }}>×</button>
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--text-muted, #999)', marginBottom: 16 }}>{recipe.category}{recipe.subtitle ? ' · ' + recipe.subtitle : ''} · SOP</div>
+            {recipe.image_url && <img src={recipe.image_url} alt="" style={{ maxWidth: '100%', borderRadius: 8, marginBottom: 16 }} />}
+            <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted, #999)', marginBottom: 8 }}>Components</div>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, marginBottom: 16 }}><tbody>
+              {components.map(c => (
+                <tr key={c.id} style={{ borderTop: '1px solid var(--border, #eee)' }}>
+                  <td style={{ padding: '6px 0' }}>{c.ingredient?.name || c.sub_recipe?.name || '—'}</td>
+                  <td style={{ padding: '6px 0', textAlign: 'right', fontFamily: 'DM Mono, monospace' }}>{Number(c.qty)} {c.unit}</td>
+                </tr>
+              ))}
+            </tbody></table>
+            <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted, #999)', marginBottom: 8 }}>Method</div>
+            <ol style={{ fontSize: 14, lineHeight: 1.7, paddingLeft: 20, margin: 0 }}>
+              {(recipe.method || '').split('\n').filter(Boolean).map((t, i) => <li key={i}>{t}</li>)}
+              {!recipe.method && <li style={{ listStyle: 'none', color: 'var(--text-muted, #999)' }}>No method yet.</li>}
+            </ol>
+            <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
+              <button onClick={() => openPrint(false)} style={btnPrimary}>Print SOP</button>
+              <button onClick={() => setShowSop(false)} style={btnOutline}>Close</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -317,3 +370,4 @@ const th  = { padding: '8px 12px', textAlign: 'left' as const, fontWeight: 600, 
 const td  = { padding: '8px 12px', color: 'var(--text, #333)' }
 const btnPrimary = { padding: '8px 14px', background: 'var(--accent, #e87830)', color: '#fff', border: 'none', borderRadius: 6, fontSize: 13, fontWeight: 600, cursor: 'pointer' }
 const btnLink = { padding: '4px 8px', background: 'transparent', color: 'var(--burgundy, #7b2d3a)', border: 'none', cursor: 'pointer', fontSize: 12 }
+const btnOutline = { padding: '8px 14px', background: 'transparent', color: 'var(--text-secondary, #666)', border: '1px solid var(--border, #e5e5e5)', borderRadius: 6, fontSize: 13, fontWeight: 500, cursor: 'pointer' }
