@@ -249,13 +249,6 @@ export default function RecipeDetailPage() {
         <button onClick={buildBatch} style={{ ...btnPrimary, marginBottom: 24 }}>+ Build a batch (log keg production)</button>
       )}
 
-      <div style={{ marginBottom: 24 }} className="recipe-method">
-        <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 10 }}>Method</h3>
-        {canManage
-          ? <textarea defaultValue={recipe.method || ''} onBlur={e => saveMethod(e.target.value)} placeholder="Step-by-step method, one step per line…" rows={8} style={{ ...inp, width: '100%', fontFamily: 'inherit', lineHeight: 1.6, resize: 'vertical' }} />
-          : <div style={{ whiteSpace: 'pre-wrap', fontSize: 14, lineHeight: 1.7 }}>{recipe.method || '—'}</div>}
-      </div>
-
       <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 10 }}>Components</h3>
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, marginBottom: 16 }}>
         <thead><tr style={{ background: 'var(--bg-sidebar, #fafafa)' }}>
@@ -323,6 +316,13 @@ export default function RecipeDetailPage() {
           {msg && <div style={{ gridColumn: '1 / -1', fontSize: 12, color: '#C00000' }}>{msg}</div>}
         </form>
       )}
+
+      <div style={{ marginBottom: 24 }} className="recipe-method">
+        <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 10 }}>Method</h3>
+        {canManage
+          ? <textarea defaultValue={recipe.method || ''} onBlur={e => saveMethod(e.target.value)} placeholder="Step-by-step method, one step per line…" rows={8} style={{ ...inp, width: '100%', fontFamily: 'inherit', lineHeight: 1.6, resize: 'vertical' }} />
+          : <div style={{ whiteSpace: 'pre-wrap', fontSize: 14, lineHeight: 1.7 }}>{recipe.method || '—'}</div>}
+      </div>
 
       {showSop && (
         <div onClick={() => setShowSop(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: 20 }}>
