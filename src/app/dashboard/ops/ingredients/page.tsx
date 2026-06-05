@@ -24,7 +24,9 @@ export default function IngredientsPage() {
   const [rows, setRows] = useState<Row[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState('')
-  const [view, setView] = useState<'ingredients' | 'consumables' | 'all'>('ingredients')
+  const [view, setView] = useState<'ingredients' | 'consumables' | 'vendors' | 'all'>('ingredients')
+  const [supplierFilter, setSupplierFilter] = useState('all')
+  const [openVendor, setOpenVendor] = useState<string | null>(null)
   const [showForm, setShowForm] = useState(false)
   const [editing, setEditing] = useState<Row | null>(null)
 
@@ -50,12 +52,38 @@ export default function IngredientsPage() {
     load()
   }
   const canManage = role && canManageRecipes(role)
+
+  // Distinct suppliers, alphabetical — powers the supplier toggle
+  const suppliers = Array.from(new Set(rows.map(r => (r.supplier || '').trim()).filter(Boolean)))
+    .sort((a, b) => a.localeCompare(b))
+
   const filtered = rows.filter(r => {
     if (view === 'ingredients' && r.category === 'consumable') return false
     if (view === 'consumables' && r.category !== 'consumable') return false
+    if (supplierFilter !== 'all' && (r.supplier || '').trim() !== supplierFilter) return false
     if (filter && !(r.name.toLowerCase().includes(filter.toLowerCase()) || (r.supplier || '').toLowerCase().includes(filter.toLowerCase()))) return false
     return true
   })
+  // Always alphabetical by name
+  filtered.sort((a, b) => a.name.localeCompare(b.name))
+
+  // Vendors view: group every item by supplier, alphabetical, "No supplier set" last
+  const vendorGroups: [string, Row[]][] = (() => {
+    const map = new Map<string, Row[]>()
+    rows.forEach(r => {
+      if (filter && !(r.name.toLowerCase().includes(filter.toLowerCase()) || (r.supplier || '').toLowerCase().includes(filter.toLowerCase()))) return
+      const key = (r.supplier || '').trim() || 'No supplier set'
+      if (!map.has(key)) map.set(key, [])
+      map.get(key)!.push(r)
+    })
+    map.forEach(list => list.sort((a, b) => a.name.localeCompare(b.name)))
+    return Array.from(map.entries()).sort((a, b) => {
+      if (a[0] === 'No supplier set') return 1
+      if (b[0] === 'No supplier set') return -1
+      return a[0].localeCompare(b[0])
+    })
+  })()
+
   function openEdit(r: Row) { if (!canManage) return; setEditing(r); setShowForm(true) }
 
   if (loading) return <div style={{ color: 'var(--text-muted, #999)', fontSize: 14 }}>Loading…</div>
@@ -65,39 +93,79 @@ export default function IngredientsPage() {
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 16 }}>
         <div>
           <h2 style={{ fontSize: 22, fontWeight: 600 }}>Ingredients</h2>
-          <div style={{ fontSize: 13, color: 'var(--text-muted, #999)', marginTop: 2 }}>{filtered.length} {view === 'consumables' ? 'consumables' : 'items'} · tap a row to edit, set supplier &amp; see price history</div>
+          <div style={{ fontSize: 13, color: 'var(--text-muted, #999)', marginTop: 2 }}>{view === 'vendors' ? `${vendorGroups.length} supplier${vendorGroups.length === 1 ? '' : 's'} · tap a supplier to see what you buy from them` : `${filtered.length} ${view === 'consumables' ? 'consumables' : 'items'} · tap a row to edit, set supplier & see price history`}</div>
         </div>
         {canManage && <button onClick={() => { setEditing(null); setShowForm(true) }} style={btnPrimary}>+ Add ingredient</button>}
       </div>
 
-      <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-        {(['ingredients','consumables','all'] as const).map(v => (
+      <div style={{ display: 'flex', gap: 8, marginBottom: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+        {(['ingredients','consumables','vendors','all'] as const).map(v => (
           <button key={v} onClick={() => setView(v)} style={{ padding: '8px 16px', borderRadius: 100, fontSize: 14, fontWeight: 500, cursor: 'pointer', textTransform: 'capitalize', background: view === v ? 'var(--accent)' : 'transparent', color: view === v ? '#fff' : 'var(--text-secondary)', border: '1px solid ' + (view === v ? 'var(--accent)' : 'var(--border)') }}>{v === 'all' ? 'All' : v}</button>
         ))}
+        <div style={{ flex: 1 }} />
+        {view !== 'vendors' && (
+          <label style={{ fontSize: 13, color: 'var(--text-muted, #999)', display: 'flex', alignItems: 'center', gap: 6 }}>
+            Supplier
+            <select value={supplierFilter} onChange={e => setSupplierFilter(e.target.value)} style={{ ...inp, width: 'auto', padding: '8px 10px' }}>
+              <option value="all">All suppliers</option>
+              {suppliers.map(s => <option key={s} value={s}>{s}</option>)}
+            </select>
+          </label>
+        )}
       </div>
 
       <input type="text" placeholder="Search by name or supplier…" value={filter} onChange={e => setFilter(e.target.value)} style={{ ...inp, marginBottom: 12 }} />
 
-      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
-        <thead><tr style={{ background: 'var(--bg-sidebar, #fafafa)' }}>
-          <th style={th}>Name</th><th style={th}>Supplier</th><th style={th}>Category</th>
-          <th style={{ ...th, textAlign: 'right' }}>Cost / base</th><th style={th}></th>
-        </tr></thead>
-        <tbody>
-          {filtered.length === 0 && <tr><td colSpan={5} style={{ padding: 14, color: 'var(--text-muted, #999)' }}>Nothing here yet.</td></tr>}
-          {filtered.map(r => (
-            <tr key={r.id} onClick={() => openEdit(r)} style={{ borderTop: '1px solid var(--border, #eee)', cursor: canManage ? 'pointer' : 'default' }}>
-              <td style={{ ...td, fontWeight: 600 }}>{r.name}</td>
-              <td style={{ ...td, color: 'var(--text-secondary, #666)' }}>{r.supplier || '—'}</td>
-              <td style={{ ...td, color: 'var(--text-muted, #999)' }}>{r.category}</td>
-              <td style={{ ...td, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{vnd(r.current_cost_per_base)} / {r.base_unit}</td>
-              <td style={{ ...td, textAlign: 'right' }} onClick={e => e.stopPropagation()}>
-                {canManage && <button onClick={() => deleteRow(r)} style={btnTrash} title="Delete" aria-label="Delete">🗑</button>}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      {view === 'vendors' ? (
+        <div style={{ display: 'grid', gap: 8 }}>
+          {vendorGroups.length === 0 && <div style={{ padding: 14, color: 'var(--text-muted, #999)' }}>No suppliers yet. Open an ingredient and set its supplier — they’ll group here.</div>}
+          {vendorGroups.map(([vendor, items]) => {
+            const isOpen = openVendor === vendor
+            return (
+              <div key={vendor} style={{ border: '1px solid var(--border, #eee)', borderRadius: 10, overflow: 'hidden' }}>
+                <button onClick={() => setOpenVendor(isOpen ? null : vendor)} style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', background: 'var(--bg-sidebar, #fafafa)', border: 'none', cursor: 'pointer', fontSize: 15, fontWeight: 600, color: 'var(--text, #333)' }}>
+                  <span>{vendor === 'No supplier set' ? '— No supplier set —' : vendor}</span>
+                  <span style={{ fontSize: 13, fontWeight: 400, color: 'var(--text-muted, #999)' }}>{items.length} item{items.length === 1 ? '' : 's'}  {isOpen ? '▾' : '▸'}</span>
+                </button>
+                {isOpen && (
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
+                    <tbody>
+                      {items.map(r => (
+                        <tr key={r.id} onClick={() => openEdit(r)} style={{ borderTop: '1px solid var(--border, #eee)', cursor: canManage ? 'pointer' : 'default' }}>
+                          <td style={{ ...td, fontWeight: 600 }}>{r.name}</td>
+                          <td style={{ ...td, color: 'var(--text-muted, #999)' }}>{r.category}</td>
+                          <td style={{ ...td, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{vnd(r.current_cost_per_base)} / {r.base_unit}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      ) : (
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
+          <thead><tr style={{ background: 'var(--bg-sidebar, #fafafa)' }}>
+            <th style={th}>Name</th><th style={th}>Supplier</th><th style={th}>Category</th>
+            <th style={{ ...th, textAlign: 'right' }}>Cost / base</th><th style={th}></th>
+          </tr></thead>
+          <tbody>
+            {filtered.length === 0 && <tr><td colSpan={5} style={{ padding: 14, color: 'var(--text-muted, #999)' }}>Nothing here yet.</td></tr>}
+            {filtered.map(r => (
+              <tr key={r.id} onClick={() => openEdit(r)} style={{ borderTop: '1px solid var(--border, #eee)', cursor: canManage ? 'pointer' : 'default' }}>
+                <td style={{ ...td, fontWeight: 600 }}>{r.name}</td>
+                <td style={{ ...td, color: 'var(--text-secondary, #666)' }}>{r.supplier || '—'}</td>
+                <td style={{ ...td, color: 'var(--text-muted, #999)' }}>{r.category}</td>
+                <td style={{ ...td, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{vnd(r.current_cost_per_base)} / {r.base_unit}</td>
+                <td style={{ ...td, textAlign: 'right' }} onClick={e => e.stopPropagation()}>
+                  {canManage && <button onClick={() => deleteRow(r)} style={btnTrash} title="Delete" aria-label="Delete">🗑</button>}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
 
       {showForm && venueId && (
         <IngredientForm venueId={venueId} editing={editing} onClose={() => { setShowForm(false); setEditing(null) }} onSaved={() => { setShowForm(false); setEditing(null); load() }} />
@@ -116,7 +184,7 @@ function IngredientForm({ venueId, editing, onClose, onSaved }: { venueId: strin
   const [baseUnit, setBaseUnit] = useState(editing?.base_unit || 'g')
   const [costMethod, setCostMethod] = useState(editing?.cost_method || 'manual')
   const [manualCost, setManualCost] = useState(String(editing?.manual_cost_per_base ?? editing?.current_cost_per_base ?? ''))
-  const [packPrice, setPackPrice] = useState(editing && (editing.manual_cost_per_base ?? editing.current_cost_per_base) ? String(Math.round((editing.manual_cost_per_base ?? editing.current_cost_per_base) * (editing.purchase_unit_size || 1))) : '')
+  const [packPrice, setPackPrice] = useState(editing && (editing.manual_cost_per_base ?? editing.current_cost_per_base) && editing.purchase_unit_size ? String(Math.round((editing.manual_cost_per_base ?? editing.current_cost_per_base) * editing.purchase_unit_size)) : '')
   const [parLevel, setParLevel] = useState(String(editing?.par_level_base ?? ''))
   const [history, setHistory] = useState<any[]>([])
   const [saving, setSaving] = useState(false)
@@ -128,18 +196,27 @@ function IngredientForm({ venueId, editing, onClose, onSaved }: { venueId: strin
 
   async function save(e: React.FormEvent) {
     e.preventDefault()
-    if (!name || !purchaseUnitLabel || !purchaseUnitSize) { setMsg('Name, purchase unit and size are required'); return }
+    // Only the name is required — everything else has a sensible default so a quick add always saves.
+    if (!name.trim()) { setMsg('Give it a name and it’ll save.'); return }
     setSaving(true); setMsg(null)
-    const sizeNum = Number(purchaseUnitSize) || 0
-    const perBaseFromPack = packPrice && sizeNum ? Number(packPrice) / sizeNum : null
-    const newCost = costMethod === 'manual' ? (perBaseFromPack != null ? perBaseFromPack : (manualCost ? Number(manualCost) : null)) : (editing?.current_cost_per_base ?? null)
+
+    const puLabel = purchaseUnitLabel.trim() || ('1 ' + baseUnit)
+    const puSize = Number(purchaseUnitSize) > 0 ? Number(purchaseUnitSize) : 1
+    const perBaseFromPack = packPrice && puSize ? Number(packPrice) / puSize : null
+    // A typed cost or pack price is always treated as a manual price so it actually sticks.
+    const typedCost = perBaseFromPack != null ? perBaseFromPack : (manualCost ? Number(manualCost) : null)
+    const useManual = typedCost != null || costMethod === 'manual'
+    const newCost = useManual ? typedCost : (editing?.current_cost_per_base ?? null)
+
     const payload: any = {
-      venue_id: venueId, name, category, supplier: supplier || null, notes: notes || null,
-      purchase_unit_label: purchaseUnitLabel, purchase_unit_size: Number(purchaseUnitSize),
-      base_unit: baseUnit, cost_method: costMethod,
-      manual_cost_per_base: costMethod === 'manual' ? newCost : null,
+      venue_id: venueId, name: name.trim(), category, supplier: supplier.trim() || null, notes: notes.trim() || null,
+      purchase_unit_label: puLabel, purchase_unit_size: puSize,
+      base_unit: baseUnit, cost_method: useManual ? 'manual' : costMethod,
+      manual_cost_per_base: useManual ? newCost : null,
+      current_cost_per_base: newCost != null ? newCost : (editing?.current_cost_per_base ?? 0),
       par_level_base: parLevel ? Number(parLevel) : null,
     }
+
     let id = editing?.id
     if (editing) {
       const { error } = await ops().from('ingredients').update(payload).eq('id', editing.id)
@@ -149,36 +226,40 @@ function IngredientForm({ venueId, editing, onClose, onSaved }: { venueId: strin
       if (error) { setSaving(false); setMsg(error.message); return }
       id = data?.id
     }
-    if (id && newCost != null && (!editing || Number(editing.manual_cost_per_base) !== Number(newCost))) {
-      await ops().from('ingredient_price_history').insert({ ingredient_id: id, cost_per_base: newCost, observed_at: new Date().toISOString(), source: 'manual' })
+    // Log a price-history point whenever the cost changed (non-blocking).
+    if (id && newCost != null && (!editing || Number(editing.manual_cost_per_base ?? editing.current_cost_per_base) !== Number(newCost))) {
+      const { error: hErr } = await ops().from('ingredient_price_history').insert({ ingredient_id: id, cost_per_base: newCost, observed_at: new Date().toISOString(), source: 'manual' })
+      if (hErr) console.warn('price history not recorded:', hErr.message)
     }
     setSaving(false); onSaved()
   }
+
+  const livePerBase = packPrice && Number(purchaseUnitSize) > 0 ? Number(packPrice) / Number(purchaseUnitSize) : null
 
   return (
     <div style={modalBg} onClick={onClose}>
       <div style={modal} onClick={e => e.stopPropagation()}>
         <h3 style={{ fontSize: 17, fontWeight: 600, marginBottom: 14 }}>{editing ? editing.name : 'New ingredient'}</h3>
         <form onSubmit={save} style={{ display: 'grid', gap: 12 }}>
-          <Field label="Name"><input value={name} onChange={e => setName(e.target.value)} style={inp} placeholder="e.g. Kewpie mayonnaise" /></Field>
+          <Field label="Name"><input value={name} onChange={e => setName(e.target.value)} style={inp} placeholder="e.g. Kewpie mayonnaise" autoFocus /></Field>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
             <Field label="Supplier / where you buy it"><input value={supplier} onChange={e => setSupplier(e.target.value)} style={inp} placeholder="e.g. Metro, Annam" /></Field>
             <Field label="Category"><select value={category} onChange={e => setCategory(e.target.value)} style={inp}>{CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}</select></Field>
           </div>
           <Field label="Notes"><textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2} style={{ ...inp, fontFamily: 'inherit', resize: 'vertical' }} placeholder="Brand, pack details, substitutes…" /></Field>
           <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 10 }}>
-            <Field label="Purchase unit"><input value={purchaseUnitLabel} onChange={e => setPurchaseUnitLabel(e.target.value)} style={inp} placeholder="1kg bag" /></Field>
-            <Field label="Size"><input inputMode="decimal" value={purchaseUnitSize} onChange={e => setPurchaseUnitSize(e.target.value)} style={inp} placeholder="1000" /></Field>
+            <Field label="Purchase unit (optional)"><input value={purchaseUnitLabel} onChange={e => setPurchaseUnitLabel(e.target.value)} style={inp} placeholder="1kg bag" /></Field>
+            <Field label="Size (optional)"><input inputMode="decimal" value={purchaseUnitSize} onChange={e => setPurchaseUnitSize(e.target.value)} style={inp} placeholder="1000" /></Field>
             <Field label="Base unit"><select value={baseUnit} onChange={e => setBaseUnit(e.target.value)} style={inp}>{BASE_UNITS.map(u => <option key={u} value={u}>{u}</option>)}</select></Field>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-            <Field label="Cost method"><select value={costMethod} onChange={e => setCostMethod(e.target.value)} style={inp}>{COST_METHODS.map(m => <option key={m.v} value={m.v}>{m.label}</option>)}</select></Field>
-            <Field label="Price you paid for the pack (₫)"><input inputMode="decimal" value={packPrice} onChange={e => setPackPrice(e.target.value)} style={inp} placeholder="e.g. 600000" /></Field>
+            <Field label="Price you paid for the pack (₫)"><input inputMode="decimal" value={packPrice} onChange={e => { setPackPrice(e.target.value); if (e.target.value) setManualCost('') }} style={inp} placeholder="e.g. 600000" /></Field>
+            <Field label={'…or cost per ' + baseUnit + ' (₫)'}><input inputMode="decimal" value={manualCost} onChange={e => { setManualCost(e.target.value); if (e.target.value) setPackPrice('') }} style={inp} placeholder="e.g. 200" /></Field>
           </div>
           <div style={{ fontSize: 13, color: 'var(--text-secondary, #999)', marginTop: -4 }}>
-            {packPrice && Number(purchaseUnitSize) > 0
-              ? '= ' + vnd(Number(packPrice) / Number(purchaseUnitSize)) + ' per ' + baseUnit + ' (' + vnd(Number(packPrice)) + ' ÷ ' + Number(purchaseUnitSize) + ' ' + baseUnit + ')'
-              : 'Enter the pack price + the size above and the cost per ' + baseUnit + ' is worked out for you.'}
+            {livePerBase != null
+              ? '= ' + vnd(livePerBase) + ' per ' + baseUnit + ' (' + vnd(Number(packPrice)) + ' ÷ ' + Number(purchaseUnitSize) + ' ' + baseUnit + ')'
+              : 'Enter the pack price + the size, and the cost per ' + baseUnit + ' is worked out for you — or just type the cost per ' + baseUnit + ' directly.'}
           </div>
           <Field label={'Par level (' + baseUnit + ', optional)'}><input inputMode="decimal" value={parLevel} onChange={e => setParLevel(e.target.value)} style={inp} /></Field>
 
