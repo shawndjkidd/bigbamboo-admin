@@ -1,125 +1,179 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { ops, vnd, today } from '@/lib/ops/api'
+import { ops, vnd, today, canManageRecipes, type StaffRole } from '@/lib/ops/api'
 import { supabase } from '@/lib/supabase'
 
-type Row = { id: string; occurred_on: string; gross: number; tips: number | null; notes: string | null; source: string; created_at: string }
+type ReconRow = {
+  occurred_on: string
+  opening_float: number; cash_sales: number; card_sales: number; other_sales: number
+  payouts: number; counted_cash: number; notes: string | null
+}
 
-export default function DailySalesPage() {
+const num = (s: string) => Number((s || '').replace(/[^\d.-]/g, '')) || 0
+
+export default function CashReconPage() {
+  const [role, setRole] = useState<StaffRole | null>(null)
   const [venueId, setVenueId] = useState<string | null>(null)
-  const [recent, setRecent] = useState<Row[]>([])
-  const [date, setDate]     = useState(today())
-  const [gross, setGross]   = useState('')
-  const [tips, setTips]     = useState('')
-  const [notes, setNotes]   = useState('')
+  const [date, setDate] = useState(today())
+  const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [msg, setMsg]       = useState<string | null>(null)
+  const [msg, setMsg] = useState<string | null>(null)
+  const [hasPos, setHasPos] = useState(false)
+  const [recent, setRecent] = useState<ReconRow[]>([])
+
+  // editable fields
+  const [openingFloat, setOpeningFloat] = useState('')
+  const [cashSales, setCashSales] = useState('')
+  const [cardSales, setCardSales] = useState('')
+  const [otherSales, setOtherSales] = useState('')
+  const [payouts, setPayouts] = useState('')
+  const [countedCash, setCountedCash] = useState('')
+  const [notes, setNotes] = useState('')
 
   useEffect(() => { init() }, [])
+  useEffect(() => { if (venueId) loadDate(venueId, date) }, [date]) // eslint-disable-line
 
   async function init() {
     const { data: { session } } = await supabase.auth.getSession()
-
-    const user = session?.user
-    if (!user) return
-    const { data: su } = await supabase
-      .from('staff_users')
-      .select('venue_id, venue:venues(slug)')
-      .eq('email', user.email)
-      .single()
+    const user = session?.user; if (!user) return
+    const { data: su } = await supabase.from('staff_users').select('role, venue_id').eq('email', user.email).maybeSingle()
+    setRole((su?.role || 'staff') as StaffRole)
     setVenueId(su?.venue_id || null)
-    await loadRecent(su?.venue_id)
+    if (su?.venue_id) { await loadDate(su.venue_id, date); await loadRecent(su.venue_id) }
+    setLoading(false)
   }
 
-  async function loadRecent(vid: string | null | undefined) {
-    if (!vid) return
-    const { data } = await ops()
-      .from('sales_daily')
-      .select('id, occurred_on, gross, tips, notes, source, created_at')
-      .eq('venue_id', vid)
-      .eq('source', 'manual')
-      .order('occurred_on', { ascending: false })
-      .limit(10)
-    setRecent((data as Row[]) || [])
+  async function loadDate(vid: string, d: string) {
+    // 1) Existing reconciliation for the day (if already saved)
+    const { data: rec } = await ops().from('cash_recon').select('*').eq('venue_id', vid).eq('occurred_on', d).maybeSingle()
+    // 2) Square line items for the day → cash / card / other split
+    const { data: items } = await ops().from('sales_items').select('qty, unit_price, payment_method').eq('venue_id', vid).eq('occurred_on', d)
+    let posCash = 0, posCard = 0, posOther = 0
+    for (const it of (items || []) as any[]) {
+      const g = Number(it.qty || 0) * Number(it.unit_price || 0)
+      const m = (it.payment_method || '').toUpperCase()
+      if (m.includes('CASH')) posCash += g
+      else if (m.includes('CARD')) posCard += g
+      else posOther += g
+    }
+    setHasPos((items || []).length > 0)
+
+    setOpeningFloat(rec ? String(rec.opening_float ?? '') : '')
+    setPayouts(rec ? String(rec.payouts ?? '') : '')
+    setCountedCash(rec ? String(rec.counted_cash ?? '') : '')
+    setNotes(rec?.notes || '')
+    // Prefer saved sales if a recon exists, else use the Square split
+    setCashSales(String(rec ? rec.cash_sales : Math.round(posCash)))
+    setCardSales(String(rec ? rec.card_sales : Math.round(posCard)))
+    setOtherSales(String(rec ? rec.other_sales : Math.round(posOther)))
   }
 
-  async function save(e: React.FormEvent) {
-    e.preventDefault()
+  async function loadRecent(vid: string) {
+    const { data } = await ops().from('cash_recon').select('occurred_on, opening_float, cash_sales, card_sales, other_sales, payouts, counted_cash, notes').eq('venue_id', vid).order('occurred_on', { ascending: false }).limit(10)
+    setRecent((data as ReconRow[]) || [])
+  }
+
+  const oFloat = num(openingFloat), cSales = num(cashSales), kSales = num(cardSales), oSales = num(otherSales)
+  const pay = num(payouts), counted = num(countedCash)
+  const totalSales = cSales + kSales + oSales
+  const expectedCash = oFloat + cSales - pay
+  const variance = counted - expectedCash
+  const canManage = role && canManageRecipes(role)
+
+  async function save() {
     if (!venueId) return
-    const g = Number(gross.replace(/[^\d]/g, ''))
-    if (!g) { setMsg('Enter a sales amount'); return }
-    setSaving(true)
-    setMsg(null)
-    const { error } = await ops().from('sales_daily').upsert({
-      venue_id: venueId,
-      occurred_on: date,
-      gross: g,
-      tips: tips ? Number(tips.replace(/[^\d]/g, '')) : 0,
-      notes: notes || null,
-      source: 'manual',
-    }, { onConflict: 'venue_id,occurred_on,source' })
+    setSaving(true); setMsg(null)
+    const { error } = await ops().from('cash_recon').upsert({
+      venue_id: venueId, occurred_on: date,
+      opening_float: oFloat, cash_sales: cSales, card_sales: kSales, other_sales: oSales,
+      payouts: pay, counted_cash: counted, notes: notes || null,
+    }, { onConflict: 'venue_id,occurred_on' })
     setSaving(false)
     if (error) { setMsg(error.message); return }
-    setMsg(`Saved ${vnd(g)} for ${date}`)
-    setGross(''); setTips(''); setNotes('')
+    setMsg('Saved.')
     await loadRecent(venueId)
   }
 
+  if (loading) return <div style={{ color: 'var(--text-muted, #999)', fontSize: 14 }}>Loading…</div>
+  if (!canManage) return <div style={{ color: 'var(--text-muted, #999)', fontSize: 14 }}>Daily cash reconciliation is available to managers.</div>
+
   return (
-    <div style={{ maxWidth: 520 }}>
-      <h2 style={{ fontSize: 22, fontWeight: 600, marginBottom: 4 }}>Daily Sales</h2>
-      <div style={{ fontSize: 12, color: 'var(--text-muted, #999)', marginBottom: 24 }}>
-        Enter the day's gross sales total. Updates today by default — change the date to log a different day.
+    <div style={{ maxWidth: 760 }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, marginBottom: 4 }}>
+        <h2 style={{ fontSize: 22, fontWeight: 600 }}>Daily cash reconciliation</h2>
+        <label style={{ fontSize: 13, color: 'var(--text-muted, #999)', display: 'flex', alignItems: 'center', gap: 6 }}>
+          Date <input type="date" value={date} onChange={e => setDate(e.target.value)} style={{ ...inp, width: 'auto' }} />
+        </label>
+      </div>
+      <div style={{ fontSize: 13, color: 'var(--text-muted, #999)', marginBottom: 20 }}>
+        {hasPos ? 'Sales below are pulled from Square for this day — adjust if needed.' : 'No Square sales synced for this day yet. Enter the figures manually, or sync Square and reload.'}
       </div>
 
-      <form onSubmit={save} style={{ display: 'grid', gap: 14 }}>
-        <Field label="Date">
-          <input type="date" value={date} onChange={e => setDate(e.target.value)} required style={inp} />
-        </Field>
-        <Field label="Gross sales (VND)">
-          <input
-            type="text" inputMode="numeric" placeholder="e.g. 7,500,000"
-            value={gross} onChange={e => setGross(e.target.value)} required
-            style={{ ...inp, fontSize: 18, fontWeight: 600 }}
-          />
-        </Field>
-        <Field label="Tips (optional)">
-          <input
-            type="text" inputMode="numeric" placeholder="0"
-            value={tips} onChange={e => setTips(e.target.value)} style={inp}
-          />
-        </Field>
-        <Field label="Notes (optional)">
-          <input
-            type="text" placeholder="e.g. BIS deposit included; private event"
-            value={notes} onChange={e => setNotes(e.target.value)} style={inp}
-          />
-        </Field>
-        <button type="submit" disabled={saving} style={{
-          padding: '12px 18px', background: 'var(--accent, #e87830)', color: '#fff',
-          border: 'none', borderRadius: 6, fontSize: 15, fontWeight: 600, cursor: saving ? 'wait' : 'pointer',
-          opacity: saving ? 0.6 : 1,
-        }}>{saving ? 'Saving…' : 'Save sales'}</button>
-        {msg && <div style={{ fontSize: 13, color: msg.startsWith('Saved') ? '#548235' : '#C00000' }}>{msg}</div>}
-      </form>
+      {/* Summary */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 24 }}>
+        <Stat label="Total sales" value={vnd(totalSales)} />
+        <Stat label="Expected cash" value={vnd(expectedCash)} sub="float + cash − payouts" />
+        <Stat label="Counted cash" value={counted ? vnd(counted) : '—'} />
+        <Stat label="Variance" value={(variance >= 0 ? '+' : '') + vnd(variance)}
+          accent={counted === 0 ? '#999' : Math.abs(variance) < 1 ? '#6b7280' : Math.abs(variance) <= 50000 ? '#C65911' : 'var(--burgundy, #7b2d3a)'} />
+      </div>
 
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+        {/* Sales side */}
+        <div className="card" style={{ padding: 18 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted, #999)', marginBottom: 12 }}>Sales {hasPos && <span style={{ color: 'var(--accent, #e87830)' }}>· from Square</span>}</div>
+          <Field label="Cash sales (₫)"><input inputMode="numeric" value={cashSales} onChange={e => setCashSales(e.target.value)} style={inp} /></Field>
+          <Field label="Card sales (₫)"><input inputMode="numeric" value={cardSales} onChange={e => setCardSales(e.target.value)} style={inp} /></Field>
+          <Field label="Other (transfer / Grab) (₫)"><input inputMode="numeric" value={otherSales} onChange={e => setOtherSales(e.target.value)} style={inp} /></Field>
+        </div>
+        {/* Cash drawer side */}
+        <div className="card" style={{ padding: 18 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted, #999)', marginBottom: 12 }}>Cash drawer</div>
+          <Field label="Opening float (₫)"><input inputMode="numeric" value={openingFloat} onChange={e => setOpeningFloat(e.target.value)} style={inp} /></Field>
+          <Field label="Payouts / cash out (₫)"><input inputMode="numeric" value={payouts} onChange={e => setPayouts(e.target.value)} style={inp} /></Field>
+          <Field label="Counted cash at close (₫)"><input inputMode="numeric" value={countedCash} onChange={e => setCountedCash(e.target.value)} style={{ ...inp, fontWeight: 600 }} /></Field>
+        </div>
+      </div>
+
+      <div style={{ marginTop: 16 }}>
+        <Field label="Notes"><input value={notes} onChange={e => setNotes(e.target.value)} style={inp} placeholder="e.g. 200k short — staff meal paid from till, receipt in drawer" /></Field>
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 16 }}>
+        <button onClick={save} disabled={saving} style={btnPrimary}>{saving ? 'Saving…' : 'Save reconciliation'}</button>
+        {counted > 0 && (
+          <span style={{ fontSize: 14, fontWeight: 600, color: Math.abs(variance) < 1 ? '#6b7280' : Math.abs(variance) <= 50000 ? '#C65911' : 'var(--burgundy, #7b2d3a)' }}>
+            {Math.abs(variance) < 1 ? 'Balances ✓' : variance > 0 ? `${vnd(variance)} over` : `${vnd(Math.abs(variance))} short`}
+          </span>
+        )}
+        {msg && <span style={{ fontSize: 13, color: msg === 'Saved.' ? '#548235' : 'var(--burgundy, #7b2d3a)' }}>{msg}</span>}
+      </div>
+
+      {/* History */}
       <div style={{ marginTop: 40 }}>
-        <h3 style={{ fontSize: 13, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted, #999)', marginBottom: 8 }}>
-          Last 10 days
-        </h3>
+        <h3 style={{ fontSize: 13, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted, #999)', marginBottom: 8 }}>Recent days</h3>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
           <thead><tr style={{ background: 'var(--bg-sidebar, #fafafa)' }}>
-            <th style={th}>Date</th><th style={{ ...th, textAlign: 'right' }}>Gross</th><th style={{ ...th, textAlign: 'right' }}>Tips</th>
+            <th style={th}>Date</th>
+            <th style={{ ...th, textAlign: 'right' }}>Sales</th>
+            <th style={{ ...th, textAlign: 'right' }}>Counted</th>
+            <th style={{ ...th, textAlign: 'right' }}>Variance</th>
           </tr></thead>
           <tbody>
-            {recent.length === 0 && <tr><td colSpan={3} style={{ padding: 12, color: 'var(--text-muted, #999)' }}>No entries yet.</td></tr>}
-            {recent.map(r => (
-              <tr key={r.id} style={{ borderTop: '1px solid var(--border, #eee)' }}>
-                <td style={td}>{r.occurred_on}</td>
-                <td style={{ ...td, textAlign: 'right' }}>{vnd(r.gross)}</td>
-                <td style={{ ...td, textAlign: 'right', color: 'var(--text-muted, #999)' }}>{vnd(r.tips || 0)}</td>
-              </tr>
-            ))}
+            {recent.length === 0 && <tr><td colSpan={4} style={{ padding: 12, color: 'var(--text-muted, #999)' }}>No reconciliations yet.</td></tr>}
+            {recent.map(r => {
+              const sales = Number(r.cash_sales) + Number(r.card_sales) + Number(r.other_sales)
+              const exp = Number(r.opening_float) + Number(r.cash_sales) - Number(r.payouts)
+              const v = Number(r.counted_cash) - exp
+              return (
+                <tr key={r.occurred_on} style={{ borderTop: '1px solid var(--border, #eee)', cursor: 'pointer' }} onClick={() => setDate(r.occurred_on)}>
+                  <td style={td}>{r.occurred_on}</td>
+                  <td style={{ ...td, textAlign: 'right' }}>{vnd(sales)}</td>
+                  <td style={{ ...td, textAlign: 'right' }}>{vnd(r.counted_cash)}</td>
+                  <td style={{ ...td, textAlign: 'right', color: Math.abs(v) < 1 ? '#6b7280' : Math.abs(v) <= 50000 ? '#C65911' : 'var(--burgundy, #7b2d3a)' }}>{(v >= 0 ? '+' : '') + vnd(v)}</td>
+                </tr>
+              )
+            })}
           </tbody>
         </table>
       </div>
@@ -127,13 +181,22 @@ export default function DailySalesPage() {
   )
 }
 
+const Stat = ({ label, value, accent, sub }: { label: string; value: string; accent?: string; sub?: string }) => (
+  <div style={{ padding: 12, background: 'var(--bg-card, #fff)', border: '1px solid var(--border, #e5e5e5)', borderRadius: 8, borderLeft: `3px solid ${accent || 'var(--accent, #e87830)'}` }}>
+    <div style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-muted, #999)' }}>{label}</div>
+    <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--text, #333)', marginTop: 4 }}>{value}</div>
+    {sub && <div style={{ fontSize: 10, color: 'var(--text-muted, #bbb)', marginTop: 2 }}>{sub}</div>}
+  </div>
+)
+
 const Field = ({ label, children }: { label: string; children: React.ReactNode }) => (
-  <label style={{ display: 'block' }}>
+  <label style={{ display: 'block', marginBottom: 10 }}>
     <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted, #999)', marginBottom: 4 }}>{label}</div>
     {children}
   </label>
 )
 
-const inp = { width: '100%', padding: '10px 12px', fontSize: 14, border: '1px solid var(--border, #e5e5e5)', borderRadius: 6, background: 'var(--bg-card, #fff)', color: 'var(--text, #333)' }
+const inp = { width: '100%', padding: '10px 12px', fontSize: 14, border: '1px solid var(--border, #e5e5e5)', borderRadius: 6, background: 'var(--bg-input, #fff)', color: 'var(--text, #333)', boxSizing: 'border-box' as const }
 const th  = { padding: '8px 12px', textAlign: 'left' as const, fontWeight: 600, fontSize: 11, textTransform: 'uppercase' as const, color: 'var(--text-muted, #999)', letterSpacing: '0.05em' }
 const td  = { padding: '8px 12px', color: 'var(--text, #333)' }
+const btnPrimary = { padding: '10px 18px', background: 'var(--accent, #e87830)', color: '#fff', border: 'none', borderRadius: 6, fontSize: 14, fontWeight: 600, cursor: 'pointer' }
