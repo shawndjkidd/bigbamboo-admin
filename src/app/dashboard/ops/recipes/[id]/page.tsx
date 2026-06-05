@@ -11,6 +11,7 @@ type Recipe = {
   is_kegged: boolean; keg_size_ml: number | null; pour_size_ml: number | null;
   description: string | null; active: boolean;
   method: string | null; subtitle: string | null; image_url: string | null;
+  plating_dinein: string | null; plating_togo: string | null;
   published_version: number | null;
 }
 
@@ -141,7 +142,7 @@ export default function RecipeDetailPage() {
     if (!recipe) return
     const nextV = (recipe.published_version || 0) + 1
     const snapshot = {
-      recipe: { name: recipe.name, category: recipe.category, subtitle: recipe.subtitle, method: recipe.method, image_url: recipe.image_url, sale_price: recipe.sale_price },
+      recipe: { name: recipe.name, category: recipe.category, subtitle: recipe.subtitle, method: recipe.method, plating_dinein: recipe.plating_dinein, plating_togo: recipe.plating_togo, image_url: recipe.image_url, sale_price: recipe.sale_price },
       components: components.map(c => ({ ingredient_id: c.ingredient_id, sub_recipe_id: c.sub_recipe_id, qty: c.qty, unit: c.unit, sort_order: c.sort_order })),
     }
     const venueId = (await supabase.from('venues').select('id').eq('slug', 'bigbamboo').single()).data?.id
@@ -154,7 +155,7 @@ export default function RecipeDetailPage() {
     if (!confirm(`Restore version ${v.version}? The current state is saved as a new version first, so nothing is lost.`)) return
     await publishVersion()
     const s = v.snapshot
-    await ops().from('recipes').update({ method: s.recipe.method, image_url: s.recipe.image_url, subtitle: s.recipe.subtitle, category: s.recipe.category, sale_price: s.recipe.sale_price }).eq('id', recipeId)
+    await ops().from('recipes').update({ method: s.recipe.method, plating_dinein: s.recipe.plating_dinein ?? null, plating_togo: s.recipe.plating_togo ?? null, image_url: s.recipe.image_url, subtitle: s.recipe.subtitle, category: s.recipe.category, sale_price: s.recipe.sale_price }).eq('id', recipeId)
     await ops().from('recipe_components').delete().eq('recipe_id', recipeId)
     if (s.components?.length) await ops().from('recipe_components').insert(s.components.map((c: any) => ({ ...c, recipe_id: recipeId })))
     await loadAll()
@@ -164,17 +165,31 @@ export default function RecipeDetailPage() {
     return components.map(c => {
       const name = c.ingredient?.name || c.sub_recipe?.name || '—'
       const compCost = Number(c.qty) * (c.ingredient?.current_cost_per_base || 0)
-      return `<tr><td>${name}</td><td style="text-align:right">${Number(c.qty)} ${c.unit}</td>${withCost ? `<td style="text-align:right">${c.ingredient ? vnd(compCost) : '—'}</td>` : ''}</tr>`
+      const pkg = c.ingredient && c.ingredient.category === 'consumable' ? ' (packaging)' : ''
+      return `<tr><td>${name}${pkg}</td><td style="text-align:right">${Number(c.qty)} ${c.unit}</td>${withCost ? `<td style="text-align:right">${c.ingredient ? vnd(compCost) : '—'}</td>` : ''}</tr>`
     }).join('')
   }
-  function openPrint(withCost: boolean) {
+  function platingHtml(which: 'dinein' | 'togo') {
+    if (!recipe) return ''
+    const txt = which === 'dinein' ? recipe.plating_dinein : recipe.plating_togo
+    if (!txt) return ''
+    const items = txt.split('\n').filter(Boolean).map(t => `<li>${t.replace(/</g, '&lt;')}</li>`).join('')
+    const title = which === 'dinein' ? 'Plating — Dine-in' : 'Packing — To-go'
+    return `<h3>${title}</h3><ol>${items}</ol>`
+  }
+  // plating: null = recipe-with-cost (no plating focus); 'dinein'/'togo' = that SOP variant
+  function openPrint(withCost: boolean, plating: 'dinein' | 'togo' | null = null) {
     if (!recipe) return
     const w = window.open('', '_blank'); if (!w) return
     const steps = (recipe.method || '').split('\n').filter(Boolean).map(t => `<li>${t.replace(/</g, '&lt;')}</li>`).join('')
     const costHead = withCost ? '<th style="text-align:right">Cost</th>' : ''
-    const costLine = withCost && cost ? `<p style="font-weight:600;margin-top:4px">Cost / portion: ${vnd(cost.cost_per_unit)}</p>` : ''
+    const costLine = withCost && cost ? `<p style="font-weight:600;margin-top:4px">Dine-in cost / portion: ${vnd(dineInCost)} · To-go (with packaging): ${vnd(toGoCost)}</p>` : ''
     const img = (!withCost && recipe.image_url) ? `<img src="${recipe.image_url}" style="max-width:240px;border-radius:8px;margin:8px 0"/>` : ''
-    w.document.write(`<html><head><title>${recipe.name}</title><style>body{font-family:Inter,Arial,sans-serif;max-width:700px;margin:30px auto;color:#1a1a1a;padding:0 20px}h1{margin:0 0 2px}.sub{color:#666;font-size:13px;margin-bottom:16px}table{width:100%;border-collapse:collapse;font-size:14px;margin:8px 0}td,th{padding:6px 4px;border-bottom:1px solid #eee;text-align:left}ol{line-height:1.7}</style></head><body><h1>${recipe.name}</h1><div class="sub">${recipe.category}${recipe.subtitle ? ' · ' + recipe.subtitle : ''}${withCost ? ' · internal' : ''}</div>${img}<h3>Components</h3><table><thead><tr><th>Item</th><th style="text-align:right">Amount</th>${costHead}</tr></thead><tbody>${buildCompRows(withCost)}</tbody></table>${costLine}<h3>Method</h3><ol>${steps}</ol><p style="margin-top:24px;color:#999;font-size:11px">BigBamBoo · ${withCost ? 'Recipe (with cost)' : 'SOP'}</p></body></html>`)
+    // SOP variant: show only that plating block. Cost print: show both for reference.
+    const platingSection = plating ? platingHtml(plating) : (withCost ? platingHtml('dinein') + platingHtml('togo') : '')
+    const variantLabel = plating === 'dinein' ? 'SOP · Dine-in' : plating === 'togo' ? 'SOP · To-go' : (withCost ? 'Recipe (with cost)' : 'SOP')
+    const headerNote = plating === 'dinein' ? ' · Dine-in' : plating === 'togo' ? ' · To-go' : (withCost ? ' · internal' : '')
+    w.document.write(`<html><head><title>${recipe.name}${plating ? ' — ' + (plating === 'dinein' ? 'Dine-in' : 'To-go') : ''}</title><style>body{font-family:Inter,Arial,sans-serif;max-width:700px;margin:30px auto;color:#1a1a1a;padding:0 20px}h1{margin:0 0 2px}.sub{color:#666;font-size:13px;margin-bottom:16px}table{width:100%;border-collapse:collapse;font-size:14px;margin:8px 0}td,th{padding:6px 4px;border-bottom:1px solid #eee;text-align:left}ol{line-height:1.7}h3{margin:18px 0 4px}</style></head><body><h1>${recipe.name}</h1><div class="sub">${recipe.category}${recipe.subtitle ? ' · ' + recipe.subtitle : ''}${headerNote}</div>${img}<h3>Components</h3><table><thead><tr><th>Item</th><th style="text-align:right">Amount</th>${costHead}</tr></thead><tbody>${buildCompRows(withCost)}</tbody></table>${costLine}<h3>Method</h3><ol>${steps}</ol>${platingSection}<p style="margin-top:24px;color:#999;font-size:11px">BigBamBoo · ${variantLabel}</p></body></html>`)
     w.document.close(); w.focus(); setTimeout(() => w.print(), 300)
   }
 
@@ -303,19 +318,38 @@ export default function RecipeDetailPage() {
         </form>
       )}
 
-      {/* 4. Method */}
-      <div style={{ marginBottom: 24 }} className="recipe-method">
-        <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 10 }}>Method</h3>
+      {/* 4. Method (shared prep + cook) */}
+      <div style={{ marginTop: 24, marginBottom: 16 }} className="recipe-method">
+        <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 10 }}>Method <span style={{ fontWeight: 400, color: 'var(--text-muted, #999)' }}>· shared prep &amp; cook steps</span></h3>
         {canManage
           ? <textarea defaultValue={recipe.method || ''} onBlur={e => saveMethod(e.target.value)} placeholder="Step-by-step method, one step per line…" rows={8} style={{ ...inp, width: '100%', fontFamily: 'inherit', lineHeight: 1.6, resize: 'vertical' }} />
           : <div style={{ whiteSpace: 'pre-wrap', fontSize: 14, lineHeight: 1.7 }}>{recipe.method || '—'}</div>}
       </div>
 
+      {/* 4b. Plating — two SOP blocks (dine-in vs to-go) */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 24 }}>
+        <div>
+          <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>🍽 Plate — Dine-in</h3>
+          {canManage
+            ? <textarea defaultValue={recipe.plating_dinein || ''} onBlur={e => saveRecipe({ plating_dinein: e.target.value })} placeholder="In-house plating, one step per line — basket, garnish, ramekin…" rows={5} style={{ ...inp, width: '100%', fontFamily: 'inherit', lineHeight: 1.6, resize: 'vertical' }} />
+            : <div style={{ whiteSpace: 'pre-wrap', fontSize: 14, lineHeight: 1.7 }}>{recipe.plating_dinein || '—'}</div>}
+        </div>
+        <div>
+          <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>🥡 Pack — To-go</h3>
+          {canManage
+            ? <textarea defaultValue={recipe.plating_togo || ''} onBlur={e => saveRecipe({ plating_togo: e.target.value })} placeholder="Takeaway packing, one step per line — clamshell, vent, sauce cup, bag…" rows={5} style={{ ...inp, width: '100%', fontFamily: 'inherit', lineHeight: 1.6, resize: 'vertical' }} />
+            : <div style={{ whiteSpace: 'pre-wrap', fontSize: 14, lineHeight: 1.7 }}>{recipe.plating_togo || '—'}</div>}
+        </div>
+      </div>
+
       {/* 5. SOP — staff card */}
       <div style={{ marginTop: 32, paddingTop: 24, borderTop: '2px solid var(--border, #e5e5e5)' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
           <h3 style={{ fontSize: 16, fontWeight: 700 }}>SOP — staff card</h3>
-          <button onClick={() => openPrint(false)} style={btnPrimary}>Print SOP</button>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button onClick={() => openPrint(false, 'dinein')} style={btnPrimary}>Print SOP — Dine-in</button>
+            <button onClick={() => openPrint(false, 'togo')} style={btnOutline}>Print SOP — To-go</button>
+          </div>
         </div>
         <div className="card" style={{ padding: 20 }}>
           <div style={{ fontWeight: 700, fontSize: 18, marginBottom: 2 }}>{recipe.name}</div>
@@ -327,7 +361,7 @@ export default function RecipeDetailPage() {
                 {components.length === 0 && <tr><td style={{ color: 'var(--text-muted, #999)', padding: '6px 0' }}>No components</td></tr>}
                 {components.map(c => (
                   <tr key={c.id} style={{ borderTop: '1px solid var(--border, #eee)' }}>
-                    <td style={{ padding: '6px 0' }}>{c.ingredient?.name || c.sub_recipe?.name || '—'}</td>
+                    <td style={{ padding: '6px 0' }}>{c.ingredient?.name || c.sub_recipe?.name || '—'}{c.ingredient && c.ingredient.category === 'consumable' && <span style={{ marginLeft: 6, fontSize: 10, color: 'var(--text-muted, #999)' }}>(packaging)</span>}</td>
                     <td style={{ padding: '6px 0', textAlign: 'right', fontFamily: 'DM Mono, monospace' }}>{Number(c.qty)} {c.unit}</td>
                   </tr>
                 ))}
@@ -340,6 +374,24 @@ export default function RecipeDetailPage() {
             {(recipe.method || '').split('\n').filter(Boolean).map((t, i) => <li key={i}>{t}</li>)}
             {!recipe.method && <li style={{ listStyle: 'none', color: 'var(--text-muted, #999)' }}>No method yet — add it in the Method box above.</li>}
           </ol>
+
+          {/* Plating blocks inside the SOP card */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginTop: 16 }}>
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted, #999)', marginBottom: 6 }}>🍽 Plate — Dine-in</div>
+              <ol style={{ fontSize: 14, lineHeight: 1.8, paddingLeft: 20, margin: 0 }}>
+                {(recipe.plating_dinein || '').split('\n').filter(Boolean).map((t, i) => <li key={i}>{t}</li>)}
+                {!recipe.plating_dinein && <li style={{ listStyle: 'none', color: 'var(--text-muted, #999)' }}>—</li>}
+              </ol>
+            </div>
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted, #999)', marginBottom: 6 }}>🥡 Pack — To-go</div>
+              <ol style={{ fontSize: 14, lineHeight: 1.8, paddingLeft: 20, margin: 0 }}>
+                {(recipe.plating_togo || '').split('\n').filter(Boolean).map((t, i) => <li key={i}>{t}</li>)}
+                {!recipe.plating_togo && <li style={{ listStyle: 'none', color: 'var(--text-muted, #999)' }}>—</li>}
+              </ol>
+            </div>
+          </div>
         </div>
       </div>
 
