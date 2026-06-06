@@ -21,10 +21,13 @@ const NAV: NavItem[] = [
 
   { href: '#kitchen', label: 'Kitchen', section: true },
   { href: '/dashboard/ops/recipes?dept=kitchen', label: 'Food recipes' },
-  { href: '/dashboard/ops/ingredients', label: 'Ingredients' },
+  { href: '/dashboard/ops/ingredients?dept=kitchen', label: 'Ingredients' },
+  { href: '/dashboard/ops/ingredients?dept=kitchen&view=stock', label: 'Stock' },
 
   { href: '#bar', label: 'Bar', section: true },
   { href: '/dashboard/ops/recipes?dept=bar', label: 'Drink recipes' },
+  { href: '/dashboard/ops/ingredients?dept=bar', label: 'Ingredients' },
+  { href: '/dashboard/ops/ingredients?dept=bar&view=stock', label: 'Stock' },
 
   { href: '#financials', label: 'Financials', section: true },
   { href: '/dashboard/ops', label: 'Dashboard' },

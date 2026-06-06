@@ -1,7 +1,14 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Suspense } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { ops, vnd, canManageRecipes, type StaffRole } from '@/lib/ops/api'
 import { supabase } from '@/lib/supabase'
+
+// Which ingredient categories belong to each department
+const DEPT_CATS: Record<string, string[]> = {
+  bar: ['spirit', 'beer', 'wine', 'mixer', 'syrup'],
+  kitchen: ['food', 'garnish', 'other', 'consumable'],
+}
 
 const CATEGORIES = ['spirit','beer','wine','mixer','syrup','garnish','food','consumable','other'] as const
 const BASE_UNITS = ['ml','g','each'] as const
@@ -24,13 +31,18 @@ type VendorRow = {
   email: string | null; order_notes: string | null; delivery_days: string | null
 }
 
-export default function IngredientsPage() {
+function IngredientsInner() {
+  const sp = useSearchParams()
+  const dept = sp.get('dept') // 'bar' | 'kitchen' | null
+  const urlView = sp.get('view')
   const [role, setRole] = useState<StaffRole | null>(null)
   const [venueId, setVenueId] = useState<string | null>(null)
   const [rows, setRows] = useState<Row[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState('')
-  const [view, setView] = useState<'ingredients' | 'consumables' | 'stock' | 'vendors' | 'all'>('ingredients')
+  const [view, setView] = useState<'ingredients' | 'consumables' | 'stock' | 'vendors' | 'all'>(
+    urlView === 'stock' ? 'stock' : urlView === 'vendors' ? 'vendors' : urlView === 'consumables' ? 'consumables' : urlView === 'all' ? 'all' : 'ingredients'
+  )
   const [supplierFilter, setSupplierFilter] = useState('all')
   const [openVendor, setOpenVendor] = useState<string | null>(null)
   const [orderQty, setOrderQty] = useState<Record<string, string>>({})
@@ -68,12 +80,15 @@ export default function IngredientsPage() {
   }
   const canManage = role && canManageRecipes(role)
 
+  // Department scope: bar shows drink ingredients, kitchen shows food ingredients
+  const scoped = dept && DEPT_CATS[dept] ? rows.filter(r => DEPT_CATS[dept].includes(r.category)) : rows
+
   // Distinct suppliers, alphabetical — powers the supplier toggle
-  const suppliers = Array.from(new Set(rows.map(r => (r.supplier || '').trim()).filter(Boolean)))
+  const suppliers = Array.from(new Set(scoped.map(r => (r.supplier || '').trim()).filter(Boolean)))
     .sort((a, b) => a.localeCompare(b))
   const vendorMap = new Map(vendors.map(v => [v.name, v]))
 
-  const filtered = rows.filter(r => {
+  const filtered = scoped.filter(r => {
     if (view === 'ingredients' && r.category === 'consumable') return false
     if (view === 'consumables' && r.category !== 'consumable') return false
     if (supplierFilter !== 'all' && (r.supplier || '').trim() !== supplierFilter) return false
@@ -86,7 +101,7 @@ export default function IngredientsPage() {
   // Vendors view: group every item by supplier, alphabetical, "No supplier set" last
   const vendorGroups: [string, Row[]][] = (() => {
     const map = new Map<string, Row[]>()
-    rows.forEach(r => {
+    scoped.forEach(r => {
       if (filter && !(r.name.toLowerCase().includes(filter.toLowerCase()) || (r.supplier || '').toLowerCase().includes(filter.toLowerCase()))) return
       const key = (r.supplier || '').trim() || 'No supplier set'
       if (!map.has(key)) map.set(key, [])
@@ -180,7 +195,7 @@ export default function IngredientsPage() {
     <div>
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 16 }}>
         <div>
-          <h2 style={{ fontSize: 22, fontWeight: 600 }}>Ingredients</h2>
+          <h2 style={{ fontSize: 22, fontWeight: 600 }}>{dept === 'bar' ? 'Bar — Ingredients' : dept === 'kitchen' ? 'Kitchen — Ingredients' : 'Ingredients'}</h2>
           <div style={{ fontSize: 13, color: 'var(--text-muted, #999)', marginTop: 2 }}>{view === 'vendors' ? `${vendorGroups.length} supplier${vendorGroups.length === 1 ? '' : 's'} · tap a supplier to build an order` : view === 'stock' ? `Count what you have in the units you buy · ${filtered.filter(isLow).length} below par` : `${filtered.length} ${view === 'consumables' ? 'consumables' : 'items'} · tap a row to edit, set supplier & see price history`}</div>
         </div>
         {canManage && <button onClick={() => { setEditing(null); setShowForm(true) }} style={btnPrimary}>+ Add ingredient</button>}
@@ -538,3 +553,11 @@ const btnSecondary = { padding: '9px 16px', background: 'transparent', color: 'v
 const btnTrash = { padding: '4px 8px', background: 'transparent', color: 'var(--burgundy, #7b2d3a)', border: 'none', cursor: 'pointer', fontSize: 15 }
 const modalBg = { position: 'fixed' as const, inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: 16 }
 const modal = { background: 'var(--bg-card, #fff)', padding: 22, borderRadius: 12, width: 'min(560px, 94vw)', maxHeight: '90vh', overflowY: 'auto' as const }
+
+export default function IngredientsPage() {
+  return (
+    <Suspense fallback={<div style={{ color: 'var(--text-muted, #999)', fontSize: 14 }}>Loading…</div>}>
+      <IngredientsInner />
+    </Suspense>
+  )
+}

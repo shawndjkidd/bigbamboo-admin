@@ -392,10 +392,11 @@ export default function RecipeDetailPage() {
               <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 10 }}>🛢 Keg / batch size</h3>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, alignItems: 'end' }}>
                 <div>
-                  <label className="label">Batch size (ml)</label>
+                  <label className="label">Batch size (litres)</label>
                   {canManage
-                    ? <input inputMode="decimal" value={kegInput} onChange={e => setKegInput(e.target.value)} style={inp} />
-                    : <div style={{ fontSize: 14 }}>{Number(recipe.yield_qty)} ml</div>}
+                    ? <input inputMode="decimal" value={kegInput === '' ? '' : String(Number(kegInput) / 1000)} onChange={e => setKegInput(e.target.value === '' ? '' : String(Math.round(Number(e.target.value) * 1000)))} style={inp} />
+                    : <div style={{ fontSize: 14 }}>{Number(recipe.yield_qty) / 1000} L</div>}
+                  <div style={{ fontSize: 11, color: 'var(--text-muted, #999)', marginTop: 2 }}>= {Number(kegInput || 0).toLocaleString()} ml</div>
                 </div>
                 <div>
                   <label className="label">Pour size (ml)</label>
