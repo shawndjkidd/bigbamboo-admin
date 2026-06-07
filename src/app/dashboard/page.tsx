@@ -7,6 +7,7 @@ import { ops, vnd, today, canSeeDashboard, type StaffRole } from '@/lib/ops/api'
 type DaySale = { occurred_on: string; net: number | null; gross: number | null; source?: string }
 type EventRow = { id: string; title: string; event_date: string; capacity: number | null; ticket_price: number | null; is_free: boolean | null }
 type ReconRow = { occurred_on: string; opening_float: number; cash_sales: number; payouts: number; counted_cash: number }
+type Pnl = { period_month: string; revenue: number; cogs: number; labor: number; opex: number; depreciation: number; prepaid_expense: number; net_income_accrual: number }
 
 export default function Overview() {
   const [role, setRole] = useState<StaffRole | null>(null)
@@ -15,6 +16,8 @@ export default function Overview() {
   const [claims, setClaims] = useState({ active: 0, total: 0, members: 0 })
   const [belowPar, setBelowPar] = useState<number | null>(null)
   const [lastRecon, setLastRecon] = useState<ReconRow | null>(null)
+  const [pnl, setPnl] = useState<Pnl[]>([])
+  const [pnlMonth, setPnlMonth] = useState<string>('')
   const [loading, setLoading] = useState(true)
 
   useEffect(() => { load() }, [])
@@ -41,8 +44,9 @@ export default function Overview() {
     if (fin) {
       tasks.push(ops().from('sales_daily').select('occurred_on, net, gross, source').gte('occurred_on', sinceStr).order('occurred_on', { ascending: false }))
       tasks.push(ops().from('cash_recon').select('occurred_on, opening_float, cash_sales, payouts, counted_cash').order('occurred_on', { ascending: false }).limit(1))
+      tasks.push(ops().from('v_pnl_accrual').select('*').order('period_month', { ascending: false }))
     }
-    const [ev, cl, mem, ing, s, rec] = await Promise.all(tasks)
+    const [ev, cl, mem, ing, s, rec, pl] = await Promise.all(tasks)
     setEvents((ev.data as EventRow[]) || [])
     const cd = cl.data || []
     setClaims({ active: cd.filter((c: any) => c.status === 'active' || c.status === 'issued').length, total: cd.length, members: mem.count || 0 })
@@ -50,6 +54,12 @@ export default function Overview() {
     setBelowPar(ings.filter(i => i.par_level_base != null && i.on_hand_base != null && Number(i.on_hand_base) < Number(i.par_level_base)).length)
     if (s) setSales((s.data as DaySale[]) || [])
     if (rec) setLastRecon(((rec.data as ReconRow[]) || [])[0] || null)
+    if (pl) {
+      const rows = (pl.data as Pnl[]) || []
+      setPnl(rows)
+      const cm = today().slice(0, 7) + '-01'
+      setPnlMonth(rows.some(r => r.period_month === cm) ? cm : (rows[0]?.period_month || cm))
+    }
     setLoading(false)
   }
 
@@ -74,15 +84,72 @@ export default function Overview() {
   const canFinance = role ? canSeeDashboard(role) : false
   const reconVar = lastRecon ? num(lastRecon.counted_cash) - (num(lastRecon.opening_float) + num(lastRecon.cash_sales) - num(lastRecon.payouts)) : null
 
+  // --- P&L (accrual) ---
+  const months = pnl.map(p => p.period_month)
+  const sel = pnl.find(p => p.period_month === pnlMonth) || null
+  const ytdRows = pnl.filter(p => pnlMonth && p.period_month.slice(0, 4) === pnlMonth.slice(0, 4) && p.period_month <= pnlMonth)
+  const sumF = (rows: Pnl[], k: keyof Pnl) => rows.reduce((a, r) => a + Number(r[k] || 0), 0)
+  const pnlLabel = (m: string) => m ? new Date(m).toLocaleDateString(undefined, { month: 'long', year: 'numeric' }) : ''
+  const idx = months.indexOf(pnlMonth)
+  const goOlder = () => { if (idx >= 0 && idx < months.length - 1) setPnlMonth(months[idx + 1]) }
+  const goNewer = () => { if (idx > 0) setPnlMonth(months[idx - 1]) }
+  const isCurrentMonth = pnlMonth === today().slice(0, 7) + '-01'
+  const pnlLines: [string, number, number, boolean][] = sel ? [
+    ['Revenue', Number(sel.revenue), sumF(ytdRows, 'revenue'), false],
+    ['Cost of goods (COGS)', -Number(sel.cogs), -sumF(ytdRows, 'cogs'), false],
+    ['Gross profit', Number(sel.revenue) - Number(sel.cogs), sumF(ytdRows, 'revenue') - sumF(ytdRows, 'cogs'), true],
+    ['Labor', -Number(sel.labor), -sumF(ytdRows, 'labor'), false],
+    ['Operating expenses', -Number(sel.opex), -sumF(ytdRows, 'opex'), false],
+    ['Depreciation', -Number(sel.depreciation), -sumF(ytdRows, 'depreciation'), false],
+    ['Net income', Number(sel.net_income_accrual), sumF(ytdRows, 'net_income_accrual'), true],
+  ] : []
+
   const card = { background: 'var(--bg-card)', border: '1px solid var(--border-light)', borderRadius: 14, padding: '18px 20px' } as const
   const kpiLabel = { fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase' as const, letterSpacing: '0.05em', marginBottom: 8 }
   const kpiVal = { fontSize: 26, fontWeight: 700, color: 'var(--text)' }
   const sectionH = { fontSize: 13, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.06em', color: 'var(--text-muted)', margin: '28px 0 12px' }
+  const navBtn = { width: 30, height: 30, borderRadius: 8, border: '1px solid var(--border-light)', background: 'var(--bg-card)', color: 'var(--text)', cursor: 'pointer', fontSize: 14 } as const
 
   return (
     <div style={{ maxWidth: 960 }}>
       <h1 style={{ fontSize: 26, fontWeight: 700, margin: '0 0 2px' }}>BigBamBoo</h1>
       <p style={{ fontSize: 14, color: 'var(--text-muted)', margin: 0 }}>Overview · {new Date().toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })}</p>
+
+      {/* Profit & Loss */}
+      {canFinance && (
+        <>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', margin: '24px 0 12px', flexWrap: 'wrap', gap: 8 }}>
+            <div style={{ ...sectionH, margin: 0 }}>Profit &amp; Loss {isCurrentMonth && <span style={{ color: 'var(--accent)' }}>· month to date</span>}</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <button onClick={goOlder} disabled={idx < 0 || idx >= months.length - 1} style={navBtn}>←</button>
+              <select value={pnlMonth} onChange={e => setPnlMonth(e.target.value)} style={{ padding: '6px 10px', fontSize: 13, fontWeight: 600, borderRadius: 8, border: '1px solid var(--border-light)', background: 'var(--bg-card)', color: 'var(--text)' }}>
+                {months.map(m => <option key={m} value={m}>{pnlLabel(m)}</option>)}
+              </select>
+              <button onClick={goNewer} disabled={idx <= 0} style={navBtn}>→</button>
+            </div>
+          </div>
+          <div style={card}>
+            {!sel ? <div style={{ color: 'var(--text-muted)', fontSize: 14 }}>No P&amp;L data for this month yet.</div> : (
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
+                <thead><tr>
+                  <th style={{ textAlign: 'left', padding: '4px 0', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)' }}></th>
+                  <th style={{ textAlign: 'right', padding: '4px 0', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)' }}>{pnlLabel(pnlMonth)}</th>
+                  <th style={{ textAlign: 'right', padding: '4px 0 4px 24px', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)' }}>{pnlMonth.slice(0, 4)} YTD</th>
+                </tr></thead>
+                <tbody>
+                  {pnlLines.map(([label, mv, yv, bold]) => (
+                    <tr key={label} style={{ borderTop: bold ? '1px solid var(--border-light)' : 'none' }}>
+                      <td style={{ padding: '8px 0', fontWeight: bold ? 700 : 400, color: bold ? 'var(--text)' : 'var(--text-secondary)' }}>{label}</td>
+                      <td style={{ padding: '8px 0', textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: bold ? 700 : 400, color: label === 'Net income' ? (mv >= 0 ? '#548235' : 'var(--burgundy, #7b2d3a)') : mv < 0 ? 'var(--text-muted)' : 'var(--text)' }}>{vnd(mv)}</td>
+                      <td style={{ padding: '8px 0 8px 24px', textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: bold ? 700 : 400, color: label === 'Net income' ? (yv >= 0 ? '#548235' : 'var(--burgundy, #7b2d3a)') : yv < 0 ? 'var(--text-muted)' : 'var(--text)' }}>{vnd(yv)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </>
+      )}
 
       {/* Needs attention */}
       <div style={sectionH}>At a glance</div>
