@@ -65,8 +65,10 @@ export default function OpsDashboard() {
     ])
     setCogsVar((variance.data as CogsVar) || null)
 
-    const cogsCats = ['food', 'mixer', 'beer', 'wine', 'liquor', 'garnish']
-    const opexCats = ['utilities', 'rent', 'marketing', 'repairs', 'consumable', 'other_opex']
+    const { data: catRows } = await ops().from('expense_categories').select('key,bucket')
+    const cogsCats = (catRows || []).filter((c: any) => c.bucket === 'cogs').map((c: any) => c.key)
+    const opexCats = (catRows || []).filter((c: any) => c.bucket === 'opex').map((c: any) => c.key)
+    const capexCats = (catRows || []).filter((c: any) => c.bucket === 'capex').map((c: any) => c.key)
     const sum = (rows: any[], pred: (r: any) => boolean) =>
       rows.filter(pred).reduce((a, r) => a + Number(r.amount || 0), 0)
 
@@ -88,7 +90,7 @@ export default function OpsDashboard() {
       cogs:    sum(purchaseRows, r => cogsCats.includes(r.category)),
       labor:   shiftRows.reduce((a, r) => a + Number(r.shift_cost || 0), 0),
       opex:    sum(purchaseRows, r => opexCats.includes(r.category)),
-      capex:   sum(purchaseRows, r => r.category === 'capex'),
+      capex:   sum(purchaseRows, r => capexCats.includes(r.category)),
     })
 
     // Daily sales — every day, deduped (Square preferred); was previously manual-only so Square days vanished

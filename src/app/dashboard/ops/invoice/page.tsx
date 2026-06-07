@@ -28,6 +28,7 @@ export default function InvoiceScanPage() {
   const [venueId, setVenueId] = useState<string | null>(null)
   const [ings, setIngs] = useState<Ing[]>([])
   const [vendorNames, setVendorNames] = useState<string[]>([])
+  const [cats, setCats] = useState<{ key: string; label: string }[]>([])
   const [items, setItems] = useState<Item[]>([])
   const [vendor, setVendor] = useState('')
   const [date, setDate] = useState(today())
@@ -58,6 +59,8 @@ export default function InvoiceScanPage() {
     ;(vd || []).forEach((v: any) => v.name && names.add(String(v.name).trim()))
     list.forEach(() => {})
     setVendorNames(Array.from(names).sort((a, b) => a.localeCompare(b)))
+    const { data: cs } = await ops().from('expense_categories').select('key,label').eq('active', true).order('sort_order')
+    if (cs && cs.length) { setCats(cs as any); if (!cs.some((c: any) => c.key === category)) setCategory(cs[0].key) }
     setLoading(false)
   }
 
@@ -145,7 +148,7 @@ export default function InvoiceScanPage() {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 160px 200px', gap: 10, marginBottom: 14 }}>
             <div><label className="label">Vendor</label><input value={vendor} list="inv-vendors" onChange={e => setVendor(e.target.value)} style={inp} placeholder="Vendor" /><datalist id="inv-vendors">{vendorNames.map(v => <option key={v} value={v} />)}</datalist></div>
             <div><label className="label">Date</label><input type="date" value={date} onChange={e => setDate(e.target.value)} style={inp} /></div>
-            <div><label className="label">Spend category</label><select value={category} onChange={e => setCategory(e.target.value)} style={inp}>{CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}</select></div>
+            <div><label className="label">Spend category</label><select value={category} onChange={e => setCategory(e.target.value)} style={inp}>{(cats.length ? cats : CATEGORIES.map(c => ({ key: c, label: c }))).map(c => <option key={c.key} value={c.key}>{c.label}</option>)}</select></div>
           </div>
 
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>

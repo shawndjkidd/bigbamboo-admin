@@ -28,6 +28,7 @@ export default function PurchasePage() {
   const [venueId, setVenueId] = useState<string | null>(null)
   const [recent, setRecent]   = useState<Row[]>([])
   const [vendors, setVendors] = useState<string[]>([])
+  const [cats, setCats] = useState<{ key: string; label: string }[]>([])
   const [date, setDate]       = useState(today())
   const [vendor, setVendor]   = useState('')
   const [category, setCategory] = useState('food')
@@ -57,6 +58,8 @@ export default function PurchasePage() {
     ;(vrows || []).forEach((v: any) => v.name && names.add(String(v.name).trim()))
     ;(irows || []).forEach((i: any) => i.supplier && names.add(String(i.supplier).trim()))
     setVendors(Array.from(names).sort((a, b) => a.localeCompare(b)))
+    const { data: cs } = await ops().from('expense_categories').select('key,label').eq('active', true).order('sort_order')
+    if (cs && cs.length) setCats(cs as any)
   }
 
   async function loadRecent(vid: string | null | undefined) {
@@ -136,7 +139,7 @@ export default function PurchasePage() {
         </Field>
         <Field label="Category">
           <select value={category} onChange={e => setCategory(e.target.value)} style={inp}>
-            {CATEGORIES.map(c => <option key={c.v} value={c.v}>{c.label}</option>)}
+            {(cats.length ? cats : CATEGORIES.map(c => ({ key: c.v, label: c.label }))).map(c => <option key={c.key} value={c.key}>{c.label}</option>)}
           </select>
         </Field>
         <Field label="Amount (VND)">

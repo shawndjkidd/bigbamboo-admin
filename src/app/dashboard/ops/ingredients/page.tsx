@@ -420,9 +420,21 @@ function VendorForm({ venueId, editing, onClose, onSaved }: { venueId: string; e
           </div>
           <Field label="Order notes"><textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2} style={{ ...inp, fontFamily: 'inherit', resize: 'vertical' }} placeholder="Min order, account number, cut-off time…" /></Field>
           <div style={{ fontSize: 12, color: 'var(--text-muted, #999)', marginTop: -4 }}>Add a phone (digits only, with country code) or email to enable the “Send” button on orders.</div>
-          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 4 }}>
-            <button type="button" onClick={onClose} style={btnSecondary}>Cancel</button>
-            <button type="submit" disabled={saving} style={btnPrimary}>{saving ? 'Saving…' : 'Save vendor'}</button>
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
+            <div>
+              {editing.id && <button type="button" onClick={async () => {
+                if (!confirm(`Delete vendor "${editing.name}"? This removes its contact details. Ingredients keep their supplier name.`)) return
+                setSaving(true); setMsg(null)
+                const { error } = await ops().from('vendors').delete().eq('id', editing.id!)
+                setSaving(false)
+                if (error) { setMsg(error.message); return }
+                onSaved()
+              }} style={{ ...btnSecondary, color: 'var(--burgundy, #7b2d3a)', borderColor: 'var(--burgundy, #7b2d3a)' }}>Delete</button>}
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button type="button" onClick={onClose} style={btnSecondary}>Cancel</button>
+              <button type="submit" disabled={saving} style={btnPrimary}>{saving ? 'Saving…' : 'Save vendor'}</button>
+            </div>
           </div>
           {msg && <div style={{ fontSize: 12, color: 'var(--burgundy, #7b2d3a)' }}>{msg}</div>}
         </form>
