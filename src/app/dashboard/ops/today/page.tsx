@@ -42,10 +42,12 @@ export default function CashReconPage() {
   async function init() {
     const { data: { session } } = await supabase.auth.getSession()
     const user = session?.user; if (!user) return
-    const { data: su } = await supabase.from('staff_users').select('role, venue_id').eq('email', user.email).maybeSingle()
+    const { data: su } = await supabase.from('staff_users').select('role').eq('email', user.email).maybeSingle()
     setRole((su?.role || 'staff') as StaffRole)
-    setVenueId(su?.venue_id || null)
-    if (su?.venue_id) { await loadDate(su.venue_id, date); await loadRecent(su.venue_id) }
+    const { data: venue } = await supabase.from('venues').select('id').eq('slug', 'bigbamboo').single()
+    const vid = venue?.id || null
+    setVenueId(vid)
+    if (vid) { await loadDate(vid, date); await loadRecent(vid) }
     setLoading(false)
   }
 

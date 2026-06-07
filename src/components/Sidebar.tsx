@@ -14,6 +14,12 @@ interface NavItem {
 const NAV: NavItem[] = [
   { href: '/dashboard', label: 'Overview' },
 
+  { href: '#financials', label: 'Financials', section: true },
+  { href: '/dashboard/ops', label: 'Dashboard' },
+  { href: '/dashboard/ops/today', label: 'Daily Sales' },
+  { href: '/dashboard/ops/purchase', label: 'Add Purchase' },
+  { href: '/dashboard/ops/square', label: 'Square POS' },
+
   { href: '#menu-events', label: 'Menu & Events', section: true },
   { href: '/dashboard/menu', label: 'Menu' },
   { href: '/dashboard/events', label: 'Events' },
@@ -28,12 +34,6 @@ const NAV: NavItem[] = [
   { href: '/dashboard/ops/recipes?dept=bar', label: 'Drink recipes' },
   { href: '/dashboard/ops/ingredients?dept=bar', label: 'Ingredients' },
   { href: '/dashboard/ops/ingredients?dept=bar&view=stock', label: 'Stock' },
-
-  { href: '#financials', label: 'Financials', section: true },
-  { href: '/dashboard/ops', label: 'Dashboard' },
-  { href: '/dashboard/ops/today', label: 'Daily Sales' },
-  { href: '/dashboard/ops/purchase', label: 'Add Purchase' },
-  { href: '/dashboard/ops/square', label: 'Square POS' },
 
   { href: '#jukebox', label: 'Jukebox', section: true },
   { href: '/jukebox/admin', label: 'Requests & Queue' },
