@@ -34,6 +34,7 @@ export default function CashReconPage() {
   const [countedCash, setCountedCash] = useState('')
   const [notes, setNotes] = useState('')
   const [pos, setPos] = useState<PosCash | null>(null)
+  const [recentSales, setRecentSales] = useState<{ occurred_on: string; net: number | null; source?: string }[]>([])
 
   useEffect(() => { init() }, [])
   useEffect(() => { if (venueId) loadDate(venueId, date) }, [date]) // eslint-disable-line
@@ -79,8 +80,18 @@ export default function CashReconPage() {
   }
 
   async function loadRecent(vid: string) {
-    const { data } = await ops().from('cash_recon').select('occurred_on, opening_float, cash_sales, card_sales, other_sales, payouts, counted_cash, notes').eq('venue_id', vid).order('occurred_on', { ascending: false }).limit(10)
-    setRecent((data as ReconRow[]) || [])
+    const [{ data: rc }, { data: sd }] = await Promise.all([
+      ops().from('cash_recon').select('occurred_on, opening_float, cash_sales, card_sales, other_sales, payouts, counted_cash, notes').eq('venue_id', vid).order('occurred_on', { ascending: false }).limit(60),
+      ops().from('sales_daily').select('occurred_on, net, source').eq('venue_id', vid).order('occurred_on', { ascending: false }).limit(120),
+    ])
+    setRecent((rc as ReconRow[]) || [])
+    // One row per day — prefer the Square figure when a day also has a manual entry
+    const m = new Map<string, { occurred_on: string; net: number | null; source?: string }>()
+    for (const d of ((sd as any[]) || [])) {
+      const ex = m.get(d.occurred_on)
+      if (!ex || (d.source === 'square' && ex.source !== 'square')) m.set(d.occurred_on, d)
+    }
+    setRecentSales(Array.from(m.values()))
   }
 
   const oFloat = num(openingFloat), cSales = num(cashSales), kSales = num(cardSales), oSales = num(otherSales)
@@ -89,6 +100,22 @@ export default function CashReconPage() {
   const expectedCash = oFloat + cSales - pay
   const variance = counted - expectedCash
   const canManage = role && canManageRecipes(role)
+
+  // Every sales day (deduped), with the cash count layered on where it exists
+  const mergedDays = (() => {
+    const m = new Map<string, { sales: number; counted: number | null; variance: number | null }>()
+    for (const s of recentSales) m.set(s.occurred_on, { sales: Number(s.net || 0), counted: null, variance: null })
+    for (const r of recent) {
+      const reconSales = Number(r.cash_sales) + Number(r.card_sales) + Number(r.other_sales)
+      const exp = Number(r.opening_float) + Number(r.cash_sales) - Number(r.payouts)
+      const c = m.get(r.occurred_on) || { sales: 0, counted: null, variance: null }
+      if (!c.sales) c.sales = reconSales
+      c.counted = Number(r.counted_cash) || null
+      c.variance = Number(r.counted_cash) ? Number(r.counted_cash) - exp : null
+      m.set(r.occurred_on, c)
+    }
+    return Array.from(m.entries()).map(([occurred_on, v]) => ({ occurred_on, ...v })).sort((a, b) => b.occurred_on.localeCompare(a.occurred_on)).slice(0, 21)
+  })()
 
   async function save() {
     if (!venueId) return
@@ -188,20 +215,15 @@ export default function CashReconPage() {
             <th style={{ ...th, textAlign: 'right' }}>Variance</th>
           </tr></thead>
           <tbody>
-            {recent.length === 0 && <tr><td colSpan={4} style={{ padding: 12, color: 'var(--text-muted, #999)' }}>No reconciliations yet.</td></tr>}
-            {recent.map(r => {
-              const sales = Number(r.cash_sales) + Number(r.card_sales) + Number(r.other_sales)
-              const exp = Number(r.opening_float) + Number(r.cash_sales) - Number(r.payouts)
-              const v = Number(r.counted_cash) - exp
-              return (
-                <tr key={r.occurred_on} style={{ borderTop: '1px solid var(--border, #eee)', cursor: 'pointer' }} onClick={() => setDate(r.occurred_on)}>
-                  <td style={td}>{r.occurred_on}</td>
-                  <td style={{ ...td, textAlign: 'right' }}>{vnd(sales)}</td>
-                  <td style={{ ...td, textAlign: 'right' }}>{vnd(r.counted_cash)}</td>
-                  <td style={{ ...td, textAlign: 'right', color: Math.abs(v) < 1 ? '#6b7280' : Math.abs(v) <= 50000 ? '#C65911' : 'var(--burgundy, #7b2d3a)' }}>{(v >= 0 ? '+' : '') + vnd(v)}</td>
-                </tr>
-              )
-            })}
+            {mergedDays.length === 0 && <tr><td colSpan={4} style={{ padding: 12, color: 'var(--text-muted, #999)' }}>No sales yet.</td></tr>}
+            {mergedDays.map(d => (
+              <tr key={d.occurred_on} style={{ borderTop: '1px solid var(--border, #eee)', cursor: 'pointer' }} onClick={() => setDate(d.occurred_on)}>
+                <td style={td}>{new Date(d.occurred_on).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })}</td>
+                <td style={{ ...td, textAlign: 'right' }}>{vnd(d.sales)}</td>
+                <td style={{ ...td, textAlign: 'right' }}>{d.counted == null ? '—' : vnd(d.counted)}</td>
+                <td style={{ ...td, textAlign: 'right', color: d.variance == null ? 'var(--text-muted, #bbb)' : Math.abs(d.variance) < 1 ? '#6b7280' : Math.abs(d.variance) <= 50000 ? '#C65911' : 'var(--burgundy, #7b2d3a)' }}>{d.variance == null ? '—' : (d.variance >= 0 ? '+' : '') + vnd(d.variance)}</td>
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>

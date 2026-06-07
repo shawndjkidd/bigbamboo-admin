@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import { ops, vnd, today, canSeeDashboard, type StaffRole } from '@/lib/ops/api'
 
-type DaySale = { occurred_on: string; net: number | null; gross: number | null }
+type DaySale = { occurred_on: string; net: number | null; gross: number | null; source?: string }
 type EventRow = { id: string; title: string; event_date: string; capacity: number | null; ticket_price: number | null; is_free: boolean | null }
 type ReconRow = { occurred_on: string; opening_float: number; cash_sales: number; payouts: number; counted_cash: number }
 
@@ -39,7 +39,7 @@ export default function Overview() {
     ]
     const fin = canSeeDashboard(r)
     if (fin) {
-      tasks.push(ops().from('sales_daily').select('occurred_on, net, gross').gte('occurred_on', sinceStr).order('occurred_on', { ascending: false }))
+      tasks.push(ops().from('sales_daily').select('occurred_on, net, gross, source').gte('occurred_on', sinceStr).order('occurred_on', { ascending: false }))
       tasks.push(ops().from('cash_recon').select('occurred_on, opening_float, cash_sales, payouts, counted_cash').order('occurred_on', { ascending: false }).limit(1))
     }
     const [ev, cl, mem, ing, s, rec] = await Promise.all(tasks)
@@ -57,11 +57,20 @@ export default function Overview() {
   const monthStr = td.slice(0, 7)
   const weekAgo = (() => { const d = new Date(); d.setDate(d.getDate() - 6); return d.toISOString().split('T')[0] })()
   const num = (n: number | null) => Number(n || 0)
-  const todayNet = sales.filter(d => d.occurred_on === td).reduce((a, d) => a + num(d.net), 0)
-  const weekNet = sales.filter(d => d.occurred_on >= weekAgo).reduce((a, d) => a + num(d.net), 0)
-  const monthNet = sales.filter(d => d.occurred_on.startsWith(monthStr)).reduce((a, d) => a + num(d.net), 0)
-  const net30 = sales.reduce((a, d) => a + num(d.net), 0)
-  const avg30 = sales.length ? net30 / sales.length : 0
+  // One figure per day: if a day has both a manual entry and a Square sync, prefer Square (actual POS).
+  const salesByDay: DaySale[] = (() => {
+    const m = new Map<string, DaySale>()
+    for (const d of sales) {
+      const ex = m.get(d.occurred_on)
+      if (!ex || (d.source === 'square' && ex.source !== 'square')) m.set(d.occurred_on, d)
+    }
+    return Array.from(m.values()).sort((a, b) => b.occurred_on.localeCompare(a.occurred_on))
+  })()
+  const todayNet = salesByDay.filter(d => d.occurred_on === td).reduce((a, d) => a + num(d.net), 0)
+  const weekNet = salesByDay.filter(d => d.occurred_on >= weekAgo).reduce((a, d) => a + num(d.net), 0)
+  const monthNet = salesByDay.filter(d => d.occurred_on.startsWith(monthStr)).reduce((a, d) => a + num(d.net), 0)
+  const net30 = salesByDay.reduce((a, d) => a + num(d.net), 0)
+  const avg30 = salesByDay.length ? net30 / salesByDay.length : 0
   const canFinance = role ? canSeeDashboard(role) : false
   const reconVar = lastRecon ? num(lastRecon.counted_cash) - (num(lastRecon.opening_float) + num(lastRecon.cash_sales) - num(lastRecon.payouts)) : null
 
@@ -113,7 +122,7 @@ export default function Overview() {
           {sales.length > 0 && (
             <div style={{ ...card, marginTop: 16 }}>
               <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 10 }}>Recent days</div>
-              {sales.slice(0, 6).map(d => (
+              {salesByDay.slice(0, 6).map(d => (
                 <div key={d.occurred_on} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, padding: '7px 0', borderTop: '1px solid var(--border-light)', color: 'var(--text-secondary)' }}>
                   <span>{new Date(d.occurred_on).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })}</span>
                   <span style={{ fontVariantNumeric: 'tabular-nums', color: 'var(--text)' }}>{vnd(num(d.net))}</span>
