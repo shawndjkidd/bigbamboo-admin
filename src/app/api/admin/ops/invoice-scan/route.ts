@@ -35,14 +35,26 @@ Rules:
     generationConfig: { temperature: 0, responseMimeType: 'application/json' },
   }
 
-  let r: Response
-  try {
-    r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${key}`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
-    })
-  } catch (e: any) { return NextResponse.json({ error: 'Gemini request failed: ' + (e?.message || e) }, { status: 502 }) }
-
-  if (!r.ok) return NextResponse.json({ error: `Gemini error ${r.status}: ${await r.text()}` }, { status: 502 })
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${key}`
+  // Gemini can return 503/429 when busy — retry a few times with backoff before giving up.
+  let r: Response | null = null
+  for (let attempt = 0; attempt < 4; attempt++) {
+    try {
+      r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+    } catch (e: any) {
+      if (attempt === 3) return NextResponse.json({ error: 'Could not reach the AI service: ' + (e?.message || e) }, { status: 502 })
+      await new Promise(s => setTimeout(s, 1500 * (attempt + 1))); continue
+    }
+    if ((r.status === 503 || r.status === 429) && attempt < 3) { await new Promise(s => setTimeout(s, 1500 * (attempt + 1))); continue }
+    break
+  }
+  if (!r || !r.ok) {
+    const s = r?.status
+    const friendly = (s === 503 || s === 429)
+      ? 'The AI is busy right now — give it a few seconds and tap Upload again.'
+      : `Gemini error ${s}: ${r ? await r.text() : 'no response'}`
+    return NextResponse.json({ error: friendly }, { status: 502 })
+  }
 
   const j: any = await r.json()
   const text = j?.candidates?.[0]?.content?.parts?.[0]?.text || ''
