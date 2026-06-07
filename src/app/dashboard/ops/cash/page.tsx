@@ -45,6 +45,7 @@ export default function CashPage() {
   const [week, setWeek] = useState<any[]>([])
   const [showTpl, setShowTpl] = useState(false)
   const [dayInputs, setDayInputs] = useState<Record<string, { counted: string; sales: string }>>({})
+  const [setBal, setSetBal] = useState('')
 
   useEffect(() => { init() }, [])
   async function init() {
@@ -77,6 +78,16 @@ export default function CashPage() {
     setWeek((days as any[]) || [])
   }
 
+  async function setBalance() {
+    if (!venueId || !tab) return
+    const target = num(setBal)
+    const cur = accts.find(a => a.account_id === tab)?.balance || 0
+    const delta = target - cur
+    if (delta === 0) { setMsg('Already at that amount.'); return }
+    const { error } = await ops().from('cash_movements').insert({ venue_id: venueId, account_id: tab, amount: delta, type: 'adjust', note: 'Set balance (count)' })
+    if (error) { setMsg(error.message); return }
+    setSetBal(''); setMsg(`✓ ${acctName(tab)} set to ${vnd(target)}.`); await load(venueId)
+  }
   async function saveTemplate(weekday: number, amount: number) {
     await ops().from('float_template').upsert({ venue_id: venueId, weekday, amount }, { onConflict: 'venue_id,weekday' })
     await load(venueId)
@@ -335,8 +346,14 @@ export default function CashPage() {
       {/* statement */}
       <div style={{ display: 'flex', gap: 6, marginBottom: 8, flexWrap: 'wrap' }}>
         {accts.map(a => (
-          <button key={a.account_id} onClick={() => setTab(a.account_id)} style={{ ...tabBtn, ...(tab === a.account_id ? tabActive : {}) }}>{a.name} statement</button>
+          <button key={a.account_id} onClick={() => { setTab(a.account_id); setSetBal('') }} style={{ ...tabBtn, ...(tab === a.account_id ? tabActive : {}) }}>{a.name} statement</button>
         ))}
+      </div>
+      <div style={{ ...row, marginBottom: 10, padding: '10px 12px', background: 'var(--bg-sidebar,#fafafa)', borderRadius: 8 }}>
+        <span style={{ fontSize: 13 }}>{acctName(tab)} now: <b>{vnd(accts.find(a => a.account_id === tab)?.balance || 0)}</b></span>
+        <span style={{ fontSize: 12, color: 'var(--text-muted,#999)' }}>— count it and correct it:</span>
+        <input inputMode="numeric" value={setBal} onChange={e => setSetBal(e.target.value)} style={{ ...inp, width: 150 }} placeholder="actual amount in there" />
+        <button onClick={setBalance} style={btn}>Set balance</button>
       </div>
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
         <thead><tr style={{ background: 'var(--bg-sidebar,#fafafa)' }}>
