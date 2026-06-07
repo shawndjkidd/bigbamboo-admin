@@ -6,7 +6,7 @@ import { supabase } from '@/lib/supabase'
 
 const CATEGORIES = ['food', 'mixer', 'beer', 'wine', 'liquor', 'garnish', 'consumable', 'other_opex']
 
-type Ing = { id: string; name: string; base_unit: string; purchase_unit_size: number; purchase_unit_label: string }
+type Ing = { id: string; name: string; base_unit: string; purchase_unit_size: number; purchase_unit_label: string; on_hand_base: number | null }
 type Item = { name: string; qty: number; total_price: number; unit: string | null; ingredientId: string }
 
 function guessIngredient(name: string, ings: Ing[]): string {
@@ -36,6 +36,7 @@ export default function InvoiceScanPage() {
   const [vat, setVat] = useState('0')
   const [delivery, setDelivery] = useState('0')
   const [landed, setLanded] = useState(true)
+  const [addToStock, setAddToStock] = useState(true)
   const [scanning, setScanning] = useState(false)
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState<string | null>(null)
@@ -50,7 +51,7 @@ export default function InvoiceScanPage() {
     const { data: venue } = await supabase.from('venues').select('id').eq('slug', 'bigbamboo').single()
     setVenueId(venue?.id || null)
     const [{ data: ig }, { data: vd }] = await Promise.all([
-      ops().from('ingredients').select('id, name, base_unit, purchase_unit_size, purchase_unit_label').order('name'),
+      ops().from('ingredients').select('id, name, base_unit, purchase_unit_size, purchase_unit_label, on_hand_base').order('name'),
       ops().from('vendors').select('name'),
     ])
     const list = (ig as Ing[]) || []
@@ -111,7 +112,13 @@ export default function InvoiceScanPage() {
       if (!row.ingredientId) continue
       const ing = ings.find(i => i.id === row.ingredientId); if (!ing) continue
       const perBase = perBaseOf(row); if (perBase == null) continue
-      const { error } = await ops().from('ingredients').update({ cost_method: 'manual', manual_cost_per_base: perBase, current_cost_per_base: perBase }).eq('id', ing.id)
+      const upd: any = { cost_method: 'manual', manual_cost_per_base: perBase, current_cost_per_base: perBase }
+      if (addToStock) {
+        const size = Number(ing.purchase_unit_size) || 1
+        upd.on_hand_base = (Number(ing.on_hand_base) || 0) + row.qty * size
+        upd.counted_at = new Date().toISOString()
+      }
+      const { error } = await ops().from('ingredients').update(upd).eq('id', ing.id)
       if (error) { setMsg('Failed updating ' + ing.name + ': ' + error.message); setBusy(false); return }
       await ops().from('ingredient_price_history').insert({ ingredient_id: ing.id, cost_per_base: perBase, observed_at: new Date().toISOString(), source: 'invoice' })
       updated++
@@ -121,7 +128,7 @@ export default function InvoiceScanPage() {
     })
     setBusy(false)
     if (pErr) { setMsg('Costs updated, but logging the purchase failed: ' + pErr.message); return }
-    setMsg(`✓ Updated ${updated} ingredient cost${updated === 1 ? '' : 's'} and logged a ${vnd(invoiceTotal)} purchase.`)
+    setMsg(`✓ Updated ${updated} ingredient${updated === 1 ? '' : 's'} (cost${addToStock ? ' + stock' : ''}) and logged a ${vnd(invoiceTotal)} purchase.`)
     setItems([])
   }
 
@@ -186,6 +193,10 @@ export default function InvoiceScanPage() {
           <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, marginTop: 10 }}>
             <input type="checkbox" checked={landed} onChange={e => setLanded(e.target.checked)} />
             Spread VAT &amp; delivery across ingredient costs (true landed cost)
+          </label>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, marginTop: 6 }}>
+            <input type="checkbox" checked={addToStock} onChange={e => setAddToStock(e.target.checked)} />
+            Add the purchased quantities to stock (receive into inventory)
           </label>
           <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginTop: 16, flexWrap: 'wrap', gap: 10 }}>
             <div style={{ fontSize: 12, color: 'var(--text-muted, #999)' }}>
