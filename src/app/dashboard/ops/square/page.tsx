@@ -94,7 +94,13 @@ export default function SquarePage() {
               <strong>Connected · {conn.environment}</strong>
               <span style={{ fontSize: 11, color: 'var(--text-muted, #999)' }}>merchant: {conn.square_merchant_id}</span>
             </div>
-            <div style={{ fontSize: 12, color: 'var(--text-muted, #999)' }}>Token expires {new Date(conn.expires_at).toLocaleString()}</div>
+            <div style={{ fontSize: 12, color: 'var(--text-muted, #999)' }}>Token expires {new Date(conn.expires_at).toLocaleString()} · renews itself automatically</div>
+            {canManage && (
+              <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                <a href="/api/admin/ops/square/connect" style={{ ...btnPrimary as any, padding: '8px 14px', fontSize: 13, background: 'transparent', color: 'var(--accent, #e87830)', border: '1px solid var(--accent, #e87830)' }}>Reconnect / update permissions</a>
+                <span style={{ fontSize: 11, color: 'var(--text-muted, #999)' }}>Only needed when Square permissions change — re-approves without losing data.</span>
+              </div>
+            )}
           </div>
 
           <div style={{ padding: 16, border: '1px solid var(--border, #e5e5e5)', borderRadius: 8, marginBottom: 16 }}>
