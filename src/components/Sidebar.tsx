@@ -20,6 +20,7 @@ const NAV: NavItem[] = [
   { href: '/dashboard/ops/purchase', label: 'Add Purchase' },
   { href: '/dashboard/ops/invoice', label: 'Scan Invoice' },
   { href: '/dashboard/ops/square', label: 'Square POS' },
+  { href: '/dashboard/ops/menu-map', label: 'Menu map' },
   { href: '/dashboard/ops/categories', label: 'Categories' },
 
   { href: '#menu-events', label: 'Menu & Events', section: true },

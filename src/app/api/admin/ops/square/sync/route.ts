@@ -57,6 +57,30 @@ async function run(req: NextRequest) {
       cursor = page.cursor
     } while (cursor)
 
+    // --- Recipe mapping for stock deduction: auto-match Square item names to recipes ---
+    const [{ data: recipeRows }, { data: mapRows }] = await Promise.all([
+      svc.schema('ops').from('recipes').select('id, name').eq('venue_id', venue.id),
+      svc.schema('ops').from('pos_item_map').select('item_name, recipe_id, ignore').eq('venue_id', venue.id),
+    ])
+    const recipeByName = new Map<string, string>()
+    ;(recipeRows || []).forEach((r: any) => r.name && recipeByName.set(String(r.name).trim().toLowerCase(), r.id))
+    const mapByName = new Map<string, { recipe_id: string | null; ignore: boolean }>()
+    ;(mapRows || []).forEach((m: any) => mapByName.set(String(m.item_name).trim().toLowerCase(), { recipe_id: m.recipe_id, ignore: !!m.ignore }))
+
+    async function resolveRecipeId(itemName: string): Promise<string | null> {
+      const key = itemName.trim().toLowerCase()
+      let entry = mapByName.get(key)
+      if (!entry) {
+        const matched = recipeByName.get(key) || null
+        // best-effort: remember this item so it shows on the fix-up screen (auto-matched if names line up)
+        const { error } = await svc.schema('ops').from('pos_item_map').insert({ venue_id: venue.id, item_name: itemName, recipe_id: matched })
+        if (error) console.warn('pos_item_map insert skipped:', error.message)
+        entry = { recipe_id: matched, ignore: false }
+        mapByName.set(key, entry)
+      }
+      return entry.ignore ? null : entry.recipe_id
+    }
+
     // Group orders by occurred_on (HCMC date) for daily rollup
     const dailyMap = new Map<string, { gross: number; tips: number; discounts: number; refunds: number }>()
 
@@ -81,10 +105,13 @@ async function run(req: NextRequest) {
         const liGross = li.total_money?.currency === 'VND' ? (li.total_money?.amount || 0) : (li.total_money?.amount || 0) / 100
         const liQty = Number(li.quantity || '1')
         const liUnit = liQty > 0 ? liGross / liQty : liGross
+        const itemName = li.name || '(unnamed)'
+        const recipeId = await resolveRecipeId(itemName)
         const { error: itemErr } = await svc.schema('ops').from('sales_items').upsert({
           venue_id: venue.id,
           occurred_at: closedAt.toISOString(),
-          menu_item_name: li.name || '(unnamed)',
+          menu_item_name: itemName,
+          recipe_id: recipeId,
           qty: liQty,
           unit_price: liUnit,
           discount: li.total_discount_money?.currency === 'VND' ? (li.total_discount_money?.amount || 0) : (li.total_discount_money?.amount || 0) / 100,
@@ -109,6 +136,10 @@ async function run(req: NextRequest) {
         source: 'square',
       }, { onConflict: 'venue_id,occurred_on,source' })
     }
+
+    // --- Deduct ingredient stock for newly-synced sold lines (idempotent via stock_applied) ---
+    try { await svc.schema('ops').rpc('apply_stock_deductions', { p_venue: venue.id }) }
+    catch (e: any) { console.warn('stock deduction skipped:', e?.message || String(e)) }
 
     // --- Cash drawer shifts → ops.cash_recon (POS cash figures). Non-fatal: needs CASH_DRAWER_READ scope. ---
     let drawerDays = 0
