@@ -98,7 +98,7 @@ async function run(req: NextRequest) {
     }
 
     // Upsert daily rollups from Square (source = 'square')
-    for (const [date, totals] of Array.from(dailyMap.entries())) {
+    for (const [date, totals] of dailyMap.entries()) {
       await svc.schema('ops').from('sales_daily').upsert({
         venue_id: venue.id,
         occurred_on: date,

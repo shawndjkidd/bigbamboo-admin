@@ -18,6 +18,7 @@ const NAV: NavItem[] = [
   { href: '/dashboard/ops', label: 'Dashboard' },
   { href: '/dashboard/ops/today', label: 'Daily Sales' },
   { href: '/dashboard/ops/purchase', label: 'Add Purchase' },
+  { href: '/dashboard/ops/invoice', label: 'Scan Invoice' },
   { href: '/dashboard/ops/square', label: 'Square POS' },
 
   { href: '#menu-events', label: 'Menu & Events', section: true },

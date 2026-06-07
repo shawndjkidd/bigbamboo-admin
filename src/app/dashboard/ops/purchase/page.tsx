@@ -117,6 +117,9 @@ export default function PurchasePage() {
       <div style={{ fontSize: 12, color: 'var(--text-muted, #999)', marginBottom: 24 }}>
         Log money out — groceries, alcohol, utilities, equipment. Snap the receipt if you have it.
       </div>
+      <div style={{ marginBottom: 20 }}>
+        <a href="/dashboard/ops/invoice" style={{ fontSize: 13, color: 'var(--accent, #e87830)', textDecoration: 'none' }}>📷 Scan an invoice instead — auto-update ingredient costs →</a>
+      </div>
 
       <form onSubmit={save} style={{ display: 'grid', gap: 14 }}>
         <Field label="Date">
