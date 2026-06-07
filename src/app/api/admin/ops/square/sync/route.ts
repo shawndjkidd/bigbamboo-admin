@@ -114,7 +114,7 @@ async function run(req: NextRequest) {
     let drawerDays = 0
     try {
       const money = (m: any) => m ? (m.currency === 'VND' ? Number(m.amount || 0) : Number(m.amount || 0) / 100) : 0
-      const dayAgg = new Map<string, { opening: number; paidIn: number; paidOut: number; expected: number; closed: number }>()
+      const dayAgg = new Map<string, { opening: number; cashSales: number; paidIn: number; paidOut: number; expected: number; closed: number }>()
       for (const locId of locationIds) {
         let scursor: string | undefined
         do {
@@ -125,8 +125,9 @@ async function run(req: NextRequest) {
             const full: any = await retrieveCashDrawerShift(token, locId, summary.id)
             const sh = full.cash_drawer_shift || summary
             const day = bizDate(new Date(closedAt))
-            const cur = dayAgg.get(day) || { opening: 0, paidIn: 0, paidOut: 0, expected: 0, closed: 0 }
+            const cur = dayAgg.get(day) || { opening: 0, cashSales: 0, paidIn: 0, paidOut: 0, expected: 0, closed: 0 }
             cur.opening += money(sh.opened_cash_money)
+            cur.cashSales += money(sh.cash_payment_money)
             cur.paidIn += money(sh.cash_paid_in_money)
             cur.paidOut += money(sh.cash_paid_out_money)
             cur.expected += money(sh.expected_cash_money)
@@ -139,7 +140,7 @@ async function run(req: NextRequest) {
       for (const [day, a] of Array.from(dayAgg.entries())) {
         await svc.schema('ops').from('cash_recon').upsert({
           venue_id: venue.id, occurred_on: day,
-          pos_opening_cash: a.opening, pos_cash_paid_in: a.paidIn, pos_cash_paid_out: a.paidOut,
+          pos_opening_cash: a.opening, pos_cash_sales: a.cashSales, pos_cash_paid_in: a.paidIn, pos_cash_paid_out: a.paidOut,
           pos_expected_cash: a.expected, pos_closed_cash: a.closed, pos_synced_at: new Date().toISOString(),
         }, { onConflict: 'venue_id,occurred_on' })
       }

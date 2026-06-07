@@ -9,7 +9,7 @@ type ReconRow = {
   payouts: number; counted_cash: number; notes: string | null
 }
 type PosCash = {
-  pos_opening_cash: number | null; pos_cash_paid_in: number | null; pos_cash_paid_out: number | null
+  pos_opening_cash: number | null; pos_cash_sales: number | null; pos_cash_paid_in: number | null; pos_cash_paid_out: number | null
   pos_expected_cash: number | null; pos_closed_cash: number | null; pos_synced_at: string | null
 }
 
@@ -67,7 +67,7 @@ export default function CashReconPage() {
     setHasPos((items || []).length > 0)
 
     setPos(rec ? {
-      pos_opening_cash: rec.pos_opening_cash, pos_cash_paid_in: rec.pos_cash_paid_in, pos_cash_paid_out: rec.pos_cash_paid_out,
+      pos_opening_cash: rec.pos_opening_cash, pos_cash_sales: rec.pos_cash_sales, pos_cash_paid_in: rec.pos_cash_paid_in, pos_cash_paid_out: rec.pos_cash_paid_out,
       pos_expected_cash: rec.pos_expected_cash, pos_closed_cash: rec.pos_closed_cash, pos_synced_at: rec.pos_synced_at,
     } : null)
     // Prefer the manager's saved value; fall back to the POS drawer figure when the saved one is empty/zero
@@ -101,6 +101,14 @@ export default function CashReconPage() {
   const totalSales = cSales + kSales + oSales
   const expectedCash = oFloat + cSales - pay
   const variance = counted - expectedCash
+  // POS-first: when the Square drawer has data, the headline figures come straight from it
+  const posExpected = pos?.pos_expected_cash != null ? Number(pos.pos_expected_cash) : null
+  const posCounted = pos?.pos_closed_cash != null ? Number(pos.pos_closed_cash) : null
+  const posVar = (posExpected != null && posCounted != null) ? posCounted - posExpected : null
+  const fromPos = posExpected != null || posCounted != null
+  const expShown = posExpected != null ? posExpected : expectedCash
+  const cntShown = posCounted != null ? posCounted : counted
+  const varShown = posVar != null ? posVar : (counted ? variance : null)
   const canManage = role && canManageRecipes(role)
 
   // Every sales day (deduped), with the cash count layered on where it exists
@@ -145,16 +153,16 @@ export default function CashReconPage() {
         </label>
       </div>
       <div style={{ fontSize: 13, color: 'var(--text-muted, #999)', marginBottom: 20 }}>
-        {hasPos ? 'Sales below are pulled from Square for this day — adjust if needed.' : 'No Square sales synced for this day yet. Enter the figures manually, or sync Square and reload.'}
+        {fromPos ? 'Cash drawer figures are pulled from your POS (below). The manual boxes are only a fallback / override.' : 'No POS cash-drawer shift for this day yet — open & close the drawer in the POS and sync, and it fills in automatically. Until then you can enter figures manually below.'}
       </div>
 
       {/* Summary */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 24 }}>
         <Stat label="Total sales" value={vnd(totalSales)} />
-        <Stat label="Expected cash" value={vnd(expectedCash)} sub="float + cash − payouts" />
-        <Stat label="Counted cash" value={counted ? vnd(counted) : '—'} />
-        <Stat label="Variance" value={(variance >= 0 ? '+' : '') + vnd(variance)}
-          accent={counted === 0 ? '#999' : Math.abs(variance) < 1 ? '#6b7280' : Math.abs(variance) <= 50000 ? '#C65911' : 'var(--burgundy, #7b2d3a)'} />
+        <Stat label="Expected cash" value={vnd(expShown)} sub={fromPos ? 'from POS drawer' : 'float + cash − payouts'} />
+        <Stat label="Counted cash" value={cntShown ? vnd(cntShown) : '—'} sub={fromPos && posCounted != null ? 'counted on POS' : undefined} />
+        <Stat label="Over / short" value={varShown == null ? '—' : (varShown >= 0 ? '+' : '') + vnd(varShown)}
+          accent={varShown == null ? '#999' : Math.abs(varShown) < 1 ? '#6b7280' : Math.abs(varShown) <= 50000 ? '#C65911' : 'var(--burgundy, #7b2d3a)'} />
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
@@ -177,8 +185,8 @@ export default function CashReconPage() {
       {pos && (pos.pos_expected_cash != null || pos.pos_opening_cash != null || pos.pos_closed_cash != null) && (
         <div className="card" style={{ padding: 18, marginTop: 16 }}>
           <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted, #999)', marginBottom: 12 }}>From Square cash drawer</div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 12 }}>
-            {([['Opening', pos.pos_opening_cash], ['Paid in', pos.pos_cash_paid_in], ['Paid out', pos.pos_cash_paid_out], ['Expected', pos.pos_expected_cash], ['Closed', pos.pos_closed_cash]] as [string, number | null][]).map(([l, v]) => (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 12 }}>
+            {([['Opening', pos.pos_opening_cash], ['Cash sales', pos.pos_cash_sales], ['Paid in', pos.pos_cash_paid_in], ['Paid out', pos.pos_cash_paid_out], ['Expected', pos.pos_expected_cash], ['Closed', pos.pos_closed_cash]] as [string, number | null][]).map(([l, v]) => (
               <div key={l}>
                 <div style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted, #999)' }}>{l}</div>
                 <div style={{ fontSize: 15, fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{v == null ? '—' : vnd(Number(v))}</div>
