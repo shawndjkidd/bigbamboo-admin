@@ -27,6 +27,7 @@ type Row = {
 export default function PurchasePage() {
   const [venueId, setVenueId] = useState<string | null>(null)
   const [recent, setRecent]   = useState<Row[]>([])
+  const [vendors, setVendors] = useState<string[]>([])
   const [date, setDate]       = useState(today())
   const [vendor, setVendor]   = useState('')
   const [category, setCategory] = useState('food')
@@ -43,9 +44,19 @@ export default function PurchasePage() {
 
     const user = session?.user
     if (!user) return
-    const { data: su } = await supabase.from('staff_users').select('venue_id').eq('email', user.email).single()
-    setVenueId(su?.venue_id || null)
-    await loadRecent(su?.venue_id)
+    const { data: venue } = await supabase.from('venues').select('id').eq('slug', 'bigbamboo').single()
+    const vid = venue?.id || null
+    setVenueId(vid)
+    await loadRecent(vid)
+    // Vendor pick-list: existing vendor records + suppliers already on ingredients
+    const [{ data: vrows }, { data: irows }] = await Promise.all([
+      ops().from('vendors').select('name'),
+      ops().from('ingredients').select('supplier'),
+    ])
+    const names = new Set<string>()
+    ;(vrows || []).forEach((v: any) => v.name && names.add(String(v.name).trim()))
+    ;(irows || []).forEach((i: any) => i.supplier && names.add(String(i.supplier).trim()))
+    setVendors(Array.from(names).sort((a, b) => a.localeCompare(b)))
   }
 
   async function loadRecent(vid: string | null | undefined) {
@@ -111,8 +122,14 @@ export default function PurchasePage() {
         <Field label="Date">
           <input type="date" value={date} onChange={e => setDate(e.target.value)} required style={inp} />
         </Field>
-        <Field label="Vendor (optional)">
-          <input type="text" value={vendor} onChange={e => setVendor(e.target.value)} placeholder="e.g. Huda, Tartine, Local market" style={inp} />
+        <Field label="Vendor">
+          <input type="text" list="vendor-list" value={vendor} onChange={e => setVendor(e.target.value)} placeholder="Pick or type a vendor…" style={inp} />
+          <datalist id="vendor-list">
+            {vendors.map(v => <option key={v} value={v} />)}
+          </datalist>
+          <div style={{ fontSize: 11, marginTop: 4 }}>
+            <a href="/dashboard/ops/ingredients?view=vendors" style={{ color: 'var(--accent, #e87830)', textDecoration: 'none' }}>+ Add / manage vendors</a>
+          </div>
         </Field>
         <Field label="Category">
           <select value={category} onChange={e => setCategory(e.target.value)} style={inp}>

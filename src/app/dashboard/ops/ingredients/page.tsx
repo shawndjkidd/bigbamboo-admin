@@ -87,6 +87,7 @@ function IngredientsInner() {
   const suppliers = Array.from(new Set(scoped.map(r => (r.supplier || '').trim()).filter(Boolean)))
     .sort((a, b) => a.localeCompare(b))
   const vendorMap = new Map(vendors.map(v => [v.name, v]))
+  const vendorNames = Array.from(new Set([...suppliers, ...vendors.map(v => v.name)].filter(Boolean))).sort((a, b) => a.localeCompare(b))
 
   const filtered = scoped.filter(r => {
     if (view === 'ingredients' && r.category === 'consumable') return false
@@ -221,7 +222,8 @@ function IngredientsInner() {
 
       {view === 'vendors' ? (
         <div style={{ display: 'grid', gap: 8 }}>
-          {vendorGroups.length === 0 && <div style={{ padding: 14, color: 'var(--text-muted, #999)' }}>No suppliers yet. Open an ingredient and set its supplier — they’ll group here.</div>}
+          {canManage && <div style={{ marginBottom: 4 }}><button onClick={() => openVendorEdit('')} style={btnPrimary}>+ Add vendor</button></div>}
+          {vendorGroups.length === 0 && <div style={{ padding: 14, color: 'var(--text-muted, #999)' }}>No vendors yet. Tap “+ Add vendor”, or set a supplier on an ingredient.</div>}
           {vendorGroups.map(([vendor, items]) => {
             const isOpen = openVendor === vendor
             return (
@@ -357,7 +359,7 @@ function IngredientsInner() {
       )}
 
       {showForm && venueId && (
-        <IngredientForm venueId={venueId} editing={editing} onClose={() => { setShowForm(false); setEditing(null) }} onSaved={() => { setShowForm(false); setEditing(null); load() }} />
+        <IngredientForm venueId={venueId} editing={editing} vendorNames={vendorNames} onClose={() => { setShowForm(false); setEditing(null) }} onSaved={() => { setShowForm(false); setEditing(null); load() }} />
       )}
       {showVendorForm && venueId && editVendor && (
         <VendorForm venueId={venueId} editing={editVendor} onClose={() => { setShowVendorForm(false); setEditVendor(null) }} onSaved={() => { setShowVendorForm(false); setEditVendor(null); load() }} />
@@ -429,7 +431,7 @@ function VendorForm({ venueId, editing, onClose, onSaved }: { venueId: string; e
   )
 }
 
-function IngredientForm({ venueId, editing, onClose, onSaved }: { venueId: string; editing: Row | null; onClose: () => void; onSaved: () => void }) {
+function IngredientForm({ venueId, editing, vendorNames, onClose, onSaved }: { venueId: string; editing: Row | null; vendorNames: string[]; onClose: () => void; onSaved: () => void }) {
   const [name, setName] = useState(editing?.name || '')
   const [category, setCategory] = useState(editing?.category || 'food')
   const [supplier, setSupplier] = useState(editing?.supplier || '')
@@ -498,7 +500,7 @@ function IngredientForm({ venueId, editing, onClose, onSaved }: { venueId: strin
         <form onSubmit={save} style={{ display: 'grid', gap: 12 }}>
           <Field label="Name"><input value={name} onChange={e => setName(e.target.value)} style={inp} placeholder="e.g. Kewpie mayonnaise" autoFocus /></Field>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-            <Field label="Supplier / where you buy it"><input value={supplier} onChange={e => setSupplier(e.target.value)} style={inp} placeholder="e.g. Metro, Annam" /></Field>
+            <Field label="Supplier / where you buy it"><input value={supplier} list="ing-vendor-list" onChange={e => setSupplier(e.target.value)} style={inp} placeholder="Pick or type a vendor…" /><datalist id="ing-vendor-list">{vendorNames.map(v => <option key={v} value={v} />)}</datalist></Field>
             <Field label="Category"><select value={category} onChange={e => setCategory(e.target.value)} style={inp}>{CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}</select></Field>
           </div>
           <Field label="Notes"><textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2} style={{ ...inp, fontFamily: 'inherit', resize: 'vertical' }} placeholder="Brand, pack details, substitutes…" /></Field>
