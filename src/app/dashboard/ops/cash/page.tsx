@@ -35,6 +35,10 @@ const dateForWeekday = (monStr: string, weekday: number) => {
   const m = new Date(monStr + 'T12:00:00'); const off = (weekday + 6) % 7
   const d = new Date(m); d.setDate(m.getDate() + off); return fmt(d)
 }
+// VND notes, largest first
+const NOTES = [500000, 200000, 100000, 50000, 20000, 10000, 5000, 2000, 1000]
+type Denoms = Record<string, number>
+const denomTotal = (d: Denoms) => NOTES.reduce((s, n) => s + n * (Number(d[n]) || 0), 0)
 
 export default function CashPage() {
   const [role, setRole] = useState<StaffRole | null>(null)
@@ -67,6 +71,17 @@ export default function CashPage() {
   const [editId, setEditId] = useState<string | null>(null); const [eAmt, setEAmt] = useState(''); const [eNote, setENote] = useState('')
   const [setBal, setSetBal] = useState('')
 
+  // denominations + float builder
+  const [safeCount, setSafeCount] = useState<Record<string, string>>({})
+  const [recipe, setRecipe] = useState<Record<string, string>>({})
+  const [nBags, setNBags] = useState('')
+  const [showDenom, setShowDenom] = useState(false)
+
+  // history (closed weeks)
+  const [histWeeks, setHistWeeks] = useState<Week[]>([])
+  const [histBags, setHistBags] = useState<Bag[]>([])
+  const [showHist, setShowHist] = useState(false)
+
   useEffect(() => { init() }, [])
   async function init() {
     const { data: { session } } = await supabase.auth.getSession()
@@ -95,6 +110,24 @@ export default function CashPage() {
       setBags((bg as Bag[]) || [])
     } else setBags([])
     if (!tab && accts2.length) setTab(accts2.find(x => x.kind === 'safe')?.account_id || accts2[0].account_id)
+
+    // history: recent closed weeks + their bags
+    const { data: hw } = await ops().from('float_week').select('*').eq('venue_id', vid).eq('status', 'closed').order('week_start', { ascending: false }).limit(8)
+    setHistWeeks((hw as Week[]) || [])
+    const ids = ((hw as Week[]) || []).map(w => w.id)
+    if (ids.length) {
+      const { data: hb } = await ops().from('float_bag').select('*').in('week_id', ids).order('business_date')
+      setHistBags((hb as Bag[]) || [])
+    } else setHistBags([])
+
+    // latest saved denomination count + float recipe
+    const [{ data: sc }, { data: rc }] = await Promise.all([
+      ops().from('cash_count').select('denoms').eq('venue_id', vid).eq('context', 'safe_count').order('counted_at', { ascending: false }).limit(1).maybeSingle(),
+      ops().from('cash_count').select('denoms').eq('venue_id', vid).eq('context', 'float_recipe').order('counted_at', { ascending: false }).limit(1).maybeSingle(),
+    ])
+    const toStr = (d: any) => { const o: Record<string, string> = {}; if (d) for (const k of Object.keys(d)) o[k] = String(d[k]); return o }
+    if (sc?.denoms) setSafeCount(toStr(sc.denoms))
+    if (rc?.denoms) setRecipe(toStr(rc.denoms))
   }
 
   const num = (s: string) => Number((s || '').replace(/[^\d-]/g, '')) || 0
@@ -257,6 +290,33 @@ export default function CashPage() {
     setMsg('Week reset.'); await load(venueId)
   }
 
+  // ───────────────────────────── denominations + float builder ─────────────────────────────
+  const safeCountDenoms: Denoms = NOTES.reduce((o, n) => ({ ...o, [n]: num(safeCount[n] || '') }), {})
+  const recipeDenoms: Denoms = NOTES.reduce((o, n) => ({ ...o, [n]: num(recipe[n] || '') }), {})
+  const safeCountTotal = denomTotal(safeCountDenoms)
+  const recipeTotal = denomTotal(recipeDenoms)
+  const bagsToBuild = num(nBags) || openDays.length
+  const safeRecorded = safe?.balance || 0
+  const countDiff = safeCountTotal - safeRecorded
+
+  async function saveSafeCount() {
+    if (!venueId) return
+    await ops().from('cash_count').insert({ venue_id: venueId, context: 'safe_count', denoms: safeCountDenoms, total: safeCountTotal, person: role })
+    setMsg(`✓ Safe count saved (${vnd(safeCountTotal)}).${countDiff !== 0 ? ` That is ${countDiff > 0 ? 'over' : 'under'} the recorded balance by ${vnd(Math.abs(countDiff))}.` : ''}`)
+  }
+  async function saveRecipe() {
+    if (!venueId) return
+    await ops().from('cash_count').insert({ venue_id: venueId, context: 'float_recipe', denoms: recipeDenoms, total: recipeTotal })
+    setMsg(`✓ Float recipe saved — ${vnd(recipeTotal)} per bag.`)
+  }
+  async function setSafeToCount() {
+    if (!venueId || !safe || !isSuper) return
+    if (countDiff === 0) { setMsg('Safe already matches the count.'); return }
+    await ops().from('cash_movements').insert({ venue_id: venueId, account_id: safe.account_id, amount: countDiff, type: 'adjust', note: `Set Safe to counted (${vnd(safeCountTotal)})` })
+    setMsg(`✓ Safe corrected to the counted ${vnd(safeCountTotal)}.`); await load(venueId)
+  }
+  const histByWeek = (wid: string) => histBags.filter(b => b.week_id === wid)
+
   if (loading) return <div style={{ color: 'var(--text-muted, #999)', fontSize: 14 }}>Loading…</div>
   if (!canOp) return <div style={{ color: 'var(--text-muted, #999)', fontSize: 14 }}>Cash management is for managers and above.</div>
   const locked = (t: string) => t === 'bag_out' || t === 'bag_in' || t === 'float_issue' || t === 'float_return'
@@ -394,6 +454,104 @@ export default function CashPage() {
           </div>
         )}
       </div>
+
+      {/* denominations + float builder */}
+      <div className="card" style={{ padding: 14, marginBottom: 14 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+          <div style={hdr}>Count notes &amp; build floats <span style={tagAcct}>accounting</span></div>
+          <button onClick={() => setShowDenom(s => !s)} style={{ ...btnLink, fontWeight: 600, color: 'var(--accent,#e87830)' }}>{showDenom ? 'Hide' : 'Open'}</button>
+        </div>
+        {!showDenom && <div style={{ fontSize: 13, color: 'var(--text-secondary,#555)', marginTop: 4 }}>Counted safe: <b>{vnd(safeCountTotal)}</b> · per-bag recipe: <b>{vnd(recipeTotal)}</b></div>}
+        {showDenom && (
+          <div style={{ marginTop: 10 }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, maxWidth: 560 }}>
+              <thead><tr style={{ background: 'var(--bg-sidebar,#fafafa)' }}>
+                <th style={th}>Note</th>
+                <th style={{ ...th, textAlign: 'right' }}>In safe (qty)</th>
+                <th style={{ ...th, textAlign: 'right' }}>= value</th>
+                <th style={{ ...th, textAlign: 'right' }}>Per bag (qty)</th>
+                <th style={{ ...th, textAlign: 'right' }}>Need ×{bagsToBuild}</th>
+                <th style={{ ...th, textAlign: 'right' }}>Short</th>
+              </tr></thead>
+              <tbody>
+                {NOTES.map(n => {
+                  const inSafe = num(safeCount[n] || ''); const per = num(recipe[n] || ''); const need = per * bagsToBuild
+                  const short = Math.max(0, need - inSafe)
+                  return (
+                    <tr key={n} style={{ borderTop: '1px solid var(--border,#eee)' }}>
+                      <td style={td}>{vnd(n)}</td>
+                      <td style={{ ...td, textAlign: 'right' }}><input inputMode="numeric" value={safeCount[n] || ''} onChange={e => setSafeCount(p => ({ ...p, [n]: e.target.value }))} style={{ ...inp, width: 70, textAlign: 'right', padding: '5px 7px' }} /></td>
+                      <td style={{ ...td, textAlign: 'right', color: 'var(--text-muted,#999)' }}>{inSafe ? vnd(n * inSafe) : ''}</td>
+                      <td style={{ ...td, textAlign: 'right' }}><input inputMode="numeric" value={recipe[n] || ''} onChange={e => setRecipe(p => ({ ...p, [n]: e.target.value }))} style={{ ...inp, width: 60, textAlign: 'right', padding: '5px 7px' }} /></td>
+                      <td style={{ ...td, textAlign: 'right' }}>{need || ''}</td>
+                      <td style={{ ...td, textAlign: 'right', color: short ? 'var(--burgundy,#7b2d3a)' : 'var(--text-muted,#bbb)', fontWeight: short ? 600 : 400 }}>{short || ''}</td>
+                    </tr>
+                  )
+                })}
+                <tr style={{ borderTop: '2px solid var(--border,#ddd)', fontWeight: 600 }}>
+                  <td style={td}>Total</td>
+                  <td style={{ ...td, textAlign: 'right' }}></td>
+                  <td style={{ ...td, textAlign: 'right' }}>{vnd(safeCountTotal)}</td>
+                  <td style={{ ...td, textAlign: 'right' }}></td>
+                  <td style={{ ...td, textAlign: 'right' }}>{vnd(recipeTotal * bagsToBuild)}</td>
+                  <td style={{ ...td, textAlign: 'right' }}></td>
+                </tr>
+              </tbody>
+            </table>
+
+            <div style={{ ...row, marginTop: 10 }}>
+              <span style={{ fontSize: 13 }}>Recorded Safe <b>{vnd(safeRecorded)}</b> · counted <b>{vnd(safeCountTotal)}</b> · <span style={{ color: !countDiff ? '#548235' : 'var(--burgundy,#7b2d3a)' }}>{!countDiff ? 'matches' : `${countDiff > 0 ? 'over' : 'short'} ${vnd(Math.abs(countDiff))}`}</span></span>
+            </div>
+            <div style={{ ...row, marginTop: 8 }}>
+              <button onClick={saveSafeCount} style={btn}>Save safe count</button>
+              <button onClick={saveRecipe} style={{ ...btn, background: 'var(--text-secondary,#666)' }}>Save float recipe</button>
+              {isSuper && <button onClick={setSafeToCount} style={{ ...btn, background: 'var(--burgundy,#7b2d3a)' }}>Set Safe to count</button>}
+              <span style={{ fontSize: 13, color: 'var(--text-muted,#777)', display: 'flex', alignItems: 'center', gap: 6 }}>bags to build <input inputMode="numeric" value={nBags} onChange={e => setNBags(e.target.value)} style={{ ...inp, width: 56, padding: '5px 7px' }} placeholder={String(openDays.length)} /></span>
+            </div>
+            <div style={{ fontSize: 11, color: 'var(--text-muted,#999)', marginTop: 8 }}>
+              Set the note mix that makes one float bag (small notes for change), then count what is in the safe. “Short” shows how many of each note to draw from the bank to build {bagsToBuild} bag{bagsToBuild === 1 ? '' : 's'}. Counting the safe also reconciles it against the recorded balance.
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* history */}
+      {histWeeks.length > 0 && (
+        <div className="card" style={{ padding: 14, marginBottom: 14 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+            <div style={hdr}>Past weeks</div>
+            <button onClick={() => setShowHist(s => !s)} style={{ ...btnLink, fontWeight: 600, color: 'var(--accent,#e87830)' }}>{showHist ? 'Hide' : 'Show'}</button>
+          </div>
+          {showHist && histWeeks.map(w => {
+            const bs = histByWeek(w.id)
+            const sales = bs.reduce((s, b) => s + Number(b.sales || 0), 0)
+            return (
+              <div key={w.id} style={{ borderTop: '1px solid var(--border,#eee)', padding: '10px 0' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 6 }}>
+                  <b style={{ fontSize: 14 }}>Week of {w.week_start}</b>
+                  <span style={{ fontSize: 13, color: 'var(--text-secondary,#555)' }}>built {vnd(w.built_total)} · sales {vnd(sales)} · deposited {vnd(w.deposited_total)}</span>
+                </div>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5, marginTop: 6 }}>
+                  <thead><tr style={{ color: 'var(--text-muted,#999)' }}>
+                    <th style={{ ...th, padding: '4px 8px' }}>Day</th><th style={{ ...th, padding: '4px 8px', textAlign: 'right' }}>Float</th><th style={{ ...th, padding: '4px 8px', textAlign: 'right' }}>Counted</th><th style={{ ...th, padding: '4px 8px', textAlign: 'right' }}>Sales</th><th style={{ ...th, padding: '4px 8px', textAlign: 'right' }}>Over/short</th>
+                  </tr></thead>
+                  <tbody>
+                    {bs.map(b => (
+                      <tr key={b.id} style={{ borderTop: '1px solid var(--border,#f0f0f0)' }}>
+                        <td style={{ ...td, padding: '5px 8px' }}>{b.label} <span style={{ color: 'var(--text-muted,#aaa)' }}>{b.business_date.slice(5)}</span></td>
+                        <td style={{ ...td, padding: '5px 8px', textAlign: 'right' }}>{vnd(b.built_amount)}</td>
+                        <td style={{ ...td, padding: '5px 8px', textAlign: 'right' }}>{b.counted != null ? vnd(b.counted) : '—'}</td>
+                        <td style={{ ...td, padding: '5px 8px', textAlign: 'right' }}>{vnd(b.sales)}</td>
+                        <td style={{ ...td, padding: '5px 8px', textAlign: 'right', color: !b.over_short ? 'var(--text-muted,#aaa)' : 'var(--burgundy,#7b2d3a)' }}>{b.over_short != null ? (b.over_short ? vnd(b.over_short) : 'ok') : '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )
+          })}
+        </div>
+      )}
 
       {/* record a movement */}
       <div className="card" style={{ padding: 14, marginBottom: 14 }}>
