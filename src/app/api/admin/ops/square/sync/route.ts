@@ -33,6 +33,10 @@ async function run(req: NextRequest) {
   const end = new Date()
   const start = new Date(end.getTime() - days * 24 * 60 * 60 * 1000)
 
+  // Trading-night grouping: sales before 3am count toward the previous calendar day (HCMC).
+  const BUSINESS_DAY_CUTOFF_H = 3
+  const bizDate = (dt: Date) => new Date(dt.getTime() - BUSINESS_DAY_CUTOFF_H * 3600 * 1000).toLocaleDateString('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' })
+
   // Start sync log
   const { data: logRow } = await svc.schema('ops').from('square_sync_log').insert({
     venue_id: venue.id, kind: 'orders', status: 'running',
@@ -59,7 +63,7 @@ async function run(req: NextRequest) {
     for (const order of orders) {
       const closedAt = order.closed_at ? new Date(order.closed_at) : null
       if (!closedAt) { skipped++; continue }
-      const occurredOn = closedAt.toLocaleDateString('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' }) // YYYY-MM-DD
+      const occurredOn = bizDate(closedAt) // trading-night date (3am cutoff, HCMC)
       const total = (order.total_money?.amount || 0) / 100 * 1 // Square uses cents; for VND it's already whole units but /100 anyway because Square always returns minor units
       // ⚠️ Square VND uses base units (no /100). Detect by currency.
       const gross = (order.total_money?.currency === 'VND' ? (order.total_money?.amount || 0) : total)
@@ -120,7 +124,7 @@ async function run(req: NextRequest) {
             if (!closedAt) continue
             const full: any = await retrieveCashDrawerShift(token, locId, summary.id)
             const sh = full.cash_drawer_shift || summary
-            const day = new Date(closedAt).toLocaleDateString('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' })
+            const day = bizDate(new Date(closedAt))
             const cur = dayAgg.get(day) || { opening: 0, paidIn: 0, paidOut: 0, expected: 0, closed: 0 }
             cur.opening += money(sh.opened_cash_money)
             cur.paidIn += money(sh.cash_paid_in_money)
