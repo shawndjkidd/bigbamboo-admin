@@ -33,6 +33,11 @@ export default function EventsPnlPage() {
   const [csCat, setCsCat] = useState('entertainment'); const [csVendor, setCsVendor] = useState(''); const [csAmt, setCsAmt] = useState('')
   const [cpRecipe, setCpRecipe] = useState(''); const [cpQty, setCpQty] = useState('1'); const [cpManual, setCpManual] = useState(''); const [cpDeduct, setCpDeduct] = useState(true)
 
+  // inline editing
+  const [editId, setEditId] = useState<string | null>(null)
+  const [editType, setEditType] = useState<'rev' | 'comp' | 'cost' | null>(null)
+  const [eLabel, setELabel] = useState(''); const [eAmt, setEAmt] = useState(''); const [eCat, setECat] = useState('')
+
   useEffect(() => { init() }, [])
   async function init() {
     const { data: { session } } = await supabase.auth.getSession()
@@ -104,6 +109,23 @@ export default function EventsPnlPage() {
       await ops().rpc('deduct_comp', { p_venue: venueId, p_recipe: cpRecipe, p_qty: qty })
     }
     setCpManual(''); setCpQty('1'); setMsg(null); await loadEvent(eventId)
+  }
+  function startEdit(type: 'rev' | 'comp' | 'cost', r: any) {
+    setEditId(r.id); setEditType(type); setMsg(null)
+    setELabel(type === 'cost' ? (r.vendor || '') : (r.label || ''))
+    setEAmt(String(r.amount)); setECat(r.category || '')
+  }
+  async function saveEdit() {
+    if (!editId) return
+    const a = num(eAmt); if (!a) { setMsg('Enter an amount'); return }
+    let error
+    if (editType === 'cost') {
+      ({ error } = await ops().from('purchases').update({ vendor: eLabel.trim() || null, category: eCat, amount: a }).eq('id', editId))
+    } else {
+      ({ error } = await ops().from('event_lines').update({ label: eLabel.trim() || null, amount: a }).eq('id', editId))
+    }
+    if (error) { setMsg(error.message); return }
+    setEditId(null); setEditType(null); await loadEvent(eventId)
   }
   async function delLine(id: string) { await ops().from('event_lines').delete().eq('id', id); await loadEvent(eventId) }
   async function delCost(id: string) {
@@ -182,18 +204,32 @@ export default function EventsPnlPage() {
           {/* lines */}
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
             <thead><tr style={{ background: 'var(--bg-sidebar, #fafafa)' }}>
-              <th style={th}>Item</th><th style={th}>Type</th><th style={{ ...th, textAlign: 'right' }}>Amount</th><th style={th}></th>
+              <th style={th}>Item</th><th style={th}>Type</th><th style={{ ...th, textAlign: 'right' }}>Amount</th><th style={{ ...th, textAlign: 'right' }}></th>
             </tr></thead>
             <tbody>
               {ticketRev > 0 && <tr style={{ borderTop: '1px solid var(--border,#eee)' }}><td style={td}>Online tickets</td><td style={{ ...td, color: '#548235' }}>revenue</td><td style={{ ...td, textAlign: 'right' }}>{vnd(ticketRev)}</td><td style={td}></td></tr>}
-              {lines.filter(l => l.kind === 'revenue').map(l => (
-                <tr key={l.id} style={{ borderTop: '1px solid var(--border,#eee)' }}><td style={td}>{l.label}</td><td style={{ ...td, color: '#548235' }}>revenue</td><td style={{ ...td, textAlign: 'right' }}>{vnd(l.amount)}</td><td style={{ ...td, textAlign: 'right' }}><button onClick={() => delLine(l.id)} style={btnLink}>×</button></td></tr>
+
+              {lines.filter(l => l.kind === 'revenue').map(l => editId === l.id ? (
+                <EditRow key={l.id} label={eLabel} setLabel={setELabel} amt={eAmt} setAmt={setEAmt} onSave={saveEdit} onCancel={() => setEditId(null)} sign="" />
+              ) : (
+                <tr key={l.id} style={{ borderTop: '1px solid var(--border,#eee)' }}><td style={td}>{l.label}</td><td style={{ ...td, color: '#548235' }}>revenue</td><td style={{ ...td, textAlign: 'right' }}>{vnd(l.amount)}</td><td style={{ ...td, textAlign: 'right', whiteSpace: 'nowrap' }}><button onClick={() => startEdit('rev', l)} style={btnLink}>Edit</button><button onClick={() => delLine(l.id)} style={btnLink}>×</button></td></tr>
               ))}
-              {costs.map(c => (
-                <tr key={c.id} style={{ borderTop: '1px solid var(--border,#eee)' }}><td style={td}>{c.vendor || c.category}</td><td style={{ ...td, color: 'var(--burgundy,#7b2d3a)' }}>{c.category}</td><td style={{ ...td, textAlign: 'right' }}>−{vnd(c.amount)}</td><td style={{ ...td, textAlign: 'right' }}><button onClick={() => delCost(c.id)} style={btnLink} title="untag from event">×</button></td></tr>
+
+              {costs.map(c => editId === c.id ? (
+                <tr key={c.id} style={{ borderTop: '1px solid var(--border,#eee)', background: 'var(--bg-sidebar,#fafafa)' }}>
+                  <td style={td}><input value={eLabel} onChange={e => setELabel(e.target.value)} style={{ ...inp, width: '95%' }} placeholder="who / note" /></td>
+                  <td style={td}><select value={eCat} onChange={e => setECat(e.target.value)} style={inp}>{COST_CATS.map(x => <option key={x.v} value={x.v}>{x.label}</option>)}</select></td>
+                  <td style={{ ...td, textAlign: 'right' }}><input inputMode="numeric" value={eAmt} onChange={e => setEAmt(e.target.value)} style={{ ...inp, width: 120, textAlign: 'right' }} /></td>
+                  <td style={{ ...td, textAlign: 'right', whiteSpace: 'nowrap' }}><button onClick={saveEdit} style={btnLink}>Save</button><button onClick={() => setEditId(null)} style={btnLink}>Cancel</button></td>
+                </tr>
+              ) : (
+                <tr key={c.id} style={{ borderTop: '1px solid var(--border,#eee)' }}><td style={td}>{c.vendor || c.category}</td><td style={{ ...td, color: 'var(--burgundy,#7b2d3a)' }}>{c.category}</td><td style={{ ...td, textAlign: 'right' }}>−{vnd(c.amount)}</td><td style={{ ...td, textAlign: 'right', whiteSpace: 'nowrap' }}><button onClick={() => startEdit('cost', c)} style={btnLink}>Edit</button><button onClick={() => delCost(c.id)} style={btnLink} title="remove from event (keeps it in P&L)">×</button></td></tr>
               ))}
-              {lines.filter(l => l.kind === 'comp').map(l => (
-                <tr key={l.id} style={{ borderTop: '1px solid var(--border,#eee)' }}><td style={td}>{l.label}{l.qty ? ` ×${l.qty}` : ''}</td><td style={{ ...td, color: 'var(--text-muted,#999)' }}>comp</td><td style={{ ...td, textAlign: 'right' }}>−{vnd(l.amount)}</td><td style={{ ...td, textAlign: 'right' }}><button onClick={() => delLine(l.id)} style={btnLink}>×</button></td></tr>
+
+              {lines.filter(l => l.kind === 'comp').map(l => editId === l.id ? (
+                <EditRow key={l.id} label={eLabel} setLabel={setELabel} amt={eAmt} setAmt={setEAmt} onSave={saveEdit} onCancel={() => setEditId(null)} sign="−" />
+              ) : (
+                <tr key={l.id} style={{ borderTop: '1px solid var(--border,#eee)' }}><td style={td}>{l.label}{l.qty ? ` ×${l.qty}` : ''}</td><td style={{ ...td, color: 'var(--text-muted,#999)' }}>comp</td><td style={{ ...td, textAlign: 'right' }}>−{vnd(l.amount)}</td><td style={{ ...td, textAlign: 'right', whiteSpace: 'nowrap' }}><button onClick={() => startEdit('comp', l)} style={btnLink}>Edit</button><button onClick={() => delLine(l.id)} style={btnLink}>×</button></td></tr>
               ))}
             </tbody>
           </table>
@@ -203,6 +239,15 @@ export default function EventsPnlPage() {
     </div>
   )
 }
+
+const EditRow = ({ label, setLabel, amt, setAmt, onSave, onCancel, sign }: { label: string; setLabel: (s: string) => void; amt: string; setAmt: (s: string) => void; onSave: () => void; onCancel: () => void; sign: string }) => (
+  <tr style={{ borderTop: '1px solid var(--border,#eee)', background: 'var(--bg-sidebar,#fafafa)' }}>
+    <td style={td}><input value={label} onChange={e => setLabel(e.target.value)} style={{ ...inp, width: '95%' }} placeholder="label" /></td>
+    <td style={td}></td>
+    <td style={{ ...td, textAlign: 'right' }}><input inputMode="numeric" value={amt} onChange={e => setAmt(e.target.value)} style={{ ...inp, width: 120, textAlign: 'right' }} placeholder={`${sign}amount`} /></td>
+    <td style={{ ...td, textAlign: 'right', whiteSpace: 'nowrap' }}><button onClick={onSave} style={btnLink}>Save</button><button onClick={onCancel} style={btnLink}>Cancel</button></td>
+  </tr>
+)
 
 const Stat = ({ label, value, color }: { label: string; value: string; color?: string }) => (
   <div className="card" style={{ padding: '12px 16px', minWidth: 130 }}>
