@@ -19,6 +19,12 @@ export default function LaborPage() {
   const [eRole, setERole] = useState('')
   const [eRate, setERate] = useState('')
 
+  // edit-employee inline
+  const [editId, setEditId] = useState<string | null>(null)
+  const [edName, setEdName] = useState('')
+  const [edRole, setEdRole] = useState('')
+  const [edRate, setEdRate] = useState('')
+
   // log-shift form
   const [sEmp, setSEmp] = useState('')
   const [sDate, setSDate] = useState(today())
@@ -68,6 +74,31 @@ export default function LaborPage() {
     await ops().from('employees').update({ active: !e.active }).eq('id', e.id)
     await load(venueId)
   }
+  function startEdit(e: Emp) {
+    setEditId(e.id); setEdName(e.name); setEdRole(e.role_title || ''); setEdRate(e.base_rate != null ? String(e.base_rate) : ''); setMsg(null)
+  }
+  async function saveEdit(id: string) {
+    if (!edName.trim()) { setMsg('Name required'); return }
+    const { error } = await ops().from('employees').update({
+      name: edName.trim(), role_title: edRole.trim() || null,
+      base_rate: edRate ? Number(edRate.replace(/[^\d.]/g, '')) : null,
+    }).eq('id', id)
+    if (error) { setMsg(error.message); return }
+    setEditId(null)
+    await load(venueId)
+  }
+  async function deleteEmp(e: Emp) {
+    setMsg(null)
+    const { count } = await ops().from('labor_shifts').select('id', { count: 'exact', head: true }).eq('employee_id', e.id)
+    if ((count || 0) > 0) {
+      setMsg(`${e.name} has ${count} logged shift${count === 1 ? '' : 's'} — deleting would remove that pay history. Use “Deactivate” instead to hide them.`)
+      return
+    }
+    if (!confirm(`Delete ${e.name}? They have no shifts on record.`)) return
+    const { error } = await ops().from('employees').delete().eq('id', e.id)
+    if (error) { setMsg(error.message); return }
+    await load(venueId)
+  }
   function pickEmp(id: string) {
     setSEmp(id)
     const e = emps.find(x => x.id === id)
@@ -82,7 +113,7 @@ export default function LaborPage() {
     setMsg(null)
     const { error } = await ops().from('labor_shifts').insert({
       venue_id: venueId, employee_id: sEmp, occurred_on: sDate,
-      hours, hourly_rate: rate, shift_cost: Math.round(hours * rate),
+      hours, hourly_rate: rate,
       source: 'manual', notes: sNotes.trim() || null,
     })
     if (error) { setMsg(error.message); return }
@@ -173,17 +204,33 @@ export default function LaborPage() {
         </tr></thead>
         <tbody>
           {emps.length === 0 && <tr><td colSpan={5} style={{ padding: 12, color: 'var(--text-muted, #999)' }}>No employees yet.</td></tr>}
-          {emps.map(e => (
+          {emps.map(e => editId === e.id ? (
+            <tr key={e.id} style={{ borderTop: '1px solid var(--border, #eee)', background: 'var(--bg-sidebar, #fafafa)' }}>
+              <td style={td}><input value={edName} onChange={ev => setEdName(ev.target.value)} style={{ ...inp, padding: '6px 8px' }} /></td>
+              <td style={td}><input value={edRole} onChange={ev => setEdRole(ev.target.value)} style={{ ...inp, padding: '6px 8px' }} placeholder="Role" /></td>
+              <td style={td}><input inputMode="numeric" value={edRate} onChange={ev => setEdRate(ev.target.value)} style={{ ...inp, padding: '6px 8px', textAlign: 'right' }} placeholder="rate/h" /></td>
+              <td style={td}>{e.active ? 'Active' : 'Inactive'}</td>
+              <td style={{ ...td, textAlign: 'right', whiteSpace: 'nowrap' }}>
+                <button onClick={() => saveEdit(e.id)} style={btnLink}>Save</button>
+                <button onClick={() => setEditId(null)} style={{ ...btnLink, color: 'var(--text-muted, #999)' }}>Cancel</button>
+              </td>
+            </tr>
+          ) : (
             <tr key={e.id} style={{ borderTop: '1px solid var(--border, #eee)', opacity: e.active ? 1 : 0.5 }}>
               <td style={{ ...td, fontWeight: 600 }}>{e.name}</td>
               <td style={td}>{e.role_title || '—'}</td>
               <td style={{ ...td, textAlign: 'right' }}>{e.base_rate != null ? vnd(e.base_rate) : '—'}</td>
               <td style={td}>{e.active ? 'Active' : 'Inactive'}</td>
-              <td style={{ ...td, textAlign: 'right' }}><button onClick={() => toggleEmp(e)} style={btnLink}>{e.active ? 'Deactivate' : 'Reactivate'}</button></td>
+              <td style={{ ...td, textAlign: 'right', whiteSpace: 'nowrap' }}>
+                <button onClick={() => startEdit(e)} style={btnLink}>Edit</button>
+                <button onClick={() => toggleEmp(e)} style={btnLink}>{e.active ? 'Deactivate' : 'Reactivate'}</button>
+                <button onClick={() => deleteEmp(e)} style={{ ...btnLink, color: 'var(--burgundy, #7b2d3a)' }}>Delete</button>
+              </td>
             </tr>
           ))}
         </tbody>
       </table>
+      {msg && <div style={{ fontSize: 12, color: msg.startsWith('✓') ? '#548235' : 'var(--burgundy, #7b2d3a)', marginTop: 10 }}>{msg}</div>}
     </div>
   )
 }
