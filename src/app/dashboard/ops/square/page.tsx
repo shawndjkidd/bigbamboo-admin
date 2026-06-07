@@ -113,7 +113,7 @@ export default function SquarePage() {
             <div style={{ fontWeight: 600, marginBottom: 8 }}>Sync now</div>
             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
               <label style={{ fontSize: 12, color: 'var(--text-muted, #666)' }}>Last</label>
-              <input type="number" min="1" max="31" value={days} onChange={e => setDays(e.target.value)} style={{ width: 60, padding: '6px 10px', fontSize: 13, border: '1px solid var(--border, #e5e5e5)', borderRadius: 6 }} />
+              <input type="number" min="1" max="31" value={days} onChange={e => setDays(e.target.value)} style={{ width: 72, padding: '8px 10px', fontSize: 15, fontWeight: 600, textAlign: 'center', border: '1px solid var(--border, #e5e5e5)', borderRadius: 6, background: 'var(--bg-input, #fff)', color: 'var(--text, #333)' }} />
               <label style={{ fontSize: 12, color: 'var(--text-muted, #666)' }}>days</label>
               <button onClick={runSync} disabled={syncing} style={{ ...btnPrimary, marginLeft: 8 }}>{syncing ? 'Syncing…' : 'Sync orders'}</button>
             </div>
@@ -132,7 +132,7 @@ export default function SquarePage() {
                   <td style={{ padding: '6px 0', width: 80 }}>
                     <span style={{
                       fontSize: 10, padding: '2px 6px', borderRadius: 3, color: '#fff',
-                      background: l.status === 'success' ? '#6b7280' : l.status === 'partial' ? '#C65911' : l.status === 'failed' ? '#C00000' : '#666',
+                      background: l.status === 'success' ? '#548235' : l.status === 'partial' ? '#C65911' : l.status === 'failed' ? '#C00000' : '#666',
                     }}>{l.status}</span>
                   </td>
                   <td style={{ padding: '6px 0', color: 'var(--text-muted, #666)' }}>{new Date(l.started_at).toLocaleString()}</td>
@@ -144,6 +144,17 @@ export default function SquarePage() {
           </div>
         </>
       )}
+
+      <div style={{ marginTop: 32, padding: 16, background: 'var(--bg-sidebar, #fafafa)', borderRadius: 8, fontSize: 12, color: 'var(--text-muted, #666)' }}>
+        <strong style={{ color: 'var(--text, #333)' }}>Required env vars (Vercel):</strong>
+        <pre style={{ fontFamily: 'monospace', marginTop: 6, fontSize: 11 }}>
+SQUARE_APP_ID
+SQUARE_APP_SECRET
+SQUARE_ENVIRONMENT=production
+SQUARE_OAUTH_REDIRECT=https://admin.bigbamboo.app/api/admin/ops/square/callback
+CRON_SECRET=&lt;random string for Vercel Cron auth&gt;
+        </pre>
+      </div>
     </div>
   )
 }

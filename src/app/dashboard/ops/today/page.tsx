@@ -8,6 +8,10 @@ type ReconRow = {
   opening_float: number; cash_sales: number; card_sales: number; other_sales: number
   payouts: number; counted_cash: number; notes: string | null
 }
+type PosCash = {
+  pos_opening_cash: number | null; pos_cash_paid_in: number | null; pos_cash_paid_out: number | null
+  pos_expected_cash: number | null; pos_closed_cash: number | null; pos_synced_at: string | null
+}
 
 const num = (s: string) => Number((s || '').replace(/[^\d.-]/g, '')) || 0
 
@@ -29,6 +33,7 @@ export default function CashReconPage() {
   const [payouts, setPayouts] = useState('')
   const [countedCash, setCountedCash] = useState('')
   const [notes, setNotes] = useState('')
+  const [pos, setPos] = useState<PosCash | null>(null)
 
   useEffect(() => { init() }, [])
   useEffect(() => { if (venueId) loadDate(venueId, date) }, [date]) // eslint-disable-line
@@ -58,8 +63,13 @@ export default function CashReconPage() {
     }
     setHasPos((items || []).length > 0)
 
-    setOpeningFloat(rec ? String(rec.opening_float ?? '') : '')
-    setPayouts(rec ? String(rec.payouts ?? '') : '')
+    setPos(rec ? {
+      pos_opening_cash: rec.pos_opening_cash, pos_cash_paid_in: rec.pos_cash_paid_in, pos_cash_paid_out: rec.pos_cash_paid_out,
+      pos_expected_cash: rec.pos_expected_cash, pos_closed_cash: rec.pos_closed_cash, pos_synced_at: rec.pos_synced_at,
+    } : null)
+    // Prefer the manager's saved value; fall back to the POS drawer figure when the saved one is empty/zero
+    setOpeningFloat(rec ? String((Number(rec.opening_float) || rec.pos_opening_cash) ?? '') : '')
+    setPayouts(rec ? String((Number(rec.payouts) || rec.pos_cash_paid_out) ?? '') : '')
     setCountedCash(rec ? String(rec.counted_cash ?? '') : '')
     setNotes(rec?.notes || '')
     // Prefer saved sales if a recon exists, else use the Square split
@@ -134,6 +144,24 @@ export default function CashReconPage() {
           <Field label="Counted cash at close (₫)"><input inputMode="numeric" value={countedCash} onChange={e => setCountedCash(e.target.value)} style={{ ...inp, fontWeight: 600 }} /></Field>
         </div>
       </div>
+
+      {pos && (pos.pos_expected_cash != null || pos.pos_opening_cash != null || pos.pos_closed_cash != null) && (
+        <div className="card" style={{ padding: 18, marginTop: 16 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted, #999)', marginBottom: 12 }}>From Square cash drawer</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 12 }}>
+            {([['Opening', pos.pos_opening_cash], ['Paid in', pos.pos_cash_paid_in], ['Paid out', pos.pos_cash_paid_out], ['Expected', pos.pos_expected_cash], ['Closed', pos.pos_closed_cash]] as [string, number | null][]).map(([l, v]) => (
+              <div key={l}>
+                <div style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted, #999)' }}>{l}</div>
+                <div style={{ fontSize: 15, fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{v == null ? '—' : vnd(Number(v))}</div>
+              </div>
+            ))}
+          </div>
+          {pos.pos_expected_cash != null && pos.pos_closed_cash != null && (() => { const v = Number(pos.pos_closed_cash) - Number(pos.pos_expected_cash); return (
+            <div style={{ marginTop: 12, fontSize: 13 }}>Square's own till variance: <strong style={{ color: Math.abs(v) < 1 ? '#6b7280' : Math.abs(v) <= 50000 ? '#C65911' : 'var(--burgundy, #7b2d3a)' }}>{(v >= 0 ? '+' : '') + vnd(v)}</strong></div>
+          ) })()}
+          <div style={{ fontSize: 11, color: 'var(--text-muted, #bbb)', marginTop: 8 }}>{pos.pos_synced_at ? 'Synced ' + new Date(pos.pos_synced_at).toLocaleString() : 'Awaiting Square sync'}</div>
+        </div>
+      )}
 
       <div style={{ marginTop: 16 }}>
         <Field label="Notes"><input value={notes} onChange={e => setNotes(e.target.value)} style={inp} placeholder="e.g. 200k short — staff meal paid from till, receipt in drawer" /></Field>
