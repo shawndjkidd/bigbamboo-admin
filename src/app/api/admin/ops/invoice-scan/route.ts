@@ -20,15 +20,15 @@ export async function POST(req: NextRequest) {
   } catch { return NextResponse.json({ error: 'bad request body' }, { status: 400 }) }
   if (!imageBase64) return NextResponse.json({ error: 'no image provided' }, { status: 400 })
 
-  const prompt = `You are reading a supplier purchase invoice for a bar/restaurant in Vietnam. Extract every product line item.
+  const prompt = `You are reading a supplier purchase invoice for a bar/restaurant in Vietnam. Extract the product line items AND the invoice totals.
 Return ONLY valid JSON of this shape:
-{"vendor": string|null, "date": string|null, "currency": string, "items": [{"name": string, "qty": number, "unit": string|null, "total_price": number}]}
+{"vendor": string|null, "date": string|null, "currency": string, "items": [{"name": string, "qty": number, "unit": string|null, "total_price": number}], "tax": number, "fees": number, "grand_total": number}
 Rules:
-- total_price = the line's total amount as a plain number (no thousands separators). Amounts are usually Vietnamese Dong (whole numbers, no decimals).
-- qty = how many purchase units were bought (bottles, cans, kg, bags, packs). If you can't tell, use 1.
-- unit = the purchase unit if shown (e.g. "bottle", "can", "kg").
-- Skip subtotals, tax, discounts, shipping and grand totals — only real products.
-- If the image is not a readable invoice, return {"vendor":null,"date":null,"currency":"VND","items":[]}.`
+- items = real products only (do NOT put subtotal/tax/discount/shipping rows in items).
+- total_price = the line's total as a plain number (no thousands separators). Amounts are usually Vietnamese Dong (whole numbers).
+- qty = how many purchase units were bought (bottles, cans, kg, bags, packs). If unclear use 1. unit = the purchase unit if shown.
+- tax = total VAT/tax amount on the invoice (0 if none). fees = total delivery/shipping/service charge (0 if none). grand_total = the final amount payable.
+- If the image is not a readable invoice, return {"vendor":null,"date":null,"currency":"VND","items":[],"tax":0,"fees":0,"grand_total":0}.`
 
   const body = {
     contents: [{ parts: [{ text: prompt }, { inline_data: { mime_type: mimeType, data: imageBase64 } }] }],
@@ -56,5 +56,5 @@ Rules:
     total_price: Math.round(Number(it.total_price) || 0),
   })).filter((it: any) => it.name) : []
 
-  return NextResponse.json({ ok: true, vendor: parsed?.vendor || null, date: parsed?.date || null, currency: parsed?.currency || 'VND', items })
+  return NextResponse.json({ ok: true, vendor: parsed?.vendor || null, date: parsed?.date || null, currency: parsed?.currency || 'VND', items, tax: Math.round(Number(parsed?.tax) || 0), fees: Math.round(Number(parsed?.fees) || 0), grand_total: Math.round(Number(parsed?.grand_total) || 0) })
 }

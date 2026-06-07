@@ -32,6 +32,9 @@ export default function InvoiceScanPage() {
   const [vendor, setVendor] = useState('')
   const [date, setDate] = useState(today())
   const [category, setCategory] = useState('food')
+  const [vat, setVat] = useState('0')
+  const [delivery, setDelivery] = useState('0')
+  const [landed, setLanded] = useState(true)
   const [scanning, setScanning] = useState(false)
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState<string | null>(null)
@@ -71,6 +74,8 @@ export default function InvoiceScanPage() {
       const j = await r.json()
       if (!r.ok) { setMsg(j.error || 'Scan failed'); setScanning(false); return }
       if (j.vendor && !vendor) setVendor(String(j.vendor))
+      setVat(String(Math.round(Number(j.tax) || 0)))
+      setDelivery(String(Math.round(Number(j.fees) || 0)))
       const parsed: Item[] = (j.items || []).map((it: any) => ({
         name: it.name, qty: Number(it.qty) || 1, total_price: Number(it.total_price) || 0, unit: it.unit || null,
         ingredientId: guessIngredient(it.name, ings),
@@ -84,12 +89,16 @@ export default function InvoiceScanPage() {
   function setRow(i: number, patch: Partial<Item>) {
     setItems(items.map((r, idx) => idx === i ? { ...r, ...patch } : r))
   }
+  const subtotal = items.reduce((a, r) => a + Number(r.total_price || 0), 0)
+  const extra = (Number(vat.replace(/[^\d]/g, '')) || 0) + (Number(delivery.replace(/[^\d]/g, '')) || 0)
+  const invoiceTotal = subtotal + extra
   function perBaseOf(row: Item): number | null {
     const ing = ings.find(i => i.id === row.ingredientId); if (!ing) return null
     const size = Number(ing.purchase_unit_size) || 1
-    return row.qty > 0 ? row.total_price / (row.qty * size) : row.total_price
+    let base = Number(row.total_price)
+    if (landed && subtotal > 0) base += extra * (Number(row.total_price) / subtotal) // spread VAT + delivery by value
+    return row.qty > 0 ? base / (row.qty * size) : base
   }
-  const invoiceTotal = items.reduce((a, r) => a + Number(r.total_price || 0), 0)
 
   async function apply() {
     if (!venueId) return
@@ -167,11 +176,22 @@ export default function InvoiceScanPage() {
             </tbody>
           </table>
 
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 16, flexWrap: 'wrap', gap: 10 }}>
-            <span style={{ fontSize: 14, fontWeight: 600 }}>Invoice total: {vnd(invoiceTotal)}</span>
+          <div style={{ marginTop: 16, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, maxWidth: 420 }}>
+            <div><label className="label">VAT / tax (₫)</label><input inputMode="numeric" value={vat} onChange={e => setVat(e.target.value)} style={inp} /></div>
+            <div><label className="label">Delivery / fees (₫)</label><input inputMode="numeric" value={delivery} onChange={e => setDelivery(e.target.value)} style={inp} /></div>
+          </div>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, marginTop: 10 }}>
+            <input type="checkbox" checked={landed} onChange={e => setLanded(e.target.checked)} />
+            Spread VAT &amp; delivery across ingredient costs (true landed cost)
+          </label>
+          <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginTop: 16, flexWrap: 'wrap', gap: 10 }}>
+            <div style={{ fontSize: 12, color: 'var(--text-muted, #999)' }}>
+              Items {vnd(subtotal)} · VAT {vnd(Number(vat.replace(/[^\d]/g, '')) || 0)} · Delivery {vnd(Number(delivery.replace(/[^\d]/g, '')) || 0)}
+              <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text, #333)', marginTop: 2 }}>Total: {vnd(invoiceTotal)}</div>
+            </div>
             <button onClick={apply} disabled={busy} style={btnPrimary}>{busy ? 'Applying…' : 'Apply — update costs & log purchase'}</button>
           </div>
-          <div style={{ fontSize: 12, color: 'var(--text-muted, #999)', marginTop: 8 }}>Unit cost = line total ÷ (qty × the ingredient&apos;s pack size). Set pack sizes on ingredients for accurate per-ml/g costs.</div>
+          <div style={{ fontSize: 12, color: 'var(--text-muted, #999)', marginTop: 8 }}>Unit cost = (line total + its share of VAT/delivery, if enabled) ÷ (qty × pack size). The full total (incl. VAT &amp; delivery) is what gets logged to the P&amp;L.</div>
         </>
       )}
     </div>
