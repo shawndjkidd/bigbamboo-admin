@@ -74,17 +74,25 @@ export default function OpsDashboard() {
     const purchaseRows = purchases.data || []
     const shiftRows = (shifts.data || []) as any[]
 
+    // One row per day — prefer the Square figure when a day also has a manual entry
+    const byDayMap = new Map<string, SalesRow>()
+    for (const sr of salesRows) {
+      const ex = byDayMap.get(sr.occurred_on)
+      if (!ex || (sr.source === 'square' && ex.source !== 'square')) byDayMap.set(sr.occurred_on, sr)
+    }
+    const dedupedDaily = Array.from(byDayMap.values()).sort((a, b) => a.occurred_on.localeCompare(b.occurred_on))
+
     setPnl({
       period_month: start,
-      revenue: salesRows.reduce((a, r) => a + Number(r.gross || 0), 0),
+      revenue: dedupedDaily.reduce((a, r) => a + Number(r.gross || 0), 0),
       cogs:    sum(purchaseRows, r => cogsCats.includes(r.category)),
       labor:   shiftRows.reduce((a, r) => a + Number(r.shift_cost || 0), 0),
       opex:    sum(purchaseRows, r => opexCats.includes(r.category)),
       capex:   sum(purchaseRows, r => r.category === 'capex'),
     })
 
-    // Daily sales (manual only — POS dupes when both exist)
-    setDaily(salesRows.filter(r => r.source === 'manual'))
+    // Daily sales — every day, deduped (Square preferred); was previously manual-only so Square days vanished
+    setDaily(dedupedDaily)
 
     // Labor per day
     const byDay = new Map<string, { hours: number; cost: number }>()
