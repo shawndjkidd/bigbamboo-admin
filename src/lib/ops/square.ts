@@ -31,6 +31,7 @@ export const SQUARE_SCOPES = [
   'CUSTOMERS_READ',
   'EMPLOYEES_READ',
   'TIMECARDS_READ',
+  'CASH_DRAWER_READ',
 ].join('+')
 
 export function squareAuthorizeUrl(state: string): string {
@@ -134,6 +135,19 @@ export async function searchOrders(token: string, locationIds: string[], startAt
       cursor,
     }),
   }) as Promise<{ orders?: SquareOrder[]; cursor?: string }>
+}
+
+// List cash-drawer shift summaries for a location in a window (requires CASH_DRAWER_READ scope)
+export async function listCashDrawerShifts(token: string, locationId: string, beginISO: string, endISO: string, cursor?: string) {
+  const qs = new URLSearchParams({ location_id: locationId, begin_time: beginISO, end_time: endISO, sort_order: 'ASC', limit: '100' })
+  if (cursor) qs.set('cursor', cursor)
+  return squareApi(`/v2/cash-drawers/shifts?${qs}`, token) as Promise<{ cash_drawer_shifts?: any[]; cursor?: string }>
+}
+
+// Full detail for one cash-drawer shift (opened / expected / closed + paid in/out money)
+export async function retrieveCashDrawerShift(token: string, locationId: string, shiftId: string) {
+  const qs = new URLSearchParams({ location_id: locationId })
+  return squareApi(`/v2/cash-drawers/shifts/${shiftId}?${qs}`, token) as Promise<{ cash_drawer_shift?: any }>
 }
 
 export async function listCatalog(token: string, cursor?: string) {

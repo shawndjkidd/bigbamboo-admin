@@ -2,7 +2,7 @@
 // Can be triggered manually from the Square page, OR by a Vercel Cron job nightly.
 // Accepts ?days=1 (default) to sync the last N days. Idempotent via unique (source, source_id).
 import { NextRequest, NextResponse } from 'next/server'
-import { getActiveToken, searchOrders, SQUARE_ENV } from '@/lib/ops/square'
+import { getActiveToken, searchOrders, listCashDrawerShifts, retrieveCashDrawerShift, SQUARE_ENV } from '@/lib/ops/square'
 import { getServiceClient } from '@/lib/supabase'
 
 export const dynamic = 'force-dynamic'
@@ -106,11 +106,47 @@ async function run(req: NextRequest) {
       }, { onConflict: 'venue_id,occurred_on,source' })
     }
 
+    // --- Cash drawer shifts → ops.cash_recon (POS cash figures). Non-fatal: needs CASH_DRAWER_READ scope. ---
+    let drawerDays = 0
+    try {
+      const money = (m: any) => m ? (m.currency === 'VND' ? Number(m.amount || 0) : Number(m.amount || 0) / 100) : 0
+      const dayAgg = new Map<string, { opening: number; paidIn: number; paidOut: number; expected: number; closed: number }>()
+      for (const locId of locationIds) {
+        let scursor: string | undefined
+        do {
+          const sp: any = await listCashDrawerShifts(token, locId, start.toISOString(), end.toISOString(), scursor)
+          for (const summary of (sp.cash_drawer_shifts || [])) {
+            const closedAt = summary.closed_at || summary.ended_at
+            if (!closedAt) continue
+            const full: any = await retrieveCashDrawerShift(token, locId, summary.id)
+            const sh = full.cash_drawer_shift || summary
+            const day = new Date(closedAt).toLocaleDateString('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' })
+            const cur = dayAgg.get(day) || { opening: 0, paidIn: 0, paidOut: 0, expected: 0, closed: 0 }
+            cur.opening += money(sh.opened_cash_money)
+            cur.paidIn += money(sh.cash_paid_in_money)
+            cur.paidOut += money(sh.cash_paid_out_money)
+            cur.expected += money(sh.expected_cash_money)
+            cur.closed += money(sh.closed_cash_money)
+            dayAgg.set(day, cur)
+          }
+          scursor = sp.cursor
+        } while (scursor)
+      }
+      for (const [day, a] of Array.from(dayAgg.entries())) {
+        await svc.schema('ops').from('cash_recon').upsert({
+          venue_id: venue.id, occurred_on: day,
+          pos_opening_cash: a.opening, pos_cash_paid_in: a.paidIn, pos_cash_paid_out: a.paidOut,
+          pos_expected_cash: a.expected, pos_closed_cash: a.closed, pos_synced_at: new Date().toISOString(),
+        }, { onConflict: 'venue_id,occurred_on' })
+      }
+      drawerDays = dayAgg.size
+    } catch (e: any) { console.warn('cash drawer sync skipped:', e?.message || String(e)) }
+
     await svc.schema('ops').from('square_sync_log').update({
       status: failed > 0 ? 'partial' : 'success',
       finished_at: new Date().toISOString(),
       items_synced: synced, items_skipped: skipped, items_failed: failed,
-      metadata: { orders_count: orders.length, days_count: dailyMap.size },
+      metadata: { orders_count: orders.length, days_count: dailyMap.size, drawer_days: drawerDays },
     }).eq('id', logRow!.id)
 
     return NextResponse.json({
