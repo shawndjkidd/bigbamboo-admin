@@ -16,7 +16,7 @@ type Tpl = { weekday: number; amount: number; active: boolean }
 
 const TYPE_LABEL: Record<string, string> = {
   drop: 'Cash drop (Till → Safe)', deposit: 'Bank deposit (Safe → bank)', bank_in: 'Bank cash in (bank → Safe)',
-  expense: 'Cash expense', adjust: 'Adjustment',
+  expense: 'Cash expense', refund: 'Cash refund', adjust: 'Adjustment',
   bag_out: 'Bag → Till', bag_in: 'Bag → Safe', cash_sale: 'Cash sales',
   float_issue: 'Float issued', float_return: 'Float returned',
   day_open: 'Day open — float to till', day_close: 'Day close — swept to safe',
@@ -248,6 +248,18 @@ export default function CashPage() {
     else if (mvType === 'bank_in') { rows = [{ account_id: safe.account_id, amount: Math.abs(a), type: 'bank_in', note: mvNote.trim() || 'Cash from bank' }] }
     else if (mvType === 'expense') { if (!mvAcct) { setMsg('Pick which account it came out of'); return } rows = [{ account_id: mvAcct, amount: -Math.abs(a), type: 'expense', note: mvNote.trim() || 'Cash expense' }] }
     else if (mvType === 'adjust') { if (!isSuper) { setMsg('Adjustments are super-admin only.'); return } if (!mvAcct) { setMsg('Pick which account'); return } rows = [{ account_id: mvAcct, amount: a, type: 'adjust', note: mvNote.trim() || 'Adjustment' }] }
+    else if (mvType === 'refund') {
+      if (!till) return
+      const day = today()
+      const { error: e1 } = await ops().from('cash_movements').insert({ venue_id: venueId, account_id: till.account_id, amount: -Math.abs(a), type: 'refund', note: mvNote.trim() || 'Cash refund' })
+      if (e1) { setMsg(e1.message); return }
+      // lower that day's net sales — kept on a separate 'other_pos' row so the nightly Square sync won't overwrite it
+      const { data: ex } = await ops().from('sales_daily').select('refunds').eq('venue_id', venueId).eq('occurred_on', day).eq('source', 'other_pos').maybeSingle()
+      if (ex) await ops().from('sales_daily').update({ refunds: Number(ex.refunds || 0) + Math.abs(a) }).eq('venue_id', venueId).eq('occurred_on', day).eq('source', 'other_pos')
+      else await ops().from('sales_daily').insert({ venue_id: venueId, occurred_on: day, source: 'other_pos', gross: 0, refunds: Math.abs(a) })
+      setMvAmt(''); setMvNote(''); setMsg('✓ Refund recorded — cash out of the Till and net sales reduced.'); await load(venueId)
+      return
+    }
     const { error } = await ops().from('cash_movements').insert(rows.map(r => ({ venue_id: venueId, ...r })))
     if (error) { setMsg(error.message); return }
     setMvAmt(''); setMvNote(''); setMsg(null); await load(venueId)
@@ -562,6 +574,7 @@ export default function CashPage() {
             <option value="bank_in">Bank cash in (bank → Safe)</option>
             <option value="deposit">Bank deposit (Safe → bank)</option>
             <option value="expense">Cash expense (out)</option>
+            <option value="refund">Cash refund (out of Till)</option>
             {isSuper && <option value="adjust">Adjust (+/−) — super-admin</option>}
           </select>
           {(mvType === 'expense' || mvType === 'adjust') && (
@@ -578,6 +591,7 @@ export default function CashPage() {
           {mvType === 'bank_in' && 'Cash brought from the bank into the Safe — use this to fund floats. Raises cash on hand.'}
           {mvType === 'deposit' && 'Cash leaves the Safe to the bank — lowers cash on hand. Use after closing a week to bank the takings.'}
           {mvType === 'expense' && 'Cash paid out of an account. (Tracks cash only — log P&L expenses in Add Purchase.)'}
+          {mvType === 'refund' && 'Refund a customer in cash from the Till — also lowers today’s net sales in the P&L.'}
           {mvType === 'adjust' && 'Correct a balance. Super-admin only.'}
         </div>
       </div>
