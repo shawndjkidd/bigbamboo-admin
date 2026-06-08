@@ -30,7 +30,7 @@ export default function EventsPnlPage() {
   const [nvTitle, setNvTitle] = useState(''); const [nvDate, setNvDate] = useState(today())
   const [scanning, setScanning] = useState(false)
   const [nvStart, setNvStart] = useState(''); const [nvEnd, setNvEnd] = useState('')
-  const [nvDesc, setNvDesc] = useState(''); const [nvPrice, setNvPrice] = useState(''); const [nvFree, setNvFree] = useState(false)
+  const [nvDesc, setNvDesc] = useState(''); const [nvPrice, setNvPrice] = useState(''); const [nvFree, setNvFree] = useState(false); const [nvType, setNvType] = useState('')
 
   // open modal
   const [openId, setOpenId] = useState<string | null>(null)
@@ -81,7 +81,7 @@ export default function EventsPnlPage() {
 
   async function createEvent() {
     if (!nvTitle.trim()) { setMsg('Give the event a name'); return }
-    const payload: any = { title: nvTitle.trim(), event_date: nvDate, is_published: false }
+    const payload: any = { title: nvTitle.trim(), event_date: nvDate, type: nvType.trim() || 'Event', is_published: false }
     if (nvStart) payload.start_time = nvStart
     if (nvEnd) payload.end_time = nvEnd
     if (nvDesc.trim()) payload.description = nvDesc.trim()
@@ -89,7 +89,7 @@ export default function EventsPnlPage() {
     else if (num(nvPrice)) { payload.ticket_price = num(nvPrice); payload.is_free = false }
     const { data, error } = await supabase.from('events').insert(payload).select('id').single()
     if (error) { setMsg('Could not create event: ' + error.message); return }
-    setShowNew(false); setNvTitle(''); setNvStart(''); setNvEnd(''); setNvDesc(''); setNvPrice(''); setNvFree(false); setMsg(null)
+    setShowNew(false); setNvTitle(''); setNvStart(''); setNvEnd(''); setNvDesc(''); setNvPrice(''); setNvFree(false); setNvType(''); setMsg(null)
     await loadAll()
     if (data?.id) open(data.id)
   }
@@ -105,7 +105,7 @@ export default function EventsPnlPage() {
       if (j.title) setNvTitle(j.title)
       if (j.date && /^\d{4}-\d{2}-\d{2}$/.test(j.date)) setNvDate(j.date)
       setNvStart((j.start_time || '').slice(0, 5)); setNvEnd((j.end_time || '').slice(0, 5))
-      setNvDesc(j.description || ''); setNvFree(!!j.is_free)
+      setNvType(j.type || ''); setNvDesc(j.description || ''); setNvFree(!!j.is_free)
       setNvPrice(j.ticket_price ? String(j.ticket_price) : '')
       setMsg('✓ Scanned — review the details below, then Create.')
     } catch (e: any) { setMsg('Scan error: ' + e.message) }
@@ -189,6 +189,7 @@ export default function EventsPnlPage() {
               <input type="checkbox" checked={nvFree} onChange={e => setNvFree(e.target.checked)} /> Free
             </label>
             {!nvFree && <input inputMode="numeric" value={nvPrice} onChange={e => setNvPrice(e.target.value)} style={{ ...inp, width: 150 }} placeholder="ticket price ₫" />}
+            <input value={nvType} onChange={e => setNvType(e.target.value)} style={{ ...inp, width: 150 }} placeholder="type / tagline" />
             <input value={nvDesc} onChange={e => setNvDesc(e.target.value)} style={{ ...inp, flex: 1, minWidth: 160 }} placeholder="short description" />
             <button onClick={createEvent} style={btn}>Create</button>
             <button onClick={() => setShowNew(false)} style={{ ...btn, background: 'transparent', color: 'var(--text-muted,#999)' }}>Cancel</button>

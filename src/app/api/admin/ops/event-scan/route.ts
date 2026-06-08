@@ -21,11 +21,12 @@ export async function POST(req: NextRequest) {
 
   const prompt = `You are reading a screenshot of a Facebook (or similar) event listing for a bar/venue in Vietnam. Extract the event details.
 Return ONLY valid JSON of this shape:
-{"title": string|null, "date": string|null, "start_time": string|null, "end_time": string|null, "location": string|null, "ticket_price": number|null, "is_free": boolean, "description": string|null}
+{"title": string|null, "type": string|null, "date": string|null, "start_time": string|null, "end_time": string|null, "location": string|null, "ticket_price": number|null, "is_free": boolean, "description": string|null}
 Rules:
 - date in YYYY-MM-DD format. If the year is not shown, assume the next upcoming occurrence (current or next year).
 - start_time / end_time in 24-hour HH:MM. Null if not shown.
 - ticket_price as a plain number in Vietnamese Dong (no thousands separators). If the event is clearly free, set is_free=true and ticket_price=0. If a price is shown, is_free=false.
+- type = a very short 2–4 word tagline/category for the event (e.g. "Comedy night", "Wine social", "Live music"). Never null — make a sensible one from the title if needed.
 - description = a concise 1–2 sentence summary of what the event is (the vibe, music, theme).
 - If the image is not a readable event, return {"title":null,"date":null,"start_time":null,"end_time":null,"location":null,"ticket_price":null,"is_free":false,"description":null}.`
 
@@ -62,6 +63,7 @@ Rules:
   return NextResponse.json({
     ok: true,
     title: p?.title ? String(p.title).trim() : null,
+    type: p?.type ? String(p.type).trim() : null,
     date: p?.date || null,
     start_time: p?.start_time || null,
     end_time: p?.end_time || null,
