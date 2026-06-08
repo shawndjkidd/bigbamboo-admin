@@ -4,7 +4,7 @@ import { ops, canManageRecipes, type StaffRole } from '@/lib/ops/api'
 import { supabase } from '@/lib/supabase'
 
 type MapRow = { id: string; item_name: string; recipe_id: string | null; ignore: boolean }
-type Recipe = { id: string; name: string; dept: string | null }
+type Recipe = { id: string; name: string; category: string | null }
 
 export default function MenuMapPage() {
   const [role, setRole] = useState<StaffRole | null>(null)
@@ -28,7 +28,7 @@ export default function MenuMapPage() {
     setLoading(true)
     const [{ data: m }, { data: r }] = await Promise.all([
       ops().from('pos_item_map').select('id, item_name, recipe_id, ignore').order('item_name'),
-      ops().from('recipes').select('id, name, dept').order('name'),
+      ops().from('recipes').select('id, name, category').order('name'),
     ])
     setRows((m as MapRow[]) || [])
     setRecipes((r as Recipe[]) || [])
@@ -95,7 +95,7 @@ export default function MenuMapPage() {
                       <option value="">— needs mapping —</option>
                       <option value="__ignore__">Don&apos;t track (no recipe)</option>
                       {recipes.map(r => (
-                        <option key={r.id} value={r.id}>{r.name}{r.dept ? ` (${r.dept})` : ''}</option>
+                        <option key={r.id} value={r.id}>{r.name}{r.category ? ` (${r.category})` : ''}</option>
                       ))}
                     </select>
                   </td>
