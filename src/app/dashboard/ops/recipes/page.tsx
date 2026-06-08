@@ -1,70 +1,79 @@
 'use client'
-import { useEffect, useState, Suspense } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { useSearchParams } from 'next/navigation'
 import { ops, vnd, pct, canManageRecipes, type StaffRole } from '@/lib/ops/api'
 import { supabase } from '@/lib/supabase'
 
-const DRINK_CATS = ['cocktail', 'beer', 'wine', 'na_drink']
-const isDrink = (c: string) => DRINK_CATS.includes(c)
-
 type RecipeWithCost = {
-  recipe_id: string; name: string; type: string; category: string
-  yield_qty: number; yield_unit: string; sale_price: number | null
-  total_cost: number; cost_per_unit: number | null; margin_per_unit: number | null
+  recipe_id: string
+  name: string
+  type: string
+  category: string
+  yield_qty: number
+  yield_unit: string
+  sale_price: number | null
+  total_cost: number
+  cost_per_unit: number | null
+  margin_per_unit: number | null
 }
 
-function RecipesInner() {
-  const search = useSearchParams()
-  const urlDept = (search.get('dept') as 'kitchen' | 'bar' | null) || null
+export default function RecipesPage() {
   const [role, setRole] = useState<StaffRole | null>(null)
-  const [dept, setDept] = useState<string | null>(null)
+  const [venueId, setVenueId] = useState<string | null>(null)
   const [rows, setRows] = useState<RecipeWithCost[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState('')
   const [typeFilter, setTypeFilter] = useState<'all' | 'menu_item' | 'batch' | 'sub_recipe'>('all')
+  const [resaleIds, setResaleIds] = useState<Set<string>>(new Set())
+  const [showResale, setShowResale] = useState(false)
 
   useEffect(() => { init() }, [])
+
   async function init() {
     const { data: { session } } = await supabase.auth.getSession()
+
     const user = session?.user
     if (!user) return
-    const { data: su } = await supabase.from('staff_users').select('role, department').eq('email', user.email).maybeSingle()
-    setRole((su?.role || 'staff') as StaffRole)
-    setDept(su?.department || null)
+    const { data: su } = await supabase.from('staff_users').select('role').eq('email', user.email).single()
+    setRole(su?.role || 'staff')
+    const { data: venue } = await supabase.from('venues').select('id').eq('slug', 'bigbamboo').single()
+    setVenueId(venue?.id || null)
     await load()
   }
+
   async function load() {
     setLoading(true)
-    const { data } = await ops().from('v_recipe_cost').select('*').order('name')
+    const [{ data }, { data: rec }] = await Promise.all([
+      ops().from('v_recipe_cost').select('*').order('name'),
+      ops().from('recipes').select('id, is_resale'),
+    ])
     setRows((data as RecipeWithCost[]) || [])
+    setResaleIds(new Set((rec || []).filter((x: any) => x.is_resale).map((x: any) => x.id)))
     setLoading(false)
   }
 
   const canManage = role && canManageRecipes(role)
-  const effDept = canManage ? urlDept : (dept || urlDept)
-  const heading = effDept === 'bar' ? 'Bar — drink recipes' : effDept === 'kitchen' ? 'Kitchen — food recipes' : 'Recipes'
-
   const filtered = rows.filter(r => {
-    if (effDept === 'bar' && !isDrink(r.category)) return false
-    if (effDept === 'kitchen' && isDrink(r.category)) return false
+    if (!showResale && resaleIds.has(r.recipe_id)) return false
     if (typeFilter !== 'all' && r.type !== typeFilter) return false
     if (filter && !r.name.toLowerCase().includes(filter.toLowerCase())) return false
     return true
   })
 
-  if (loading) return <div style={{ color: 'var(--text-muted, #999)', fontSize: 14 }}>Loading…</div>
+  if (loading) return <div style={{ color: '#999', fontSize: 14 }}>Loading…</div>
 
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 16 }}>
         <div>
-          <h2 style={{ fontSize: 22, fontWeight: 600 }}>{heading}</h2>
+          <h2 style={{ fontSize: 22, fontWeight: 600 }}>Recipes</h2>
           <div style={{ fontSize: 12, color: 'var(--text-muted, #999)', marginTop: 2 }}>
-            {filtered.length} recipes · cost auto-updates when ingredient prices change
+            {filtered.length} {showResale ? 'recipes' : 'made in-house'}{!showResale && resaleIds.size ? ` · ${resaleIds.size} bought-in hidden` : ''} · cost auto-updates when ingredient prices change
           </div>
         </div>
-        {canManage && <Link href="/dashboard/ops/recipes/new" style={btnPrimary as any}>+ Add recipe</Link>}
+        {canManage && (
+          <Link href="/dashboard/ops/recipes/new" style={btnPrimary as any}>+ Add recipe</Link>
+        )}
       </div>
 
       <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
@@ -75,6 +84,9 @@ function RecipesInner() {
           <option value="batch">Batches / kegs</option>
           <option value="sub_recipe">Sub-recipes</option>
         </select>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text-muted, #999)', whiteSpace: 'nowrap' }}>
+          <input type="checkbox" checked={showResale} onChange={e => setShowResale(e.target.checked)} /> Show bought-in
+        </label>
       </div>
 
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
@@ -87,7 +99,7 @@ function RecipesInner() {
           <th style={{ ...th, textAlign: 'right' }}>Margin %</th>
         </tr></thead>
         <tbody>
-          {filtered.length === 0 && <tr><td colSpan={8} style={{ padding: 12, color: 'var(--text-muted, #999)' }}>No {effDept === 'bar' ? 'drink' : effDept === 'kitchen' ? 'food' : ''} recipes here yet.</td></tr>}
+          {filtered.length === 0 && <tr><td colSpan={8} style={{ padding: 12, color: 'var(--text-muted, #999)' }}>No recipes yet. {canManage && 'Click "Add recipe" to start.'}</td></tr>}
           {filtered.map(r => {
             const marginPct = r.sale_price && r.margin_per_unit != null ? r.margin_per_unit / r.sale_price : null
             return (
@@ -99,21 +111,15 @@ function RecipesInner() {
                 <td style={{ ...td, textAlign: 'right' }}>{vnd(r.cost_per_unit)}</td>
                 <td style={{ ...td, textAlign: 'right' }}>{r.sale_price ? vnd(r.sale_price) : '—'}</td>
                 <td style={{ ...td, textAlign: 'right' }}>{r.margin_per_unit != null ? vnd(r.margin_per_unit) : '—'}</td>
-                <td style={{ ...td, textAlign: 'right', color: marginPct == null ? 'var(--text-muted, #999)' : marginPct < 0.55 ? 'var(--burgundy, #7b2d3a)' : 'var(--text-secondary, #666)' }}>{pct(marginPct)}</td>
+                <td style={{ ...td, textAlign: 'right', color: marginPct == null ? 'var(--text-muted, #999)' : marginPct < 0.5 ? '#C00000' : marginPct < 0.7 ? '#C65911' : '#548235' }}>
+                  {pct(marginPct)}
+                </td>
               </tr>
             )
           })}
         </tbody>
       </table>
     </div>
-  )
-}
-
-export default function RecipesPage() {
-  return (
-    <Suspense fallback={<div style={{ color: 'var(--text-muted, #999)', fontSize: 14 }}>Loading…</div>}>
-      <RecipesInner />
-    </Suspense>
   )
 }
 
