@@ -119,7 +119,7 @@ export async function listLocations(token: string) {
   return squareApi('/v2/locations', token) as Promise<{ locations: SquareLocation[] }>
 }
 
-export async function searchOrders(token: string, locationIds: string[], startAtUTC: string, endAtUTC: string, cursor?: string) {
+export async function searchOrders(token: string, locationIds: string[], startAtUTC: string, endAtUTC: string, cursor?: string, states: string[] = ['COMPLETED']) {
   return squareApi('/v2/orders/search', token, {
     method: 'POST',
     body: JSON.stringify({
@@ -127,7 +127,7 @@ export async function searchOrders(token: string, locationIds: string[], startAt
       query: {
         filter: {
           date_time_filter: { closed_at: { start_at: startAtUTC, end_at: endAtUTC } },
-          state_filter: { states: ['COMPLETED'] },
+          state_filter: { states },
         },
         sort: { sort_field: 'CLOSED_AT', sort_order: 'ASC' },
       },

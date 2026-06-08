@@ -55,7 +55,8 @@ async function run(req: NextRequest) {
     const orders: any[] = []
     let cursor: string | undefined
     do {
-      const page = await searchOrders(token, locationIds, start.toISOString(), end.toISOString(), cursor)
+      // Pull COMPLETED (revenue) AND CANCELED (voids/comps) so non-completed orders are auditable, not invisible.
+      const page = await searchOrders(token, locationIds, start.toISOString(), end.toISOString(), cursor, ['COMPLETED', 'CANCELED'])
       if (page.orders) orders.push(...page.orders)
       cursor = page.cursor
     } while (cursor)
@@ -74,13 +75,22 @@ async function run(req: NextRequest) {
     const dailyMap = new Map<string, { gross: number; tips: number; discounts: number; refunds: number }>()
     const itemRows: any[] = []
     const newMapNames = new Map<string, string>() // itemName -> auto-matched recipe_id ('' if none)
+    const skippedByState: Record<string, { count: number; gross: number }> = {} // non-completed orders, logged not booked
 
     for (const order of orders) {
       const closedAt = order.closed_at ? new Date(order.closed_at) : null
       if (!closedAt) { skipped++; continue }
-      const occurredOn = bizDate(closedAt) // trading-night date (3am cutoff, HCMC)
       // ⚠️ Square VND uses base units (no /100). Detect by currency.
       const gross = (order.total_money?.currency === 'VND' ? (order.total_money?.amount || 0) : (order.total_money?.amount || 0) / 100)
+      // Only COMPLETED orders are real revenue. Record anything else (CANCELED/voids) for audit and skip it.
+      if ((order.state || 'UNKNOWN') !== 'COMPLETED') {
+        const st = order.state || 'UNKNOWN'
+        const b = skippedByState[st] || { count: 0, gross: 0 }
+        b.count++; b.gross += gross; skippedByState[st] = b
+        skipped++
+        continue
+      }
+      const occurredOn = bizDate(closedAt) // trading-night date (3am cutoff, HCMC)
       const tips = (order.total_tip_money?.currency === 'VND' ? (order.total_tip_money?.amount || 0) : (order.total_tip_money?.amount || 0) / 100)
       const discounts = (order.total_discount_money?.currency === 'VND' ? (order.total_discount_money?.amount || 0) : (order.total_discount_money?.amount || 0) / 100)
 
@@ -184,7 +194,7 @@ async function run(req: NextRequest) {
       status: failed > 0 ? 'partial' : 'success',
       finished_at: new Date().toISOString(),
       items_synced: synced, items_skipped: skipped, items_failed: failed,
-      metadata: { orders_count: orders.length, days_count: dailyMap.size, drawer_days: drawerDays },
+      metadata: { orders_count: orders.length, days_count: dailyMap.size, drawer_days: drawerDays, skipped_by_state: skippedByState },
     }).eq('id', logRow!.id)
 
     return NextResponse.json({
