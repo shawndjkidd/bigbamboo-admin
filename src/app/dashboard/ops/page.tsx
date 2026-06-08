@@ -17,12 +17,19 @@ type SalesRow = { occurred_on: string; gross: number; source: string }
 type LaborByDay = { occurred_on: string; total_cost: number; hours: number }
 type CogsVar = { theoretical_cogs: number; actual_cogs: number; variance: number; variance_pct: number | null }
 
+// ratio-percent that never shows NaN/∞ on an empty period
+const rp = (num: number, den: number) => den ? pct(num / den) : '—'
+const DRINK_CATS = new Set(['cocktail', 'beer', 'wine', 'na_drink'])
+const FOOD_CATS = new Set(['food', 'snack'])
+
 export default function OpsDashboard() {
   const [role, setRole] = useState<StaffRole | null>(null)
   const [pnl, setPnl] = useState<Pnl | null>(null)
   const [daily, setDaily] = useState<SalesRow[]>([])
   const [labor, setLabor] = useState<LaborByDay[]>([])
   const [cogsVar, setCogsVar] = useState<CogsVar | null>(null)
+  const [topCats, setTopCats] = useState<{ category: string; total: number; items: { name: string; sales: number; share: number }[] }[]>([])
+  const [mix, setMix] = useState<{ bar: number; kitchen: number; other: number; total: number }>({ bar: 0, kitchen: 0, other: 0, total: 0 })
   const [loading, setLoading] = useState(true)
   const [period, setPeriod] = useState<'mtd' | 'last_month' | 'ytd'>('mtd')
 
@@ -105,6 +112,37 @@ export default function OpsDashboard() {
       byDay.set(s.occurred_on, cur)
     })
     setLabor(Array.from(byDay.entries()).map(([d, v]) => ({ occurred_on: d, total_cost: v.cost, hours: v.hours })))
+
+    // Top sellers by category + Bar/Kitchen mix — item-level sales joined to recipe categories
+    const [{ data: items }, { data: mapRows }, { data: recRows }] = await Promise.all([
+      ops().from('sales_items').select('menu_item_name, gross').gte('occurred_on', start).lte('occurred_on', end).limit(10000),
+      ops().from('pos_item_map').select('item_name, recipe_id'),
+      ops().from('recipes').select('id, category'),
+    ])
+    const recCat = new Map<string, string>((recRows || []).map((r: any) => [r.id, r.category]))
+    const itemCat = new Map<string, string>()
+    ;(mapRows || []).forEach((m: any) => { if (m.recipe_id) itemCat.set(m.item_name, recCat.get(m.recipe_id) || 'other') })
+    const prodSales = new Map<string, number>()
+    let barT = 0, kitT = 0, othT = 0
+    ;(items || []).forEach((it: any) => {
+      const g = Number(it.gross || 0); const nm = it.menu_item_name || '—'
+      prodSales.set(nm, (prodSales.get(nm) || 0) + g)
+      const c = itemCat.get(nm)
+      if (c && DRINK_CATS.has(c)) barT += g; else if (c && FOOD_CATS.has(c)) kitT += g; else othT += g
+    })
+    const totalItems = barT + kitT + othT
+    setMix({ bar: barT, kitchen: kitT, other: othT, total: totalItems })
+    const byCat = new Map<string, { name: string; sales: number }[]>()
+    prodSales.forEach((sales, name) => {
+      const c = itemCat.get(name) || 'other'
+      const arr = byCat.get(c) || []; arr.push({ name, sales }); byCat.set(c, arr)
+    })
+    const cats = Array.from(byCat.entries()).map(([category, arr]) => {
+      const total = arr.reduce((s, i) => s + i.sales, 0)
+      return { category, total, items: arr.sort((a, b) => b.sales - a.sales).slice(0, 3).map(i => ({ ...i, share: totalItems ? i.sales / totalItems : 0 })) }
+    }).sort((a, b) => b.total - a.total)
+    setTopCats(cats)
+
     setLoading(false)
   }
 
@@ -147,16 +185,16 @@ export default function OpsDashboard() {
       {/* KPI tiles */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 24 }}>
         <Kpi label="Revenue"     value={vnd(r.revenue)} accent="#1F3864" />
-        <Kpi label="Gross Profit" value={vnd(gp)}        sub={pct(gp / r.revenue)} accent="#548235" />
-        <Kpi label="EBITDA"      value={vnd(ebitda)}    sub={pct(ebitda / r.revenue)} accent="#C65911" />
-        <Kpi label="Net Income"  value={vnd(net)}       sub={pct(net / r.revenue)} accent="#548235" />
+        <Kpi label="Gross Profit" value={vnd(gp)}        sub={rp(gp, r.revenue)} accent="#548235" />
+        <Kpi label="EBITDA"      value={vnd(ebitda)}    sub={rp(ebitda, r.revenue)} accent="#C65911" />
+        <Kpi label="Net Income"  value={vnd(net)}       sub={rp(net, r.revenue)} accent="#548235" />
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 32 }}>
-        <Kpi label="COGS %"  value={pct(r.cogs / r.revenue)}  small />
-        <Kpi label="Labor %" value={pct(r.labor / r.revenue)} small />
-        <Kpi label="Opex %"  value={pct(r.opex / r.revenue)}  small />
-        <Kpi label="EBITDA Margin" value={pct(ebitda / r.revenue)} small />
+        <Kpi label="COGS %"  value={rp(r.cogs, r.revenue)}  small />
+        <Kpi label="Labor %" value={rp(r.labor, r.revenue)} small />
+        <Kpi label="Prime Cost %" value={rp(r.cogs + r.labor, r.revenue)} sub="COGS + labor · target ≤ 65%" small accent="#7b2d3a" />
+        <Kpi label="Opex %"  value={rp(r.opex, r.revenue)}  small />
       </div>
 
       {/* Theoretical vs Actual COGS variance */}
@@ -199,6 +237,43 @@ export default function OpsDashboard() {
               No theoretical COGS yet — add ingredients + recipes, and item-level sales (Square sync) to populate.
             </div>
           )}
+        </div>
+      )}
+
+      {/* Revenue mix: Bar vs Kitchen */}
+      {mix.total > 0 && (
+        <div style={{ marginBottom: 32, padding: 16, background: 'var(--bg-card, #fff)', border: '1px solid var(--border, #e5e5e5)', borderRadius: 8 }}>
+          <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 4, color: 'var(--text, #333)' }}>Revenue mix — Bar vs Kitchen</h3>
+          <div style={{ fontSize: 11, color: 'var(--text-muted, #999)', marginBottom: 12 }}>by item-level sales this period</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
+            <Kpi label="Bar" value={vnd(mix.bar)} sub={rp(mix.bar, mix.total)} accent="#1F3864" small />
+            <Kpi label="Kitchen" value={vnd(mix.kitchen)} sub={rp(mix.kitchen, mix.total)} accent="#C65911" small />
+            <Kpi label="Other / untracked" value={vnd(mix.other)} sub={rp(mix.other, mix.total)} small />
+          </div>
+        </div>
+      )}
+
+      {/* Top sellers by category */}
+      {topCats.length > 0 && (
+        <div style={{ marginBottom: 32 }}>
+          <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 12, color: 'var(--text, #333)' }}>Top sellers by category</h3>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 12 }}>
+            {topCats.map(c => (
+              <div key={c.category} style={{ padding: 14, background: 'var(--bg-card, #fff)', border: '1px solid var(--border, #e5e5e5)', borderRadius: 8 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8 }}>
+                  <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'capitalize', letterSpacing: '0.04em', color: 'var(--text, #333)' }}>{c.category.replace('_', ' ')}</div>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted, #999)' }}>{vnd(c.total)}</div>
+                </div>
+                {c.items.map((it, i) => (
+                  <div key={it.name} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', padding: '4px 0', borderTop: i ? '1px solid var(--border, #f0f0f0)' : 'none' }}>
+                    <div style={{ fontSize: 13, color: 'var(--text, #333)' }}>{i + 1}. {it.name}</div>
+                    <div style={{ fontSize: 12, color: 'var(--text-secondary, #666)', whiteSpace: 'nowrap' }}>{vnd(it.sales)} <span style={{ color: 'var(--text-muted, #999)' }}>· {pct(it.share)}</span></div>
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+          <div style={{ fontSize: 11, color: 'var(--text-muted, #999)', marginTop: 8 }}>% is each item's share of total item sales this period.</div>
         </div>
       )}
 
