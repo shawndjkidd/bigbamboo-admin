@@ -31,6 +31,7 @@ export default function EventsPnlPage() {
   const [scanning, setScanning] = useState(false)
   const [nvStart, setNvStart] = useState(''); const [nvEnd, setNvEnd] = useState('')
   const [nvDesc, setNvDesc] = useState(''); const [nvPrice, setNvPrice] = useState(''); const [nvFree, setNvFree] = useState(false); const [nvType, setNvType] = useState('')
+  const [showPaste, setShowPaste] = useState(false); const [pasteText, setPasteText] = useState('')
 
   // open modal
   const [openId, setOpenId] = useState<string | null>(null)
@@ -94,22 +95,27 @@ export default function EventsPnlPage() {
     if (data?.id) open(data.id)
   }
 
-  async function scanEvent(file: File) {
+  function applyScan(j: any) {
+    setShowNew(true)
+    if (j.title) setNvTitle(j.title)
+    if (j.date && /^\d{4}-\d{2}-\d{2}$/.test(j.date)) setNvDate(j.date)
+    setNvStart((j.start_time || '').slice(0, 5)); setNvEnd((j.end_time || '').slice(0, 5))
+    setNvType(j.type || ''); setNvDesc(j.description || ''); setNvFree(!!j.is_free)
+    setNvPrice(j.ticket_price ? String(j.ticket_price) : '')
+  }
+  async function sendScan(payload: any) {
     setScanning(true); setMsg(null)
     try {
-      const dataUrl: string = await new Promise((res, rej) => { const fr = new FileReader(); fr.onload = () => res(String(fr.result)); fr.onerror = rej; fr.readAsDataURL(file) })
-      const resp = await fetch('/api/admin/ops/event-scan', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ imageBase64: dataUrl, mimeType: file.type }) })
+      const resp = await fetch('/api/admin/ops/event-scan', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
       const j = await resp.json()
-      if (!resp.ok || !j.ok) { setMsg(j.error || 'Scan failed'); setScanning(false); return }
-      setShowNew(true)
-      if (j.title) setNvTitle(j.title)
-      if (j.date && /^\d{4}-\d{2}-\d{2}$/.test(j.date)) setNvDate(j.date)
-      setNvStart((j.start_time || '').slice(0, 5)); setNvEnd((j.end_time || '').slice(0, 5))
-      setNvType(j.type || ''); setNvDesc(j.description || ''); setNvFree(!!j.is_free)
-      setNvPrice(j.ticket_price ? String(j.ticket_price) : '')
-      setMsg('✓ Scanned — review the details below, then Create.')
-    } catch (e: any) { setMsg('Scan error: ' + e.message) }
+      if (!resp.ok || !j.ok) { setMsg(j.error || 'Read failed'); setScanning(false); return }
+      applyScan(j); setShowPaste(false); setPasteText(''); setMsg('✓ Read — review the details below, then Create.')
+    } catch (e: any) { setMsg('Read error: ' + e.message) }
     setScanning(false)
+  }
+  async function scanEvent(file: File) {
+    const dataUrl: string = await new Promise((res, rej) => { const fr = new FileReader(); fr.onload = () => res(String(fr.result)); fr.onerror = rej; fr.readAsDataURL(file) })
+    await sendScan({ imageBase64: dataUrl, mimeType: file.type })
   }
 
   async function open(id: string) {
@@ -168,12 +174,24 @@ export default function EventsPnlPage() {
             {scanning ? 'Reading…' : '📷 Scan event'}
             <input type="file" accept="image/*" disabled={scanning} onChange={e => { const f = e.target.files?.[0]; if (f) scanEvent(f); e.target.value = '' }} style={{ display: 'none' }} />
           </label>
+          <button onClick={() => { setShowPaste(s => !s); setMsg(null) }} style={{ ...btn, background: 'transparent', color: 'var(--accent,#e87830)', border: '1px solid var(--accent,#e87830)' }}>📝 Paste text</button>
           <button onClick={() => { setShowNew(true); setMsg(null) }} style={btn}>+ New event</button>
         </div>
       </div>
       <div style={{ fontSize: 13, color: 'var(--text-muted, #999)', marginBottom: 18 }}>
         Each card is one event — tap to open its full P&amp;L. Door revenue and cash costs also roll into your monthly P&amp;L.
       </div>
+
+      {showPaste && (
+        <div className="card" style={{ padding: 14, marginBottom: 16 }}>
+          <div style={hdr}>Paste event text</div>
+          <textarea value={pasteText} onChange={e => setPasteText(e.target.value)} rows={4} style={{ ...inp, width: '100%', resize: 'vertical' }} placeholder="Paste the Facebook event text here…" />
+          <div style={{ ...row, marginTop: 8 }}>
+            <button onClick={() => pasteText.trim() && sendScan({ text: pasteText.trim() })} disabled={scanning} style={btn}>{scanning ? 'Reading…' : 'Read text'}</button>
+            <button onClick={() => { setShowPaste(false); setPasteText('') }} style={{ ...btn, background: 'transparent', color: 'var(--text-muted,#999)' }}>Cancel</button>
+          </div>
+        </div>
+      )}
 
       {showNew && (
         <div className="card" style={{ padding: 14, marginBottom: 16 }}>

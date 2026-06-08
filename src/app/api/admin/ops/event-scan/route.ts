@@ -11,13 +11,14 @@ export async function POST(req: NextRequest) {
   const key = process.env.GEMINI_API_KEY
   if (!key) return NextResponse.json({ error: 'GEMINI_API_KEY is not set in the environment.' }, { status: 500 })
 
-  let imageBase64 = '', mimeType = 'image/jpeg'
+  let imageBase64 = '', mimeType = 'image/jpeg', bodyText = ''
   try {
     const b = await req.json()
     imageBase64 = (b.imageBase64 || '').replace(/^data:[^,]+,/, '')
     mimeType = b.mimeType || 'image/jpeg'
+    bodyText = (b.text || '').trim()
   } catch { return NextResponse.json({ error: 'bad request body' }, { status: 400 }) }
-  if (!imageBase64) return NextResponse.json({ error: 'no image provided' }, { status: 400 })
+  if (!imageBase64 && !bodyText) return NextResponse.json({ error: 'no image or text provided' }, { status: 400 })
 
   const prompt = `You are reading a screenshot of a Facebook (or similar) event listing for a bar/venue in Vietnam. Extract the event details.
 Return ONLY valid JSON of this shape:
@@ -30,8 +31,11 @@ Rules:
 - description = a concise 1–2 sentence summary of what the event is (the vibe, music, theme).
 - If the image is not a readable event, return {"title":null,"date":null,"start_time":null,"end_time":null,"location":null,"ticket_price":null,"is_free":false,"description":null}.`
 
+  const parts: any[] = bodyText
+    ? [{ text: prompt + '\n\nEVENT TEXT:\n' + bodyText }]
+    : [{ text: prompt }, { inline_data: { mime_type: mimeType, data: imageBase64 } }]
   const body = {
-    contents: [{ parts: [{ text: prompt }, { inline_data: { mime_type: mimeType, data: imageBase64 } }] }],
+    contents: [{ parts }],
     generationConfig: { temperature: 0, responseMimeType: 'application/json' },
   }
 
