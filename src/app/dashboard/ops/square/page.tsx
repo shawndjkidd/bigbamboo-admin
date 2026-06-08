@@ -26,6 +26,9 @@ export default function SquarePage() {
   const [logs, setLogs] = useState<SyncLog[]>([])
   const [days, setDays] = useState('7')
   const [syncing, setSyncing] = useState(false)
+  const [backfilling, setBackfilling] = useState(false)
+  const [backfillFrom, setBackfillFrom] = useState('2026-01')
+  const [backfillMsg, setBackfillMsg] = useState<string | null>(null)
   const [msg, setMsg] = useState<string | null>(
     search.get('connected') ? '✓ Square connected.' :
     search.get('error') ? `Error: ${search.get('error')}` : null
@@ -59,6 +62,33 @@ export default function SquarePage() {
       await load()
     } catch (e: any) { setMsg('Error: ' + e.message) }
     setSyncing(false)
+  }
+
+  async function runBackfill() {
+    if (!confirm(`Backfill Square sales from ${backfillFrom} to now? Pulls historical orders month by month. It will NOT touch stock counts.`)) return
+    setBackfilling(true); setBackfillMsg('Starting…')
+    try {
+      const [fy, fm] = backfillFrom.split('-').map(Number)
+      const now = new Date()
+      let y = fy, m = fm, totalSynced = 0, totalOrders = 0
+      while (y < now.getFullYear() || (y === now.getFullYear() && m <= now.getMonth() + 1)) {
+        const mm = String(m).padStart(2, '0')
+        const start = `${y}-${mm}-01`
+        const isCurrent = y === now.getFullYear() && m === now.getMonth() + 1
+        const end = isCurrent
+          ? `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+          : `${y}-${mm}-${String(new Date(y, m, 0).getDate()).padStart(2, '0')}`
+        setBackfillMsg(`Syncing ${y}-${mm}…`)
+        const r = await fetch(`/api/admin/ops/square/sync?start=${start}&end=${end}&backfill=1`, { method: 'POST' })
+        const j = await r.json()
+        if (!r.ok) { setBackfillMsg(`Stopped at ${y}-${mm}: ${j.error}`); setBackfilling(false); return }
+        totalSynced += Number(j.items_synced || 0); totalOrders += Number(j.orders || 0)
+        m++; if (m > 12) { m = 1; y++ }
+      }
+      setBackfillMsg(`✓ Backfill complete — ${totalSynced} items, ${totalOrders} orders. Tell Claude to dedupe + mark historical sales applied.`)
+      await load()
+    } catch (e: any) { setBackfillMsg('Error: ' + e.message) }
+    setBackfilling(false)
   }
 
   const canManage = role && canLockPeriods(role) // super_admin only for Square setup
@@ -127,6 +157,22 @@ export default function SquarePage() {
               Nightly auto-sync via Vercel Cron pulls the last 24 hours. Use this for backfills or manual catch-up.
             </div>
           </div>
+
+          {canManage && (
+            <div style={{ padding: 16, border: '1px solid var(--accent, #e87830)', borderRadius: 8, marginBottom: 16 }}>
+              <div style={{ fontWeight: 600, marginBottom: 8 }}>Backfill historical sales</div>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                <label style={{ fontSize: 12, color: 'var(--text-muted, #666)' }}>From</label>
+                <input type="month" value={backfillFrom} onChange={e => setBackfillFrom(e.target.value)} style={{ padding: '8px 10px', fontSize: 14, border: '1px solid var(--border, #e5e5e5)', borderRadius: 6, background: 'var(--bg-input, #fff)', color: 'var(--text, #333)' }} />
+                <span style={{ fontSize: 12, color: 'var(--text-muted, #666)' }}>→ now</span>
+                <button onClick={runBackfill} disabled={backfilling} style={{ ...btnPrimary, marginLeft: 8 }}>{backfilling ? 'Backfilling…' : 'Backfill from Square'}</button>
+              </div>
+              {backfillMsg && <div style={{ fontSize: 12, marginTop: 8, color: backfillMsg.startsWith('✓') ? '#548235' : 'var(--text, #333)' }}>{backfillMsg}</div>}
+              <div style={{ fontSize: 11, color: 'var(--text-muted, #999)', marginTop: 8 }}>
+                Pulls month-by-month so it can't time out. Skips stock deduction (it's historical). After it finishes, tell me and I'll dedupe any overlapping manual entries and mark the history as already-applied.
+              </div>
+            </div>
+          )}
 
           <div style={{ padding: 16, border: '1px solid var(--border, #e5e5e5)', borderRadius: 8 }}>
             <div style={{ fontWeight: 600, marginBottom: 8 }}>Sync history</div>

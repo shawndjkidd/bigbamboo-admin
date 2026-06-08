@@ -22,6 +22,9 @@ export async function GET(req: NextRequest) {
 
 async function run(req: NextRequest) {
   const days = Math.max(1, Math.min(31, Number(req.nextUrl.searchParams.get('days') || '1')))
+  const startParam = req.nextUrl.searchParams.get('start') // YYYY-MM-DD — explicit backfill window
+  const endParam = req.nextUrl.searchParams.get('end')     // YYYY-MM-DD
+  const backfill = req.nextUrl.searchParams.get('backfill') === '1' // skip stock deduction for historical pulls
   const svc = getServiceClient()
 
   const { data: venue } = await svc.from('venues').select('id').eq('slug', 'bigbamboo').single()
@@ -30,8 +33,8 @@ async function run(req: NextRequest) {
   const { data: locs } = await svc.schema('ops').from('square_locations').select('square_location_id').eq('venue_id', venue.id).eq('active', true)
   if (!locs || locs.length === 0) return NextResponse.json({ error: 'no active Square locations' }, { status: 400 })
 
-  const end = new Date()
-  const start = new Date(end.getTime() - days * 24 * 60 * 60 * 1000)
+  const end = endParam ? new Date(endParam + 'T23:59:59+07:00') : new Date()
+  const start = startParam ? new Date(startParam + 'T00:00:00+07:00') : new Date(end.getTime() - days * 24 * 60 * 60 * 1000)
 
   // Trading-night grouping: sales before 3am count toward the previous calendar day (HCMC).
   const BUSINESS_DAY_CUTOFF_H = 3
@@ -138,8 +141,11 @@ async function run(req: NextRequest) {
     }
 
     // --- Deduct ingredient stock for newly-synced sold lines (idempotent via stock_applied) ---
-    try { await svc.schema('ops').rpc('apply_stock_deductions', { p_venue: venue.id }) }
-    catch (e: any) { console.warn('stock deduction skipped:', e?.message || String(e)) }
+    // Skipped during a historical backfill so old sales don't drain current stock counts.
+    if (!backfill) {
+      try { await svc.schema('ops').rpc('apply_stock_deductions', { p_venue: venue.id }) }
+      catch (e: any) { console.warn('stock deduction skipped:', e?.message || String(e)) }
+    }
 
     // --- Cash drawer shifts → ops.cash_recon (POS cash figures). Non-fatal: needs CASH_DRAWER_READ scope. ---
     let drawerDays = 0

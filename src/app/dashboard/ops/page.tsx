@@ -21,6 +21,7 @@ type CogsVar = { theoretical_cogs: number; actual_cogs: number; variance: number
 const rp = (num: number, den: number) => den ? pct(num / den) : '—'
 const DRINK_CATS = new Set(['cocktail', 'beer', 'wine', 'na_drink'])
 const FOOD_CATS = new Set(['food', 'snack'])
+type CatBlock = { category: string; count: number; total: number; items: { name: string; sales: number; share: number }[] }
 
 export default function OpsDashboard() {
   const [role, setRole] = useState<StaffRole | null>(null)
@@ -28,7 +29,9 @@ export default function OpsDashboard() {
   const [daily, setDaily] = useState<SalesRow[]>([])
   const [labor, setLabor] = useState<LaborByDay[]>([])
   const [cogsVar, setCogsVar] = useState<CogsVar | null>(null)
-  const [topCats, setTopCats] = useState<{ category: string; total: number; items: { name: string; sales: number; share: number }[] }[]>([])
+  const [topCats, setTopCats] = useState<CatBlock[]>([])
+  const [bottomCats, setBottomCats] = useState<CatBlock[]>([])
+  const [overallTop, setOverallTop] = useState<{ name: string; sales: number; category: string; share: number }[]>([])
   const [mix, setMix] = useState<{ bar: number; kitchen: number; other: number; total: number }>({ bar: 0, kitchen: 0, other: 0, total: 0 })
   const [loading, setLoading] = useState(true)
   const [period, setPeriod] = useState<'mtd' | 'last_month' | 'ytd'>('mtd')
@@ -137,11 +140,17 @@ export default function OpsDashboard() {
       const c = itemCat.get(name) || 'other'
       const arr = byCat.get(c) || []; arr.push({ name, sales }); byCat.set(c, arr)
     })
-    const cats = Array.from(byCat.entries()).map(([category, arr]) => {
-      const total = arr.reduce((s, i) => s + i.sales, 0)
-      return { category, total, items: arr.sort((a, b) => b.sales - a.sales).slice(0, 3).map(i => ({ ...i, share: totalItems ? i.sales / totalItems : 0 })) }
-    }).sort((a, b) => b.total - a.total)
-    setTopCats(cats)
+    const catEntries = Array.from(byCat.entries()).filter(([category]) => category !== 'other' && category !== 'wine')
+    const pick = (arr: { name: string; sales: number }[], asc: boolean) =>
+      [...arr].sort((a, b) => asc ? a.sales - b.sales : b.sales - a.sales).slice(0, 3).map(i => ({ ...i, share: totalItems ? i.sales / totalItems : 0 }))
+    const mkCats = (asc: boolean): CatBlock[] => catEntries
+      .map(([category, arr]) => ({ category, count: arr.length, total: arr.reduce((s, i) => s + i.sales, 0), items: pick(arr, asc) }))
+      .sort((a, b) => b.total - a.total)
+    setTopCats(mkCats(false))
+    setBottomCats(mkCats(true))
+    const allTracked: { name: string; sales: number; category: string }[] = []
+    prodSales.forEach((sales, name) => { const c = itemCat.get(name); if (c && c !== 'other' && c !== 'wine') allTracked.push({ name, sales, category: c }) })
+    setOverallTop([...allTracked].sort((a, b) => b.sales - a.sales).slice(0, 3).map(i => ({ ...i, share: totalItems ? i.sales / totalItems : 0 })))
 
     setLoading(false)
   }
@@ -253,6 +262,22 @@ export default function OpsDashboard() {
         </div>
       )}
 
+      {/* Top products by revenue (overall) */}
+      {overallTop.length > 0 && (
+        <div style={{ marginBottom: 32 }}>
+          <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 12, color: 'var(--text, #333)' }}>Top products by revenue</h3>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
+            {overallTop.map((it, i) => (
+              <div key={it.name} style={{ padding: 14, background: 'var(--bg-card, #fff)', border: '1px solid var(--border, #e5e5e5)', borderRadius: 8, borderLeft: '3px solid #1F3864' }}>
+                <div style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-muted, #999)' }}>#{i + 1} · {it.category.replace('_', ' ')}</div>
+                <div style={{ fontSize: 15, fontWeight: 600, marginTop: 4, color: 'var(--text, #333)' }}>{it.name}</div>
+                <div style={{ fontSize: 13, color: 'var(--text-secondary, #666)', marginTop: 2 }}>{vnd(it.sales)} · {pct(it.share)}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Top sellers by category */}
       {topCats.length > 0 && (
         <div style={{ marginBottom: 32 }}>
@@ -274,6 +299,30 @@ export default function OpsDashboard() {
             ))}
           </div>
           <div style={{ fontSize: 11, color: 'var(--text-muted, #999)', marginTop: 8 }}>% is each item's share of total item sales this period.</div>
+        </div>
+      )}
+
+      {/* Slowest sellers by category */}
+      {bottomCats.filter(c => c.count > 3).length > 0 && (
+        <div style={{ marginBottom: 32 }}>
+          <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 12, color: 'var(--text, #333)' }}>Slowest sellers by category</h3>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 12 }}>
+            {bottomCats.filter(c => c.count > 3).map(c => (
+              <div key={c.category} style={{ padding: 14, background: 'var(--bg-card, #fff)', border: '1px solid var(--border, #e5e5e5)', borderRadius: 8 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8 }}>
+                  <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'capitalize', letterSpacing: '0.04em', color: 'var(--text, #333)' }}>{c.category.replace('_', ' ')}</div>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted, #999)' }}>{c.count} items</div>
+                </div>
+                {c.items.map((it, i) => (
+                  <div key={it.name} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', padding: '4px 0', borderTop: i ? '1px solid var(--border, #f0f0f0)' : 'none' }}>
+                    <div style={{ fontSize: 13, color: 'var(--text, #333)' }}>{it.name}</div>
+                    <div style={{ fontSize: 12, color: 'var(--text-secondary, #666)', whiteSpace: 'nowrap' }}>{vnd(it.sales)} <span style={{ color: 'var(--text-muted, #999)' }}>· {pct(it.share)}</span></div>
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+          <div style={{ fontSize: 11, color: 'var(--text-muted, #999)', marginTop: 8 }}>Lowest-selling items this period — candidates to cut or rework.</div>
         </div>
       )}
 
