@@ -10,7 +10,8 @@ type Pnl = {
   cogs: number
   labor: number
   opex: number
-  capex: number
+  depreciation: number
+  net: number
 }
 
 type SalesRow = { occurred_on: string; gross: number; source: string }
@@ -66,25 +67,20 @@ export default function OpsDashboard() {
       end = today()
     }
 
-    const periodMonthStart = start.substring(0, 7) + '-01'
-    const [sales, purchases, shifts, variance] = await Promise.all([
+    const startMonth = start.substring(0, 7) + '-01'
+    const endMonth = end.substring(0, 7) + '-01'
+    const [sales, pnlAcc, shifts, variance] = await Promise.all([
       ops().from('sales_daily').select('occurred_on,gross,source').gte('occurred_on', start).lte('occurred_on', end).order('occurred_on'),
-      ops().from('purchases').select('amount,category,occurred_on').gte('occurred_on', start).lte('occurred_on', end),
+      ops().from('v_pnl_accrual').select('revenue,cogs,labor,opex,depreciation,net_income_accrual').gte('period_month', startMonth).lte('period_month', endMonth),
       ops().from('labor_shifts').select('occurred_on,hours,shift_cost').gte('occurred_on', start).lte('occurred_on', end).order('occurred_on'),
-      ops().from('v_theoretical_vs_actual_cogs').select('theoretical_cogs,actual_cogs,variance,variance_pct').eq('period_month', periodMonthStart).maybeSingle(),
+      ops().from('v_theoretical_vs_actual_cogs').select('theoretical_cogs,actual_cogs,variance,variance_pct').eq('period_month', startMonth).maybeSingle(),
     ])
     setCogsVar((variance.data as CogsVar) || null)
 
-    const { data: catRows } = await ops().from('expense_categories').select('key,bucket')
-    const cogsCats = (catRows || []).filter((c: any) => c.bucket === 'cogs').map((c: any) => c.key)
-    const opexCats = (catRows || []).filter((c: any) => c.bucket === 'opex').map((c: any) => c.key)
-    const capexCats = (catRows || []).filter((c: any) => c.bucket === 'capex').map((c: any) => c.key)
-    const sum = (rows: any[], pred: (r: any) => boolean) =>
-      rows.filter(pred).reduce((a, r) => a + Number(r.amount || 0), 0)
-
     const salesRows = (sales.data || []) as SalesRow[]
-    const purchaseRows = purchases.data || []
     const shiftRows = (shifts.data || []) as any[]
+    const accRows = (pnlAcc.data || []) as any[]
+    const accSum = (k: string) => accRows.reduce((a, r) => a + Number(r[k] || 0), 0)
 
     // One row per day — prefer the Square figure when a day also has a manual entry
     const byDayMap = new Map<string, SalesRow>()
@@ -94,13 +90,15 @@ export default function OpsDashboard() {
     }
     const dedupedDaily = Array.from(byDayMap.values()).sort((a, b) => a.occurred_on.localeCompare(b.occurred_on))
 
+    // P&L tiles come from the same accrual view the Overview P&L uses, so the two pages agree
     setPnl({
       period_month: start,
-      revenue: dedupedDaily.reduce((a, r) => a + Number(r.gross || 0), 0),
-      cogs:    sum(purchaseRows, r => cogsCats.includes(r.category)),
-      labor:   shiftRows.reduce((a, r) => a + Number(r.shift_cost || 0), 0),
-      opex:    sum(purchaseRows, r => opexCats.includes(r.category)),
-      capex:   sum(purchaseRows, r => capexCats.includes(r.category)),
+      revenue: accSum('revenue'),
+      cogs: accSum('cogs'),
+      labor: accSum('labor'),
+      opex: accSum('opex'),
+      depreciation: accSum('depreciation'),
+      net: accSum('net_income_accrual'),
     })
 
     // Daily sales — every day, deduped (Square preferred); was previously manual-only so Square days vanished
@@ -173,7 +171,7 @@ export default function OpsDashboard() {
   if (!r) return null
   const gp = r.revenue - r.cogs
   const ebitda = gp - r.labor - r.opex
-  const net = ebitda - r.capex
+  const net = r.net
 
   return (
     <div>
