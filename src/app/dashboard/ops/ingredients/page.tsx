@@ -219,15 +219,16 @@ function IngredientsInner() {
             </select>
           </label>
         )}
+        {view !== 'vendors' && categories.length > 1 && (
+          <label style={{ fontSize: 13, color: 'var(--text-muted, #999)', display: 'flex', alignItems: 'center', gap: 6 }}>
+            Category
+            <select value={catFilter} onChange={e => setCatFilter(e.target.value)} style={{ ...inp, width: 'auto', padding: '8px 10px', textTransform: 'capitalize' }}>
+              <option value="all">All categories</option>
+              {categories.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+          </label>
+        )}
       </div>
-
-      {view !== 'vendors' && categories.length > 1 && (
-        <div style={{ display: 'flex', gap: 6, marginBottom: 12, flexWrap: 'wrap' }}>
-          {(['all', ...categories]).map(c => (
-            <button key={c} onClick={() => setCatFilter(c)} style={{ padding: '5px 12px', borderRadius: 100, fontSize: 13, fontWeight: 500, cursor: 'pointer', textTransform: 'capitalize', background: catFilter === c ? 'var(--accent)' : 'transparent', color: catFilter === c ? '#fff' : 'var(--text-secondary)', border: '1px solid ' + (catFilter === c ? 'var(--accent)' : 'var(--border)') }}>{c === 'all' ? 'All categories' : c}</button>
-          ))}
-        </div>
-      )}
 
       <input type="text" placeholder="Search by name or supplier…" value={filter} onChange={e => setFilter(e.target.value)} style={{ ...inp, marginBottom: 12 }} />
 
