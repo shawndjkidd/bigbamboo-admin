@@ -40,8 +40,8 @@ function IngredientsInner() {
   const [rows, setRows] = useState<Row[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState('')
-  const [view, setView] = useState<'ingredients' | 'consumables' | 'stock' | 'vendors' | 'all'>(
-    urlView === 'stock' ? 'stock' : urlView === 'vendors' ? 'vendors' : urlView === 'consumables' ? 'consumables' : urlView === 'all' ? 'all' : 'ingredients'
+  const [view, setView] = useState<'list' | 'stock' | 'vendors'>(
+    urlView === 'stock' ? 'stock' : urlView === 'vendors' ? 'vendors' : 'list'
   )
   const [supplierFilter, setSupplierFilter] = useState('all')
   const [catFilter, setCatFilter] = useState('all')
@@ -92,8 +92,6 @@ function IngredientsInner() {
   const vendorNames = Array.from(new Set([...suppliers, ...vendors.map(v => v.name)].filter(Boolean))).sort((a, b) => a.localeCompare(b))
 
   const filtered = scoped.filter(r => {
-    if (view === 'ingredients' && r.category === 'consumable') return false
-    if (view === 'consumables' && r.category !== 'consumable') return false
     if (supplierFilter !== 'all' && (r.supplier || '').trim() !== supplierFilter) return false
     if (catFilter !== 'all' && r.category !== catFilter) return false
     if (filter && !(r.name.toLowerCase().includes(filter.toLowerCase()) || (r.supplier || '').toLowerCase().includes(filter.toLowerCase()))) return false
@@ -200,14 +198,14 @@ function IngredientsInner() {
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 16 }}>
         <div>
           <h2 style={{ fontSize: 22, fontWeight: 600 }}>{dept === 'bar' ? 'Bar — Ingredients' : dept === 'kitchen' ? 'Kitchen — Ingredients' : 'Ingredients'}</h2>
-          <div style={{ fontSize: 13, color: 'var(--text-muted, #999)', marginTop: 2 }}>{view === 'vendors' ? `${vendorGroups.length} supplier${vendorGroups.length === 1 ? '' : 's'} · tap a supplier to build an order` : view === 'stock' ? `Count what you have in the units you buy · ${filtered.filter(isLow).length} below par` : `${filtered.length} ${view === 'consumables' ? 'consumables' : 'items'} · tap a row to edit, set supplier & see price history`}</div>
+          <div style={{ fontSize: 13, color: 'var(--text-muted, #999)', marginTop: 2 }}>{view === 'vendors' ? `${vendorGroups.length} supplier${vendorGroups.length === 1 ? '' : 's'} · tap a supplier to build an order` : view === 'stock' ? `Count what you have in the units you buy · ${filtered.filter(isLow).length} below par` : `${filtered.length} items · tap a row to edit, set supplier & see price history`}</div>
         </div>
         {canManage && <button onClick={() => { setEditing(null); setShowForm(true) }} style={btnPrimary}>+ Add ingredient</button>}
       </div>
 
       <div style={{ display: 'flex', gap: 8, marginBottom: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-        {(['ingredients','consumables','stock','vendors','all'] as const).map(v => (
-          <button key={v} onClick={() => setView(v)} style={{ padding: '8px 16px', borderRadius: 100, fontSize: 14, fontWeight: 500, cursor: 'pointer', textTransform: 'capitalize', background: view === v ? 'var(--accent)' : 'transparent', color: view === v ? '#fff' : 'var(--text-secondary)', border: '1px solid ' + (view === v ? 'var(--accent)' : 'var(--border)') }}>{v === 'all' ? 'All' : v}</button>
+        {(['list','stock','vendors'] as const).map(v => (
+          <button key={v} onClick={() => setView(v)} style={{ padding: '8px 16px', borderRadius: 100, fontSize: 14, fontWeight: 500, cursor: 'pointer', textTransform: 'capitalize', background: view === v ? 'var(--accent)' : 'transparent', color: view === v ? '#fff' : 'var(--text-secondary)', border: '1px solid ' + (view === v ? 'var(--accent)' : 'var(--border)') }}>{v === 'list' ? 'Items' : v}</button>
         ))}
         <div style={{ flex: 1 }} />
         {view !== 'vendors' && (
