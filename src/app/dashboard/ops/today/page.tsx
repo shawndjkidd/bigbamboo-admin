@@ -35,6 +35,7 @@ export default function CashReconPage() {
   const [notes, setNotes] = useState('')
   const [pos, setPos] = useState<PosCash | null>(null)
   const [recentSales, setRecentSales] = useState<{ occurred_on: string; net: number | null; source?: string }[]>([])
+  const [dayItems, setDayItems] = useState<{ name: string; qty: number; unit: number; time: string; method: string }[]>([])
 
   useEffect(() => { init() }, [])
   useEffect(() => { if (venueId) loadDate(venueId, date) }, [date]) // eslint-disable-line
@@ -55,7 +56,7 @@ export default function CashReconPage() {
     // 1) Existing reconciliation for the day (if already saved)
     const { data: rec } = await ops().from('cash_recon').select('*').eq('venue_id', vid).eq('occurred_on', d).maybeSingle()
     // 2) Square line items for the day → cash / card / other split
-    const { data: items } = await ops().from('sales_items').select('qty, unit_price, payment_method').eq('venue_id', vid).eq('occurred_on', d)
+    const { data: items } = await ops().from('sales_items').select('menu_item_name, qty, unit_price, payment_method, occurred_at').eq('venue_id', vid).eq('occurred_on', d).order('occurred_at')
     let posCash = 0, posCard = 0, posOther = 0
     for (const it of (items || []) as any[]) {
       const g = Number(it.qty || 0) * Number(it.unit_price || 0)
@@ -65,6 +66,13 @@ export default function CashReconPage() {
       else posOther += g
     }
     setHasPos((items || []).length > 0)
+    setDayItems(((items || []) as any[]).map(it => ({
+      name: it.menu_item_name || '—',
+      qty: Number(it.qty || 0),
+      unit: Number(it.unit_price || 0),
+      method: it.payment_method || '',
+      time: it.occurred_at ? new Date(it.occurred_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Ho_Chi_Minh' }) : '',
+    })))
 
     setPos(rec ? {
       pos_opening_cash: rec.pos_opening_cash, pos_cash_sales: rec.pos_cash_sales, pos_cash_paid_in: rec.pos_cash_paid_in, pos_cash_paid_out: rec.pos_cash_paid_out,
@@ -236,6 +244,39 @@ export default function CashReconPage() {
             ))}
           </tbody>
         </table>
+      </div>
+
+      {/* Items sold on the selected day */}
+      <div style={{ marginTop: 40 }}>
+        <h3 style={{ fontSize: 13, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted, #999)', marginBottom: 8 }}>
+          Items sold · {new Date(date).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })}
+          {dayItems.length > 0 && <span style={{ fontWeight: 400 }}> · {dayItems.length} lines · {vnd(dayItems.reduce((s, i) => s + i.qty * i.unit, 0))}</span>}
+        </h3>
+        {dayItems.length === 0 ? (
+          <div style={{ padding: 12, fontSize: 13, color: 'var(--text-muted, #999)' }}>No items recorded for this day.</div>
+        ) : (
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+            <thead><tr style={{ background: 'var(--bg-sidebar, #fafafa)' }}>
+              <th style={th}>Time</th><th style={th}>Item</th>
+              <th style={{ ...th, textAlign: 'right' }}>Qty</th>
+              <th style={{ ...th, textAlign: 'right' }}>Price</th>
+              <th style={{ ...th, textAlign: 'right' }}>Total</th>
+              <th style={th}>Paid</th>
+            </tr></thead>
+            <tbody>
+              {dayItems.map((it, i) => (
+                <tr key={i} style={{ borderTop: '1px solid var(--border, #eee)' }}>
+                  <td style={{ ...td, color: 'var(--text-muted, #999)', whiteSpace: 'nowrap' }}>{it.time}</td>
+                  <td style={td}>{it.name}</td>
+                  <td style={{ ...td, textAlign: 'right' }}>{it.qty}</td>
+                  <td style={{ ...td, textAlign: 'right' }}>{vnd(it.unit)}</td>
+                  <td style={{ ...td, textAlign: 'right', fontWeight: 600 }}>{vnd(it.qty * it.unit)}</td>
+                  <td style={{ ...td, fontSize: 11, color: 'var(--text-muted, #999)' }}>{(it.method || '').replace('_', ' ').toLowerCase()}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
     </div>
   )
