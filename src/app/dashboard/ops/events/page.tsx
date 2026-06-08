@@ -28,6 +28,9 @@ export default function EventsPnlPage() {
   // new event
   const [showNew, setShowNew] = useState(false)
   const [nvTitle, setNvTitle] = useState(''); const [nvDate, setNvDate] = useState(today())
+  const [scanning, setScanning] = useState(false)
+  const [nvStart, setNvStart] = useState(''); const [nvEnd, setNvEnd] = useState('')
+  const [nvDesc, setNvDesc] = useState(''); const [nvPrice, setNvPrice] = useState(''); const [nvFree, setNvFree] = useState(false)
 
   // open modal
   const [openId, setOpenId] = useState<string | null>(null)
@@ -78,11 +81,35 @@ export default function EventsPnlPage() {
 
   async function createEvent() {
     if (!nvTitle.trim()) { setMsg('Give the event a name'); return }
-    const { data, error } = await supabase.from('events').insert({ title: nvTitle.trim(), event_date: nvDate }).select('id').single()
+    const payload: any = { title: nvTitle.trim(), event_date: nvDate, is_published: false }
+    if (nvStart) payload.start_time = nvStart
+    if (nvEnd) payload.end_time = nvEnd
+    if (nvDesc.trim()) payload.description = nvDesc.trim()
+    if (nvFree) { payload.is_free = true; payload.ticket_price = 0 }
+    else if (num(nvPrice)) { payload.ticket_price = num(nvPrice); payload.is_free = false }
+    const { data, error } = await supabase.from('events').insert(payload).select('id').single()
     if (error) { setMsg('Could not create event: ' + error.message); return }
-    setShowNew(false); setNvTitle(''); setMsg(null)
+    setShowNew(false); setNvTitle(''); setNvStart(''); setNvEnd(''); setNvDesc(''); setNvPrice(''); setNvFree(false); setMsg(null)
     await loadAll()
     if (data?.id) open(data.id)
+  }
+
+  async function scanEvent(file: File) {
+    setScanning(true); setMsg(null)
+    try {
+      const dataUrl: string = await new Promise((res, rej) => { const fr = new FileReader(); fr.onload = () => res(String(fr.result)); fr.onerror = rej; fr.readAsDataURL(file) })
+      const resp = await fetch('/api/admin/ops/event-scan', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ imageBase64: dataUrl, mimeType: file.type }) })
+      const j = await resp.json()
+      if (!resp.ok || !j.ok) { setMsg(j.error || 'Scan failed'); setScanning(false); return }
+      setShowNew(true)
+      if (j.title) setNvTitle(j.title)
+      if (j.date && /^\d{4}-\d{2}-\d{2}$/.test(j.date)) setNvDate(j.date)
+      setNvStart((j.start_time || '').slice(0, 5)); setNvEnd((j.end_time || '').slice(0, 5))
+      setNvDesc(j.description || ''); setNvFree(!!j.is_free)
+      setNvPrice(j.ticket_price ? String(j.ticket_price) : '')
+      setMsg('✓ Scanned — review the details below, then Create.')
+    } catch (e: any) { setMsg('Scan error: ' + e.message) }
+    setScanning(false)
   }
 
   async function open(id: string) {
@@ -136,7 +163,13 @@ export default function EventsPnlPage() {
     <div style={{ maxWidth: 920 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6, flexWrap: 'wrap', gap: 8 }}>
         <h2 style={{ fontSize: 22, fontWeight: 600 }}>Event P&amp;L</h2>
-        <button onClick={() => { setShowNew(true); setMsg(null) }} style={btn}>+ New event</button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <label style={{ ...btn, cursor: scanning ? 'wait' : 'pointer', opacity: scanning ? 0.6 : 1, background: 'transparent', color: 'var(--accent,#e87830)', border: '1px solid var(--accent,#e87830)' }}>
+            {scanning ? 'Reading…' : '📷 Scan event'}
+            <input type="file" accept="image/*" disabled={scanning} onChange={e => { const f = e.target.files?.[0]; if (f) scanEvent(f); e.target.value = '' }} style={{ display: 'none' }} />
+          </label>
+          <button onClick={() => { setShowNew(true); setMsg(null) }} style={btn}>+ New event</button>
+        </div>
       </div>
       <div style={{ fontSize: 13, color: 'var(--text-muted, #999)', marginBottom: 18 }}>
         Each card is one event — tap to open its full P&amp;L. Door revenue and cash costs also roll into your monthly P&amp;L.
@@ -148,6 +181,15 @@ export default function EventsPnlPage() {
           <div style={row}>
             <input value={nvTitle} onChange={e => setNvTitle(e.target.value)} style={{ ...inp, flex: 1, minWidth: 160 }} placeholder="Event name (e.g. CraftCon June)" />
             <input type="date" value={nvDate} onChange={e => setNvDate(e.target.value)} style={inp} />
+            <input type="time" value={nvStart} onChange={e => setNvStart(e.target.value)} style={{ ...inp, width: 110 }} title="Start time" />
+            <input type="time" value={nvEnd} onChange={e => setNvEnd(e.target.value)} style={{ ...inp, width: 110 }} title="End time" />
+          </div>
+          <div style={{ ...row, marginTop: 8 }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text-muted,#999)' }}>
+              <input type="checkbox" checked={nvFree} onChange={e => setNvFree(e.target.checked)} /> Free
+            </label>
+            {!nvFree && <input inputMode="numeric" value={nvPrice} onChange={e => setNvPrice(e.target.value)} style={{ ...inp, width: 150 }} placeholder="ticket price ₫" />}
+            <input value={nvDesc} onChange={e => setNvDesc(e.target.value)} style={{ ...inp, flex: 1, minWidth: 160 }} placeholder="short description" />
             <button onClick={createEvent} style={btn}>Create</button>
             <button onClick={() => setShowNew(false)} style={{ ...btn, background: 'transparent', color: 'var(--text-muted,#999)' }}>Cancel</button>
           </div>
