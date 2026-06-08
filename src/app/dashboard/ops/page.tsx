@@ -119,12 +119,15 @@ export default function OpsDashboard() {
     // Top sellers by category + Bar/Kitchen mix — item-level sales joined to recipe categories
     const [{ data: items }, { data: mapRows }, { data: recRows }] = await Promise.all([
       ops().from('sales_items').select('menu_item_name, gross').gte('occurred_on', start).lte('occurred_on', end).limit(10000),
-      ops().from('pos_item_map').select('item_name, recipe_id'),
+      ops().from('pos_item_map').select('item_name, recipe_id, category'),
       ops().from('recipes').select('id, category'),
     ])
     const recCat = new Map<string, string>((recRows || []).map((r: any) => [r.id, r.category]))
     const itemCat = new Map<string, string>()
-    ;(mapRows || []).forEach((m: any) => { if (m.recipe_id) itemCat.set(m.item_name, recCat.get(m.recipe_id) || 'other') })
+    ;(mapRows || []).forEach((m: any) => {
+      if (m.recipe_id) itemCat.set(m.item_name, recCat.get(m.recipe_id) || 'other')
+      else if (m.category) itemCat.set(m.item_name, m.category)
+    })
     const prodSales = new Map<string, number>()
     let barT = 0, kitT = 0, othT = 0
     ;(items || []).forEach((it: any) => {

@@ -3,7 +3,8 @@ import { useEffect, useState } from 'react'
 import { ops, canManageRecipes, type StaffRole } from '@/lib/ops/api'
 import { supabase } from '@/lib/supabase'
 
-type MapRow = { id: string; item_name: string; recipe_id: string | null; ignore: boolean }
+type MapRow = { id: string; item_name: string; recipe_id: string | null; ignore: boolean; category: string | null }
+const CATS = ['cocktail', 'beer', 'wine', 'na_drink', 'food', 'snack']
 type Recipe = { id: string; name: string; category: string | null }
 
 export default function MenuMapPage() {
@@ -27,7 +28,7 @@ export default function MenuMapPage() {
   async function load() {
     setLoading(true)
     const [{ data: m }, { data: r }] = await Promise.all([
-      ops().from('pos_item_map').select('id, item_name, recipe_id, ignore').order('item_name'),
+      ops().from('pos_item_map').select('id, item_name, recipe_id, ignore, category').order('item_name'),
       ops().from('recipes').select('id, name, category').order('name'),
     ])
     setRows((m as MapRow[]) || [])
@@ -38,9 +39,11 @@ export default function MenuMapPage() {
   async function setMapping(row: MapRow, value: string) {
     if (!venueId) return
     setMsg(null)
-    const patch = value === '__ignore__'
-      ? { recipe_id: null, ignore: true }
-      : { recipe_id: value || null, ignore: false }
+    const patch: any = value === '__ignore__'
+      ? { recipe_id: null, ignore: true, category: null }
+      : value.startsWith('__cat__')
+      ? { recipe_id: null, ignore: false, category: value.slice(7) }
+      : { recipe_id: value || null, ignore: false, category: null }
     const { error } = await ops().from('pos_item_map').update(patch).eq('id', row.id)
     if (error) { setMsg(error.message); return }
     // Stamp the recipe onto any past sales of this item that haven't deducted yet,
@@ -55,7 +58,7 @@ export default function MenuMapPage() {
   const canManage = role && canManageRecipes(role)
   if (!canManage) return <div style={{ color: 'var(--text-muted, #999)', fontSize: 14 }}>The menu map is managed by managers.</div>
 
-  const unmapped = rows.filter(r => !r.recipe_id && !r.ignore).length
+  const unmapped = rows.filter(r => !r.recipe_id && !r.ignore && !r.category).length
 
   return (
     <div style={{ maxWidth: 720 }}>
@@ -84,8 +87,8 @@ export default function MenuMapPage() {
           </tr></thead>
           <tbody>
             {rows.map(row => {
-              const value = row.ignore ? '__ignore__' : (row.recipe_id || '')
-              const needs = !row.recipe_id && !row.ignore
+              const value = row.ignore ? '__ignore__' : row.recipe_id ? row.recipe_id : row.category ? '__cat__' + row.category : ''
+              const needs = !row.recipe_id && !row.ignore && !row.category
               return (
                 <tr key={row.id} style={{ borderTop: '1px solid var(--border, #eee)' }}>
                   <td style={{ ...td, fontWeight: 600 }}>{row.item_name}</td>
@@ -94,9 +97,14 @@ export default function MenuMapPage() {
                       style={{ ...inp, width: 'auto', minWidth: 240, padding: '6px 8px', borderColor: needs ? 'var(--burgundy, #7b2d3a)' : undefined }}>
                       <option value="">— needs mapping —</option>
                       <option value="__ignore__">Don&apos;t track (no recipe)</option>
-                      {recipes.map(r => (
-                        <option key={r.id} value={r.id}>{r.name}{r.category ? ` (${r.category})` : ''}</option>
-                      ))}
+                      <optgroup label="Just categorise (no recipe)">
+                        {CATS.map(c => <option key={c} value={'__cat__' + c}>{c === 'na_drink' ? 'NA drink' : c.charAt(0).toUpperCase() + c.slice(1)}</option>)}
+                      </optgroup>
+                      <optgroup label="Link to a recipe">
+                        {recipes.map(r => (
+                          <option key={r.id} value={r.id}>{r.name}{r.category ? ` (${r.category})` : ''}</option>
+                        ))}
+                      </optgroup>
                     </select>
                   </td>
                 </tr>
