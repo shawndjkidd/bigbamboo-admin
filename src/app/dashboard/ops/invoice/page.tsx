@@ -6,7 +6,7 @@ import { supabase } from '@/lib/supabase'
 
 const CATEGORIES = ['food', 'mixer', 'beer', 'wine', 'liquor', 'garnish', 'consumable', 'other_opex']
 
-type Ing = { id: string; name: string; base_unit: string; purchase_unit_size: number; purchase_unit_label: string; on_hand_base: number | null }
+type Ing = { id: string; name: string; base_unit: string; purchase_unit_size: number; purchase_unit_label: string; on_hand_base: number | null; cost_method: string | null }
 type Item = { name: string; qty: number; total_price: number; unit: string | null; ingredientId: string }
 
 function guessIngredient(name: string, ings: Ing[]): string {
@@ -51,7 +51,7 @@ export default function InvoiceScanPage() {
     const { data: venue } = await supabase.from('venues').select('id').eq('slug', 'bigbamboo').single()
     setVenueId(venue?.id || null)
     const [{ data: ig }, { data: vd }] = await Promise.all([
-      ops().from('ingredients').select('id, name, base_unit, purchase_unit_size, purchase_unit_label, on_hand_base').order('name'),
+      ops().from('ingredients').select('id, name, base_unit, purchase_unit_size, purchase_unit_label, on_hand_base, cost_method').order('name'),
       ops().from('vendors').select('name'),
     ])
     const list = (ig as Ing[]) || []
@@ -112,15 +112,25 @@ export default function InvoiceScanPage() {
       if (!row.ingredientId) continue
       const ing = ings.find(i => i.id === row.ingredientId); if (!ing) continue
       const perBase = perBaseOf(row); if (perBase == null) continue
-      const upd: any = { cost_method: 'manual', manual_cost_per_base: perBase, current_cost_per_base: perBase }
+      const size = Number(ing.purchase_unit_size) || 1
+      const qtyBase = row.qty * size
+      // F2: only freeze a manual cost for ingredients already on the manual method. For
+      // latest/average/fifo, leave the method alone — the price-history row logged below drives
+      // the costing view, so applying an invoice no longer silently pins them to one price.
+      const upd: any = {}
+      if ((ing.cost_method ?? 'manual') === 'manual') {
+        upd.cost_method = 'manual'; upd.manual_cost_per_base = perBase; upd.current_cost_per_base = perBase
+      }
       if (addToStock) {
-        const size = Number(ing.purchase_unit_size) || 1
-        upd.on_hand_base = (Number(ing.on_hand_base) || 0) + row.qty * size
+        upd.on_hand_base = (Number(ing.on_hand_base) || 0) + qtyBase
         upd.counted_at = new Date().toISOString()
       }
-      const { error } = await ops().from('ingredients').update(upd).eq('id', ing.id)
-      if (error) { setMsg('Failed updating ' + ing.name + ': ' + error.message); setBusy(false); return }
-      await ops().from('ingredient_price_history').insert({ ingredient_id: ing.id, cost_per_base: perBase, observed_at: new Date().toISOString(), source: 'invoice' })
+      if (Object.keys(upd).length) {
+        const { error } = await ops().from('ingredients').update(upd).eq('id', ing.id)
+        if (error) { setMsg('Failed updating ' + ing.name + ': ' + error.message); setBusy(false); return }
+      }
+      // F3: record the received quantity so average/FIFO costing can weight this delivery.
+      await ops().from('ingredient_price_history').insert({ ingredient_id: ing.id, cost_per_base: perBase, qty_base: qtyBase, observed_at: new Date().toISOString(), source: 'invoice' })
       updated++
     }
     const { error: pErr } = await ops().from('purchases').insert({

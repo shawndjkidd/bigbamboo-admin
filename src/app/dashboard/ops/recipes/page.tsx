@@ -25,6 +25,8 @@ export default function RecipesPage() {
   const [filter, setFilter] = useState('')
   const [typeFilter, setTypeFilter] = useState<'all' | 'menu_item' | 'batch' | 'sub_recipe'>('all')
   const [resaleIds, setResaleIds] = useState<Set<string>>(new Set())
+  const [keggedIds, setKeggedIds] = useState<Set<string>>(new Set())
+  const [serveCost, setServeCost] = useState<Map<string, number>>(new Map())
   const [showResale, setShowResale] = useState(false)
 
   useEffect(() => { init() }, [])
@@ -43,12 +45,15 @@ export default function RecipesPage() {
 
   async function load() {
     setLoading(true)
-    const [{ data }, { data: rec }] = await Promise.all([
+    const [{ data }, { data: rec }, { data: serve }] = await Promise.all([
       ops().from('v_recipe_cost').select('*').order('name'),
-      ops().from('recipes').select('id, is_resale'),
+      ops().from('recipes').select('id, is_resale, is_kegged'),
+      ops().from('v_recipe_serve_cost').select('recipe_id, serve_cost'),
     ])
     setRows((data as RecipeWithCost[]) || [])
     setResaleIds(new Set((rec || []).filter((x: any) => x.is_resale).map((x: any) => x.id)))
+    setKeggedIds(new Set((rec || []).filter((x: any) => x.is_kegged).map((x: any) => x.id)))
+    setServeCost(new Map((serve || []).map((x: any) => [x.recipe_id, Number(x.serve_cost)])))
     setLoading(false)
   }
 
@@ -101,16 +106,22 @@ export default function RecipesPage() {
         <tbody>
           {filtered.length === 0 && <tr><td colSpan={8} style={{ padding: 12, color: 'var(--text-muted, #999)' }}>No recipes yet. {canManage && 'Click "Add recipe" to start.'}</td></tr>}
           {filtered.map(r => {
-            const marginPct = r.sale_price && r.margin_per_unit != null ? r.margin_per_unit / r.sale_price : null
+            // Kegged drinks: v_recipe_cost.cost_per_unit is per-ml of the whole keg, so the list
+            // would show a near-zero cost and a meaningless ~100% margin. Use the pour-aware
+            // serve cost instead and recompute margin against the pour price.
+            const kegged = keggedIds.has(r.recipe_id)
+            const cost = kegged ? (serveCost.get(r.recipe_id) ?? r.cost_per_unit) : r.cost_per_unit
+            const margin = r.sale_price != null && cost != null ? r.sale_price - cost : r.margin_per_unit
+            const marginPct = r.sale_price && margin != null ? margin / r.sale_price : null
             return (
               <tr key={r.recipe_id} style={{ borderTop: '1px solid var(--border, #eee)' }}>
                 <td style={td}><Link href={`/dashboard/ops/recipes/${r.recipe_id}`} style={{ color: 'var(--accent, #e87830)', textDecoration: 'none', fontWeight: 600 }}>{r.name}</Link></td>
                 <td style={{ ...td, fontSize: 11, color: 'var(--text-muted, #999)' }}>{r.type}</td>
                 <td style={{ ...td, fontSize: 11, color: 'var(--text-muted, #999)' }}>{r.category}</td>
                 <td style={{ ...td, textAlign: 'right', color: 'var(--text-muted, #666)' }}>{Number(r.yield_qty)} {r.yield_unit}</td>
-                <td style={{ ...td, textAlign: 'right' }}>{vnd(r.cost_per_unit)}</td>
+                <td style={{ ...td, textAlign: 'right' }}>{vnd(cost)}{kegged ? <span style={{ fontSize: 10, color: 'var(--text-muted, #999)' }}> /pour</span> : ''}</td>
                 <td style={{ ...td, textAlign: 'right' }}>{r.sale_price ? vnd(r.sale_price) : '—'}</td>
-                <td style={{ ...td, textAlign: 'right' }}>{r.margin_per_unit != null ? vnd(r.margin_per_unit) : '—'}</td>
+                <td style={{ ...td, textAlign: 'right' }}>{margin != null ? vnd(margin) : '—'}</td>
                 <td style={{ ...td, textAlign: 'right', color: marginPct == null ? 'var(--text-muted, #999)' : marginPct < 0.5 ? '#C00000' : marginPct < 0.7 ? '#C65911' : '#548235' }}>
                   {pct(marginPct)}
                 </td>
