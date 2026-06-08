@@ -80,8 +80,14 @@ export default function PurchasePage() {
       contentType: file.type, upsert: false,
     })
     if (error) { setMsg('Receipt upload failed: ' + error.message); return null }
-    const { data } = supabase.storage.from('ops-receipts').getPublicUrl(path)
-    return data.publicUrl
+    return path // store the storage path; receipts are private and viewed via a short-lived signed URL
+  }
+
+  async function viewReceipt(ref: string) {
+    if (/^https?:\/\//.test(ref)) { window.open(ref, '_blank'); return } // legacy public URL
+    const { data, error } = await supabase.storage.from('ops-receipts').createSignedUrl(ref, 120)
+    if (error || !data?.signedUrl) { setMsg('Could not open receipt'); return }
+    window.open(data.signedUrl, '_blank')
   }
 
   async function save(e: React.FormEvent) {
@@ -173,16 +179,17 @@ export default function PurchasePage() {
         </h3>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
           <thead><tr style={{ background: 'var(--bg-sidebar, #fafafa)' }}>
-            <th style={th}>Date</th><th style={th}>Vendor</th><th style={th}>Cat</th><th style={{ ...th, textAlign: 'right' }}>Amount</th>
+            <th style={th}>Date</th><th style={th}>Vendor</th><th style={th}>Cat</th><th style={{ ...th, textAlign: 'right' }}>Amount</th><th style={th}></th>
           </tr></thead>
           <tbody>
-            {recent.length === 0 && <tr><td colSpan={4} style={{ padding: 12, color: 'var(--text-muted, #999)' }}>No entries yet.</td></tr>}
+            {recent.length === 0 && <tr><td colSpan={5} style={{ padding: 12, color: 'var(--text-muted, #999)' }}>No entries yet.</td></tr>}
             {recent.map(r => (
               <tr key={r.id} style={{ borderTop: '1px solid var(--border, #eee)' }}>
                 <td style={td}>{r.occurred_on}</td>
                 <td style={{ ...td, color: 'var(--text-muted, #666)' }}>{r.vendor || '—'}</td>
                 <td style={{ ...td, fontSize: 11, color: 'var(--text-muted, #999)' }}>{r.category}</td>
                 <td style={{ ...td, textAlign: 'right' }}>{vnd(r.amount)}</td>
+                <td style={{ ...td, textAlign: 'right' }}>{r.receipt_url ? <button onClick={() => viewReceipt(r.receipt_url!)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 14 }} title="View receipt">📎</button> : ''}</td>
               </tr>
             ))}
           </tbody>
