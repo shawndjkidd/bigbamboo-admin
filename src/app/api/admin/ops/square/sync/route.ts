@@ -6,7 +6,7 @@ import { getActiveToken, searchOrders, listCashDrawerShifts, retrieveCashDrawerS
 import { getServiceClient } from '@/lib/supabase'
 
 export const dynamic = 'force-dynamic'
-export const maxDuration = 60
+export const maxDuration = 300 // headroom for backfills (clamped to plan limit)
 
 export async function POST(req: NextRequest) {
   return run(req)
@@ -70,51 +70,36 @@ async function run(req: NextRequest) {
     const mapByName = new Map<string, { recipe_id: string | null; ignore: boolean }>()
     ;(mapRows || []).forEach((m: any) => mapByName.set(String(m.item_name).trim().toLowerCase(), { recipe_id: m.recipe_id, ignore: !!m.ignore }))
 
-    async function resolveRecipeId(itemName: string): Promise<string | null> {
-      const key = itemName.trim().toLowerCase()
-      let entry = mapByName.get(key)
-      if (!entry) {
-        const matched = recipeByName.get(key) || null
-        // best-effort: remember this item so it shows on the fix-up screen (auto-matched if names line up)
-        const { error } = await svc.schema('ops').from('pos_item_map').insert({ venue_id: venue.id, item_name: itemName, recipe_id: matched })
-        if (error) console.warn('pos_item_map insert skipped:', error.message)
-        entry = { recipe_id: matched, ignore: false }
-        mapByName.set(key, entry)
-      }
-      return entry.ignore ? null : entry.recipe_id
-    }
-
-    // Group orders by occurred_on (HCMC date) for daily rollup
+    // Single pass: build daily rollups, collect line items, and note any new item names (no per-row awaits)
     const dailyMap = new Map<string, { gross: number; tips: number; discounts: number; refunds: number }>()
+    const itemRows: any[] = []
+    const newMapNames = new Map<string, string>() // itemName -> auto-matched recipe_id ('' if none)
 
     for (const order of orders) {
       const closedAt = order.closed_at ? new Date(order.closed_at) : null
       if (!closedAt) { skipped++; continue }
       const occurredOn = bizDate(closedAt) // trading-night date (3am cutoff, HCMC)
-      const total = (order.total_money?.amount || 0) / 100 * 1 // Square uses cents; for VND it's already whole units but /100 anyway because Square always returns minor units
       // ⚠️ Square VND uses base units (no /100). Detect by currency.
-      const gross = (order.total_money?.currency === 'VND' ? (order.total_money?.amount || 0) : total)
+      const gross = (order.total_money?.currency === 'VND' ? (order.total_money?.amount || 0) : (order.total_money?.amount || 0) / 100)
       const tips = (order.total_tip_money?.currency === 'VND' ? (order.total_tip_money?.amount || 0) : (order.total_tip_money?.amount || 0) / 100)
       const discounts = (order.total_discount_money?.currency === 'VND' ? (order.total_discount_money?.amount || 0) : (order.total_discount_money?.amount || 0) / 100)
 
       const cur = dailyMap.get(occurredOn) || { gross: 0, tips: 0, discounts: 0, refunds: 0 }
-      cur.gross += gross
-      cur.tips += tips
-      cur.discounts += discounts
+      cur.gross += gross; cur.tips += tips; cur.discounts += discounts
       dailyMap.set(occurredOn, cur)
 
-      // Insert items
       for (const li of (order.line_items || [])) {
         const liGross = li.total_money?.currency === 'VND' ? (li.total_money?.amount || 0) : (li.total_money?.amount || 0) / 100
         const liQty = Number(li.quantity || '1')
         const liUnit = liQty > 0 ? liGross / liQty : liGross
         const itemName = li.name || '(unnamed)'
-        const recipeId = await resolveRecipeId(itemName)
-        const { error: itemErr } = await svc.schema('ops').from('sales_items').upsert({
+        const key = itemName.trim().toLowerCase()
+        if (!mapByName.has(key) && !newMapNames.has(itemName)) newMapNames.set(itemName, recipeByName.get(key) || '')
+        itemRows.push({
           venue_id: venue.id,
           occurred_at: closedAt.toISOString(),
           menu_item_name: itemName,
-          recipe_id: recipeId,
+          _key: key,
           qty: liQty,
           unit_price: liUnit,
           discount: li.total_discount_money?.currency === 'VND' ? (li.total_discount_money?.amount || 0) : (li.total_discount_money?.amount || 0) / 100,
@@ -122,23 +107,34 @@ async function run(req: NextRequest) {
           source_id: `${order.id}:${li.uid}`,
           payment_method: order.tenders?.[0]?.type || null,
           square_customer_id: order.customer_id || null,
-        }, { onConflict: 'source,source_id' })
-        if (itemErr) failed++; else synced++
+        })
       }
     }
 
-    // Upsert daily rollups from Square (source = 'square')
-    for (const [date, totals] of dailyMap.entries()) {
-      await svc.schema('ops').from('sales_daily').upsert({
-        venue_id: venue.id,
-        occurred_on: date,
-        gross: totals.gross,
-        tips: totals.tips,
-        discounts: totals.discounts,
-        refunds: totals.refunds,
-        source: 'square',
-      }, { onConflict: 'venue_id,occurred_on,source' })
+    // Batch-create any new POS item → recipe map rows (auto-matched by name), then index them
+    if (newMapNames.size) {
+      const inserts = Array.from(newMapNames.entries()).map(([item_name, rid]) => ({ venue_id: venue.id, item_name, recipe_id: rid || null }))
+      const { error: mErr } = await svc.schema('ops').from('pos_item_map').insert(inserts)
+      if (mErr) console.warn('pos_item_map batch insert:', mErr.message)
+      inserts.forEach(i => mapByName.set(i.item_name.trim().toLowerCase(), { recipe_id: i.recipe_id, ignore: false }))
     }
+
+    // Stamp recipe_id from the map (respecting "don't track"), then bulk-upsert line items in chunks
+    const finalRows = itemRows.map(({ _key, ...rest }) => {
+      const e = mapByName.get(_key)
+      return { ...rest, recipe_id: e && !e.ignore ? e.recipe_id : null }
+    })
+    for (let i = 0; i < finalRows.length; i += 500) {
+      const chunk = finalRows.slice(i, i + 500)
+      const { error } = await svc.schema('ops').from('sales_items').upsert(chunk, { onConflict: 'source,source_id' })
+      if (error) failed += chunk.length; else synced += chunk.length
+    }
+
+    // Bulk-upsert daily rollups from Square (source = 'square')
+    const dailyRows = Array.from(dailyMap.entries()).map(([date, t]) => ({
+      venue_id: venue.id, occurred_on: date, gross: t.gross, tips: t.tips, discounts: t.discounts, refunds: t.refunds, source: 'square',
+    }))
+    if (dailyRows.length) await svc.schema('ops').from('sales_daily').upsert(dailyRows, { onConflict: 'venue_id,occurred_on,source' })
 
     // --- Deduct ingredient stock for newly-synced sold lines (idempotent via stock_applied) ---
     // Skipped during a historical backfill so old sales don't drain current stock counts.
