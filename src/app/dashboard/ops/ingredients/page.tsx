@@ -44,6 +44,7 @@ function IngredientsInner() {
     urlView === 'stock' ? 'stock' : urlView === 'vendors' ? 'vendors' : urlView === 'consumables' ? 'consumables' : urlView === 'all' ? 'all' : 'ingredients'
   )
   const [supplierFilter, setSupplierFilter] = useState('all')
+  const [catFilter, setCatFilter] = useState('all')
   const [openVendor, setOpenVendor] = useState<string | null>(null)
   const [orderQty, setOrderQty] = useState<Record<string, string>>({})
   const [vendors, setVendors] = useState<VendorRow[]>([])
@@ -86,6 +87,7 @@ function IngredientsInner() {
   // Distinct suppliers, alphabetical — powers the supplier toggle
   const suppliers = Array.from(new Set(scoped.map(r => (r.supplier || '').trim()).filter(Boolean)))
     .sort((a, b) => a.localeCompare(b))
+  const categories = Array.from(new Set(scoped.map(r => r.category).filter(Boolean))).sort((a, b) => a.localeCompare(b))
   const vendorMap = new Map(vendors.map(v => [v.name, v]))
   const vendorNames = Array.from(new Set([...suppliers, ...vendors.map(v => v.name)].filter(Boolean))).sort((a, b) => a.localeCompare(b))
 
@@ -93,6 +95,7 @@ function IngredientsInner() {
     if (view === 'ingredients' && r.category === 'consumable') return false
     if (view === 'consumables' && r.category !== 'consumable') return false
     if (supplierFilter !== 'all' && (r.supplier || '').trim() !== supplierFilter) return false
+    if (catFilter !== 'all' && r.category !== catFilter) return false
     if (filter && !(r.name.toLowerCase().includes(filter.toLowerCase()) || (r.supplier || '').toLowerCase().includes(filter.toLowerCase()))) return false
     return true
   })
@@ -217,6 +220,14 @@ function IngredientsInner() {
           </label>
         )}
       </div>
+
+      {view !== 'vendors' && categories.length > 1 && (
+        <div style={{ display: 'flex', gap: 6, marginBottom: 12, flexWrap: 'wrap' }}>
+          {(['all', ...categories]).map(c => (
+            <button key={c} onClick={() => setCatFilter(c)} style={{ padding: '5px 12px', borderRadius: 100, fontSize: 13, fontWeight: 500, cursor: 'pointer', textTransform: 'capitalize', background: catFilter === c ? 'var(--accent)' : 'transparent', color: catFilter === c ? '#fff' : 'var(--text-secondary)', border: '1px solid ' + (catFilter === c ? 'var(--accent)' : 'var(--border)') }}>{c === 'all' ? 'All categories' : c}</button>
+          ))}
+        </div>
+      )}
 
       <input type="text" placeholder="Search by name or supplier…" value={filter} onChange={e => setFilter(e.target.value)} style={{ ...inp, marginBottom: 12 }} />
 
