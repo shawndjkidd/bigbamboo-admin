@@ -32,7 +32,7 @@ type Component = {
 }
 
 type Cost = { recipe_id: string; total_cost: number; cost_per_unit: number | null; margin_per_unit: number | null }
-type IngOption = { id: string; name: string; base_unit: string; current_cost_per_base: number; category: string }
+type IngOption = { id: string; name: string; base_unit: string; current_cost_per_base: number; category: string; active: boolean }
 type RecOption = { id: string; name: string; category: string; type: string }
 type SubCost = { cost_per_unit: number | null; yield_unit: string }
 
@@ -84,7 +84,7 @@ export default function RecipeDetailPage() {
       ops().from('recipes').select('*').eq('id', recipeId).single(),
       ops().from('recipe_components').select('id, recipe_id, ingredient_id, sub_recipe_id, qty, unit, notes, sort_order').eq('recipe_id', recipeId).order('sort_order'),
       ops().from('v_recipe_cost').select('recipe_id, total_cost, cost_per_unit, margin_per_unit').eq('recipe_id', recipeId).single(),
-      ops().from('ingredients').select('id, name, base_unit, current_cost_per_base, category').order('name'),
+      ops().from('ingredients').select('id, name, base_unit, current_cost_per_base, category, active').order('name'),
       ops().from('recipes').select('id, name, category, type').neq('id', recipeId).order('name'),
       ops().from('recipe_versions').select('*').eq('recipe_id', recipeId).order('version', { ascending: false }),
       ops().from('v_recipe_cost').select('recipe_id, cost_per_unit, yield_unit'),
@@ -311,9 +311,10 @@ export default function RecipeDetailPage() {
   // Sub-recipe picker: keep it on-station — a food recipe only lists food/prep sub-recipes, a bar recipe only lists bar ones.
   const parentIsBar = BAR_CATS.includes(recipe.category)
   const subRecipeOptions = recOptions.filter(r => parentIsBar ? BAR_CATS.includes(r.category) : !BAR_CATS.includes(r.category))
-  const ingPickerOptions = ingOptions.filter(i => parentIsBar ? ING_BAR_CATS.includes(i.category) : ING_KITCHEN_CATS.includes(i.category))
+  const ingPickerOptions = ingOptions.filter(i => i.active !== false && (parentIsBar ? ING_BAR_CATS.includes(i.category) : ING_KITCHEN_CATS.includes(i.category)))
   // Packaging (consumables) live under their own picker option so they don't clutter the food/drink list — and stay reachable from both stations.
-  const packagingOptions = ingOptions.filter(i => i.category === 'consumable')
+  // Inactive items (overhead supplies like pens/towels) are hidden here but stay usable in purchase/expense screens.
+  const packagingOptions = ingOptions.filter(i => i.active !== false && i.category === 'consumable')
   // For kegged drinks, yield_qty is the keg volume (ml) and cost_per_unit is per ml → cost per pour = per-ml × pour size
   const costPerPour = (isDrink && cost?.cost_per_unit != null && recipe.pour_size_ml) ? cost.cost_per_unit * Number(recipe.pour_size_ml) : (cost?.cost_per_unit ?? null)
   const cogsDisplay = isDrink ? (costPerPour && recipe.sale_price ? costPerPour / recipe.sale_price : null) : cogsPct
