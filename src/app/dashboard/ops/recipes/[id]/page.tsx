@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ops, vnd, pct, canManageRecipes, type StaffRole } from '@/lib/ops/api'
@@ -435,8 +435,8 @@ export default function RecipeDetailPage() {
       <div style={{ marginTop: 24, marginBottom: 16 }} className="recipe-method">
         <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 10 }}>{isDrink ? 'Build / method' : 'Method'} <span style={{ fontWeight: 400, color: 'var(--text-muted, #999)' }}>· {isDrink ? 'how to build the keg & pour' : 'shared prep & cook steps'}</span></h3>
         {canManage
-          ? <textarea defaultValue={recipe.method || ''} onBlur={e => saveMethod(e.target.value)} placeholder="Step-by-step method, one step per line…" rows={8} style={{ ...inp, width: '100%', fontFamily: 'inherit', lineHeight: 1.6, resize: 'vertical' }} />
-          : <div style={{ whiteSpace: 'pre-wrap', fontSize: 14, lineHeight: 1.7 }}>{recipe.method || '—'}</div>}
+          ? <StepsEditor key={recipe.id} value={recipe.method || ''} onSave={saveMethod} placeholder="First step… (press Enter for the next)" />
+          : <ol style={{ fontSize: 14, lineHeight: 1.8, paddingLeft: 20, margin: 0 }}>{(recipe.method || '').split('\n').filter(Boolean).map((t, i) => <li key={i}>{t}</li>)}{!recipe.method && <li style={{ listStyle: 'none', color: 'var(--text-muted, #999)' }}>—</li>}</ol>}
       </div>
 
       {isDrink ? (
@@ -621,6 +621,55 @@ export default function RecipeDetailPage() {
           </span>
         </div>
       )}
+    </div>
+  )
+}
+
+// Numbered step editor: each line is a step. Enter splits at the cursor and starts the next step;
+// Backspace at the start of a step merges it back into the previous one. Stored as newline-joined text,
+// which is exactly what the SOP card and print view already expect.
+function StepsEditor({ value, onSave, placeholder }: { value: string; onSave: (v: string) => void; placeholder?: string }) {
+  const initial = (value || '').split('\n').map(s => s.trim()).filter(Boolean)
+  const [steps, setSteps] = useState<string[]>(initial.length ? initial : [''])
+  const refs = useRef<(HTMLInputElement | null)[]>([])
+
+  function persist(next: string[]) { onSave(next.map(s => s.trim()).filter(Boolean).join('\n')) }
+  function setAt(i: number, text: string) { const n = steps.slice(); n[i] = text; setSteps(n) }
+  function focusAt(i: number, caret?: number) {
+    setTimeout(() => { const el = refs.current[i]; if (el) { el.focus(); if (caret != null) el.setSelectionRange(caret, caret) } }, 0)
+  }
+  function handleKey(i: number, e: React.KeyboardEvent<HTMLInputElement>) {
+    const el = e.currentTarget
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      const pos = el.selectionStart ?? el.value.length
+      const before = el.value.slice(0, pos), after = el.value.slice(pos)
+      const n = steps.slice(); n[i] = before; n.splice(i + 1, 0, after)
+      setSteps(n); persist(n); focusAt(i + 1, 0)
+    } else if (e.key === 'Backspace' && (el.selectionStart ?? 0) === 0 && (el.selectionEnd ?? 0) === 0 && i > 0) {
+      e.preventDefault()
+      const prevText = steps[i - 1]
+      const n = steps.slice(); n[i - 1] = prevText + steps[i]; n.splice(i, 1)
+      setSteps(n); persist(n); focusAt(i - 1, prevText.length)
+    }
+  }
+  return (
+    <div>
+      {steps.map((s, i) => (
+        <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 6 }}>
+          <span style={{ flexShrink: 0, width: 24, height: 24, borderRadius: 100, background: 'var(--accent, #e87830)', color: '#fff', fontSize: 12, fontWeight: 700, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>{i + 1}</span>
+          <input
+            ref={el => { refs.current[i] = el }}
+            value={s}
+            onChange={e => setAt(i, e.target.value)}
+            onKeyDown={e => handleKey(i, e)}
+            onBlur={() => persist(steps)}
+            placeholder={i === 0 ? (placeholder || 'First step…') : 'Next step… (Enter for a new one)'}
+            style={{ ...inp, flex: 1 }}
+          />
+        </div>
+      ))}
+      <button type="button" onClick={() => { const n = [...steps, '']; setSteps(n); focusAt(n.length - 1) }} style={{ ...btnOutline, marginTop: 4 }}>+ Add step</button>
     </div>
   )
 }
