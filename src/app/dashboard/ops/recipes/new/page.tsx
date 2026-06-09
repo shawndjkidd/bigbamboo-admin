@@ -6,8 +6,7 @@ import { supabase } from '@/lib/supabase'
 
 const RECIPE_TYPES = [
   { v: 'menu_item', label: 'Menu item (something you sell)' },
-  { v: 'batch', label: 'Batch / Keg (something you build, then serve)' },
-  { v: 'sub_recipe', label: 'Sub-recipe (used inside other recipes — e.g. syrup)' },
+  { v: 'sub_recipe', label: 'Prep / batch (made once, used inside other recipes — e.g. cheese blend, syrup)' },
 ]
 const CATEGORIES = ['cocktail', 'beer', 'wine', 'na_drink', 'food', 'snack', 'syrup', 'garnish', 'other']
 const BASE_UNITS = ['ml', 'g', 'each']

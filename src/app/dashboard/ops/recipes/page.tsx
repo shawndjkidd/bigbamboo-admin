@@ -23,7 +23,7 @@ export default function RecipesPage() {
   const [rows, setRows] = useState<RecipeWithCost[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState('')
-  const [typeFilter, setTypeFilter] = useState<'all' | 'menu_item' | 'batch' | 'sub_recipe'>('all')
+  const [typeFilter, setTypeFilter] = useState<'all' | 'menu_item' | 'prep'>('all')
   const [station, setStation] = useState<'all' | 'kitchen' | 'bar'>('all')
   const [resaleIds, setResaleIds] = useState<Set<string>>(new Set())
   const [keggedIds, setKeggedIds] = useState<Set<string>>(new Set())
@@ -77,7 +77,8 @@ export default function RecipesPage() {
     if (!showResale && resaleIds.has(r.recipe_id)) return false
     if (station === 'kitchen' && r.category !== 'food') return false
     if (station === 'bar' && !BAR_CATEGORIES.has(r.category)) return false
-    if (typeFilter !== 'all' && r.type !== typeFilter) return false
+    if (typeFilter === 'menu_item' && r.type !== 'menu_item') return false
+    if (typeFilter === 'prep' && r.type === 'menu_item') return false
     if (filter && !r.name.toLowerCase().includes(filter.toLowerCase())) return false
     return true
   })
@@ -115,11 +116,10 @@ export default function RecipesPage() {
 
       <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
         <input type="text" placeholder="Search…" value={filter} onChange={e => setFilter(e.target.value)} style={{ ...inp, flex: 1 }} />
-        <select value={typeFilter} onChange={e => setTypeFilter(e.target.value as any)} style={{ ...inp, width: 160 }}>
+        <select value={typeFilter} onChange={e => setTypeFilter(e.target.value as any)} style={{ ...inp, width: 180 }}>
           <option value="all">All types</option>
           <option value="menu_item">Menu items</option>
-          <option value="batch">Batches / kegs</option>
-          <option value="sub_recipe">Sub-recipes</option>
+          <option value="prep">Prep &amp; batches</option>
         </select>
         <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text-muted, #999)', whiteSpace: 'nowrap' }}>
           <input type="checkbox" checked={showResale} onChange={e => setShowResale(e.target.checked)} /> Show bought-in
