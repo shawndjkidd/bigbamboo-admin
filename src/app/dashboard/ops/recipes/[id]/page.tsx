@@ -525,14 +525,14 @@ export default function RecipeDetailPage() {
           <div>
             <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>🍽 Plate — Dine-in</h3>
             {canManage
-              ? <textarea defaultValue={recipe.plating_dinein || ''} onBlur={e => saveRecipe({ plating_dinein: e.target.value })} placeholder="In-house plating, one step per line — basket, garnish, ramekin…" rows={5} style={{ ...inp, width: '100%', fontFamily: 'inherit', lineHeight: 1.6, resize: 'vertical' }} />
-              : <div style={{ whiteSpace: 'pre-wrap', fontSize: 14, lineHeight: 1.7 }}>{recipe.plating_dinein || '—'}</div>}
+              ? <StepsEditor key={recipe.id + '-dinein'} value={recipe.plating_dinein || ''} onSave={v => saveRecipe({ plating_dinein: v })} placeholder="First plating step — basket, garnish, ramekin…" />
+              : <ol style={{ fontSize: 14, lineHeight: 1.8, paddingLeft: 20, margin: 0 }}>{(recipe.plating_dinein || '').split('\n').filter(Boolean).map((t, i) => <li key={i}>{t}</li>)}{!recipe.plating_dinein && <li style={{ listStyle: 'none', color: 'var(--text-muted, #999)' }}>—</li>}</ol>}
           </div>
           <div>
             <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>🥡 Pack — To-go</h3>
             {canManage
-              ? <textarea defaultValue={recipe.plating_togo || ''} onBlur={e => saveRecipe({ plating_togo: e.target.value })} placeholder="Takeaway packing, one step per line — clamshell, vent, sauce cup, bag…" rows={5} style={{ ...inp, width: '100%', fontFamily: 'inherit', lineHeight: 1.6, resize: 'vertical' }} />
-              : <div style={{ whiteSpace: 'pre-wrap', fontSize: 14, lineHeight: 1.7 }}>{recipe.plating_togo || '—'}</div>}
+              ? <StepsEditor key={recipe.id + '-togo'} value={recipe.plating_togo || ''} onSave={v => saveRecipe({ plating_togo: v })} placeholder="First packing step — clamshell, vent, sauce cup, bag…" />
+              : <ol style={{ fontSize: 14, lineHeight: 1.8, paddingLeft: 20, margin: 0 }}>{(recipe.plating_togo || '').split('\n').filter(Boolean).map((t, i) => <li key={i}>{t}</li>)}{!recipe.plating_togo && <li style={{ listStyle: 'none', color: 'var(--text-muted, #999)' }}>—</li>}</ol>}
           </div>
         </div>
       )}
