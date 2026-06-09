@@ -21,7 +21,7 @@ const DRINK_CATS = ['cocktail', 'beer', 'wine', 'na_drink']
 const BAR_CATS = ['cocktail', 'beer', 'wine', 'na_drink', 'syrup']
 // Same split for the ingredient picker — mirrors the Ingredients page's category→station map.
 const ING_BAR_CATS = ['spirit', 'beer', 'wine', 'mixer', 'syrup']
-const ING_KITCHEN_CATS = ['food', 'garnish', 'other', 'consumable']
+const ING_KITCHEN_CATS = ['food', 'garnish', 'other']
 
 type Component = {
   id: string; recipe_id: string;
@@ -54,7 +54,7 @@ export default function RecipeDetailPage() {
   const [yieldUnitInput, setYieldUnitInput] = useState('g')
 
   // add-component form
-  const [addType, setAddType] = useState<'ingredient' | 'sub_recipe'>('ingredient')
+  const [addType, setAddType] = useState<'ingredient' | 'packaging' | 'sub_recipe'>('ingredient')
   const [addRefId, setAddRefId] = useState('')
   const [addQty, setAddQty] = useState('')
   const [addUnit, setAddUnit] = useState('ml')
@@ -75,8 +75,11 @@ export default function RecipeDetailPage() {
     await loadAll()
   }
 
-  async function loadAll() {
-    setLoading(true)
+  // silent = refresh data in place without flipping the whole page back to the "Loading…" state.
+  // Component edits (qty/unit), add/remove, yield changes etc. use silent so the row you're editing
+  // doesn't unmount and kick you out mid-edit. Only the first load shows the full-page spinner.
+  async function loadAll(silent = false) {
+    if (!silent) setLoading(true)
     const [r, comps, c, ings, recs, vers, subc] = await Promise.all([
       ops().from('recipes').select('*').eq('id', recipeId).single(),
       ops().from('recipe_components').select('id, recipe_id, ingredient_id, sub_recipe_id, qty, unit, notes, sort_order').eq('recipe_id', recipeId).order('sort_order'),
@@ -112,24 +115,24 @@ export default function RecipeDetailPage() {
       unit: addUnit,
       sort_order: components.length,
     }
-    if (addType === 'ingredient') payload.ingredient_id = addRefId
+    if (addType === 'ingredient' || addType === 'packaging') payload.ingredient_id = addRefId
     else payload.sub_recipe_id = addRefId
     const { error } = await ops().from('recipe_components').insert(payload)
     setAddBusy(false)
     if (error) { setMsg(error.message); return }
     setAddRefId(''); setAddQty('')
-    await loadAll()
+    await loadAll(true)
   }
 
   async function removeComponent(id: string) {
     await ops().from('recipe_components').delete().eq('id', id)
-    await loadAll()
+    await loadAll(true)
   }
 
   async function updateComponent(id: string, changes: { qty?: number; unit?: string }) {
     const { error } = await ops().from('recipe_components').update(changes).eq('id', id)
     if (error) { alert(error.message); return }
-    await loadAll()
+    await loadAll(true)
   }
 
   // Delete a recipe — but only if nothing real points at it. A recipe can be referenced by sales history,
@@ -192,7 +195,7 @@ export default function RecipeDetailPage() {
     const upd: any = { yield_qty: newSize }
     if (recipe.is_kegged) upd.keg_size_ml = newSize
     await ops().from('recipes').update(upd).eq('id', recipeId)
-    await loadAll()
+    await loadAll(true)
   }
 
   // Correct the batch yield WITHOUT touching ingredient amounts — this is the denominator the cost is
@@ -201,7 +204,7 @@ export default function RecipeDetailPage() {
     const q = Number(kegInput)
     if (!q || q <= 0) return
     await ops().from('recipes').update({ yield_qty: q, yield_unit: yieldUnitInput }).eq('id', recipeId)
-    await loadAll()
+    await loadAll(true)
   }
 
   async function savePhoto(v: string) {
@@ -227,7 +230,7 @@ export default function RecipeDetailPage() {
     const { error } = await ops().from('recipe_versions').insert({ recipe_id: recipeId, venue_id: venueId, version: nextV, snapshot })
     if (error) { alert(error.message); return }
     await ops().from('recipes').update({ published_version: nextV }).eq('id', recipeId)
-    await loadAll()
+    await loadAll(true)
   }
   async function restoreVersion(v: any) {
     if (!confirm(`Restore version ${v.version}? The current state is saved as a new version first, so nothing is lost.`)) return
@@ -236,7 +239,7 @@ export default function RecipeDetailPage() {
     await ops().from('recipes').update({ method: s.recipe.method, plating_dinein: s.recipe.plating_dinein ?? null, plating_togo: s.recipe.plating_togo ?? null, glass: s.recipe.glass ?? null, ice: s.recipe.ice ?? null, garnish: s.recipe.garnish ?? null, image_url: s.recipe.image_url, subtitle: s.recipe.subtitle, category: s.recipe.category, sale_price: s.recipe.sale_price }).eq('id', recipeId)
     await ops().from('recipe_components').delete().eq('recipe_id', recipeId)
     if (s.components?.length) await ops().from('recipe_components').insert(s.components.map((c: any) => ({ ...c, recipe_id: recipeId })))
-    await loadAll()
+    await loadAll(true)
   }
 
   function buildCompRows(withCost: boolean) {
@@ -309,6 +312,8 @@ export default function RecipeDetailPage() {
   const parentIsBar = BAR_CATS.includes(recipe.category)
   const subRecipeOptions = recOptions.filter(r => parentIsBar ? BAR_CATS.includes(r.category) : !BAR_CATS.includes(r.category))
   const ingPickerOptions = ingOptions.filter(i => parentIsBar ? ING_BAR_CATS.includes(i.category) : ING_KITCHEN_CATS.includes(i.category))
+  // Packaging (consumables) live under their own picker option so they don't clutter the food/drink list — and stay reachable from both stations.
+  const packagingOptions = ingOptions.filter(i => i.category === 'consumable')
   // For kegged drinks, yield_qty is the keg volume (ml) and cost_per_unit is per ml → cost per pour = per-ml × pour size
   const costPerPour = (isDrink && cost?.cost_per_unit != null && recipe.pour_size_ml) ? cost.cost_per_unit * Number(recipe.pour_size_ml) : (cost?.cost_per_unit ?? null)
   const cogsDisplay = isDrink ? (costPerPour && recipe.sale_price ? costPerPour / recipe.sale_price : null) : cogsPct
@@ -431,19 +436,22 @@ export default function RecipeDetailPage() {
         <form onSubmit={addComponent} style={{ display: 'grid', gridTemplateColumns: '110px 2fr 80px 80px auto', gap: 8, alignItems: 'end', padding: 12, background: 'var(--bg-sidebar, #fafafa)', borderRadius: 6 }}>
           <select value={addType} onChange={e => { setAddType(e.target.value as any); setAddRefId('') }} style={inp}>
             <option value="ingredient">Ingredient</option>
+            <option value="packaging">Packaging</option>
             <option value="sub_recipe">Sub-recipe</option>
           </select>
           <select value={addRefId} onChange={e => {
             setAddRefId(e.target.value)
-            if (addType === 'ingredient') {
+            if (addType === 'ingredient' || addType === 'packaging') {
               const i = ingOptions.find(x => x.id === e.target.value)
               if (i) setAddUnit(i.base_unit)
             }
           }} style={inp}>
-            <option value="">Pick {addType === 'ingredient' ? 'an ingredient' : 'a sub-recipe'}…</option>
+            <option value="">Pick {addType === 'sub_recipe' ? 'a sub-recipe' : addType === 'packaging' ? 'a packaging item' : 'an ingredient'}…</option>
             {addType === 'ingredient'
               ? ingPickerOptions.map(i => <option key={i.id} value={i.id}>{i.name} ({i.base_unit})</option>)
-              : subRecipeOptions.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+              : addType === 'packaging'
+                ? packagingOptions.map(i => <option key={i.id} value={i.id}>{i.name} ({i.base_unit})</option>)
+                : subRecipeOptions.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
           </select>
           <input type="text" inputMode="decimal" placeholder="qty" value={addQty} onChange={e => setAddQty(e.target.value)} style={inp} />
           <select value={addUnit} onChange={e => setAddUnit(e.target.value)} style={inp}>
