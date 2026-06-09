@@ -75,7 +75,7 @@ export default function RecipesPage() {
   const canManage = role && canManageRecipes(role)
   const filtered = rows.filter(r => {
     if (!showResale && resaleIds.has(r.recipe_id)) return false
-    if (station === 'kitchen' && r.category !== 'food') return false
+    if (station === 'kitchen' && BAR_CATEGORIES.has(r.category)) return false
     if (station === 'bar' && !BAR_CATEGORIES.has(r.category)) return false
     if (typeFilter === 'menu_item' && r.type !== 'menu_item') return false
     if (typeFilter === 'prep' && r.type === 'menu_item') return false

@@ -9,6 +9,8 @@ const RECIPE_TYPES = [
   { v: 'sub_recipe', label: 'Prep / batch (made once, used inside other recipes — e.g. cheese blend, syrup)' },
 ]
 const CATEGORIES = ['cocktail', 'beer', 'wine', 'na_drink', 'food', 'snack', 'syrup', 'garnish', 'other']
+// Drink-side categories — used to keep the category list on-station (kitchen hides these, bar shows only these).
+const BAR_RECIPE_CATS = ['cocktail', 'beer', 'wine', 'na_drink', 'syrup']
 const BASE_UNITS = ['ml', 'g', 'each']
 
 export default function NewRecipePage() {
@@ -16,7 +18,8 @@ export default function NewRecipePage() {
   const [venueId, setVenueId] = useState<string | null>(null)
   const [name, setName] = useState('')
   const [type, setType] = useState('menu_item')
-  const [category, setCategory] = useState('cocktail')
+  const [category, setCategory] = useState('food')
+  const [station, setStation] = useState<'all' | 'kitchen' | 'bar'>('all')
   const [yieldQty, setYieldQty] = useState('1')
   const [yieldUnit, setYieldUnit] = useState('each')
   const [salePrice, setSalePrice] = useState('')
@@ -28,11 +31,27 @@ export default function NewRecipePage() {
   const [msg, setMsg] = useState<string | null>(null)
 
   useEffect(() => {
-    (async () => {
+    // Inherit the Kitchen/Bar station the user last picked on the recipes list, so a kitchen user
+    // building a recipe only sees food categories (and a bar user only sees drink categories).
+    try {
+      const s = localStorage.getItem('bbb_recipe_station')
+      if (s === 'kitchen' || s === 'bar' || s === 'all') {
+        setStation(s)
+        if (s === 'bar') setCategory('cocktail')
+        else setCategory('food')
+      }
+    } catch {}
+    ;(async () => {
       const { data: venue } = await supabase.from('venues').select('id').eq('slug', 'bigbamboo').single()
       setVenueId(venue?.id || null)
     })()
   }, [])
+
+  const visibleCats = station === 'kitchen'
+    ? CATEGORIES.filter(c => !BAR_RECIPE_CATS.includes(c))
+    : station === 'bar'
+      ? CATEGORIES.filter(c => BAR_RECIPE_CATS.includes(c))
+      : CATEGORIES
 
   async function save(e: React.FormEvent) {
     e.preventDefault()
@@ -72,7 +91,7 @@ export default function NewRecipePage() {
 
         <Field label="Category">
           <select value={category} onChange={e => setCategory(e.target.value)} style={inp}>
-            {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+            {visibleCats.map(c => <option key={c} value={c}>{c}</option>)}
           </select>
         </Field>
 
