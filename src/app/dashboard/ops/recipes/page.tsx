@@ -99,7 +99,7 @@ export default function RecipesPage() {
       </div>
 
       <div style={{ display: 'inline-flex', gap: 0, marginBottom: 12, border: '1px solid var(--border, #e5e5e5)', borderRadius: 8, overflow: 'hidden' }}>
-        {([['all', 'All'], ['kitchen', '🍳 Kitchen'], ['bar', '🍹 Bar']] as const).map(([val, label]) => (
+        {([['all', 'All'], ['kitchen', 'Kitchen'], ['bar', 'Bar']] as const).map(([val, label]) => (
           <button
             key={val}
             onClick={() => chooseStation(val)}
