@@ -17,6 +17,11 @@ type Recipe = {
 }
 
 const DRINK_CATS = ['cocktail', 'beer', 'wine', 'na_drink']
+// Bar/kitchen split for the sub-recipe picker: a food recipe shouldn't list drink sub-recipes (and vice-versa).
+const BAR_CATS = ['cocktail', 'beer', 'wine', 'na_drink', 'syrup']
+// Same split for the ingredient picker — mirrors the Ingredients page's category→station map.
+const ING_BAR_CATS = ['spirit', 'beer', 'wine', 'mixer', 'syrup']
+const ING_KITCHEN_CATS = ['food', 'garnish', 'other', 'consumable']
 
 type Component = {
   id: string; recipe_id: string;
@@ -27,8 +32,9 @@ type Component = {
 }
 
 type Cost = { recipe_id: string; total_cost: number; cost_per_unit: number | null; margin_per_unit: number | null }
-type IngOption = { id: string; name: string; base_unit: string; current_cost_per_base: number }
-type RecOption = { id: string; name: string }
+type IngOption = { id: string; name: string; base_unit: string; current_cost_per_base: number; category: string }
+type RecOption = { id: string; name: string; category: string; type: string }
+type SubCost = { cost_per_unit: number | null; yield_unit: string }
 
 export default function RecipeDetailPage() {
   const params = useParams()
@@ -41,6 +47,7 @@ export default function RecipeDetailPage() {
   const [cost, setCost] = useState<Cost | null>(null)
   const [ingOptions, setIngOptions] = useState<IngOption[]>([])
   const [recOptions, setRecOptions] = useState<RecOption[]>([])
+  const [subCost, setSubCost] = useState<Map<string, SubCost>>(new Map())
   const [loading, setLoading] = useState(true)
   const [versions, setVersions] = useState<any[]>([])
   const [kegInput, setKegInput] = useState('')
@@ -68,19 +75,20 @@ export default function RecipeDetailPage() {
 
   async function loadAll() {
     setLoading(true)
-    const [r, comps, c, ings, recs, vers] = await Promise.all([
+    const [r, comps, c, ings, recs, vers, subc] = await Promise.all([
       ops().from('recipes').select('*').eq('id', recipeId).single(),
       ops().from('recipe_components').select('id, recipe_id, ingredient_id, sub_recipe_id, qty, unit, notes, sort_order').eq('recipe_id', recipeId).order('sort_order'),
       ops().from('v_recipe_cost').select('recipe_id, total_cost, cost_per_unit, margin_per_unit').eq('recipe_id', recipeId).single(),
       ops().from('ingredients').select('id, name, base_unit, current_cost_per_base, category').order('name'),
-      ops().from('recipes').select('id, name').neq('id', recipeId).order('name'),
+      ops().from('recipes').select('id, name, category, type').neq('id', recipeId).order('name'),
       ops().from('recipe_versions').select('*').eq('recipe_id', recipeId).order('version', { ascending: false }),
+      ops().from('v_recipe_cost').select('recipe_id, cost_per_unit, yield_unit'),
     ])
     setRecipe(r.data as Recipe)
     setIngOptions((ings.data as IngOption[]) || [])
     setRecOptions((recs.data as RecOption[]) || [])
-    const ingMap = new Map((ings.data || []).map((i: any) => [i.id, i]))
-    const recMap = new Map((recs.data || []).map((rr: any) => [rr.id, rr]))
+    const ingMap = new Map<string, any>((ings.data || []).map((i: any) => [i.id, i]))
+    const recMap = new Map<string, any>((recs.data || []).map((rr: any) => [rr.id, rr]))
     setComponents(((comps.data as Component[]) || []).map(c => ({
       ...c,
       ingredient: c.ingredient_id ? ingMap.get(c.ingredient_id) : null,
@@ -88,6 +96,7 @@ export default function RecipeDetailPage() {
     })))
     setCost(c.data as Cost)
     setVersions((vers.data as any[]) || [])
+    setSubCost(new Map(((subc.data as any[]) || []).map(x => [x.recipe_id, { cost_per_unit: x.cost_per_unit, yield_unit: x.yield_unit } as SubCost])))
     setLoading(false)
   }
 
@@ -119,6 +128,40 @@ export default function RecipeDetailPage() {
     const { error } = await ops().from('recipe_components').update(changes).eq('id', id)
     if (error) { alert(error.message); return }
     await loadAll()
+  }
+
+  // Delete a recipe — but only if nothing real points at it. A recipe can be referenced by sales history,
+  // POS mapping, event lines, batch production, or by other recipes (as a sub-recipe). We block on those
+  // with a clear reason rather than orphan data, and only hard-delete a truly unused recipe.
+  async function deleteRecipe() {
+    if (!recipe) return
+    const [usedIn, posMap, sales, evt, batch] = await Promise.all([
+      ops().from('recipe_components').select('recipe_id').eq('sub_recipe_id', recipeId),
+      ops().from('pos_item_map').select('id').eq('recipe_id', recipeId).limit(1),
+      ops().from('sales_items').select('id').eq('recipe_id', recipeId).limit(1),
+      ops().from('event_lines').select('id').eq('recipe_id', recipeId).limit(1),
+      ops().from('batches').select('id').eq('recipe_id', recipeId).limit(1),
+    ])
+    const blockers: string[] = []
+    if (usedIn.data && usedIn.data.length) {
+      const rawNames = usedIn.data.map((x: any) => recOptions.find(r => r.id === x.recipe_id)?.name || 'another recipe')
+      const names = rawNames.filter((n: string, i: number) => rawNames.indexOf(n) === i)
+      blockers.push(`it's used as a sub-recipe in: ${names.join(', ')}`)
+    }
+    if (posMap.data && posMap.data.length) blockers.push('it\'s linked to a POS menu item (unlink it in Menu map first)')
+    if (sales.data && sales.data.length) blockers.push('it has sales history')
+    if (evt.data && evt.data.length) blockers.push('it\'s used in an event P&L')
+    if (batch.data && batch.data.length) blockers.push('it has batch production logged')
+    if (blockers.length) {
+      alert(`Can't delete "${recipe.name}" because ${blockers.join('; and ')}.\n\nReassign or remove those first, then delete.`)
+      return
+    }
+    if (!confirm(`Delete "${recipe.name}" permanently? This removes the recipe and its components and cannot be undone.`)) return
+    await ops().from('recipe_components').delete().eq('recipe_id', recipeId)
+    await ops().from('recipe_versions').delete().eq('recipe_id', recipeId)
+    const { error } = await ops().from('recipes').delete().eq('id', recipeId)
+    if (error) { alert(error.message); return }
+    router.push('/dashboard/ops/recipes')
   }
 
   async function saveRecipe(changes: Partial<Recipe>) {
@@ -188,9 +231,12 @@ export default function RecipeDetailPage() {
   function buildCompRows(withCost: boolean) {
     return components.map(c => {
       const name = c.ingredient?.name || c.sub_recipe?.name || '—'
-      const compCost = Number(c.qty) * (c.ingredient?.current_cost_per_base || 0)
+      const sc = c.sub_recipe_id ? subCost.get(c.sub_recipe_id) : null
+      const unitCost = c.ingredient?.current_cost_per_base ?? (sc?.cost_per_unit ?? 0)
+      const hasCost = c.ingredient != null || (sc != null && sc.cost_per_unit != null)
+      const compCost = Number(c.qty) * Number(unitCost)
       const pkg = c.ingredient && c.ingredient.category === 'consumable' ? ' (packaging)' : ''
-      return `<tr><td>${name}${pkg}</td><td style="text-align:right">${Number(c.qty)} ${c.unit}</td>${withCost ? `<td style="text-align:right">${c.ingredient ? vnd(compCost) : '—'}</td>` : ''}</tr>`
+      return `<tr><td>${name}${pkg}</td><td style="text-align:right">${Number(c.qty)} ${c.unit}</td>${withCost ? `<td style="text-align:right">${hasCost ? vnd(compCost) : '—'}</td>` : ''}</tr>`
     }).join('')
   }
   function platingHtml(which: 'dinein' | 'togo') {
@@ -248,6 +294,10 @@ export default function RecipeDetailPage() {
   const dineInCost = Math.max(0, toGoCost - packagingCost)
   const cogsPct = (cost?.cost_per_unit && recipe.sale_price) ? cost.cost_per_unit / recipe.sale_price : null
   const isDrink = DRINK_CATS.includes(recipe.category)
+  // Sub-recipe picker: keep it on-station — a food recipe only lists food/prep sub-recipes, a bar recipe only lists bar ones.
+  const parentIsBar = BAR_CATS.includes(recipe.category)
+  const subRecipeOptions = recOptions.filter(r => parentIsBar ? BAR_CATS.includes(r.category) : !BAR_CATS.includes(r.category))
+  const ingPickerOptions = ingOptions.filter(i => parentIsBar ? ING_BAR_CATS.includes(i.category) : ING_KITCHEN_CATS.includes(i.category))
   // For kegged drinks, yield_qty is the keg volume (ml) and cost_per_unit is per ml → cost per pour = per-ml × pour size
   const costPerPour = (isDrink && cost?.cost_per_unit != null && recipe.pour_size_ml) ? cost.cost_per_unit * Number(recipe.pour_size_ml) : (cost?.cost_per_unit ?? null)
   const cogsDisplay = isDrink ? (costPerPour && recipe.sale_price ? costPerPour / recipe.sale_price : null) : cogsPct
@@ -318,8 +368,13 @@ export default function RecipeDetailPage() {
         <tbody>
           {components.length === 0 && <tr><td colSpan={7} style={{ padding: 12, color: 'var(--text-muted, #999)' }}>No components yet. Add ingredients below.</td></tr>}
           {components.map(c => {
-            const unitCost = c.ingredient?.current_cost_per_base || 0
-            const compCost = Number(c.qty) * unitCost
+            const sc = c.sub_recipe_id ? subCost.get(c.sub_recipe_id) : null
+            const unitCost = c.ingredient?.current_cost_per_base ?? (sc?.cost_per_unit ?? 0)
+            const compCost = Number(c.qty) * Number(unitCost)
+            const hasCost = c.ingredient != null || (sc != null && sc.cost_per_unit != null)
+            const unitCostLabel = c.ingredient
+              ? `${vnd(unitCost)}/${c.ingredient.base_unit}`
+              : (sc != null && sc.cost_per_unit != null ? `${vnd(unitCost)}/${sc.yield_unit}` : '—')
             return (
               <tr key={c.id} style={{ borderTop: '1px solid var(--border, #eee)' }}>
                 <td style={td}>
@@ -339,8 +394,8 @@ export default function RecipeDetailPage() {
                       </select>
                     : c.unit}
                 </td>
-                <td style={{ ...td, textAlign: 'right', color: 'var(--text-muted, #666)' }}>{c.ingredient ? `${vnd(unitCost)}/${c.ingredient.base_unit}` : '—'}</td>
-                <td style={{ ...td, textAlign: 'right' }}>{c.ingredient ? vnd(compCost) : '—'}</td>
+                <td style={{ ...td, textAlign: 'right', color: 'var(--text-muted, #666)' }}>{unitCostLabel}</td>
+                <td style={{ ...td, textAlign: 'right' }}>{hasCost ? vnd(compCost) : '—'}</td>
                 <td style={{ ...td, textAlign: 'right' }}>
                   {canManage && <button onClick={() => removeComponent(c.id)} style={btnLink}>remove</button>}
                 </td>
@@ -364,8 +419,8 @@ export default function RecipeDetailPage() {
           }} style={inp}>
             <option value="">Pick {addType === 'ingredient' ? 'an ingredient' : 'a sub-recipe'}…</option>
             {addType === 'ingredient'
-              ? ingOptions.map(i => <option key={i.id} value={i.id}>{i.name} ({i.base_unit})</option>)
-              : recOptions.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+              ? ingPickerOptions.map(i => <option key={i.id} value={i.id}>{i.name} ({i.base_unit})</option>)
+              : subRecipeOptions.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
           </select>
           <input type="text" inputMode="decimal" placeholder="qty" value={addQty} onChange={e => setAddQty(e.target.value)} style={inp} />
           <select value={addUnit} onChange={e => setAddUnit(e.target.value)} style={inp}>
@@ -556,6 +611,16 @@ export default function RecipeDetailPage() {
           </div>
         )}
       </div>
+
+      {/* 10. Danger zone — delete recipe */}
+      {canManage && (
+        <div style={{ marginTop: 40, paddingTop: 20, borderTop: '1px solid var(--border, #e5e5e5)' }}>
+          <button onClick={deleteRecipe} style={btnDanger}>Delete recipe</button>
+          <span style={{ fontSize: 12, color: 'var(--text-muted, #999)', marginLeft: 12 }}>
+            Only works if nothing (sales, POS map, events, batches, other recipes) points at it.
+          </span>
+        </div>
+      )}
     </div>
   )
 }
@@ -574,3 +639,4 @@ const td  = { padding: '8px 12px', color: 'var(--text, #333)' }
 const btnPrimary = { padding: '8px 14px', background: 'var(--accent, #e87830)', color: '#fff', border: 'none', borderRadius: 6, fontSize: 13, fontWeight: 600, cursor: 'pointer' }
 const btnLink = { padding: '4px 8px', background: 'transparent', color: 'var(--burgundy, #7b2d3a)', border: 'none', cursor: 'pointer', fontSize: 12 }
 const btnOutline = { padding: '8px 14px', background: 'transparent', color: 'var(--text-secondary, #666)', border: '1px solid var(--border, #e5e5e5)', borderRadius: 6, fontSize: 13, fontWeight: 500, cursor: 'pointer' }
+const btnDanger = { padding: '8px 14px', background: 'transparent', color: 'var(--burgundy, #7b2d3a)', border: '1px solid var(--burgundy, #7b2d3a)', borderRadius: 6, fontSize: 13, fontWeight: 600, cursor: 'pointer' }
