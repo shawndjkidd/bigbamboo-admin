@@ -24,12 +24,27 @@ export default function RecipesPage() {
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState('')
   const [typeFilter, setTypeFilter] = useState<'all' | 'menu_item' | 'batch' | 'sub_recipe'>('all')
+  const [station, setStation] = useState<'all' | 'kitchen' | 'bar'>('all')
   const [resaleIds, setResaleIds] = useState<Set<string>>(new Set())
   const [keggedIds, setKeggedIds] = useState<Set<string>>(new Set())
   const [serveCost, setServeCost] = useState<Map<string, number>>(new Map())
   const [showResale, setShowResale] = useState(false)
 
   useEffect(() => { init() }, [])
+
+  // Remember the station this device is set to (kitchen tablet stays on food,
+  // bar tablet stays on drinks) so staff don't have to re-pick every visit.
+  useEffect(() => {
+    try {
+      const s = localStorage.getItem('bbb_recipe_station')
+      if (s === 'kitchen' || s === 'bar' || s === 'all') setStation(s)
+    } catch {}
+  }, [])
+
+  function chooseStation(s: 'all' | 'kitchen' | 'bar') {
+    setStation(s)
+    try { localStorage.setItem('bbb_recipe_station', s) } catch {}
+  }
 
   async function init() {
     const { data: { session } } = await supabase.auth.getSession()
@@ -60,6 +75,8 @@ export default function RecipesPage() {
   const canManage = role && canManageRecipes(role)
   const filtered = rows.filter(r => {
     if (!showResale && resaleIds.has(r.recipe_id)) return false
+    if (station === 'kitchen' && r.category !== 'food') return false
+    if (station === 'bar' && !BAR_CATEGORIES.has(r.category)) return false
     if (typeFilter !== 'all' && r.type !== typeFilter) return false
     if (filter && !r.name.toLowerCase().includes(filter.toLowerCase())) return false
     return true
@@ -79,6 +96,21 @@ export default function RecipesPage() {
         {canManage && (
           <Link href="/dashboard/ops/recipes/new" style={btnPrimary as any}>+ Add recipe</Link>
         )}
+      </div>
+
+      <div style={{ display: 'inline-flex', gap: 0, marginBottom: 12, border: '1px solid var(--border, #e5e5e5)', borderRadius: 8, overflow: 'hidden' }}>
+        {([['all', 'All'], ['kitchen', '🍳 Kitchen'], ['bar', '🍹 Bar']] as const).map(([val, label]) => (
+          <button
+            key={val}
+            onClick={() => chooseStation(val)}
+            style={{
+              padding: '8px 18px', fontSize: 13, fontWeight: 600, cursor: 'pointer', border: 'none',
+              borderRight: val !== 'bar' ? '1px solid var(--border, #e5e5e5)' : 'none',
+              background: station === val ? 'var(--accent, #e87830)' : 'var(--bg-card, #fff)',
+              color: station === val ? '#fff' : 'var(--text-muted, #777)',
+            }}
+          >{label}</button>
+        ))}
       </div>
 
       <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
@@ -133,6 +165,8 @@ export default function RecipesPage() {
     </div>
   )
 }
+
+const BAR_CATEGORIES = new Set(['cocktail', 'beer', 'wine', 'na_drink', 'syrup'])
 
 const inp = { padding: '10px 12px', fontSize: 14, border: '1px solid var(--border, #e5e5e5)', borderRadius: 6, background: 'var(--bg-card, #fff)', color: 'var(--text, #333)' }
 const th  = { padding: '8px 12px', textAlign: 'left' as const, fontWeight: 600, fontSize: 11, textTransform: 'uppercase' as const, color: 'var(--text-muted, #999)', letterSpacing: '0.05em' }
