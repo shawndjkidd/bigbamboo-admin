@@ -51,6 +51,7 @@ export default function RecipeDetailPage() {
   const [loading, setLoading] = useState(true)
   const [versions, setVersions] = useState<any[]>([])
   const [kegInput, setKegInput] = useState('')
+  const [yieldUnitInput, setYieldUnitInput] = useState('g')
 
   // add-component form
   const [addType, setAddType] = useState<'ingredient' | 'sub_recipe'>('ingredient')
@@ -62,6 +63,7 @@ export default function RecipeDetailPage() {
 
   useEffect(() => { init() }, [recipeId])
   useEffect(() => { if (recipe?.yield_qty != null) setKegInput(String(Number(recipe.yield_qty))) }, [recipe?.yield_qty])
+  useEffect(() => { if (recipe?.yield_unit) setYieldUnitInput(recipe.yield_unit) }, [recipe?.yield_unit])
 
   async function init() {
     const { data: { session } } = await supabase.auth.getSession()
@@ -190,6 +192,15 @@ export default function RecipeDetailPage() {
     const upd: any = { yield_qty: newSize }
     if (recipe.is_kegged) upd.keg_size_ml = newSize
     await ops().from('recipes').update(upd).eq('id', recipeId)
+    await loadAll()
+  }
+
+  // Correct the batch yield WITHOUT touching ingredient amounts — this is the denominator the cost is
+  // divided by. Use when a sub-recipe's cost is wildly off because the yield was left at e.g. "1 each".
+  async function saveYield() {
+    const q = Number(kegInput)
+    if (!q || q <= 0) return
+    await ops().from('recipes').update({ yield_qty: q, yield_unit: yieldUnitInput }).eq('id', recipeId)
     await loadAll()
   }
 
@@ -345,14 +356,26 @@ export default function RecipeDetailPage() {
       )}
       {canManage && !recipe.is_kegged && (recipe.type === 'batch' || recipe.type === 'sub_recipe' || Number(recipe.yield_qty) > 1) && (
         <div className="card" style={{ padding: 16, marginBottom: 16 }}>
-          <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 10 }}>📦 Batch size</h3>
-          <div style={{ display: 'flex', gap: 12, alignItems: 'end', flexWrap: 'wrap' }}>
+          <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>Batch yield</h3>
+          <div style={{ fontSize: 12, color: 'var(--text-muted, #999)', marginBottom: 10 }}>
+            How much one batch makes — the cost is divided by this. If a prep&apos;s cost looks way too high, the yield is usually wrong (e.g. left at &ldquo;1 each&rdquo; instead of the real grams/ml).
+          </div>
+          <div style={{ display: 'flex', gap: 10, alignItems: 'end', flexWrap: 'wrap' }}>
             <div>
-              <label className="label">Batch yields ({recipe.yield_unit})</label>
-              <input inputMode="decimal" value={kegInput} onChange={e => setKegInput(e.target.value)} style={{ ...inp, width: 140 }} />
+              <label className="label">Makes</label>
+              <input inputMode="decimal" value={kegInput} onChange={e => setKegInput(e.target.value)} style={{ ...inp, width: 120 }} />
             </div>
-            <button onClick={() => rescaleBatch(kegInput)} style={btnPrimary} disabled={Number(kegInput) === Number(recipe.yield_qty)}>Rescale ingredients</button>
-            <span style={{ fontSize: 12, color: 'var(--text-muted, #999)' }}>Scale the whole batch up or down — every ingredient below adjusts proportionally.</span>
+            <div>
+              <label className="label">Unit</label>
+              <select value={yieldUnitInput} onChange={e => setYieldUnitInput(e.target.value)} style={{ ...inp, width: 90 }}>
+                <option value="g">g</option><option value="ml">ml</option><option value="each">each</option>
+              </select>
+            </div>
+            <button onClick={saveYield} style={btnPrimary} disabled={Number(kegInput) === Number(recipe.yield_qty) && yieldUnitInput === recipe.yield_unit}>Save yield</button>
+            <button onClick={() => rescaleBatch(kegInput)} style={btnOutline} disabled={Number(kegInput) === Number(recipe.yield_qty)}>Rescale ingredients instead</button>
+          </div>
+          <div style={{ fontSize: 11, color: 'var(--text-muted, #999)', marginTop: 8 }}>
+            <b>Save yield</b> just corrects the amount — ingredients stay as they are. <b>Rescale</b> changes the batch to a different size and scales every ingredient proportionally.
           </div>
         </div>
       )}
