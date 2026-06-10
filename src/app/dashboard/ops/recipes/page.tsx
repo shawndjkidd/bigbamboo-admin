@@ -150,11 +150,10 @@ export default function RecipesPage() {
     w.document.close(); w.focus(); setTimeout(() => w.print(), 400)
   }
 
-  // Build a PDF of the selected recipes and hand it to the OS share sheet (Zalo, email, send to a print
-  // shop…). Falls back to a direct download where sharing files isn't supported (most desktops).
-  async function shareRecipes(order: string[]) {
+  // Build a PDF of the selected recipes (shared by both Share and Download).
+  async function buildRecipesPdf(order: string[]): Promise<{ blob: Blob; fname: string } | null> {
     const ids = order.filter(id => selected.has(id))
-    if (!ids.length) return
+    if (!ids.length) return null
     const [{ data: recs }, { data: comps }, { data: ings }, { data: subs }] = await Promise.all([
       ops().from('recipes').select('id,name,category,subtitle,method,plating_dinein,plating_togo,glass,ice,garnish,yield_qty,yield_unit').in('id', ids),
       ops().from('recipe_components').select('recipe_id,ingredient_id,sub_recipe_id,qty,unit,sort_order').in('recipe_id', ids),
@@ -206,12 +205,28 @@ export default function RecipesPage() {
     })
     const blob = doc.output('blob')
     const fname = ids.length === 1 ? `${recById.get(ids[0])?.name || 'recipe'}.pdf` : `BigBamBoo-Recipes-${ids.length}.pdf`
-    const file = new File([blob], fname, { type: 'application/pdf' })
+    return { blob, fname }
+  }
+
+  // Share opens ONLY the device share sheet (no save prompt). Where file-sharing isn't supported
+  // (most desktop browsers), it points the user to Download instead.
+  async function shareRecipes(order: string[]) {
+    const pdf = await buildRecipesPdf(order)
+    if (!pdf) return
+    const file = new File([pdf.blob], pdf.fname, { type: 'application/pdf' })
     const nav: any = navigator
-    try {
-      if (nav.canShare && nav.canShare({ files: [file] })) { await nav.share({ files: [file], title: 'BigBamBoo Recipes' }); return }
-    } catch { /* fall through to download */ }
-    const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = fname; a.click()
+    if (nav.canShare && nav.canShare({ files: [file] })) {
+      try { await nav.share({ files: [file], title: 'BigBamBoo Recipes' }) } catch { /* user cancelled */ }
+    } else {
+      alert('This browser can’t share a file directly — use Download instead, or open this page on your phone to share straight to Zalo / Messenger.')
+    }
+  }
+
+  // Download just saves the PDF.
+  async function downloadRecipes(order: string[]) {
+    const pdf = await buildRecipesPdf(order)
+    if (!pdf) return
+    const url = URL.createObjectURL(pdf.blob); const a = document.createElement('a'); a.href = url; a.download = pdf.fname; a.click()
     setTimeout(() => URL.revokeObjectURL(url), 4000)
   }
 
@@ -353,7 +368,7 @@ export default function RecipesPage() {
         <span style={{ fontSize: 12, color: 'var(--text-muted, #999)', marginRight: 2 }}>
           {selected.size ? `${selected.size} selected:` : 'Select recipes to:'}
         </span>
-        {([['Print', () => printSelected(filtered.map(r => r.recipe_id))], ['Share', () => shareRecipes(filtered.map(r => r.recipe_id))], ['Shopping list', openShopping]] as const).map(([label, fn]) => (
+        {([['Print', () => printSelected(filtered.map(r => r.recipe_id))], ['Share', () => shareRecipes(filtered.map(r => r.recipe_id))], ['Download', () => downloadRecipes(filtered.map(r => r.recipe_id))], ['Shopping list', openShopping]] as const).map(([label, fn]) => (
           <button key={label} onClick={fn} disabled={selected.size === 0}
             style={{ ...btnOutline, padding: '7px 14px', opacity: selected.size === 0 ? 0.45 : 1, cursor: selected.size === 0 ? 'default' : 'pointer' }}>
             {label}
