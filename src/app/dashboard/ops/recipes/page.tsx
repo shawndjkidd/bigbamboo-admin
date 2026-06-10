@@ -30,6 +30,10 @@ export default function RecipesPage() {
   const [serveCost, setServeCost] = useState<Map<string, number>>(new Map())
   const [showResale, setShowResale] = useState(false)
   const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [shopOpen, setShopOpen] = useState(false)
+  const [shopQty, setShopQty] = useState<Record<string, string>>({})
+  const [shopResult, setShopResult] = useState<{ supplier: string; items: { name: string; qty: number; unit: string; hint: string }[] }[] | null>(null)
+  const [shopBusy, setShopBusy] = useState(false)
 
   useEffect(() => { init() }, [])
 
@@ -196,6 +200,86 @@ export default function RecipesPage() {
     setTimeout(() => URL.revokeObjectURL(url), 4000)
   }
 
+  function openShopping() {
+    if (selected.size === 0) return
+    const q: Record<string, string> = {}
+    rows.filter(r => selected.has(r.recipe_id)).forEach(r => { q[r.recipe_id] = shopQty[r.recipe_id] || '1' })
+    setShopQty(q); setShopResult(null); setShopOpen(true)
+  }
+
+  // Expand every selected recipe/batch (× its quantity) down to the raw ingredients you actually buy:
+  // sub-recipes are recursively broken out by their yield, totals are summed per ingredient and grouped by vendor.
+  async function buildShopping() {
+    setShopBusy(true)
+    const ids = Object.keys(shopQty)
+    const [{ data: comps }, { data: recs }, { data: ings }] = await Promise.all([
+      ops().from('recipe_components').select('recipe_id,ingredient_id,sub_recipe_id,qty,unit'),
+      ops().from('recipes').select('id,yield_qty'),
+      ops().from('ingredients').select('id,name,base_unit,purchase_unit_label,purchase_unit_size,supplier,current_cost_per_base'),
+    ])
+    const compsByRecipe = new Map<string, any[]>()
+    ;(comps || []).forEach((c: any) => { const a = compsByRecipe.get(c.recipe_id) || []; a.push(c); compsByRecipe.set(c.recipe_id, a) })
+    const recYield = new Map<string, number>((recs || []).map((r: any) => [r.id, Number(r.yield_qty)]))
+    const ingById = new Map<string, any>((ings || []).map((i: any) => [i.id, i]))
+
+    const acc = new Map<string, number>()
+    const expand = (rid: string, mult: number, seen: Set<string>) => {
+      if (seen.has(rid)) return
+      const seen2 = new Set(seen); seen2.add(rid)
+      for (const c of compsByRecipe.get(rid) || []) {
+        const amt = Number(c.qty) * mult
+        if (c.ingredient_id) acc.set(c.ingredient_id, (acc.get(c.ingredient_id) || 0) + amt)
+        else if (c.sub_recipe_id) { const sy = recYield.get(c.sub_recipe_id) || 0; if (sy > 0) expand(c.sub_recipe_id, amt / sy, seen2) }
+      }
+    }
+    ids.forEach(id => { const n = Number(shopQty[id]); if (n > 0) expand(id, n, new Set()) })
+
+    type ShopItem = { name: string; qty: number; unit: string; hint: string }
+    const bySupplier = new Map<string, ShopItem[]>()
+    acc.forEach((qty, ingId) => {
+      const ing = ingById.get(ingId); if (!ing) return
+      if (Number(ing.current_cost_per_base) === 0) return // skip free/tap items like Water
+      const sup = ing.supplier || '(no vendor)'
+      const pu = Number(ing.purchase_unit_size) || 1
+      const hint = pu > 1 ? `≈ ${(qty / pu).toFixed(1)} ${ing.purchase_unit_label}` : ''
+      const arr = bySupplier.get(sup) || []
+      arr.push({ name: ing.name, qty: Math.round(qty * 10) / 10, unit: ing.base_unit, hint })
+      bySupplier.set(sup, arr)
+    })
+    const grouped: { supplier: string; items: ShopItem[] }[] = []
+    bySupplier.forEach((items, supplier) => { grouped.push({ supplier, items: items.sort((a, b) => a.name.localeCompare(b.name)) }) })
+    grouped.sort((a, b) => a.supplier.localeCompare(b.supplier))
+    setShopResult(grouped); setShopBusy(false)
+  }
+
+  const shopHeader = () => Object.entries(shopQty).map(([id, q]) => `${q} × ${rows.find(x => x.recipe_id === id)?.name || '?'}`).join('  ·  ')
+
+  function printShopping() {
+    if (!shopResult) return
+    const sections = shopResult.map(g => `<h3>${esc(g.supplier)}</h3><table><tbody>${g.items.map(it => `<tr><td>☐ ${esc(it.name)}</td><td style="text-align:right">${it.qty} ${esc(it.unit)}${it.hint ? ` <span style="color:#999">(${esc(it.hint)})</span>` : ''}</td></tr>`).join('')}</tbody></table>`).join('')
+    const w = window.open('', '_blank'); if (!w) return
+    w.document.write(`<html><head><title>BigBamBoo — Shopping list</title><style>body{font-family:Inter,Arial,sans-serif;max-width:640px;margin:24px auto;color:#1a1a1a;padding:0 24px}h1{font-size:22px;margin:0 0 2px}.sub{color:#666;font-size:12px;margin-bottom:14px}h3{margin:16px 0 4px;font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:#555}table{width:100%;border-collapse:collapse;font-size:14px}td{padding:6px 4px;border-bottom:1px solid #eee}</style></head><body><h1>Shopping list</h1><div class="sub">${esc(shopHeader())}</div>${sections}</body></html>`)
+    w.document.close(); w.focus(); setTimeout(() => w.print(), 400)
+  }
+
+  async function shareShopping() {
+    if (!shopResult) return
+    const { jsPDF } = await import('jspdf')
+    const doc = new jsPDF({ unit: 'pt', format: 'a4' })
+    const PW = doc.internal.pageSize.getWidth(), PH = doc.internal.pageSize.getHeight(); const M = 48; let y = M
+    const ensure = (h: number) => { if (y + h > PH - M) { doc.addPage(); y = M } }
+    const para = (t: string, s: number, b: boolean, gap = 4, gray = false) => { doc.setFont('helvetica', b ? 'bold' : 'normal'); doc.setFontSize(s); doc.setTextColor(gray ? 130 : 30); const ls = doc.splitTextToSize(String(t), PW - 2 * M); const lh = s * 1.3; ensure(ls.length * lh); doc.text(ls, M, y); y += ls.length * lh + gap }
+    para('Shopping list', 17, true, 2); para(shopHeader(), 9, false, 10, true)
+    shopResult.forEach(g => {
+      y += 4; para(g.supplier.toUpperCase(), 10, true, 4)
+      g.items.forEach(it => { ensure(15); doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(30); doc.text(`☐  ${it.name}`, M, y); doc.text(`${it.qty} ${it.unit}${it.hint ? '  (' + it.hint + ')' : ''}`, PW - M, y, { align: 'right' }); y += 15 })
+    })
+    const blob = doc.output('blob'); const file = new File([blob], 'BigBamBoo-Shopping-list.pdf', { type: 'application/pdf' })
+    const nav: any = navigator
+    try { if (nav.canShare && nav.canShare({ files: [file] })) { await nav.share({ files: [file], title: 'Shopping list' }); return } } catch { /* download */ }
+    const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = 'BigBamBoo-Shopping-list.pdf'; a.click(); setTimeout(() => URL.revokeObjectURL(url), 4000)
+  }
+
   const canManage = role && canManageRecipes(role)
   const filtered = rows.filter(r => {
     if (!showResale && resaleIds.has(r.recipe_id)) return false
@@ -232,6 +316,13 @@ export default function RecipesPage() {
             style={{ ...btnOutline, opacity: selected.size === 0 ? 0.5 : 1, cursor: selected.size === 0 ? 'default' : 'pointer' }}
           >
             ⤴ Share / PDF{selected.size ? ` (${selected.size})` : ''}
+          </button>
+          <button
+            onClick={openShopping}
+            disabled={selected.size === 0}
+            style={{ ...btnOutline, opacity: selected.size === 0 ? 0.5 : 1, cursor: selected.size === 0 ? 'default' : 'pointer' }}
+          >
+            🛒 Shopping list{selected.size ? ` (${selected.size})` : ''}
           </button>
           {canManage && <Link href="/dashboard/ops/recipes/new" style={btnPrimary as any}>+ Add recipe</Link>}
         </div>
@@ -308,6 +399,51 @@ export default function RecipesPage() {
           })}
         </tbody>
       </table>
+
+      {shopOpen && (
+        <div onClick={() => setShopOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '40px 16px', zIndex: 50, overflowY: 'auto' }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: 'var(--bg-card, #fff)', borderRadius: 10, padding: 20, width: '100%', maxWidth: 460, boxShadow: '0 8px 30px rgba(0,0,0,0.2)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+              <h3 style={{ fontSize: 16, fontWeight: 600 }}>Shopping list</h3>
+              <button onClick={() => setShopOpen(false)} style={{ background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: 'var(--text-muted, #999)' }}>✕</button>
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--text-muted, #999)', marginBottom: 10 }}>How many of each are you making? Sub-recipes expand to the raw ingredients you buy; tap water is skipped.</div>
+            {Object.keys(shopQty).map(id => {
+              const r = rows.find(x => x.recipe_id === id)
+              return (
+                <div key={id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, padding: '4px 0' }}>
+                  <span style={{ fontSize: 13 }}>{r?.name || id}</span>
+                  <input type="number" min="0" value={shopQty[id]} onChange={e => setShopQty(q => ({ ...q, [id]: e.target.value }))} style={{ ...inp, width: 72, padding: '4px 8px' }} />
+                </div>
+              )
+            })}
+            <button onClick={buildShopping} disabled={shopBusy} style={{ ...btnPrimary, marginTop: 10, opacity: shopBusy ? 0.6 : 1 } as any}>{shopBusy ? 'Building…' : 'Build list'}</button>
+
+            {shopResult && (
+              <div style={{ marginTop: 14, borderTop: '1px solid var(--border, #eee)', paddingTop: 12 }}>
+                {shopResult.length === 0 && <div style={{ fontSize: 13, color: 'var(--text-muted, #999)' }}>Nothing to buy — selected items have no costed ingredients.</div>}
+                {shopResult.map(g => (
+                  <div key={g.supplier} style={{ marginBottom: 12 }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted, #888)', marginBottom: 4 }}>{g.supplier}</div>
+                    {g.items.map(it => (
+                      <div key={it.name} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, padding: '2px 0' }}>
+                        <span>{it.name}</span>
+                        <span style={{ color: 'var(--text-muted, #666)' }}>{it.qty} {it.unit}{it.hint ? ` (${it.hint})` : ''}</span>
+                      </div>
+                    ))}
+                  </div>
+                ))}
+                {shopResult.length > 0 && (
+                  <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
+                    <button onClick={printShopping} style={btnOutline as any}>🖨 Print</button>
+                    <button onClick={shareShopping} style={btnOutline as any}>⤴ Share / PDF</button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
