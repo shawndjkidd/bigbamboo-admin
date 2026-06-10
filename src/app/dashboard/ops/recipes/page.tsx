@@ -131,6 +131,71 @@ export default function RecipesPage() {
     w.document.close(); w.focus(); setTimeout(() => w.print(), 400)
   }
 
+  // Build a PDF of the selected recipes and hand it to the OS share sheet (Zalo, email, send to a print
+  // shop…). Falls back to a direct download where sharing files isn't supported (most desktops).
+  async function shareRecipes(order: string[]) {
+    const ids = order.filter(id => selected.has(id))
+    if (!ids.length) return
+    const [{ data: recs }, { data: comps }, { data: ings }, { data: subs }] = await Promise.all([
+      ops().from('recipes').select('id,name,category,subtitle,method,plating_dinein,plating_togo,glass,ice,garnish,yield_qty,yield_unit').in('id', ids),
+      ops().from('recipe_components').select('recipe_id,ingredient_id,sub_recipe_id,qty,unit,sort_order').in('recipe_id', ids),
+      ops().from('ingredients').select('id,name'),
+      ops().from('recipes').select('id,name'),
+    ])
+    const ingName = new Map<string, string>((ings || []).map((i: any) => [i.id, i.name]))
+    const subName = new Map<string, string>((subs || []).map((s: any) => [s.id, s.name]))
+    const recById = new Map<string, any>((recs || []).map((r: any) => [r.id, r]))
+    const byRecipe = new Map<string, any[]>()
+    ;(comps || []).forEach((c: any) => { const a = byRecipe.get(c.recipe_id) || []; a.push(c); byRecipe.set(c.recipe_id, a) })
+    const DRINK = new Set(['cocktail', 'beer', 'wine', 'na_drink'])
+
+    const { jsPDF } = await import('jspdf')
+    const doc = new jsPDF({ unit: 'pt', format: 'a4' })
+    const PW = doc.internal.pageSize.getWidth(), PH = doc.internal.pageSize.getHeight()
+    const M = 48; let y = M
+    const ensure = (h: number) => { if (y + h > PH - M) { doc.addPage(); y = M } }
+    const para = (text: string, size: number, bold: boolean, gap = 4, gray = false) => {
+      doc.setFont('helvetica', bold ? 'bold' : 'normal'); doc.setFontSize(size); doc.setTextColor(gray ? 130 : 30)
+      const lines = doc.splitTextToSize(String(text), PW - 2 * M); const lh = size * 1.3
+      ensure(lines.length * lh); doc.text(lines, M, y); y += lines.length * lh + gap
+    }
+    ids.forEach((id, idx) => {
+      const r = recById.get(id); if (!r) return
+      if (idx > 0) { doc.addPage(); y = M }
+      const cs = (byRecipe.get(id) || []).slice().sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
+      para(r.name, 17, true, 2)
+      para(`${r.category}${r.subtitle ? ' · ' + r.subtitle : ''}  ·  yields ${Number(r.yield_qty)} ${r.yield_unit}`, 9, false, 10, true)
+      para('INGREDIENTS', 10, true, 4)
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(30)
+      cs.forEach(c => {
+        const nm = c.ingredient_id ? (ingName.get(c.ingredient_id) || '—') : (subName.get(c.sub_recipe_id) || '—')
+        ensure(15); doc.text(String(nm), M, y); doc.text(`${Number(c.qty)} ${c.unit}`, PW - M, y, { align: 'right' }); y += 15
+      })
+      if (!cs.length) para('No ingredients listed', 10, false, 2, true)
+      y += 6; para('METHOD', 10, true, 4)
+      const steps = String(r.method || '').split('\n').filter(Boolean)
+      steps.length ? steps.forEach((s, i) => para(`${i + 1}.  ${s}`, 10, false, 3)) : para('—', 10, false, 2, true)
+      if (DRINK.has(r.category)) {
+        y += 6; para('BUILD', 10, true, 4)
+        para(`Glass: ${r.glass || '-'}`, 10, false, 2); para(`Ice: ${r.ice || '-'}`, 10, false, 2); para(`Garnish: ${r.garnish || '-'}`, 10, false, 2)
+      } else {
+        const dinein = String(r.plating_dinein || '').split('\n').filter(Boolean)
+        const togo = String(r.plating_togo || '').split('\n').filter(Boolean)
+        if (dinein.length) { y += 6; para('PLATE — DINE-IN', 10, true, 4); dinein.forEach((s, i) => para(`${i + 1}.  ${s}`, 10, false, 3)) }
+        if (togo.length) { y += 6; para('PACK — TO-GO', 10, true, 4); togo.forEach((s, i) => para(`${i + 1}.  ${s}`, 10, false, 3)) }
+      }
+    })
+    const blob = doc.output('blob')
+    const fname = ids.length === 1 ? `${recById.get(ids[0])?.name || 'recipe'}.pdf` : `BigBamBoo-Recipes-${ids.length}.pdf`
+    const file = new File([blob], fname, { type: 'application/pdf' })
+    const nav: any = navigator
+    try {
+      if (nav.canShare && nav.canShare({ files: [file] })) { await nav.share({ files: [file], title: 'BigBamBoo Recipes' }); return }
+    } catch { /* fall through to download */ }
+    const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = fname; a.click()
+    setTimeout(() => URL.revokeObjectURL(url), 4000)
+  }
+
   const canManage = role && canManageRecipes(role)
   const filtered = rows.filter(r => {
     if (!showResale && resaleIds.has(r.recipe_id)) return false
@@ -159,7 +224,14 @@ export default function RecipesPage() {
             disabled={selected.size === 0}
             style={{ ...btnOutline, opacity: selected.size === 0 ? 0.5 : 1, cursor: selected.size === 0 ? 'default' : 'pointer' }}
           >
-            🖨 Print{selected.size ? ` selected (${selected.size})` : ''}
+            🖨 Print{selected.size ? ` (${selected.size})` : ''}
+          </button>
+          <button
+            onClick={() => shareRecipes(filtered.map(r => r.recipe_id))}
+            disabled={selected.size === 0}
+            style={{ ...btnOutline, opacity: selected.size === 0 ? 0.5 : 1, cursor: selected.size === 0 ? 'default' : 'pointer' }}
+          >
+            ⤴ Share / PDF{selected.size ? ` (${selected.size})` : ''}
           </button>
           {canManage && <Link href="/dashboard/ops/recipes/new" style={btnPrimary as any}>+ Add recipe</Link>}
         </div>
