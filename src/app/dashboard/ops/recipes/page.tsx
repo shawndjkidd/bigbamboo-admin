@@ -29,6 +29,7 @@ export default function RecipesPage() {
   const [keggedIds, setKeggedIds] = useState<Set<string>>(new Set())
   const [serveCost, setServeCost] = useState<Map<string, number>>(new Map())
   const [showResale, setShowResale] = useState(false)
+  const [selected, setSelected] = useState<Set<string>>(new Set())
 
   useEffect(() => { init() }, [])
 
@@ -72,6 +73,64 @@ export default function RecipesPage() {
     setLoading(false)
   }
 
+  function toggle(id: string) {
+    setSelected(p => { const n = new Set(p); n.has(id) ? n.delete(id) : n.add(id); return n })
+  }
+  function toggleAll(ids: string[]) {
+    const allSel = ids.length > 0 && ids.every(id => selected.has(id))
+    setSelected(allSel ? new Set() : new Set(ids))
+  }
+
+  // Build one printable document from every selected recipe (menu items and batch/prep recipes alike):
+  // ingredients + method, plus build sheet for drinks / plating for food. Each recipe starts a new page.
+  async function printSelected(order: string[]) {
+    const ids = order.filter(id => selected.has(id))
+    if (!ids.length) return
+    const [{ data: recs }, { data: comps }, { data: ings }, { data: subs }] = await Promise.all([
+      ops().from('recipes').select('id,name,category,subtitle,type,method,plating_dinein,plating_togo,glass,ice,garnish,yield_qty,yield_unit').in('id', ids),
+      ops().from('recipe_components').select('recipe_id,ingredient_id,sub_recipe_id,qty,unit,sort_order').in('recipe_id', ids),
+      ops().from('ingredients').select('id,name'),
+      ops().from('recipes').select('id,name'),
+    ])
+    const ingName = new Map<string, string>((ings || []).map((i: any) => [i.id, i.name]))
+    const subName = new Map<string, string>((subs || []).map((s: any) => [s.id, s.name]))
+    const recById = new Map<string, any>((recs || []).map((r: any) => [r.id, r]))
+    const byRecipe = new Map<string, any[]>()
+    ;(comps || []).forEach((c: any) => { const a = byRecipe.get(c.recipe_id) || []; a.push(c); byRecipe.set(c.recipe_id, a) })
+    const DRINK = new Set(['cocktail', 'beer', 'wine', 'na_drink'])
+
+    const sections = ids.map((id, idx) => {
+      const r = recById.get(id); if (!r) return ''
+      const cs = (byRecipe.get(id) || []).slice().sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
+      const ingRows = cs.map(c => {
+        const nm = c.ingredient_id ? (ingName.get(c.ingredient_id) || '—') : (subName.get(c.sub_recipe_id) || '—')
+        return `<tr><td>${esc(nm)}</td><td style="text-align:right">${Number(c.qty)} ${esc(c.unit)}</td></tr>`
+      }).join('')
+      const steps = String(r.method || '').split('\n').filter(Boolean).map((t: string) => `<li>${esc(t)}</li>`).join('')
+      const drink = DRINK.has(r.category)
+      const extra = drink
+        ? `<h3>Build sheet</h3><ul><li><b>Glass:</b> ${esc(r.glass || '-')}</li><li><b>Ice:</b> ${esc(r.ice || '-')}</li><li><b>Garnish:</b> ${esc(r.garnish || '-')}</li></ul>`
+        : platingBlock('Plate — Dine-in', r.plating_dinein) + platingBlock('Pack — To-go', r.plating_togo)
+      return `<section style="page-break-after:${idx < ids.length - 1 ? 'always' : 'auto'}">
+        <h1>${esc(r.name)}</h1>
+        <div class="sub">${esc(r.category)}${r.subtitle ? ' · ' + esc(r.subtitle) : ''} · yields ${Number(r.yield_qty)} ${esc(r.yield_unit)}</div>
+        <h3>Ingredients</h3><table><tbody>${ingRows || '<tr><td>No ingredients listed</td></tr>'}</tbody></table>
+        <h3>Method</h3><ol>${steps || '<li style="list-style:none;color:#999">No method yet</li>'}</ol>
+        ${extra}
+      </section>`
+    }).join('')
+
+    const w = window.open('', '_blank'); if (!w) return
+    w.document.write(`<html><head><title>BigBamBoo — Recipe Book (${ids.length})</title><style>
+      body{font-family:Inter,Arial,sans-serif;max-width:720px;margin:24px auto;color:#1a1a1a;padding:0 24px}
+      h1{margin:0 0 2px;font-size:24px}.sub{color:#666;font-size:13px;margin-bottom:14px}
+      h3{margin:16px 0 4px;font-size:14px}table{width:100%;border-collapse:collapse;font-size:14px;margin:6px 0}
+      td{padding:5px 4px;border-bottom:1px solid #eee}ol,ul{line-height:1.7;margin:4px 0;padding-left:20px}
+      section{padding-top:8px}
+    </style></head><body>${sections}</body></html>`)
+    w.document.close(); w.focus(); setTimeout(() => w.print(), 400)
+  }
+
   const canManage = role && canManageRecipes(role)
   const filtered = rows.filter(r => {
     if (!showResale && resaleIds.has(r.recipe_id)) return false
@@ -94,9 +153,16 @@ export default function RecipesPage() {
             {filtered.length} {showResale ? 'recipes' : 'made in-house'}{!showResale && resaleIds.size ? ` · ${resaleIds.size} bought-in hidden` : ''} · cost auto-updates when ingredient prices change
           </div>
         </div>
-        {canManage && (
-          <Link href="/dashboard/ops/recipes/new" style={btnPrimary as any}>+ Add recipe</Link>
-        )}
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <button
+            onClick={() => printSelected(filtered.map(r => r.recipe_id))}
+            disabled={selected.size === 0}
+            style={{ ...btnOutline, opacity: selected.size === 0 ? 0.5 : 1, cursor: selected.size === 0 ? 'default' : 'pointer' }}
+          >
+            🖨 Print{selected.size ? ` selected (${selected.size})` : ''}
+          </button>
+          {canManage && <Link href="/dashboard/ops/recipes/new" style={btnPrimary as any}>+ Add recipe</Link>}
+        </div>
       </div>
 
       <div style={{ display: 'inline-flex', gap: 0, marginBottom: 12, border: '1px solid var(--border, #e5e5e5)', borderRadius: 8, overflow: 'hidden' }}>
@@ -128,6 +194,11 @@ export default function RecipesPage() {
 
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
         <thead><tr style={{ background: 'var(--bg-sidebar, #fafafa)' }}>
+          <th style={{ ...th, width: 28, textAlign: 'center' }}>
+            <input type="checkbox" aria-label="Select all"
+              checked={filtered.length > 0 && filtered.every(r => selected.has(r.recipe_id))}
+              onChange={() => toggleAll(filtered.map(r => r.recipe_id))} />
+          </th>
           <th style={th}>Name</th><th style={th}>Type</th><th style={th}>Category</th>
           <th style={{ ...th, textAlign: 'right' }}>Yield</th>
           <th style={{ ...th, textAlign: 'right' }}>Cost / unit</th>
@@ -136,7 +207,7 @@ export default function RecipesPage() {
           <th style={{ ...th, textAlign: 'right' }}>Margin %</th>
         </tr></thead>
         <tbody>
-          {filtered.length === 0 && <tr><td colSpan={8} style={{ padding: 12, color: 'var(--text-muted, #999)' }}>No recipes yet. {canManage && 'Click "Add recipe" to start.'}</td></tr>}
+          {filtered.length === 0 && <tr><td colSpan={9} style={{ padding: 12, color: 'var(--text-muted, #999)' }}>No recipes yet. {canManage && 'Click "Add recipe" to start.'}</td></tr>}
           {filtered.map(r => {
             // Kegged drinks: v_recipe_cost.cost_per_unit is per-ml of the whole keg, so the list
             // would show a near-zero cost and a meaningless ~100% margin. Use the pour-aware
@@ -146,7 +217,10 @@ export default function RecipesPage() {
             const margin = r.sale_price != null && cost != null ? r.sale_price - cost : r.margin_per_unit
             const marginPct = r.sale_price && margin != null ? margin / r.sale_price : null
             return (
-              <tr key={r.recipe_id} style={{ borderTop: '1px solid var(--border, #eee)' }}>
+              <tr key={r.recipe_id} style={{ borderTop: '1px solid var(--border, #eee)', background: selected.has(r.recipe_id) ? 'var(--bg-active, #f7f2ee)' : 'transparent' }}>
+                <td style={{ ...td, textAlign: 'center' }}>
+                  <input type="checkbox" checked={selected.has(r.recipe_id)} onChange={() => toggle(r.recipe_id)} />
+                </td>
                 <td style={td}><Link href={`/dashboard/ops/recipes/${r.recipe_id}`} style={{ color: 'var(--accent, #e87830)', textDecoration: 'none', fontWeight: 600 }}>{r.name}</Link></td>
                 <td style={{ ...td, fontSize: 11, color: 'var(--text-muted, #999)' }}>{r.type}</td>
                 <td style={{ ...td, fontSize: 11, color: 'var(--text-muted, #999)' }}>{r.category}</td>
@@ -168,7 +242,15 @@ export default function RecipesPage() {
 
 const BAR_CATEGORIES = new Set(['cocktail', 'beer', 'wine', 'na_drink', 'syrup'])
 
+const esc = (s: any) => String(s ?? '').replace(/[&<>]/g, m => (({ '&': '&amp;', '<': '&lt;', '>': '&gt;' } as any)[m]))
+function platingBlock(title: string, txt: string | null) {
+  if (!txt) return ''
+  const items = String(txt).split('\n').filter(Boolean).map(t => `<li>${esc(t)}</li>`).join('')
+  return `<h3>${title}</h3><ol>${items}</ol>`
+}
+
 const inp = { padding: '10px 12px', fontSize: 14, border: '1px solid var(--border, #e5e5e5)', borderRadius: 6, background: 'var(--bg-card, #fff)', color: 'var(--text, #333)' }
 const th  = { padding: '8px 12px', textAlign: 'left' as const, fontWeight: 600, fontSize: 11, textTransform: 'uppercase' as const, color: 'var(--text-muted, #999)', letterSpacing: '0.05em' }
 const td  = { padding: '8px 12px', color: 'var(--text, #333)' }
 const btnPrimary = { padding: '8px 14px', background: 'var(--accent, #e87830)', color: '#fff', border: 'none', borderRadius: 6, fontSize: 13, fontWeight: 600, cursor: 'pointer', textDecoration: 'none', display: 'inline-block' }
+const btnOutline = { padding: '8px 14px', background: 'transparent', color: 'var(--text-secondary, #666)', border: '1px solid var(--border, #e5e5e5)', borderRadius: 6, fontSize: 13, fontWeight: 600 }
