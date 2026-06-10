@@ -53,6 +53,9 @@ export default function RecipeDetailPage() {
   const [versions, setVersions] = useState<any[]>([])
   const [kegInput, setKegInput] = useState('')
   const [yieldUnitInput, setYieldUnitInput] = useState('g')
+  const [menuItem, setMenuItem] = useState<any | null>(null)
+  const [menuSection, setMenuSection] = useState('')
+  const [menuBusy, setMenuBusy] = useState(false)
 
   // add-component form
   const [addType, setAddType] = useState<'ingredient' | 'packaging' | 'sub_recipe'>('ingredient')
@@ -65,6 +68,11 @@ export default function RecipeDetailPage() {
   useEffect(() => { init() }, [recipeId])
   useEffect(() => { if (recipe?.yield_qty != null) setKegInput(String(Number(recipe.yield_qty))) }, [recipe?.yield_qty])
   useEffect(() => { if (recipe?.yield_unit) setYieldUnitInput(recipe.yield_unit) }, [recipe?.yield_unit])
+  useEffect(() => {
+    if (!recipe || menuSection) return
+    const m: Record<string, string> = { cocktail: 'cocktails', beer: 'beer', wine: 'wine', na_drink: 'na', food: 'bites' }
+    setMenuSection(recipe.name?.startsWith('Add:') ? 'add_ons' : (m[recipe.category] || 'bites'))
+  }, [recipe?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function init() {
     const { data: { session } } = await supabase.auth.getSession()
@@ -103,6 +111,8 @@ export default function RecipeDetailPage() {
     setCost(c.data as Cost)
     setVersions((vers.data as any[]) || [])
     setSubCost(new Map(((subc.data as any[]) || []).map(x => [x.recipe_id, { cost_per_unit: x.cost_per_unit, yield_unit: x.yield_unit } as SubCost])))
+    const { data: mi } = await supabase.from('menu_items').select('*').eq('recipe_id', recipeId).maybeSingle()
+    setMenuItem(mi || null)
     setLoading(false)
   }
 
@@ -208,6 +218,27 @@ export default function RecipeDetailPage() {
     await loadAll(true)
   }
 
+  // Publish this recipe to the customer-facing menu (public.menu_items) as a draft you can then
+  // arrange/edit on the Menu page. Linked by recipe_id so the button toggles add/remove.
+  async function addToMenu() {
+    if (!recipe || !menuSection) return
+    setMenuBusy(true)
+    const price = recipe.sale_price ? `${Math.round(Number(recipe.sale_price) / 1000)}k` : 'TBA'
+    const { error } = await supabase.from('menu_items').insert({
+      recipe_id: recipeId, section: menuSection, name: recipe.name, name_vi: recipe.name_vi,
+      subtitle: recipe.subtitle, price, is_draft: true, is_available: true, sort_order: 999,
+    })
+    setMenuBusy(false)
+    if (error) { alert(error.message); return }
+    await loadAll(true)
+  }
+  async function removeFromMenu() {
+    if (!menuItem) return
+    if (!confirm('Remove this item from the front-end menu?')) return
+    await supabase.from('menu_items').delete().eq('id', menuItem.id)
+    await loadAll(true)
+  }
+
   async function savePhoto(v: string) {
     await ops().from('recipes').update({ image_url: v || null }).eq('id', recipeId)
     setRecipe(r => (r ? { ...r, image_url: v || null } : r))
@@ -284,7 +315,7 @@ export default function RecipeDetailPage() {
     // Drinks: build sheet (glass/ice/garnish). Food: plating block(s).
     const platingSection = drink
       ? `<h3>Build sheet</h3><ul><li><b>Glass:</b> ${(recipe.glass || '-')}</li><li><b>Ice:</b> ${(recipe.ice || '-')}</li><li><b>Garnish:</b> ${(recipe.garnish || '-')}</li></ul>`
-      : (plating ? platingHtml(plating) : (withCost ? platingHtml('dinein') + platingHtml('togo') : ''))
+      : (plating ? platingHtml(plating) : platingHtml('dinein') + platingHtml('togo'))
     const variantLabel = drink ? (withCost ? 'Build sheet (with cost)' : 'Build sheet') : plating === 'dinein' ? 'SOP · Dine-in' : plating === 'togo' ? 'SOP · To-go' : (withCost ? 'Recipe (with cost)' : 'SOP')
     const headerNote = plating === 'dinein' ? ' · Dine-in' : plating === 'togo' ? ' · To-go' : (withCost ? ' · internal' : '')
     w.document.write(`<html><head><meta charset="utf-8"><title>${recipe.name}${plating ? ' — ' + (plating === 'dinein' ? 'Dine-in' : 'To-go') : ''}</title><style>body{font-family:Inter,Arial,sans-serif;max-width:740px;margin:30px auto;color:#1a1a1a;padding:0 20px}h1{margin:0 0 1px}.vititle{color:#b85c00;font-size:17px;font-weight:500;margin-bottom:6px}.sub{color:#666;font-size:13px;margin-bottom:16px}table{width:100%;border-collapse:collapse;font-size:13.5px;margin:8px 0}td,th{padding:6px 4px;border-bottom:1px solid #eee;text-align:left;vertical-align:top}td.vi{color:#b85c00}td.num{width:20px;color:#999;font-weight:600}table.method td{width:48%}table.method td.num{width:20px}ol{line-height:1.7}h3{margin:18px 0 4px}</style></head><body><h1>${recipe.name}</h1>${recipe.name_vi ? `<div class="vititle">${recipe.name_vi}</div>` : ''}<div class="sub">${recipe.category}${recipe.subtitle ? ' · ' + recipe.subtitle : ''}${headerNote}</div>${img}<h3>Components · Nguyên liệu</h3><table><thead><tr><th>Item</th><th>Tiếng Việt</th><th style="text-align:right">Amount</th>${costHead}</tr></thead><tbody>${buildCompRows(withCost)}</tbody></table>${costLine}<h3>Method · Phương pháp</h3><table class="method">${methodRows || '<tr><td>—</td></tr>'}</table>${platingSection}<p style="margin-top:24px;color:#999;font-size:11px">BigBamBoo · ${variantLabel}</p></body></html>`)
@@ -365,6 +396,30 @@ export default function RecipeDetailPage() {
         <Stat label={isDrink ? 'Price / drink' : 'Sale price'} value={recipe.sale_price ? vnd(recipe.sale_price) : '—'} />
         <Stat label="COGS %" value={pct(cogsDisplay)} accent={cogsDisplay == null ? '#999' : cogsDisplay > 0.45 ? 'var(--burgundy, #7b2d3a)' : cogsDisplay > 0.35 ? '#C65911' : '#6b7280'} />
       </div>
+
+      {/* 2b. Front-end menu publish */}
+      {canManage && (
+        <div className="card" style={{ padding: 14, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+          {menuItem ? (
+            <>
+              <span style={{ fontSize: 13, fontWeight: 600, color: '#548235' }}>● On front-end menu</span>
+              <span style={{ fontSize: 12, color: 'var(--text-muted, #999)' }}>section: {menuItem.section} · {menuItem.price}{menuItem.is_draft ? ' · draft' : ''}</span>
+              <Link href="/dashboard/menu" style={{ fontSize: 12, color: 'var(--accent, #e87830)', textDecoration: 'none' }}>arrange on Menu page →</Link>
+              <button onClick={removeFromMenu} style={{ ...btnLink, marginLeft: 'auto' }}>Remove from menu</button>
+            </>
+          ) : (
+            <>
+              <span style={{ fontSize: 13, fontWeight: 600 }}>Front-end menu</span>
+              <span style={{ fontSize: 12, color: 'var(--text-muted, #999)' }}>Not on the customer menu.</span>
+              <select value={menuSection} onChange={e => setMenuSection(e.target.value)} style={{ ...inp, width: 175, padding: '6px 8px' }}>
+                {['bites', 'grilled_sourdough', 'add_ons', 'cocktails', 'beer', 'wine', 'na', 'shots', 'special_events'].map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+              <button onClick={addToMenu} disabled={menuBusy || !menuSection} style={{ ...btnPrimary, opacity: menuBusy ? 0.6 : 1 }}>{menuBusy ? 'Adding…' : '+ Add to menu'}</button>
+              <span style={{ fontSize: 11, color: 'var(--text-muted, #999)' }}>Adds as a draft to arrange on the Menu page.</span>
+            </>
+          )}
+        </div>
+      )}
 
       {/* 3. Components + add form */}
       {recipe.is_kegged && canManage && (
@@ -640,9 +695,9 @@ export default function RecipeDetailPage() {
         </div>
       )}
 
-      {/* 8. Print recipe (with cost) */}
+      {/* 8. Print recipe (training — no cost) */}
       <div style={{ marginBottom: 24 }}>
-        <button onClick={() => openPrint(true)} style={btnOutline}>Print recipe (with cost)</button>
+        <button onClick={() => openPrint(false)} style={btnOutline}>Print recipe (for training)</button>
       </div>
 
       {/* 9. Serving photo */}
