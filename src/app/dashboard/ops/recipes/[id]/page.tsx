@@ -246,12 +246,13 @@ export default function RecipeDetailPage() {
   function buildCompRows(withCost: boolean) {
     return components.map(c => {
       const name = c.ingredient?.name || c.sub_recipe?.name || '—'
+      const nameVi = c.ingredient?.name_vi || c.sub_recipe?.name_vi || ''
       const sc = c.sub_recipe_id ? subCost.get(c.sub_recipe_id) : null
       const unitCost = c.ingredient?.current_cost_per_base ?? (sc?.cost_per_unit ?? 0)
       const hasCost = c.ingredient != null || (sc != null && sc.cost_per_unit != null)
       const compCost = Number(c.qty) * Number(unitCost)
       const pkg = c.ingredient && c.ingredient.category === 'consumable' ? ' (packaging)' : ''
-      return `<tr><td>${name}${pkg}</td><td style="text-align:right">${Number(c.qty)} ${c.unit}</td>${withCost ? `<td style="text-align:right">${hasCost ? vnd(compCost) : '—'}</td>` : ''}</tr>`
+      return `<tr><td>${name}${pkg}</td><td class="vi">${nameVi}</td><td style="text-align:right">${Number(c.qty)} ${c.unit}</td>${withCost ? `<td style="text-align:right">${hasCost ? vnd(compCost) : '—'}</td>` : ''}</tr>`
     }).join('')
   }
   function platingHtml(which: 'dinein' | 'togo') {
@@ -266,7 +267,12 @@ export default function RecipeDetailPage() {
   function openPrint(withCost: boolean, plating: 'dinein' | 'togo' | null = null) {
     if (!recipe) return
     const w = window.open('', '_blank'); if (!w) return
-    const steps = (recipe.method || '').split('\n').filter(Boolean).map(t => `<li>${t.replace(/</g, '&lt;')}</li>`).join('')
+    const esc = (s: string) => s.replace(/</g, '&lt;')
+    const stepsEn = (recipe.method || '').split('\n').filter(Boolean)
+    const stepsVi = (recipe.method_vi || '').split('\n').filter(Boolean)
+    const stepCount = Math.max(stepsEn.length, stepsVi.length)
+    const methodRows = Array.from({ length: stepCount }).map((_, i) =>
+      `<tr><td class="num">${i + 1}</td><td>${esc(stepsEn[i] || '')}</td><td class="vi">${esc(stepsVi[i] || '')}</td></tr>`).join('')
     const costHead = withCost ? '<th style="text-align:right">Cost</th>' : ''
     const drink = DRINK_CATS.includes(recipe.category)
     const costLine = withCost && cost
@@ -281,7 +287,7 @@ export default function RecipeDetailPage() {
       : (plating ? platingHtml(plating) : (withCost ? platingHtml('dinein') + platingHtml('togo') : ''))
     const variantLabel = drink ? (withCost ? 'Build sheet (with cost)' : 'Build sheet') : plating === 'dinein' ? 'SOP · Dine-in' : plating === 'togo' ? 'SOP · To-go' : (withCost ? 'Recipe (with cost)' : 'SOP')
     const headerNote = plating === 'dinein' ? ' · Dine-in' : plating === 'togo' ? ' · To-go' : (withCost ? ' · internal' : '')
-    w.document.write(`<html><head><title>${recipe.name}${plating ? ' — ' + (plating === 'dinein' ? 'Dine-in' : 'To-go') : ''}</title><style>body{font-family:Inter,Arial,sans-serif;max-width:700px;margin:30px auto;color:#1a1a1a;padding:0 20px}h1{margin:0 0 2px}.sub{color:#666;font-size:13px;margin-bottom:16px}table{width:100%;border-collapse:collapse;font-size:14px;margin:8px 0}td,th{padding:6px 4px;border-bottom:1px solid #eee;text-align:left}ol{line-height:1.7}h3{margin:18px 0 4px}</style></head><body><h1>${recipe.name}</h1><div class="sub">${recipe.category}${recipe.subtitle ? ' · ' + recipe.subtitle : ''}${headerNote}</div>${img}<h3>Components</h3><table><thead><tr><th>Item</th><th style="text-align:right">Amount</th>${costHead}</tr></thead><tbody>${buildCompRows(withCost)}</tbody></table>${costLine}<h3>Method</h3><ol>${steps}</ol>${platingSection}<p style="margin-top:24px;color:#999;font-size:11px">BigBamBoo · ${variantLabel}</p></body></html>`)
+    w.document.write(`<html><head><meta charset="utf-8"><title>${recipe.name}${plating ? ' — ' + (plating === 'dinein' ? 'Dine-in' : 'To-go') : ''}</title><style>body{font-family:Inter,Arial,sans-serif;max-width:740px;margin:30px auto;color:#1a1a1a;padding:0 20px}h1{margin:0 0 1px}.vititle{color:#b85c00;font-size:17px;font-weight:500;margin-bottom:6px}.sub{color:#666;font-size:13px;margin-bottom:16px}table{width:100%;border-collapse:collapse;font-size:13.5px;margin:8px 0}td,th{padding:6px 4px;border-bottom:1px solid #eee;text-align:left;vertical-align:top}td.vi{color:#b85c00}td.num{width:20px;color:#999;font-weight:600}table.method td{width:48%}table.method td.num{width:20px}ol{line-height:1.7}h3{margin:18px 0 4px}</style></head><body><h1>${recipe.name}</h1>${recipe.name_vi ? `<div class="vititle">${recipe.name_vi}</div>` : ''}<div class="sub">${recipe.category}${recipe.subtitle ? ' · ' + recipe.subtitle : ''}${headerNote}</div>${img}<h3>Components · Nguyên liệu</h3><table><thead><tr><th>Item</th><th>Tiếng Việt</th><th style="text-align:right">Amount</th>${costHead}</tr></thead><tbody>${buildCompRows(withCost)}</tbody></table>${costLine}<h3>Method · Phương pháp</h3><table class="method">${methodRows || '<tr><td>—</td></tr>'}</table>${platingSection}<p style="margin-top:24px;color:#999;font-size:11px">BigBamBoo · ${variantLabel}</p></body></html>`)
     w.document.close(); w.focus(); setTimeout(() => w.print(), 300)
   }
 
