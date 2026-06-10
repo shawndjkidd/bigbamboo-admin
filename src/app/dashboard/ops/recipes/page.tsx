@@ -23,7 +23,7 @@ export default function RecipesPage() {
   const [rows, setRows] = useState<RecipeWithCost[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState('')
-  const [typeFilter, setTypeFilter] = useState<'all' | 'menu_item' | 'prep'>('all')
+  const [typeFilter, setTypeFilter] = useState<'all' | 'menu_item' | 'add_on' | 'prep'>('all')
   const [station, setStation] = useState<'all' | 'kitchen' | 'bar'>('all')
   const [resaleIds, setResaleIds] = useState<Set<string>>(new Set())
   const [keggedIds, setKeggedIds] = useState<Set<string>>(new Set())
@@ -301,7 +301,8 @@ export default function RecipesPage() {
     if (station === 'kitchen' && BAR_CATEGORIES.has(r.category)) return false
     if (station === 'bar' && !BAR_CATEGORIES.has(r.category)) return false
     if (typeFilter === 'menu_item' && r.type !== 'menu_item') return false
-    if (typeFilter === 'prep' && r.type === 'menu_item') return false
+    if (typeFilter === 'add_on' && r.type !== 'add_on') return false
+    if (typeFilter === 'prep' && !(r.type === 'batch' || r.type === 'sub_recipe')) return false
     if (filter && !r.name.toLowerCase().includes(filter.toLowerCase())) return false
     return true
   })
@@ -317,30 +318,7 @@ export default function RecipesPage() {
             {filtered.length} {showResale ? 'recipes' : 'made in-house'}{!showResale && resaleIds.size ? ` · ${resaleIds.size} bought-in hidden` : ''} · cost auto-updates when ingredient prices change
           </div>
         </div>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <button
-            onClick={() => printSelected(filtered.map(r => r.recipe_id))}
-            disabled={selected.size === 0}
-            style={{ ...btnOutline, opacity: selected.size === 0 ? 0.5 : 1, cursor: selected.size === 0 ? 'default' : 'pointer' }}
-          >
-            🖨 Print{selected.size ? ` (${selected.size})` : ''}
-          </button>
-          <button
-            onClick={() => shareRecipes(filtered.map(r => r.recipe_id))}
-            disabled={selected.size === 0}
-            style={{ ...btnOutline, opacity: selected.size === 0 ? 0.5 : 1, cursor: selected.size === 0 ? 'default' : 'pointer' }}
-          >
-            ⤴ Share / PDF{selected.size ? ` (${selected.size})` : ''}
-          </button>
-          <button
-            onClick={openShopping}
-            disabled={selected.size === 0}
-            style={{ ...btnOutline, opacity: selected.size === 0 ? 0.5 : 1, cursor: selected.size === 0 ? 'default' : 'pointer' }}
-          >
-            🛒 Shopping list{selected.size ? ` (${selected.size})` : ''}
-          </button>
-          {canManage && <Link href="/dashboard/ops/recipes/new" style={btnPrimary as any}>+ Add recipe</Link>}
-        </div>
+        {canManage && <Link href="/dashboard/ops/recipes/new" style={btnPrimary as any}>+ Add recipe</Link>}
       </div>
 
       <div style={{ display: 'inline-flex', gap: 0, marginBottom: 12, border: '1px solid var(--border, #e5e5e5)', borderRadius: 8, overflow: 'hidden' }}>
@@ -363,11 +341,24 @@ export default function RecipesPage() {
         <select value={typeFilter} onChange={e => setTypeFilter(e.target.value as any)} style={{ ...inp, width: 180 }}>
           <option value="all">All types</option>
           <option value="menu_item">Menu items</option>
+          <option value="add_on">Add-ons</option>
           <option value="prep">Prep &amp; batches</option>
         </select>
         <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text-muted, #999)', whiteSpace: 'nowrap' }}>
           <input type="checkbox" checked={showResale} onChange={e => setShowResale(e.target.checked)} /> Show bought-in
         </label>
+      </div>
+
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 10 }}>
+        <span style={{ fontSize: 12, color: 'var(--text-muted, #999)', marginRight: 2 }}>
+          {selected.size ? `${selected.size} selected:` : 'Select recipes to:'}
+        </span>
+        {([['Print', () => printSelected(filtered.map(r => r.recipe_id))], ['Share', () => shareRecipes(filtered.map(r => r.recipe_id))], ['Shopping list', openShopping]] as const).map(([label, fn]) => (
+          <button key={label} onClick={fn} disabled={selected.size === 0}
+            style={{ ...btnOutline, padding: '7px 14px', opacity: selected.size === 0 ? 0.45 : 1, cursor: selected.size === 0 ? 'default' : 'pointer' }}>
+            {label}
+          </button>
+        ))}
       </div>
 
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>

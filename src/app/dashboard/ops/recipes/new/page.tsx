@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase'
 
 const RECIPE_TYPES = [
   { v: 'menu_item', label: 'Menu item (something you sell)' },
+  { v: 'add_on', label: 'Add-on / side (extra you charge for — e.g. add bacon, extra sauce)' },
   { v: 'sub_recipe', label: 'Prep / batch (made once, used inside other recipes — e.g. cheese blend, syrup)' },
 ]
 const CATEGORIES = ['cocktail', 'beer', 'wine', 'na_drink', 'food', 'snack', 'syrup', 'garnish', 'other']
@@ -60,7 +61,7 @@ export default function NewRecipePage() {
     const { data, error } = await ops().from('recipes').insert({
       venue_id: venueId, name, type, category,
       yield_qty: Number(yieldQty), yield_unit: yieldUnit,
-      sale_price: type === 'menu_item' && salePrice ? Number(salePrice.replace(/[^\d]/g, '')) : null,
+      sale_price: (type === 'menu_item' || type === 'add_on') && salePrice ? Number(salePrice.replace(/[^\d]/g, '')) : null,
       is_kegged: isKegged,
       keg_size_ml: isKegged ? Number(kegSize) : null,
       pour_size_ml: isKegged ? Number(pourSize) : null,
@@ -109,7 +110,7 @@ export default function NewRecipePage() {
           How much one execution produces. Menu item: usually 1 each. Keg: e.g. 5000 ml. Syrup batch: e.g. 500 ml.
         </div>
 
-        {type === 'menu_item' && (
+        {(type === 'menu_item' || type === 'add_on') && (
           <Field label="Sale price (VND)">
             <input type="text" inputMode="numeric" value={salePrice} onChange={e => setSalePrice(e.target.value)} placeholder="120,000" style={inp} />
           </Field>
