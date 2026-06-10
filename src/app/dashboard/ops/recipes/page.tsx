@@ -28,6 +28,7 @@ export default function RecipesPage() {
   const [resaleIds, setResaleIds] = useState<Set<string>>(new Set())
   const [keggedIds, setKeggedIds] = useState<Set<string>>(new Set())
   const [serveCost, setServeCost] = useState<Map<string, number>>(new Map())
+  const [nameVi, setNameVi] = useState<Map<string, string>>(new Map())
   const [showResale, setShowResale] = useState(false)
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [shopOpen, setShopOpen] = useState(false)
@@ -67,12 +68,13 @@ export default function RecipesPage() {
     setLoading(true)
     const [{ data }, { data: rec }, { data: serve }] = await Promise.all([
       ops().from('v_recipe_cost').select('*').order('name'),
-      ops().from('recipes').select('id, is_resale, is_kegged'),
+      ops().from('recipes').select('id, is_resale, is_kegged, name_vi'),
       ops().from('v_recipe_serve_cost').select('recipe_id, serve_cost'),
     ])
     setRows((data as RecipeWithCost[]) || [])
     setResaleIds(new Set((rec || []).filter((x: any) => x.is_resale).map((x: any) => x.id)))
     setKeggedIds(new Set((rec || []).filter((x: any) => x.is_kegged).map((x: any) => x.id)))
+    setNameVi(new Map((rec || []).filter((x: any) => x.name_vi).map((x: any) => [x.id, x.name_vi as string])))
     setServeCost(new Map((serve || []).map((x: any) => [x.recipe_id, Number(x.serve_cost)])))
     setLoading(false)
   }
@@ -91,13 +93,13 @@ export default function RecipesPage() {
     const ids = order.filter(id => selected.has(id))
     if (!ids.length) return
     const [{ data: recs }, { data: comps }, { data: ings }, { data: subs }] = await Promise.all([
-      ops().from('recipes').select('id,name,category,subtitle,type,method,plating_dinein,plating_togo,glass,ice,garnish,yield_qty,yield_unit').in('id', ids),
+      ops().from('recipes').select('id,name,name_vi,category,subtitle,type,method,method_vi,plating_dinein,plating_togo,glass,ice,garnish,yield_qty,yield_unit').in('id', ids),
       ops().from('recipe_components').select('recipe_id,ingredient_id,sub_recipe_id,qty,unit,sort_order').in('recipe_id', ids),
-      ops().from('ingredients').select('id,name'),
-      ops().from('recipes').select('id,name'),
+      ops().from('ingredients').select('id,name,name_vi'),
+      ops().from('recipes').select('id,name,name_vi'),
     ])
-    const ingName = new Map<string, string>((ings || []).map((i: any) => [i.id, i.name]))
-    const subName = new Map<string, string>((subs || []).map((s: any) => [s.id, s.name]))
+    const ingMap = new Map<string, any>((ings || []).map((i: any) => [i.id, i]))
+    const subMap = new Map<string, any>((subs || []).map((s: any) => [s.id, s]))
     const recById = new Map<string, any>((recs || []).map((r: any) => [r.id, r]))
     const byRecipe = new Map<string, any[]>()
     ;(comps || []).forEach((c: any) => { const a = byRecipe.get(c.recipe_id) || []; a.push(c); byRecipe.set(c.recipe_id, a) })
@@ -107,30 +109,43 @@ export default function RecipesPage() {
       const r = recById.get(id); if (!r) return ''
       const cs = (byRecipe.get(id) || []).slice().sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
       const ingRows = cs.map(c => {
-        const nm = c.ingredient_id ? (ingName.get(c.ingredient_id) || '—') : (subName.get(c.sub_recipe_id) || '—')
-        return `<tr><td>${esc(nm)}</td><td style="text-align:right">${Number(c.qty)} ${esc(c.unit)}</td></tr>`
+        const o = c.ingredient_id ? ingMap.get(c.ingredient_id) : subMap.get(c.sub_recipe_id)
+        return `<tr><td>${esc(o?.name || '—')}</td><td class="vi">${esc(o?.name_vi || '')}</td><td class="amt">${Number(c.qty)} ${esc(c.unit)}</td></tr>`
       }).join('')
-      const steps = String(r.method || '').split('\n').filter(Boolean).map((t: string) => `<li>${esc(t)}</li>`).join('')
+      const stepsEn = String(r.method || '').split('\n').filter(Boolean)
+      const stepsVi = String(r.method_vi || '').split('\n').filter(Boolean)
+      const stepCount = Math.max(stepsEn.length, stepsVi.length)
+      const methodRows = Array.from({ length: stepCount }).map((_, i) =>
+        `<tr><td class="num">${i + 1}</td><td>${esc(stepsEn[i] || '')}</td><td class="vi">${esc(stepsVi[i] || '')}</td></tr>`).join('')
       const drink = DRINK.has(r.category)
       const extra = drink
         ? `<h3>Build sheet</h3><ul><li><b>Glass:</b> ${esc(r.glass || '-')}</li><li><b>Ice:</b> ${esc(r.ice || '-')}</li><li><b>Garnish:</b> ${esc(r.garnish || '-')}</li></ul>`
         : platingBlock('Plate — Dine-in', r.plating_dinein) + platingBlock('Pack — To-go', r.plating_togo)
       return `<section style="page-break-after:${idx < ids.length - 1 ? 'always' : 'auto'}">
         <h1>${esc(r.name)}</h1>
+        ${r.name_vi ? `<div class="vititle">${esc(r.name_vi)}</div>` : ''}
         <div class="sub">${esc(r.category)}${r.subtitle ? ' · ' + esc(r.subtitle) : ''} · yields ${Number(r.yield_qty)} ${esc(r.yield_unit)}</div>
-        <h3>Ingredients</h3><table><tbody>${ingRows || '<tr><td>No ingredients listed</td></tr>'}</tbody></table>
-        <h3>Method</h3><ol>${steps || '<li style="list-style:none;color:#999">No method yet</li>'}</ol>
+        <h3>Ingredients · Nguyên liệu</h3>
+        <table><thead><tr><th>Item</th><th>Tiếng Việt</th><th class="amt">Amount</th></tr></thead><tbody>${ingRows || '<tr><td>No ingredients listed</td></tr>'}</tbody></table>
+        <h3>Method · Phương pháp</h3>
+        <table class="method">${methodRows || '<tr><td colspan="3" style="color:#999">No method yet</td></tr>'}</table>
         ${extra}
       </section>`
     }).join('')
 
     const w = window.open('', '_blank'); if (!w) return
-    w.document.write(`<html><head><title>BigBamBoo — Recipe Book (${ids.length})</title><style>
-      body{font-family:Inter,Arial,sans-serif;max-width:720px;margin:24px auto;color:#1a1a1a;padding:0 24px}
-      h1{margin:0 0 2px;font-size:24px}.sub{color:#666;font-size:13px;margin-bottom:14px}
-      h3{margin:16px 0 4px;font-size:14px}table{width:100%;border-collapse:collapse;font-size:14px;margin:6px 0}
-      td{padding:5px 4px;border-bottom:1px solid #eee}ol,ul{line-height:1.7;margin:4px 0;padding-left:20px}
-      section{padding-top:8px}
+    w.document.write(`<html><head><meta charset="utf-8"><title>BigBamBoo — Recipe Book (${ids.length})</title><style>
+      body{font-family:Inter,Arial,sans-serif;max-width:760px;margin:24px auto;color:#1a1a1a;padding:0 24px}
+      h1{margin:0 0 1px;font-size:24px}.vititle{color:#b85c00;font-size:17px;font-weight:500;margin-bottom:8px}
+      .sub{color:#666;font-size:13px;margin-bottom:14px}
+      h3{margin:18px 0 4px;font-size:14px}
+      table{width:100%;border-collapse:collapse;font-size:13.5px;margin:6px 0}
+      th{text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:#999;font-weight:600;padding:4px}
+      td{padding:5px 4px;border-bottom:1px solid #eee;vertical-align:top}
+      td.vi{color:#b85c00}td.amt{text-align:right;white-space:nowrap;color:#444}th.amt{text-align:right}
+      td.num{width:22px;color:#999;font-weight:600}
+      table.method td{width:48%}table.method td.num{width:22px}
+      ul{line-height:1.7;margin:4px 0;padding-left:20px}section{padding-top:8px}
     </style></head><body>${sections}</body></html>`)
     w.document.close(); w.focus(); setTimeout(() => w.print(), 400)
   }
@@ -384,7 +399,10 @@ export default function RecipesPage() {
                 <td style={{ ...td, textAlign: 'center' }}>
                   <input type="checkbox" checked={selected.has(r.recipe_id)} onChange={() => toggle(r.recipe_id)} />
                 </td>
-                <td style={td}><Link href={`/dashboard/ops/recipes/${r.recipe_id}`} style={{ color: 'var(--accent, #e87830)', textDecoration: 'none', fontWeight: 600 }}>{r.name}</Link></td>
+                <td style={td}>
+                  <Link href={`/dashboard/ops/recipes/${r.recipe_id}`} style={{ color: 'var(--accent, #e87830)', textDecoration: 'none', fontWeight: 600 }}>{r.name}</Link>
+                  {nameVi.get(r.recipe_id) && <div style={{ fontSize: 11, color: 'var(--text-muted, #999)' }}>{nameVi.get(r.recipe_id)}</div>}
+                </td>
                 <td style={{ ...td, fontSize: 11, color: 'var(--text-muted, #999)' }}>{r.type}</td>
                 <td style={{ ...td, fontSize: 11, color: 'var(--text-muted, #999)' }}>{r.category}</td>
                 <td style={{ ...td, textAlign: 'right', color: 'var(--text-muted, #666)' }}>{Number(r.yield_qty)} {r.yield_unit}</td>

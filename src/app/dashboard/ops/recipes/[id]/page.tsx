@@ -14,6 +14,7 @@ type Recipe = {
   plating_dinein: string | null; plating_togo: string | null;
   glass: string | null; ice: string | null; garnish: string | null;
   published_version: number | null;
+  name_vi: string | null; method_vi: string | null;
 }
 
 const DRINK_CATS = ['cocktail', 'beer', 'wine', 'na_drink']
@@ -27,13 +28,13 @@ type Component = {
   id: string; recipe_id: string;
   ingredient_id: string | null; sub_recipe_id: string | null;
   qty: number; unit: string; notes: string | null; sort_order: number;
-  ingredient?: { name: string; current_cost_per_base: number; base_unit: string; category: string } | null;
-  sub_recipe?: { name: string } | null;
+  ingredient?: { name: string; name_vi?: string | null; current_cost_per_base: number; base_unit: string; category: string } | null;
+  sub_recipe?: { name: string; name_vi?: string | null } | null;
 }
 
 type Cost = { recipe_id: string; total_cost: number; cost_per_unit: number | null; margin_per_unit: number | null }
-type IngOption = { id: string; name: string; base_unit: string; current_cost_per_base: number; category: string; active: boolean }
-type RecOption = { id: string; name: string; category: string; type: string }
+type IngOption = { id: string; name: string; name_vi?: string | null; base_unit: string; current_cost_per_base: number; category: string; active: boolean }
+type RecOption = { id: string; name: string; name_vi?: string | null; category: string; type: string }
 type SubCost = { cost_per_unit: number | null; yield_unit: string }
 
 export default function RecipeDetailPage() {
@@ -84,8 +85,8 @@ export default function RecipeDetailPage() {
       ops().from('recipes').select('*').eq('id', recipeId).single(),
       ops().from('recipe_components').select('id, recipe_id, ingredient_id, sub_recipe_id, qty, unit, notes, sort_order').eq('recipe_id', recipeId).order('sort_order'),
       ops().from('v_recipe_cost').select('recipe_id, total_cost, cost_per_unit, margin_per_unit').eq('recipe_id', recipeId).single(),
-      ops().from('ingredients').select('id, name, base_unit, current_cost_per_base, category, active').order('name'),
-      ops().from('recipes').select('id, name, category, type').neq('id', recipeId).order('name'),
+      ops().from('ingredients').select('id, name, name_vi, base_unit, current_cost_per_base, category, active').order('name'),
+      ops().from('recipes').select('id, name, name_vi, category, type').neq('id', recipeId).order('name'),
       ops().from('recipe_versions').select('*').eq('recipe_id', recipeId).order('version', { ascending: false }),
       ops().from('v_recipe_cost').select('recipe_id, cost_per_unit, yield_unit'),
     ])
@@ -327,6 +328,9 @@ export default function RecipeDetailPage() {
       {canManage
         ? <input defaultValue={recipe.name} onBlur={e => e.target.value !== recipe.name && saveRecipe({ name: e.target.value })} style={{ ...inp, fontSize: 26, fontWeight: 700, maxWidth: 560, display: 'block' }} />
         : <h2 style={{ fontSize: 26, fontWeight: 700, margin: 0 }}>{recipe.name}</h2>}
+      {canManage
+        ? <input defaultValue={recipe.name_vi || ''} placeholder="Tên tiếng Việt…" onBlur={e => e.target.value !== (recipe.name_vi || '') && saveRecipe({ name_vi: e.target.value || null })} style={{ ...inp, fontSize: 16, fontWeight: 500, maxWidth: 560, display: 'block', marginTop: 4, color: 'var(--accent, #e87830)' }} />
+        : recipe.name_vi && <div style={{ fontSize: 17, fontWeight: 500, color: 'var(--accent, #e87830)', marginTop: 2 }}>{recipe.name_vi}</div>}
       <div style={{ fontSize: 12, color: 'var(--text-muted, #999)', marginTop: 2, marginBottom: 20 }}>
         {recipe.type} · {recipe.category} · yields {Number(recipe.yield_qty)} {recipe.yield_unit}
         {recipe.is_kegged && ` · ${recipe.keg_size_ml}ml keg / ${recipe.pour_size_ml}ml pour`}
@@ -409,6 +413,7 @@ export default function RecipeDetailPage() {
                 <td style={td}>
                   {c.ingredient?.name || c.sub_recipe?.name || '—'}
                   {c.ingredient && c.ingredient.category === 'consumable' && <span style={{ marginLeft: 8, fontSize: 10, padding: '2px 8px', borderRadius: 100, background: 'var(--bg-hover, #eee)', color: 'var(--text-secondary, #666)' }}>packaging</span>}
+                  {(c.ingredient?.name_vi || c.sub_recipe?.name_vi) && <div style={{ fontSize: 11, color: 'var(--accent, #e87830)' }}>{c.ingredient?.name_vi || c.sub_recipe?.name_vi}</div>}
                 </td>
                 <td style={{ ...td, fontSize: 11, color: 'var(--text-muted, #999)' }}>{c.ingredient_id ? 'ingredient' : 'sub-recipe'}</td>
                 <td style={{ ...td, textAlign: 'right' }}>
@@ -469,6 +474,11 @@ export default function RecipeDetailPage() {
         {canManage
           ? <StepsEditor key={recipe.id} value={recipe.method || ''} onSave={saveMethod} placeholder="First step… (press Enter for the next)" />
           : <ol style={{ fontSize: 14, lineHeight: 1.8, paddingLeft: 20, margin: 0 }}>{(recipe.method || '').split('\n').filter(Boolean).map((t, i) => <li key={i}>{t}</li>)}{!recipe.method && <li style={{ listStyle: 'none', color: 'var(--text-muted, #999)' }}>—</li>}</ol>}
+
+        <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--accent, #e87830)', margin: '14px 0 6px' }}>Phương pháp (Tiếng Việt)</div>
+        {canManage
+          ? <StepsEditor key={recipe.id + '-method-vi'} value={recipe.method_vi || ''} onSave={v => saveRecipe({ method_vi: v })} placeholder="Bước đầu tiên… (Enter để xuống bước)" />
+          : <ol style={{ fontSize: 14, lineHeight: 1.8, paddingLeft: 20, margin: 0, color: 'var(--accent, #e87830)' }}>{(recipe.method_vi || '').split('\n').filter(Boolean).map((t, i) => <li key={i}>{t}</li>)}{!recipe.method_vi && <li style={{ listStyle: 'none', color: 'var(--text-muted, #999)' }}>—</li>}</ol>}
       </div>
 
       {isDrink ? (
