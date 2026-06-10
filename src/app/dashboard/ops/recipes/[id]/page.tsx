@@ -624,7 +624,8 @@ export default function RecipeDetailPage() {
           </div>
         </div>
         <div className="card" style={{ padding: 20 }}>
-          <div style={{ fontWeight: 700, fontSize: 18, marginBottom: 2 }}>{recipe.name}</div>
+          <div style={{ fontWeight: 700, fontSize: 18, marginBottom: 1 }}>{recipe.name}</div>
+          {recipe.name_vi && <div style={{ fontWeight: 500, fontSize: 15, color: 'var(--accent, #e87830)', marginBottom: 2 }}>{recipe.name_vi}</div>}
           <div style={{ fontSize: 12, color: 'var(--text-muted, #999)', marginBottom: 16 }}>{recipe.category}{recipe.subtitle ? ' · ' + recipe.subtitle : ''}</div>
           <div style={{ display: 'grid', gridTemplateColumns: recipe.image_url ? '1fr 200px' : '1fr', gap: 20, alignItems: 'start' }}>
             <div>
@@ -633,7 +634,7 @@ export default function RecipeDetailPage() {
                 {components.length === 0 && <tr><td style={{ color: 'var(--text-muted, #999)', padding: '6px 0' }}>No components</td></tr>}
                 {components.map(c => (
                   <tr key={c.id} style={{ borderTop: '1px solid var(--border, #eee)' }}>
-                    <td style={{ padding: '6px 0' }}>{c.ingredient?.name || c.sub_recipe?.name || '—'}{c.ingredient && c.ingredient.category === 'consumable' && <span style={{ marginLeft: 6, fontSize: 10, color: 'var(--text-muted, #999)' }}>(packaging)</span>}</td>
+                    <td style={{ padding: '6px 0' }}>{c.ingredient?.name || c.sub_recipe?.name || '—'}{c.ingredient && c.ingredient.category === 'consumable' && <span style={{ marginLeft: 6, fontSize: 10, color: 'var(--text-muted, #999)' }}>(packaging)</span>}{(c.ingredient?.name_vi || c.sub_recipe?.name_vi) && <span style={{ color: 'var(--accent, #e87830)', marginLeft: 6, fontSize: 12 }}>· {c.ingredient?.name_vi || c.sub_recipe?.name_vi}</span>}</td>
                     <td style={{ padding: '6px 0', textAlign: 'right', fontFamily: 'DM Mono, monospace' }}>{Number(c.qty)} {c.unit}</td>
                   </tr>
                 ))}
@@ -641,11 +642,22 @@ export default function RecipeDetailPage() {
             </div>
             {recipe.image_url && <img src={recipe.image_url} alt="" style={{ width: '100%', borderRadius: 8, border: '1px solid var(--border, #eee)' }} />}
           </div>
-          <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted, #999)', margin: '8px 0' }}>Method</div>
-          <ol style={{ fontSize: 14, lineHeight: 1.8, paddingLeft: 20, margin: 0 }}>
-            {(recipe.method || '').split('\n').filter(Boolean).map((t, i) => <li key={i}>{t}</li>)}
-            {!recipe.method && <li style={{ listStyle: 'none', color: 'var(--text-muted, #999)' }}>No method yet — add it in the Method box above.</li>}
-          </ol>
+          <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted, #999)', margin: '8px 0' }}>Method · Phương pháp</div>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}><tbody>
+            {(() => {
+              const en = (recipe.method || '').split('\n').filter(Boolean)
+              const vi = (recipe.method_vi || '').split('\n').filter(Boolean)
+              const n = Math.max(en.length, vi.length)
+              if (!n) return <tr><td style={{ color: 'var(--text-muted, #999)' }}>No method yet — add it in the Method box above.</td></tr>
+              return Array.from({ length: n }).map((_, i) => (
+                <tr key={i} style={{ verticalAlign: 'top' }}>
+                  <td style={{ width: 22, color: 'var(--text-muted, #999)', fontWeight: 600, padding: '3px 0' }}>{i + 1}</td>
+                  <td style={{ width: '48%', padding: '3px 10px 3px 0', lineHeight: 1.6 }}>{en[i] || ''}</td>
+                  <td style={{ width: '48%', padding: '3px 0', lineHeight: 1.6, color: 'var(--accent, #e87830)' }}>{vi[i] || ''}</td>
+                </tr>
+              ))
+            })()}
+          </tbody></table>
 
           {/* Build sheet (drinks) or plating blocks (food) inside the card */}
           {isDrink ? (
