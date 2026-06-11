@@ -111,6 +111,8 @@ export default function MenuPage() {
   const addSectionInputRef = useRef<HTMLInputElement>(null)
   const [showNewItemTranslations, setShowNewItemTranslations] = useState(false)
   const [expandedTranslations, setExpandedTranslations] = useState<Set<string>>(new Set())
+  const [dragIdx, setDragIdx] = useState<number | null>(null)
+  const [dragOverIdx, setDragOverIdx] = useState<number | null>(null)
 
   useEffect(() => { loadSections() }, [])
   useEffect(() => { loadItems() }, [section])
@@ -205,6 +207,21 @@ export default function MenuPage() {
     if (j < 0 || j >= items.length) return
     const next = [...items]
     ;[next[idx], next[j]] = [next[j], next[idx]]
+    setItems(next)
+    await Promise.all(next.map((it, i) =>
+      supabase.from('menu_items').update({ sort_order: i, updated_at: new Date().toISOString() }).eq('id', it.id)
+    ))
+    showToast('Order saved')
+  }
+
+  // Drag-and-drop reordering: move the dragged item to the drop position and persist every sort_order.
+  async function dropItem(toIdx: number) {
+    const from = dragIdx
+    setDragIdx(null); setDragOverIdx(null)
+    if (from == null || from === toIdx) return
+    const next = [...items]
+    const [moved] = next.splice(from, 1)
+    next.splice(toIdx, 0, moved)
     setItems(next)
     await Promise.all(next.map((it, i) =>
       supabase.from('menu_items').update({ sort_order: i, updated_at: new Date().toISOString() }).eq('id', it.id)
@@ -411,8 +428,52 @@ export default function MenuPage() {
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {items.map((item, idx) => (
-            <div key={item.id} className="card" style={{ padding: 20 }}>
+          {items.map((item, idx) => {
+            const rid = (item as any).recipe_id as string | null
+            const linked = !!rid
+            const nameVi = (item as any).name_vi as string | null
+            return (
+            <div
+              key={item.id}
+              className="card"
+              onDragOver={e => { e.preventDefault(); if (dragIdx !== null && dragOverIdx !== idx) setDragOverIdx(idx) }}
+              onDrop={() => dropItem(idx)}
+              style={{ padding: 20, opacity: dragIdx === idx ? 0.4 : 1, outline: (dragOverIdx === idx && dragIdx !== null && dragIdx !== idx) ? '2px dashed var(--accent)' : 'none' }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: linked ? 4 : 12 }}>
+                <span
+                  draggable
+                  onDragStart={() => setDragIdx(idx)}
+                  onDragEnd={() => { setDragIdx(null); setDragOverIdx(null) }}
+                  title="Drag to reorder"
+                  style={dragHandle}
+                >⠿</span>
+                <AvailToggle on={item.is_available} onClick={() => updateItem(item.id, { is_available: !item.is_available })} />
+                {linked && <span style={{ fontSize: 11, color: 'var(--text-muted)', marginLeft: 'auto' }}>content synced from recipe</span>}
+              </div>
+              {linked ? (
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16 }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: 600, fontSize: 15 }}>{item.name}{nameVi ? <span style={{ color: 'var(--accent)', fontWeight: 500 }}> · {nameVi}</span> : null}</div>
+                    <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 3, fontFamily: 'DM Mono, monospace' }}>{item.price}</div>
+                    {item.description ? <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 6 }}>{item.description}</div> : null}
+                    <a href={`/dashboard/ops/recipes/${rid}`} style={{ fontSize: 12, color: 'var(--accent)', textDecoration: 'none', display: 'inline-block', marginTop: 8 }}>Edit in recipe →</a>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>
+                      {tagPresets.map(p => { const on = item.tags?.includes(p.label); return (
+                        <span key={p.label} onClick={() => toggleTag(item, p.label)} style={{ ...tagStyle(p.color, on), padding: '4px 12px', borderRadius: 100, fontSize: 12, fontWeight: 500, cursor: 'pointer', userSelect: 'none' }}>{p.label}</span>
+                      )})}
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
+                    {showOnTap(section) && (
+                      <label style={ctrlLabel}><input type="checkbox" checked={item.is_draft} onChange={e => updateItem(item.id, { is_draft: e.target.checked })} style={{ accentColor: 'var(--accent)' }} /> On Tap</label>
+                    )}
+                    {saving === item.id && <span style={{ fontSize: 12, color: 'var(--accent)' }}>Saving...</span>}
+                    <button className="btn-red" onClick={() => deleteItem(item.id)} style={{ fontSize: 12, padding: '5px 10px' }}>Remove</button>
+                  </div>
+                </div>
+              ) : (
+              <>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
                 <div style={{ flex: 1, marginRight: 16 }}>
                   <div style={{ marginBottom: 10 }}>
@@ -446,14 +507,7 @@ export default function MenuPage() {
                       <input type="checkbox" checked={item.is_draft} onChange={e => updateItem(item.id, { is_draft: e.target.checked })} style={{ accentColor: 'var(--accent)' }} /> On Tap
                     </label>
                   )}
-                  <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text-secondary)', cursor: 'pointer' }}>
-                    <input type="checkbox" checked={item.is_available} onChange={e => updateItem(item.id, { is_available: e.target.checked })} style={{ accentColor: 'var(--accent)' }} /> Available
-                  </label>
                   {saving === item.id && <span style={{ fontSize: 12, color: 'var(--accent)' }}>Saving...</span>}
-                  <div style={{ display: 'flex', gap: 4 }}>
-                    <button onClick={() => moveItem(idx, -1)} disabled={idx === 0} title="Move up" aria-label="Move up" style={reorderBtn}>↑</button>
-                    <button onClick={() => moveItem(idx, 1)} disabled={idx === items.length - 1} title="Move down" aria-label="Move down" style={reorderBtn}>↓</button>
-                  </div>
                   <button className="btn-red" onClick={() => deleteItem(item.id)} style={{ fontSize: 12, padding: '5px 10px' }}>Remove</button>
                 </div>
               </div>
@@ -509,8 +563,11 @@ export default function MenuPage() {
                   )
                 })}
               </div>
+              </>
+              )}
             </div>
-          ))}
+            )
+          })}
         </div>
       )}
 
@@ -520,3 +577,21 @@ export default function MenuPage() {
 }
 
 const reorderBtn = { background: 'none', border: '1px solid var(--border)', borderRadius: 6, cursor: 'pointer', color: 'var(--text-muted)', width: 26, height: 26, lineHeight: 1, fontSize: 13 } as const
+const dragHandle = { cursor: 'grab', color: 'var(--text-muted)', fontSize: 18, lineHeight: 1, userSelect: 'none', flexShrink: 0 } as const
+const ctrlLabel = { display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text-secondary)', cursor: 'pointer' } as const
+
+// Prominent on/off availability button so anyone on shift can 86 an item without a super-admin.
+function AvailToggle({ on, onClick }: { on: boolean, onClick: () => void }) {
+  return (
+    <button onClick={onClick} title={on ? 'Tap to mark Sold out' : 'Tap to mark Available'} style={{
+      display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 12px', borderRadius: 100,
+      fontSize: 12, fontWeight: 600, cursor: 'pointer', userSelect: 'none', transition: 'all 0.15s',
+      border: '1px solid ' + (on ? 'var(--badge-green-border, #2d6a3a)' : 'var(--badge-red-border, #7b2d3a)'),
+      background: on ? 'var(--badge-green-bg, #14331f)' : 'var(--badge-red-bg, #3a1a1f)',
+      color: on ? 'var(--badge-green-text, #6fcf8f)' : 'var(--badge-red-text, #e08a8a)',
+    }}>
+      <span style={{ width: 7, height: 7, borderRadius: 99, background: 'currentColor', display: 'inline-block' }} />
+      {on ? 'Available' : 'Sold out'}
+    </button>
+  )
+}

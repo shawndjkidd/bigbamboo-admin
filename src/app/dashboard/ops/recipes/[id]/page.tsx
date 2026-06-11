@@ -58,6 +58,7 @@ export default function RecipeDetailPage() {
   const [yieldUnitInput, setYieldUnitInput] = useState('g')
   const [menuItem, setMenuItem] = useState<any | null>(null)
   const [menuSection, setMenuSection] = useState('')
+  const [menuSections, setMenuSections] = useState<string[]>(['bites', 'grilled_sourdough', 'add_ons', 'cocktails', 'beer', 'wine', 'na', 'shots', 'special_events'])
   const [menuBusy, setMenuBusy] = useState(false)
   const [autoVi, setAutoVi] = useState(true)
 
@@ -74,6 +75,22 @@ export default function RecipeDetailPage() {
   useEffect(() => { if (recipe?.yield_unit) setYieldUnitInput(recipe.yield_unit) }, [recipe?.yield_unit])
   useEffect(() => { try { setAutoVi(localStorage.getItem('bbb_auto_vi') !== 'off') } catch {} }, [])
   function toggleAutoVi() { setAutoVi(v => { const n = !v; try { localStorage.setItem('bbb_auto_vi', n ? 'on' : 'off') } catch {} return n }) }
+  // Load the live menu section list so the Add-to-menu dropdown matches the sections on the Menu page
+  // (including any custom ones), instead of a hardcoded list.
+  useEffect(() => {
+    (async () => {
+      const defaults = ['bites', 'grilled_sourdough', 'add_ons', 'cocktails', 'beer', 'wine', 'na', 'shots', 'special_events']
+      const [{ data: rows }, { data: ord }] = await Promise.all([
+        supabase.from('menu_items').select('section'),
+        supabase.from('site_settings').select('value').eq('key', 'menu_section_order').maybeSingle(),
+      ])
+      const fromItems = Array.from(new Set((rows || []).map((r: any) => String(r.section)).filter(Boolean))) as string[]
+      let list = defaults.slice()
+      fromItems.forEach(s => { if (!list.includes(s)) list.push(s) })
+      if (ord?.value) { try { const o: string[] = JSON.parse(ord.value); list = [...o.filter(s => list.includes(s)), ...list.filter(s => !o.includes(s))] } catch {} }
+      setMenuSections(list)
+    })()
+  }, [])
   useEffect(() => {
     if (!recipe || menuSection) return
     const m: Record<string, string> = { cocktail: 'cocktails', beer: 'beer', wine: 'wine', na_drink: 'na', food: 'bites' }
@@ -475,7 +492,7 @@ export default function RecipeDetailPage() {
               <span style={{ fontSize: 13, fontWeight: 600 }}>Front-end menu</span>
               <span style={{ fontSize: 12, color: 'var(--text-muted, #999)' }}>Not on the customer menu.</span>
               <select value={menuSection} onChange={e => setMenuSection(e.target.value)} style={{ ...inp, width: 175, padding: '6px 8px' }}>
-                {['bites', 'grilled_sourdough', 'add_ons', 'cocktails', 'beer', 'wine', 'na', 'shots', 'special_events'].map(s => <option key={s} value={s}>{s}</option>)}
+                {menuSections.map(s => <option key={s} value={s}>{s}</option>)}
               </select>
               <button onClick={addToMenu} disabled={menuBusy || !menuSection} style={{ ...btnPrimary, opacity: menuBusy ? 0.6 : 1 }}>{menuBusy ? 'Adding…' : '+ Add to menu'}</button>
               <span style={{ fontSize: 11, color: 'var(--text-muted, #999)' }}>Adds it live to the chosen section — rearrange or hide it on the Menu page.</span>
