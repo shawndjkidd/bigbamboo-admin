@@ -139,36 +139,93 @@ export default function RecipesPage() {
     w.document.close(); w.focus(); setTimeout(() => w.print(), 400)
   }
 
-  // Build the PDF by rasterising the browser-rendered bilingual HTML, so Vietnamese characters render
-  // correctly (the PDF library's built-in font can't draw Vietnamese diacritics).
+  // Build the PDF as real, selectable text using the embedded Be Vietnam Pro font (so Vietnamese
+  // diacritics render). Two columns: English | Vietnamese for ingredients and method.
   async function buildRecipesPdf(order: string[]): Promise<{ blob: Blob; fname: string } | null> {
     const ids = order.filter(id => selected.has(id))
     if (!ids.length) return null
-    const firstName = rows.find(r => r.recipe_id === ids[0])?.name || 'recipe'
-    const sections = await buildRecipesHtml(ids)
-    const holder = document.createElement('div')
-    holder.style.cssText = 'position:fixed;left:-10000px;top:0;width:808px;background:#ffffff;z-index:-1'
-    holder.innerHTML = `<style>${RECIPE_PDF_STYLE}</style><div class="rbk">${sections}</div>`
-    document.body.appendChild(holder)
-    try {
-      const html2canvas = (await import('html2canvas')).default
-      const target = holder.querySelector('.rbk') as HTMLElement
-      const canvas = await html2canvas(target, { scale: 2, backgroundColor: '#ffffff' })
-      const { jsPDF } = await import('jspdf')
-      const doc = new jsPDF({ unit: 'pt', format: 'a4' })
-      const PW = doc.internal.pageSize.getWidth(), PH = doc.internal.pageSize.getHeight()
-      const imgW = PW, imgH = canvas.height * (PW / canvas.width)
-      const dataUrl = canvas.toDataURL('image/jpeg', 0.92)
-      let position = 0, heightLeft = imgH
-      doc.addImage(dataUrl, 'JPEG', 0, position, imgW, imgH)
-      heightLeft -= PH
-      while (heightLeft > 0) { position -= PH; doc.addPage(); doc.addImage(dataUrl, 'JPEG', 0, position, imgW, imgH); heightLeft -= PH }
-      const blob = doc.output('blob')
-      const fname = ids.length === 1 ? `${firstName}.pdf` : `BigBamBoo-Recipes-${ids.length}.pdf`
-      return { blob, fname }
-    } finally {
-      document.body.removeChild(holder)
-    }
+    const [{ data: recs }, { data: comps }, { data: ings }, { data: subs }] = await Promise.all([
+      ops().from('recipes').select('id,name,name_vi,category,subtitle,method,method_vi,plating_dinein,plating_togo,glass,ice,garnish,yield_qty,yield_unit').in('id', ids),
+      ops().from('recipe_components').select('recipe_id,ingredient_id,sub_recipe_id,qty,unit,sort_order').in('recipe_id', ids),
+      ops().from('ingredients').select('id,name,name_vi'),
+      ops().from('recipes').select('id,name,name_vi'),
+    ])
+    const ingMap = new Map<string, any>((ings || []).map((i: any) => [i.id, i]))
+    const subMap = new Map<string, any>((subs || []).map((s: any) => [s.id, s]))
+    const recById = new Map<string, any>((recs || []).map((r: any) => [r.id, r]))
+    const byRecipe = new Map<string, any[]>()
+    ;(comps || []).forEach((c: any) => { const a = byRecipe.get(c.recipe_id) || []; a.push(c); byRecipe.set(c.recipe_id, a) })
+    const DRINK = new Set(['cocktail', 'beer', 'wine', 'na_drink'])
+
+    const { jsPDF } = await import('jspdf')
+    const { beVietnamProRegular, beVietnamProBold } = await import('@/lib/fonts/beVietnamPro')
+    const doc = new jsPDF({ unit: 'pt', format: 'a4' })
+    doc.addFileToVFS('BVP-Regular.ttf', beVietnamProRegular); doc.addFont('BVP-Regular.ttf', 'BVP', 'normal')
+    doc.addFileToVFS('BVP-Bold.ttf', beVietnamProBold); doc.addFont('BVP-Bold.ttf', 'BVP', 'bold')
+    doc.setLineHeightFactor(1.32)
+    const PW = doc.internal.pageSize.getWidth(), PH = doc.internal.pageSize.getHeight()
+    const M = 44, CW = PW - 2 * M
+    const ACC: number[] = [184, 92, 0]
+    let y = M
+    const setf = (size: number, bold: boolean, rgb: number[]) => { doc.setFont('BVP', bold ? 'bold' : 'normal'); doc.setFontSize(size); doc.setTextColor(rgb[0], rgb[1], rgb[2]) }
+    const ensure = (h: number) => { if (y + h > PH - M) { doc.addPage(); y = M } }
+    const heading = (t: string) => { y += 6; ensure(20); setf(10.5, true, [26, 26, 26]); doc.text(t, M, y + 10); y += 18 }
+
+    ids.forEach((id, idx) => {
+      const r = recById.get(id); if (!r) return
+      if (idx > 0) { doc.addPage(); y = M }
+      setf(17, true, [26, 26, 26]); const tl = doc.splitTextToSize(String(r.name), CW); doc.text(tl, M, y + 15); y += tl.length * 17 * 1.32
+      if (r.name_vi) { setf(13, false, ACC); const vl = doc.splitTextToSize(String(r.name_vi), CW); doc.text(vl, M, y + 11); y += vl.length * 13 * 1.32 }
+      setf(9, false, [120, 120, 120]); doc.text(`${r.category}${r.subtitle ? ' · ' + r.subtitle : ''}  ·  yields ${Number(r.yield_qty)} ${r.yield_unit}`, M, y + 9); y += 18
+
+      heading('Ingredients · Nguyên liệu')
+      const cs = (byRecipe.get(id) || []).slice().sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
+      const viX = M + CW * 0.43, enW = CW * 0.40, viW = CW * 0.33
+      cs.forEach(c => {
+        const o = c.ingredient_id ? ingMap.get(c.ingredient_id) : subMap.get(c.sub_recipe_id)
+        const enL = doc.splitTextToSize(String(o?.name || '—'), enW)
+        const viL = o?.name_vi ? doc.splitTextToSize(String(o.name_vi), viW) : []
+        const rowH = Math.max(enL.length, viL.length, 1) * 10 * 1.32
+        ensure(rowH + 2)
+        setf(10, false, [40, 40, 40]); doc.text(enL, M, y + 9)
+        if (viL.length) { setf(10, false, ACC); doc.text(viL, viX, y + 9) }
+        setf(10, false, [90, 90, 90]); doc.text(`${Number(c.qty)} ${c.unit}`, PW - M, y + 9, { align: 'right' })
+        y += rowH + 2
+      })
+      if (!cs.length) { setf(10, false, [150, 150, 150]); doc.text('No ingredients listed', M, y + 9); y += 16 }
+
+      heading('Method · Phương pháp')
+      const en = String(r.method || '').split('\n').filter(Boolean)
+      const vi = String(r.method_vi || '').split('\n').filter(Boolean)
+      const n = Math.max(en.length, vi.length)
+      if (!n) { setf(10, false, [150, 150, 150]); doc.text('No method yet', M, y + 9); y += 16 }
+      const mEnX = M + 16, mColW = (CW - 16) / 2 - 8, mViX = mEnX + mColW + 16
+      for (let i = 0; i < n; i++) {
+        const enL = doc.splitTextToSize(en[i] || '', mColW)
+        const viL = doc.splitTextToSize(vi[i] || '', mColW)
+        const rowH = Math.max(enL.length, viL.length, 1) * 10 * 1.32
+        ensure(rowH + 3)
+        setf(10, false, [150, 150, 150]); doc.text(String(i + 1), M, y + 9)
+        setf(10, false, [40, 40, 40]); doc.text(enL, mEnX, y + 9)
+        setf(10, false, ACC); doc.text(viL, mViX, y + 9)
+        y += rowH + 3
+      }
+
+      if (DRINK.has(r.category)) {
+        heading('Build sheet')
+        setf(10, false, [40, 40, 40])
+        ;[`Glass: ${r.glass || '-'}`, `Ice: ${r.ice || '-'}`, `Garnish: ${r.garnish || '-'}`].forEach(t => { ensure(15); doc.text(t, M, y + 9); y += 15 })
+      } else {
+        ([['Plate — Dine-in', r.plating_dinein], ['Pack — To-go', r.plating_togo]] as [string, string | null][]).forEach(([title, txt]) => {
+          if (!txt) return
+          heading(title)
+          String(txt).split('\n').filter(Boolean).forEach((s, i) => { setf(10, false, [40, 40, 40]); const l = doc.splitTextToSize(`${i + 1}.  ${s}`, CW); ensure(l.length * 10 * 1.32); doc.text(l, M, y + 9); y += l.length * 10 * 1.32 + 1 })
+        })
+      }
+    })
+    const blob = doc.output('blob')
+    const fname = ids.length === 1 ? `${recById.get(ids[0])?.name || 'recipe'}.pdf` : `BigBamBoo-Recipes-${ids.length}.pdf`
+    return { blob, fname }
   }
 
   // Share opens ONLY the device share sheet (no save prompt). Where file-sharing isn't supported
