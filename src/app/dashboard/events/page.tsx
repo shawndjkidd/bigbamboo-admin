@@ -4,7 +4,7 @@ import { supabase } from '@/lib/supabase'
 
 const BLANK_EVENT = {
   title: '', type: '', description: '', event_date: '', start_time: '', end_time: '',
-  facebook_link: '', image_url: '', is_free: true, ticket_price: '', ticket_link: '', capacity: '', rsvp_enabled: true,
+  facebook_link: '', image_url: '', is_free: true, ticket_price: '', ticket_link: '', capacity: '', rsvp_enabled: true, internal_tickets_enabled: true,
   is_recurring: false, recurrence_pattern: 'weekly'
 }
 
@@ -59,7 +59,7 @@ export default function EventsPage() {
       ticket_price: newEvent.is_free ? 0 : (parseInt(newEvent.ticket_price) || 0),
       ticket_link: newEvent.ticket_link || null,
       capacity: newEvent.capacity ? parseInt(newEvent.capacity) : null,
-      rsvp_enabled: newEvent.rsvp_enabled, is_published: true,
+      rsvp_enabled: newEvent.rsvp_enabled, internal_tickets_enabled: newEvent.internal_tickets_enabled, is_published: true,
       is_recurring: newEvent.is_recurring,
       recurrence_pattern: newEvent.is_recurring ? newEvent.recurrence_pattern : null,
     }).select().single()
@@ -150,6 +150,9 @@ export default function EventsPage() {
                 <div><label className="label">Ticket Price (VND)</label><input className="input" type="number" value={newEvent.ticket_price} onChange={e => setNewEvent((p: any) => ({ ...p, ticket_price: e.target.value }))} placeholder="150000" /></div>
                 <div><label className="label">Buy Tickets Link</label><input className="input" value={newEvent.ticket_link} onChange={e => setNewEvent((p: any) => ({ ...p, ticket_link: e.target.value }))} placeholder="Momo / bank link" /></div>
               </div>
+            )}
+            {!newEvent.is_free && (
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, color: 'var(--text-secondary)', cursor: 'pointer', marginBottom: 14 }}><input type="checkbox" checked={newEvent.internal_tickets_enabled} onChange={e => setNewEvent((p: any) => ({ ...p, internal_tickets_enabled: e.target.checked }))} style={{ accentColor: 'var(--accent)' }} /> Show our Buy-now order form on the site <span style={{ fontSize: 12, color: 'var(--text-muted, #999)' }}>(uncheck if you sell tickets via the link above)</span></label>
             )}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
               <div><label className="label">Capacity</label><input className="input" type="number" value={newEvent.capacity} onChange={e => setNewEvent((p: any) => ({ ...p, capacity: e.target.value }))} placeholder="Leave blank = unlimited" /></div>
@@ -267,6 +270,9 @@ function EventCard({ event, isExpanded, orders, editingId, onToggleEdit, onLoadO
                 <div><label className="label">Price (VND)</label><input className="input" type="number" defaultValue={event.ticket_price || ''} onBlur={e => onUpdate(event.id, { ticket_price: parseInt(e.target.value) || 0 })} /></div>
                 <div><label className="label">Ticket Link</label><input className="input" defaultValue={event.ticket_link || ''} onBlur={e => onUpdate(event.id, { ticket_link: e.target.value })} /></div>
               </div>
+            )}
+            {!event.is_free && (
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text-secondary)', cursor: 'pointer', marginBottom: 12 }}><input type="checkbox" checked={(event as any).internal_tickets_enabled !== false} onChange={e => onUpdate(event.id, { internal_tickets_enabled: e.target.checked } as any)} style={{ accentColor: 'var(--accent)' }} /> Show our Buy-now order form on the site <span style={{ fontSize: 12, color: 'var(--text-muted, #999)' }}>(uncheck if selling via the ticket link)</span></label>
             )}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               <div><label className="label">Capacity</label><input className="input" type="number" defaultValue={event.capacity || ''} onBlur={e => onUpdate(event.id, { capacity: e.target.value ? parseInt(e.target.value) : null })} placeholder="Unlimited" /></div>
