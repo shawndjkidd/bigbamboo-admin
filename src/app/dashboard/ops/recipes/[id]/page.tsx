@@ -59,6 +59,7 @@ export default function RecipeDetailPage() {
   const [menuItem, setMenuItem] = useState<any | null>(null)
   const [menuSection, setMenuSection] = useState('')
   const [menuBusy, setMenuBusy] = useState(false)
+  const [autoVi, setAutoVi] = useState(true)
 
   // add-component form
   const [addType, setAddType] = useState<'ingredient' | 'packaging' | 'sub_recipe'>('ingredient')
@@ -71,6 +72,8 @@ export default function RecipeDetailPage() {
   useEffect(() => { init() }, [recipeId])
   useEffect(() => { if (recipe?.yield_qty != null) setKegInput(String(Number(recipe.yield_qty))) }, [recipe?.yield_qty])
   useEffect(() => { if (recipe?.yield_unit) setYieldUnitInput(recipe.yield_unit) }, [recipe?.yield_unit])
+  useEffect(() => { try { setAutoVi(localStorage.getItem('bbb_auto_vi') !== 'off') } catch {} }, [])
+  function toggleAutoVi() { setAutoVi(v => { const n = !v; try { localStorage.setItem('bbb_auto_vi', n ? 'on' : 'off') } catch {} return n }) }
   useEffect(() => {
     if (!recipe || menuSection) return
     const m: Record<string, string> = { cocktail: 'cocktails', beer: 'beer', wine: 'wine', na_drink: 'na', food: 'bites' }
@@ -191,6 +194,22 @@ export default function RecipeDetailPage() {
   async function saveMethod(v: string) {
     await ops().from('recipes').update({ method: v }).eq('id', recipeId)
     setRecipe(r => (r ? { ...r, method: v } : r))
+    if (autoVi && v.trim()) { const vi = await translateToVi(v); if (vi) await saveRecipe({ method_vi: vi }) }
+  }
+
+  // Translate English → Vietnamese via the Gemini-backed endpoint. Returns '' on any failure.
+  async function translateToVi(text: string): Promise<string> {
+    try {
+      const res = await fetch('/api/admin/ops/translate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text }) })
+      const j = await res.json().catch(() => ({}))
+      return res.ok ? String(j.vi || '') : ''
+    } catch { return '' }
+  }
+
+  // Save the English name; when auto-translate is on, refresh the Vietnamese name to match.
+  async function saveName(name: string) {
+    await saveRecipe({ name })
+    if (autoVi && name.trim()) { const vi = await translateToVi(name); if (vi) await saveRecipe({ name_vi: vi }) }
   }
 
   // Rescale a batch: multiply every INGREDIENT component by (newSize / oldSize) and update the batch size.
@@ -371,11 +390,16 @@ export default function RecipeDetailPage() {
       {/* 1. Back link + title + meta */}
       <Link href="/dashboard/ops/recipes" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text-secondary)', textDecoration: 'none', border: '1px solid var(--border)', borderRadius: 8, padding: '6px 12px', marginBottom: 14 }}>← Back to recipes</Link>
       {canManage
-        ? <input defaultValue={recipe.name} onBlur={e => e.target.value !== recipe.name && saveRecipe({ name: e.target.value })} style={{ ...inp, fontSize: 26, fontWeight: 700, maxWidth: 560, display: 'block' }} />
+        ? <input defaultValue={recipe.name} onBlur={e => e.target.value !== recipe.name && saveName(e.target.value)} style={{ ...inp, fontSize: 26, fontWeight: 700, maxWidth: 560, display: 'block' }} />
         : <h2 style={{ fontSize: 26, fontWeight: 700, margin: 0 }}>{recipe.name}</h2>}
       {canManage
         ? <input defaultValue={recipe.name_vi || ''} placeholder="Tên tiếng Việt…" onBlur={e => e.target.value !== (recipe.name_vi || '') && saveRecipe({ name_vi: e.target.value || null })} style={{ ...inp, fontSize: 16, fontWeight: 500, maxWidth: 560, display: 'block', marginTop: 4, color: 'var(--accent, #e87830)' }} />
         : recipe.name_vi && <div style={{ fontSize: 17, fontWeight: 500, color: 'var(--accent, #e87830)', marginTop: 2 }}>{recipe.name_vi}</div>}
+      {canManage && (
+        <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text-muted, #999)', marginTop: 6, cursor: 'pointer' }}>
+          <input type="checkbox" checked={autoVi} onChange={toggleAutoVi} /> Auto-translate name & method to Vietnamese when I edit the English
+        </label>
+      )}
       <div style={{ fontSize: 12, color: 'var(--text-muted, #999)', marginTop: 2, marginBottom: 20 }}>
         {recipe.type} · {recipe.category} · yields {Number(recipe.yield_qty)} {recipe.yield_unit}
         {recipe.is_kegged && ` · ${recipe.keg_size_ml}ml keg / ${recipe.pour_size_ml}ml pour`}
@@ -389,7 +413,7 @@ export default function RecipeDetailPage() {
       )}
 
       {/* 2. Cost stats */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 10, marginBottom: 24 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 10, marginBottom: 24 }}>
         {isDrink ? (
           <>
             <Stat label="Keg cost" value={vnd(cost?.total_cost ?? 0)} sub={poursPerKeg ? `${poursPerKeg} pours` : undefined} />
@@ -800,10 +824,9 @@ function StepsEditor({ value, onSave, placeholder }: { value: string; onSave: (v
 }
 
 const Stat = ({ label, value, accent, sub }: { label: string; value: string; accent?: string; sub?: string }) => (
-  <div style={{ padding: 12, background: 'var(--bg-card, #fff)', border: '1px solid var(--border, #e5e5e5)', borderRadius: 8, borderLeft: `3px solid ${accent || 'var(--accent, #e87830)'}` }}>
-    <div style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-muted, #999)' }}>{label}</div>
-    <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--text, #333)', marginTop: 4 }}>{value}</div>
-    {sub && <div style={{ fontSize: 10, color: 'var(--text-muted, #bbb)', marginTop: 2 }}>{sub}</div>}
+  <div style={{ padding: '7px 12px', background: 'var(--bg-card, #fff)', border: '1px solid var(--border, #e5e5e5)', borderRadius: 8, borderLeft: `3px solid ${accent || 'var(--accent, #e87830)'}` }}>
+    <div style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-muted, #999)', display: 'flex', justifyContent: 'space-between', gap: 8 }}><span>{label}</span>{sub && <span style={{ textTransform: 'none', letterSpacing: 0, fontWeight: 400, color: 'var(--text-muted, #bbb)' }}>{sub}</span>}</div>
+    <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--text, #333)', marginTop: 1 }}>{value}</div>
   </div>
 )
 
