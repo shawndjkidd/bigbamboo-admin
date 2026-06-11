@@ -9,7 +9,7 @@ type Recipe = {
   id: string; name: string; type: string; category: string;
   yield_qty: number; yield_unit: string; sale_price: number | null;
   is_kegged: boolean; keg_size_ml: number | null; pour_size_ml: number | null;
-  description: string | null; active: boolean;
+  description: string | null; description_vi: string | null; active: boolean;
   method: string | null; subtitle: string | null; image_url: string | null;
   plating_dinein: string | null; plating_togo: string | null;
   glass: string | null; ice: string | null; garnish: string | null;
@@ -212,6 +212,12 @@ export default function RecipeDetailPage() {
     if (autoVi && name.trim()) { const vi = await translateToVi(name); if (vi) await saveRecipe({ name_vi: vi }) }
   }
 
+  // Save the English description; when auto-translate is on, refresh the Vietnamese description to match.
+  async function saveDescription(v: string) {
+    await saveRecipe({ description: v })
+    if (autoVi && v.trim()) { const vi = await translateToVi(v); if (vi) await saveRecipe({ description_vi: vi }) }
+  }
+
   // Rescale a batch: multiply every INGREDIENT component by (newSize / oldSize) and update the batch size.
   // Works for any recipe — yield_qty is the batch size. For kegged drinks, keg_size_ml is kept in sync.
   async function rescaleBatch(newSizeStr: string) {
@@ -240,15 +246,16 @@ export default function RecipeDetailPage() {
     await loadAll(true)
   }
 
-  // Publish this recipe to the customer-facing menu (public.menu_items) as a draft you can then
-  // arrange/edit on the Menu page. Linked by recipe_id so the button toggles add/remove.
+  // Publish this recipe to the customer-facing menu (public.menu_items). Goes live (not draft) in the
+  // chosen section; rearrange or hide it on the Menu page. Linked by recipe_id so the button toggles add/remove.
   async function addToMenu() {
     if (!recipe || !menuSection) return
     setMenuBusy(true)
     const price = recipe.sale_price ? `${Math.round(Number(recipe.sale_price) / 1000)}k` : 'TBA'
     const { error } = await supabase.from('menu_items').insert({
       recipe_id: recipeId, section: menuSection, name: recipe.name, name_vi: recipe.name_vi,
-      subtitle: recipe.subtitle, price, is_draft: true, is_available: true, sort_order: 999,
+      subtitle: recipe.subtitle, description: recipe.description, description_vi: recipe.description_vi,
+      price, is_draft: false, is_available: true, sort_order: 999,
     })
     setMenuBusy(false)
     if (error) { alert(error.message); return }
@@ -397,7 +404,7 @@ export default function RecipeDetailPage() {
         : recipe.name_vi && <div style={{ fontSize: 17, fontWeight: 500, color: 'var(--accent, #e87830)', marginTop: 2 }}>{recipe.name_vi}</div>}
       {canManage && (
         <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text-muted, #999)', marginTop: 6, cursor: 'pointer' }}>
-          <input type="checkbox" checked={autoVi} onChange={toggleAutoVi} /> Auto-translate name & method to Vietnamese when I edit the English
+          <input type="checkbox" checked={autoVi} onChange={toggleAutoVi} /> Auto-translate name, description & method to Vietnamese when I edit the English
         </label>
       )}
       <div style={{ fontSize: 12, color: 'var(--text-muted, #999)', marginTop: 2, marginBottom: 20 }}>
@@ -405,11 +412,18 @@ export default function RecipeDetailPage() {
         {recipe.is_kegged && ` · ${recipe.keg_size_ml}ml keg / ${recipe.pour_size_ml}ml pour`}
       </div>
       {canManage && (
-        <div style={{ display: 'grid', gridTemplateColumns: '160px 1fr 150px', gap: 10, margin: '4px 0 20px' }}>
+        <>
+        <div style={{ display: 'grid', gridTemplateColumns: '160px 1fr 150px', gap: 10, margin: '4px 0 10px' }}>
           <div><label className="label">Category</label><select defaultValue={recipe.category} onChange={e => saveRecipe({ category: e.target.value })} style={inp}>{['cocktail','beer','wine','na_drink','food','snack','syrup','garnish','other'].map(c => <option key={c} value={c}>{c}</option>)}</select></div>
           <div><label className="label">Subtitle</label><input defaultValue={recipe.subtitle || ''} onBlur={e => saveRecipe({ subtitle: e.target.value })} style={inp} /></div>
           <div><label className="label">Sale price (₫)</label><input defaultValue={recipe.sale_price ?? ''} inputMode="decimal" onBlur={e => { const v = e.target.value.replace(/[^0-9.]/g, ''); saveRecipe({ sale_price: v ? Number(v) : null }) }} style={inp} /></div>
         </div>
+        <div style={{ margin: '0 0 20px' }}>
+          <label className="label">Description (menu)</label>
+          <textarea defaultValue={recipe.description || ''} placeholder="One-line menu description, e.g. Three cheeses, garlic butter grilled sourdough & a pickle" onBlur={e => e.target.value !== (recipe.description || '') && saveDescription(e.target.value)} style={{ ...inp, minHeight: 46, resize: 'vertical' }} />
+          <textarea key={recipe.description_vi || 'vi'} defaultValue={recipe.description_vi || ''} placeholder="Mô tả tiếng Việt…" onBlur={e => e.target.value !== (recipe.description_vi || '') && saveRecipe({ description_vi: e.target.value || null })} style={{ ...inp, minHeight: 46, resize: 'vertical', marginTop: 6, color: 'var(--accent, #e87830)' }} />
+        </div>
+        </>
       )}
 
       {/* 2. Cost stats */}
@@ -449,7 +463,7 @@ export default function RecipeDetailPage() {
                 {['bites', 'grilled_sourdough', 'add_ons', 'cocktails', 'beer', 'wine', 'na', 'shots', 'special_events'].map(s => <option key={s} value={s}>{s}</option>)}
               </select>
               <button onClick={addToMenu} disabled={menuBusy || !menuSection} style={{ ...btnPrimary, opacity: menuBusy ? 0.6 : 1 }}>{menuBusy ? 'Adding…' : '+ Add to menu'}</button>
-              <span style={{ fontSize: 11, color: 'var(--text-muted, #999)' }}>Adds as a draft to arrange on the Menu page.</span>
+              <span style={{ fontSize: 11, color: 'var(--text-muted, #999)' }}>Adds it live to the chosen section — rearrange or hide it on the Menu page.</span>
             </>
           )}
         </div>
