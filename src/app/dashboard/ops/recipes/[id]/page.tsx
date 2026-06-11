@@ -18,6 +18,9 @@ type Recipe = {
 }
 
 const DRINK_CATS = ['cocktail', 'beer', 'wine', 'na_drink']
+// Delivery-platform commissions (of sale price) — used to show per-channel COGS.
+const CAPICHI_RATE = 0.16
+const GRAB_RATE = 0.25
 // Bar/kitchen split for the sub-recipe picker: a food recipe shouldn't list drink sub-recipes (and vice-versa).
 const BAR_CATS = ['cocktail', 'beer', 'wine', 'na_drink', 'syrup']
 // Same split for the ingredient picker — mirrors the Ingredients page's category→station map.
@@ -345,6 +348,11 @@ export default function RecipeDetailPage() {
   const toGoCost = cost?.total_cost ?? 0
   const dineInCost = Math.max(0, toGoCost - packagingCost)
   const cogsPct = (cost?.cost_per_unit && recipe.sale_price) ? cost.cost_per_unit / recipe.sale_price : null
+  // Delivery-channel COGS: to-go (with-packaging) cost plus the platform's commission on the sale price.
+  const price = recipe.sale_price ? Number(recipe.sale_price) : null
+  const capichiCogs = price ? (toGoCost + CAPICHI_RATE * price) / price : null
+  const grabCogs = price ? (toGoCost + GRAB_RATE * price) / price : null
+  const deliveryColor = (p: number | null) => p == null ? '#999' : p > 0.6 ? 'var(--burgundy, #7b2d3a)' : p > 0.5 ? '#C65911' : '#6b7280'
   const isDrink = DRINK_CATS.includes(recipe.category)
   // Sub-recipe picker: keep it on-station — a food recipe only lists food/prep sub-recipes, a bar recipe only lists bar ones.
   const parentIsBar = BAR_CATS.includes(recipe.category)
@@ -381,7 +389,7 @@ export default function RecipeDetailPage() {
       )}
 
       {/* 2. Cost stats */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 24 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 10, marginBottom: 24 }}>
         {isDrink ? (
           <>
             <Stat label="Keg cost" value={vnd(cost?.total_cost ?? 0)} sub={poursPerKeg ? `${poursPerKeg} pours` : undefined} />
@@ -395,6 +403,8 @@ export default function RecipeDetailPage() {
         )}
         <Stat label={isDrink ? 'Price / drink' : 'Sale price'} value={recipe.sale_price ? vnd(recipe.sale_price) : '—'} />
         <Stat label="COGS %" value={pct(cogsDisplay)} accent={cogsDisplay == null ? '#999' : cogsDisplay > 0.45 ? 'var(--burgundy, #7b2d3a)' : cogsDisplay > 0.35 ? '#C65911' : '#6b7280'} />
+        {!isDrink && <Stat label="Capichi COGS" value={pct(capichiCogs)} accent={deliveryColor(capichiCogs)} sub="incl. 16% fee" />}
+        {!isDrink && <Stat label="Grab COGS" value={pct(grabCogs)} accent={deliveryColor(grabCogs)} sub="incl. 25% fee" />}
       </div>
 
       {/* 2b. Front-end menu publish */}
