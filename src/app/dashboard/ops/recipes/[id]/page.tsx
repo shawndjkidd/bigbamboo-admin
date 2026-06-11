@@ -261,6 +261,20 @@ export default function RecipeDetailPage() {
     if (error) { alert(error.message); return }
     await loadAll(true)
   }
+  // Push the recipe's current details to the linked menu_items row (name, Vietnamese name,
+  // subtitle, description + Vietnamese, price) so menu edits stay in sync after editing the recipe.
+  async function updateMenu() {
+    if (!recipe || !menuItem) return
+    setMenuBusy(true)
+    const price = recipe.sale_price ? `${Math.round(Number(recipe.sale_price) / 1000)}k` : (menuItem.price || 'TBA')
+    const { error } = await supabase.from('menu_items').update({
+      name: recipe.name, name_vi: recipe.name_vi, subtitle: recipe.subtitle,
+      description: recipe.description, description_vi: recipe.description_vi, price,
+    }).eq('id', menuItem.id)
+    setMenuBusy(false)
+    if (error) { alert(error.message); return }
+    await loadAll(true)
+  }
   async function removeFromMenu() {
     if (!menuItem) return
     if (!confirm('Remove this item from the front-end menu?')) return
@@ -453,7 +467,8 @@ export default function RecipeDetailPage() {
               <span style={{ fontSize: 13, fontWeight: 600, color: '#548235' }}>● On front-end menu</span>
               <span style={{ fontSize: 12, color: 'var(--text-muted, #999)' }}>section: {menuItem.section} · {menuItem.price}{menuItem.is_draft ? ' · draft' : ''}</span>
               <Link href="/dashboard/menu" style={{ fontSize: 12, color: 'var(--accent, #e87830)', textDecoration: 'none' }}>arrange on Menu page →</Link>
-              <button onClick={removeFromMenu} style={{ ...btnLink, marginLeft: 'auto' }}>Remove from menu</button>
+              <button onClick={updateMenu} disabled={menuBusy} title="Push this recipe's name, Vietnamese, description and price to the menu" style={{ ...btnPrimary, marginLeft: 'auto', padding: '6px 12px', fontSize: 12, opacity: menuBusy ? 0.6 : 1 }}>{menuBusy ? 'Updating…' : 'Update menu'}</button>
+              <button onClick={removeFromMenu} style={{ ...btnLink }}>Remove from menu</button>
             </>
           ) : (
             <>
