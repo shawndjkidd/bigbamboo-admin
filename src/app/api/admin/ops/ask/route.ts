@@ -67,7 +67,7 @@ Question: ${question}`, key)
   if (!/^(select|with)\s/i.test(sql)) return NextResponse.json({ error: 'I could only answer that with a read query and the AI returned something else — try rephrasing.' }, { status: 422 })
 
   // 2. Run it through the guarded read-only function.
-  const { data: rows, error: qErr } = await svc.rpc('ask_select', { q: sql })
+  const { data: rows, error: qErr } = await svc.schema('ops').rpc('ask_select', { q: sql })
   if (qErr) return NextResponse.json({ error: 'That question couldn\'t be answered from the available data (' + qErr.message + ').', sql }, { status: 422 })
 
   // 3. Phrase the answer.

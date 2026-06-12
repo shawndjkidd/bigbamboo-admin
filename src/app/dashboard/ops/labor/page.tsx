@@ -102,7 +102,9 @@ export default function LaborPage() {
   function pickEmp(id: string) {
     setSEmp(id)
     const e = emps.find(x => x.id === id)
-    if (e?.base_rate != null && !sRate) setSRate(String(e.base_rate))
+    // Always load the picked employee's default rate (was only filling when the field was empty,
+    // so switching employees never updated it). Leave the current value if they have no default rate.
+    if (e?.base_rate != null) setSRate(String(e.base_rate))
   }
   async function logShift() {
     if (!venueId) return
