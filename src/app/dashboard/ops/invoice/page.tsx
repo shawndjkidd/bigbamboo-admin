@@ -28,7 +28,7 @@ async function compressForUpload(file: File, maxDim = 1600, quality = 0.72): Pro
 }
 
 type Ing = { id: string; name: string; base_unit: string; purchase_unit_size: number; purchase_unit_label: string; on_hand_base: number | null; cost_method: string | null }
-type Item = { name: string; qty: number; total_price: number; unit: string | null; ingredientId: string; category: string; isIngredient: boolean; suggestedName: string | null; baseUnitHint: string | null; packHint: number | null }
+type Item = { name: string; english: string | null; qty: number; total_price: number; unit: string | null; ingredientId: string; category: string; isIngredient: boolean; suggestedName: string | null; baseUnitHint: string | null; packHint: number | null }
 
 function guessIngredient(name: string, ings: Ing[]): string {
   const n = name.toLowerCase()
@@ -104,7 +104,7 @@ export default function InvoiceScanPage() {
       const byName = new Map(ings.map(i => [i.name.toLowerCase(), i.id]))
       const validCat = new Set(catOpts.map((c: any) => c.key))
       const parsed: Item[] = (j.items || []).map((it: any) => ({
-        name: it.name, qty: Number(it.qty) || 1, total_price: Number(it.total_price) || 0, unit: it.unit || null,
+        name: it.name, english: it.english || null, qty: Number(it.qty) || 1, total_price: Number(it.total_price) || 0, unit: it.unit || null,
         ingredientId: (it.match && byName.get(String(it.match).toLowerCase())) || (it.is_ingredient ? guessIngredient(it.name, ings) : ''),
         category: it.category && validCat.has(it.category) ? it.category : (it.is_ingredient ? 'food' : 'other_opex'),
         isIngredient: !!it.is_ingredient,
@@ -233,7 +233,10 @@ export default function InvoiceScanPage() {
                 const ing = ings.find(x => x.id === row.ingredientId)
                 return (
                   <tr key={i} style={{ borderTop: '1px solid var(--border, #eee)' }}>
-                    <td style={td}>{row.name}{row.unit ? <span style={{ color: 'var(--text-muted, #999)' }}> · {row.unit}</span> : ''}</td>
+                    <td style={td}>
+                      <div>{row.name}{row.unit ? <span style={{ color: 'var(--text-muted, #999)' }}> · {row.unit}</span> : ''}</div>
+                      {row.english && row.english.toLowerCase() !== row.name.toLowerCase() && <div style={{ fontSize: 12, color: 'var(--accent, #e87830)', marginTop: 2 }}>{row.english}</div>}
+                    </td>
                     <td style={{ ...td, textAlign: 'right' }}><input inputMode="decimal" value={String(row.qty)} onChange={e => setRow(i, { qty: Number(e.target.value) || 0 })} style={{ ...inp, width: 64, textAlign: 'right', padding: '4px 6px' }} /></td>
                     <td style={{ ...td, textAlign: 'right' }}><input inputMode="numeric" value={String(row.total_price)} onChange={e => setRow(i, { total_price: Number(e.target.value.replace(/[^\d]/g, '')) || 0 })} style={{ ...inp, width: 110, textAlign: 'right', padding: '4px 6px' }} /></td>
                     <td style={td}>
