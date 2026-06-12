@@ -5,6 +5,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import { canSeeDashboard, type StaffRole } from '@/lib/ops/api'
 import {
   fetchKitchenList, buildRecipeDetailHtml, buildSopDetailHtml, buildKitchenPdf,
   RECIPE_BOOK_CSS, type KStation, type KRecipe, type KSop,
@@ -15,6 +16,7 @@ type TypeFilter = 'all' | 'recipes' | 'batches' | 'sops'
 export default function KitchenPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(true)
+  const [canExport, setCanExport] = useState(false)
   const [station, setStation] = useState<KStation>('kitchen')
   const [type, setType] = useState<TypeFilter>('all')
   const [q, setQ] = useState('')
@@ -28,8 +30,10 @@ export default function KitchenPage() {
     (async () => {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session?.user) { router.push('/login'); return }
-      const { data: su } = await supabase.from('staff_users').select('active').eq('email', session.user.email).maybeSingle()
+      const { data: su } = await supabase.from('staff_users').select('active, role').eq('email', session.user.email).maybeSingle()
       if (!su || su.active === false) { router.push('/login'); return }
+      // Only managers+ can export the book; Kitchen Display / staff are view-only.
+      setCanExport(canSeeDashboard((su.role || 'staff') as StaffRole))
       try {
         const s = localStorage.getItem('bbb_kitchen_station')
         if (s === 'kitchen' || s === 'bar' || s === 'all') setStation(s)
@@ -101,10 +105,12 @@ export default function KitchenPage() {
             <span style={{ fontSize: 20, fontWeight: 700, color: 'var(--accent, #e87830)' }}>BigBamBoo Kitchen</span>
             <Seg value={station} onChange={v => chooseStation(v as KStation)} options={[['kitchen', 'Kitchen'], ['bar', 'Bar'], ['all', 'All']]} />
           </div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button onClick={() => download(false)} disabled={dl} style={{ ...bigBtn, opacity: dl ? 0.6 : 1 }}>{dl ? 'Building…' : '⬇ Download PDF'}</button>
-            <button onClick={() => download(true)} disabled={dl} style={{ ...bigBtnOutline, opacity: dl ? 0.6 : 1 }}>⤴ Share</button>
-          </div>
+          {canExport && (
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button onClick={() => download(false)} disabled={dl} style={{ ...bigBtn, opacity: dl ? 0.6 : 1 }}>{dl ? 'Building…' : '⬇ Download PDF'}</button>
+              <button onClick={() => download(true)} disabled={dl} style={{ ...bigBtnOutline, opacity: dl ? 0.6 : 1 }}>⤴ Share</button>
+            </div>
+          )}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 12, flexWrap: 'wrap' }}>
           <Seg value={type} onChange={v => setType(v as TypeFilter)} options={[['all', 'All'], ['recipes', 'Recipes'], ['batches', 'Batches'], ['sops', 'SOPs']]} />
