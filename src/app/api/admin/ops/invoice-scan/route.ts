@@ -23,13 +23,14 @@ export async function POST(req: NextRequest) {
   if (!imageBase64) return NextResponse.json({ error: 'no image provided' }, { status: 400 })
 
   const matchBlock = ingredients.length
-    ? `\n- match = the EXACT ingredient name from the list below that refers to the SAME product, ignoring brand, size and packaging (e.g. "ỨC PHI LE GA CN CP 1KG" → "Chicken breast"; "HANH TAY T.HANG 1KG" → "Yellow onions"). Use null if nothing in the list is the same product. Match the Vietnamese/English meaning, not the spelling.\nIngredients we already track:\n${ingredients.map(n => '- ' + n).join('\n')}`
+    ? `\n- match = the EXACT ingredient name from the list below that refers to the SAME product, ignoring brand, size and packaging (e.g. "ỨC PHI LE GA CN CP 1KG" → "Chicken breast"; "HANH TAY T.HANG 1KG" → "Yellow onions"). Match by meaning, not spelling. Set match ONLY when you are confident it is the same product — if unsure, use null. Never force a match to an unrelated ingredient.\nIngredients we already track:\n${ingredients.map(n => '- ' + n).join('\n')}`
     : '\n- match = null (no ingredient list provided).'
   const prompt = `You are reading a supplier purchase invoice for a bar/restaurant in Vietnam. Extract the product line items AND the invoice totals.
 Return ONLY valid JSON of this shape:
 {"vendor": string|null, "date": string|null, "currency": string, "items": [{"name": string, "qty": number, "unit": string|null, "total_price": number, "match": string|null}], "tax": number, "fees": number, "grand_total": number}
 Rules:
-- items = real products only (do NOT put subtotal/tax/discount/shipping rows in items).
+- items = ONLY product lines actually printed on this invoice. NEVER invent, add, or guess a product that is not clearly printed. If a line is unreadable, omit it rather than guessing.
+- name = copy the product text EXACTLY as printed (keep the original Vietnamese and any abbreviations; do NOT translate, expand or rewrite it). Do NOT put subtotal/tax/discount/shipping rows in items.
 - total_price = the line's total as a plain number (no thousands separators). Amounts are usually Vietnamese Dong (whole numbers).
 - qty = how many purchase units were bought (bottles, cans, kg, bags, packs). If unclear use 1. unit = the purchase unit if shown.
 - tax = total VAT/tax amount on the invoice (0 if none). fees = total delivery/shipping/service charge (0 if none). grand_total = the final amount payable.${matchBlock}
