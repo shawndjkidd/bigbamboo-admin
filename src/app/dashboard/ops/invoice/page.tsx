@@ -6,6 +6,27 @@ import { supabase } from '@/lib/supabase'
 
 const CATEGORIES = ['food', 'mixer', 'beer', 'wine', 'liquor', 'garnish', 'consumable', 'other_opex']
 
+// Downscale + JPEG-compress an image file in the browser before upload. A raw phone photo can be
+// several MB, which exceeds the serverless request-body limit (~4.5MB) so the scan silently never
+// runs. Re-encoding to max 1600px JPEG keeps it well under that (usually <400KB) and OCRs the same.
+async function compressForUpload(file: File, maxDim = 1600, quality = 0.72): Promise<{ dataUrl: string; mime: string }> {
+  const original: string = await new Promise((res, rej) => {
+    const r = new FileReader(); r.onload = () => res(String(r.result)); r.onerror = rej; r.readAsDataURL(file)
+  })
+  if (!/^image\//.test(file.type)) return { dataUrl: original, mime: file.type || 'image/jpeg' }
+  try {
+    const img = await new Promise<HTMLImageElement>((res, rej) => {
+      const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = original
+    })
+    const scale = Math.min(1, maxDim / Math.max(img.width, img.height))
+    const w = Math.max(1, Math.round(img.width * scale)), h = Math.max(1, Math.round(img.height * scale))
+    const canvas = document.createElement('canvas'); canvas.width = w; canvas.height = h
+    const ctx = canvas.getContext('2d'); if (!ctx) return { dataUrl: original, mime: file.type || 'image/jpeg' }
+    ctx.drawImage(img, 0, 0, w, h)
+    return { dataUrl: canvas.toDataURL('image/jpeg', quality), mime: 'image/jpeg' }
+  } catch { return { dataUrl: original, mime: file.type || 'image/jpeg' } }
+}
+
 type Ing = { id: string; name: string; base_unit: string; purchase_unit_size: number; purchase_unit_label: string; on_hand_base: number | null; cost_method: string | null }
 type Item = { name: string; qty: number; total_price: number; unit: string | null; ingredientId: string }
 
@@ -68,12 +89,10 @@ export default function InvoiceScanPage() {
   async function onFile(file: File) {
     setScanning(true); setMsg(null); setItems([])
     try {
-      const dataUrl: string = await new Promise((res, rej) => {
-        const r = new FileReader(); r.onload = () => res(String(r.result)); r.onerror = rej; r.readAsDataURL(file)
-      })
+      const { dataUrl, mime } = await compressForUpload(file)
       const r = await fetch('/api/admin/ops/invoice-scan', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ imageBase64: dataUrl, mimeType: file.type || 'image/jpeg' }),
+        body: JSON.stringify({ imageBase64: dataUrl, mimeType: mime }),
       })
       const j = await r.json()
       if (!r.ok) { setMsg(j.error || 'Scan failed'); setScanning(false); return }

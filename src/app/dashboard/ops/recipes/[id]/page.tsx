@@ -343,6 +343,16 @@ export default function RecipeDetailPage() {
     await loadAll(true)
   }
 
+  // One click after editing: snapshot a new version AND push the latest name/price/description to the
+  // linked front-end menu item. (Cost and the printed SOP card already read the recipe live.)
+  async function updateEverything() {
+    setMenuBusy(true)
+    await publishVersion()
+    if (menuItem) await updateMenu()
+    setMenuBusy(false)
+    alert('✓ Updated.' + (menuItem ? ' New version published and the menu item synced.' : ' New version published.'))
+  }
+
   function buildCompRows(withCost: boolean) {
     return components.map(c => {
       const name = c.ingredient?.name || c.sub_recipe?.name || '—'
@@ -783,10 +793,12 @@ export default function RecipeDetailPage() {
       </div>
 
       {/* 6. Publish new version */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 32, marginBottom: 16 }}>
-        {canManage && <button onClick={publishVersion} style={btnPrimary}>Publish new version</button>}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 32, marginBottom: 6, flexWrap: 'wrap' }}>
+        {canManage && <button onClick={updateEverything} disabled={menuBusy} style={{ ...btnPrimary, opacity: menuBusy ? 0.6 : 1 }}>{menuBusy ? 'Updating…' : 'Update everything'}</button>}
+        {canManage && <button onClick={publishVersion} style={btnLink}>Just save a version</button>}
         {recipe.published_version ? <span style={{ fontSize: 12, color: 'var(--text-muted, #999)' }}>Current: v{recipe.published_version} · {versions.length} saved</span> : null}
       </div>
+      {canManage && <div style={{ fontSize: 12, color: 'var(--text-muted, #999)', marginBottom: 16 }}>Saves a new version{menuItem ? ' and pushes name/price/description to the menu' : ''}. Cost & the printed card already update live.</div>}
 
       {/* 7. Version history */}
       {versions.length > 0 && (
