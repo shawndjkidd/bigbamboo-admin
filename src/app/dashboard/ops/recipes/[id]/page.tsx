@@ -61,6 +61,7 @@ export default function RecipeDetailPage() {
   const [menuSection, setMenuSection] = useState('')
   const [menuSections, setMenuSections] = useState<string[]>(['bites', 'grilled_sourdough', 'add_ons', 'cocktails', 'beer', 'wine', 'na', 'shots', 'special_events'])
   const [menuBusy, setMenuBusy] = useState(false)
+  const [genBusy, setGenBusy] = useState(false)
   const [autoVi, setAutoVi] = useState(true)
 
   // add-component form
@@ -240,6 +241,27 @@ export default function RecipeDetailPage() {
   async function saveMenuName(v: string) {
     await saveRecipe({ menu_name: v || null })
     if (autoVi && v.trim()) { const vi = await translateToVi(v); if (vi) await saveRecipe({ menu_name_vi: vi }) }
+  }
+
+  // Draft a customer-facing menu description from the recipe's ingredients via AI, then save it
+  // (which also auto-translates to Vietnamese when the toggle is on).
+  async function generateDescription() {
+    if (!recipe) return
+    setGenBusy(true)
+    const names = components.map(c =>
+      c.ingredient_id ? ingOptions.find(o => o.id === c.ingredient_id)?.name
+        : c.sub_recipe_id ? recOptions.find(o => o.id === c.sub_recipe_id)?.name : null
+    ).filter(Boolean) as string[]
+    try {
+      const res = await fetch('/api/admin/ops/describe', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: recipe.menu_name || recipe.name, category: recipe.category, ingredients: names }),
+      })
+      const j = await res.json().catch(() => ({}))
+      if (res.ok && j.description) await saveDescription(String(j.description))
+      else setMsg(j.error || 'Could not generate a description')
+    } catch (e: any) { setMsg('Error: ' + (e?.message || e)) }
+    setGenBusy(false)
   }
 
   // Rescale a batch: multiply every INGREDIENT component by (newSize / oldSize) and update the batch size.
@@ -474,8 +496,11 @@ export default function RecipeDetailPage() {
           <input key={recipe.menu_name_vi || 'mv'} defaultValue={recipe.menu_name_vi || ''} placeholder="Tên trên menu (tiếng Việt)…" onBlur={e => e.target.value !== (recipe.menu_name_vi || '') && saveRecipe({ menu_name_vi: e.target.value || null })} style={{ ...inp, marginTop: 6, color: 'var(--accent, #e87830)' }} />
         </div>
         <div style={{ margin: '0 0 20px' }}>
-          <label className="label">Description (menu)</label>
-          <textarea defaultValue={recipe.description || ''} placeholder="One-line menu description, e.g. Three cheeses, garlic butter grilled sourdough & a pickle" onBlur={e => e.target.value !== (recipe.description || '') && saveDescription(e.target.value)} style={{ ...inp, minHeight: 46, resize: 'vertical' }} />
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+            <label className="label" style={{ marginBottom: 0 }}>Description (menu)</label>
+            <button onClick={generateDescription} disabled={genBusy} style={{ ...btnLink, color: 'var(--accent, #e87830)', fontWeight: 600 }}>{genBusy ? 'Writing…' : '✨ Write with AI'}</button>
+          </div>
+          <textarea key={recipe.description || 'd'} defaultValue={recipe.description || ''} placeholder="One-line menu description, e.g. Three cheeses, garlic butter grilled sourdough & a pickle" onBlur={e => e.target.value !== (recipe.description || '') && saveDescription(e.target.value)} style={{ ...inp, minHeight: 46, resize: 'vertical', marginTop: 4 }} />
           <textarea key={recipe.description_vi || 'vi'} defaultValue={recipe.description_vi || ''} placeholder="Mô tả tiếng Việt…" onBlur={e => e.target.value !== (recipe.description_vi || '') && saveRecipe({ description_vi: e.target.value || null })} style={{ ...inp, minHeight: 46, resize: 'vertical', marginTop: 6, color: 'var(--accent, #e87830)' }} />
         </div>
         </>
