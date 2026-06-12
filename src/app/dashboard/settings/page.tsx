@@ -125,7 +125,8 @@ export default function SettingsPage() {
 
         {/* Staff list */}
         <div className="card" style={{ overflow: 'hidden' }}>
-          <table className="data-table">
+          <div style={{ overflowX: 'auto' }}>
+          <table className="data-table" style={{ minWidth: 720 }}>
             <thead>
               <tr><th>Name</th><th>Email</th><th>Role</th><th>Department</th><th>Status</th><th style={{ textAlign: 'right' }}>Actions</th></tr>
             </thead>
@@ -169,6 +170,7 @@ export default function SettingsPage() {
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       </div>
 
