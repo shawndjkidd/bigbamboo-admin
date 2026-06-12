@@ -34,6 +34,7 @@ const NAV: NavItem[] = [
 
   { href: '#recipes', label: 'Recipes', section: true },
   { href: '/dashboard/ops/recipes', label: 'Recipes' },
+  { href: '/dashboard/ops/margins', label: 'Margins' },
 
   { href: '#kitchen', label: 'Kitchen', section: true },
   { href: '/dashboard/ops/ingredients?dept=kitchen', label: 'Ingredients' },
