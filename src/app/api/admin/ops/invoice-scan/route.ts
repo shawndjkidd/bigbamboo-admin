@@ -14,27 +14,34 @@ export async function POST(req: NextRequest) {
 
   let imageBase64 = '', mimeType = 'image/jpeg'
   let ingredients: string[] = []
+  let categories: { key: string; label: string }[] = []
   try {
     const b = await req.json()
     imageBase64 = (b.imageBase64 || '').replace(/^data:[^,]+,/, '') // strip data URL prefix if present
     mimeType = b.mimeType || 'image/jpeg'
     if (Array.isArray(b.ingredients)) ingredients = b.ingredients.map((s: any) => String(s)).filter(Boolean).slice(0, 400)
+    if (Array.isArray(b.categories)) categories = b.categories.filter((c: any) => c && c.key).map((c: any) => ({ key: String(c.key), label: String(c.label || c.key) })).slice(0, 40)
   } catch { return NextResponse.json({ error: 'bad request body' }, { status: 400 }) }
   if (!imageBase64) return NextResponse.json({ error: 'no image provided' }, { status: 400 })
 
-  const matchBlock = ingredients.length
-    ? `\n- match = the EXACT ingredient name from the list below that refers to the SAME product, ignoring brand, size and packaging (e.g. "ỨC PHI LE GA CN CP 1KG" → "Chicken breast"; "HANH TAY T.HANG 1KG" → "Yellow onions"). Match by meaning, not spelling. Set match ONLY when you are confident it is the same product — if unsure, use null. Never force a match to an unrelated ingredient.\nIngredients we already track:\n${ingredients.map(n => '- ' + n).join('\n')}`
-    : '\n- match = null (no ingredient list provided).'
-  const prompt = `You are reading a supplier purchase invoice for a bar/restaurant in Vietnam. Extract the product line items AND the invoice totals.
+  const catList = categories.length ? categories : [{ key: 'food', label: 'Food' }, { key: 'consumable', label: 'Consumables' }, { key: 'capex', label: 'Equipment (CapEx)' }, { key: 'other_opex', label: 'Other operating' }]
+  const ingBlock = ingredients.length ? `\nINGREDIENTS WE ALREADY TRACK (food & drink only — match against these):\n${ingredients.map(n => '- ' + n).join('\n')}` : ''
+  const prompt = `You are reading a supplier purchase invoice for a bar/restaurant in Vietnam. Extract every product line item and the invoice totals.
 Return ONLY valid JSON of this shape:
-{"vendor": string|null, "date": string|null, "currency": string, "items": [{"name": string, "qty": number, "unit": string|null, "total_price": number, "match": string|null}], "tax": number, "fees": number, "grand_total": number}
+{"vendor": string|null, "date": string|null, "currency": string, "items": [{"name": string, "qty": number, "unit": string|null, "total_price": number, "is_ingredient": boolean, "match": string|null, "suggested_name": string|null, "base_unit": string|null, "pack_size": number|null, "category": string}], "tax": number, "fees": number, "grand_total": number}
 Rules:
-- items = ONLY product lines actually printed on this invoice. NEVER invent, add, or guess a product that is not clearly printed. If a line is unreadable, omit it rather than guessing.
-- name = copy the product text EXACTLY as printed (keep the original Vietnamese and any abbreviations; do NOT translate, expand or rewrite it). Do NOT put subtotal/tax/discount/shipping rows in items.
-- total_price = the line's total as a plain number (no thousands separators). Amounts are usually Vietnamese Dong (whole numbers).
-- qty = how many purchase units were bought (bottles, cans, kg, bags, packs). If unclear use 1. unit = the purchase unit if shown.
-- tax = total VAT/tax amount on the invoice (0 if none). fees = total delivery/shipping/service charge (0 if none). grand_total = the final amount payable.${matchBlock}
-- If the image is not a readable invoice, return {"vendor":null,"date":null,"currency":"VND","items":[],"tax":0,"fees":0,"grand_total":0}.`
+- items = ONLY product lines actually printed on this invoice. NEVER invent or guess a product that is not printed. Omit unreadable lines.
+- name = copy the product text EXACTLY as printed (keep the Vietnamese and abbreviations; do NOT translate or rewrite it). Do NOT include subtotal/tax/discount/shipping rows.
+- total_price = the line total as a plain number (no separators). Usually Vietnamese Dong.
+- qty = number of purchase units bought (bottles, cans, kg, bags, packs). If unclear use 1. unit = the purchase unit shown.
+- is_ingredient = true ONLY if the line is a FOOD or DRINK ingredient used to make menu items (produce, meat, dairy, sauces, spices, alcohol, mixers, etc.). false for everything else: cleaning supplies, gloves, bags, paper goods, equipment, tools, scales, utilities.
+- match = if is_ingredient is true, the EXACT name from the ingredient list that is the SAME product (ignore brand/size/packaging; match by meaning, NOT spelling — never match on shared letters such as "cân" vs "can"). Use null if it is not clearly the same product, or if is_ingredient is false.
+- suggested_name = if is_ingredient is true but match is null, a short clean English ingredient name to create (e.g. "Yellow onions"); otherwise null.
+- base_unit = for a new ingredient: "g" for solids, "ml" for liquids, "each" for countable items; else null.
+- pack_size = for a new ingredient, the size of ONE purchase unit in base_unit ("1KG"→1000, "5L"→5000, "200G"→200, a single item→1); else null.
+- category = the best spend-category KEY for this line from: ${catList.map(c => c.key + ' (' + c.label + ')').join(', ')}. Food/drink ingredients → food (or beer/wine/liquor/mixer/garnish if clearly that). Cleaning/gloves/disposables → consumable. Tools/equipment/appliances → capex.
+- tax = total VAT (0 if none). fees = delivery/service charge (0 if none). grand_total = final amount payable.
+- If the image is not a readable invoice, return {"vendor":null,"date":null,"currency":"VND","items":[],"tax":0,"fees":0,"grand_total":0}.${ingBlock}`
 
   const body = {
     contents: [{ parts: [{ text: prompt }, { inline_data: { mime_type: mimeType, data: imageBase64 } }] }],
@@ -67,13 +74,22 @@ Rules:
   let parsed: any
   try { parsed = JSON.parse(text) } catch { return NextResponse.json({ error: 'Could not read the invoice — try a clearer photo.', raw: text }, { status: 422 }) }
 
-  const items = Array.isArray(parsed?.items) ? parsed.items.map((it: any) => ({
-    name: String(it.name || '').trim(),
-    qty: Number(it.qty) > 0 ? Number(it.qty) : 1,
-    unit: it.unit ? String(it.unit) : null,
-    total_price: Math.round(Number(it.total_price) || 0),
-    match: it.match ? String(it.match).trim() : null,
-  })).filter((it: any) => it.name) : []
+  const validCats = new Set(catList.map(c => c.key))
+  const items = Array.isArray(parsed?.items) ? parsed.items.map((it: any) => {
+    const isIng = it.is_ingredient === true
+    return {
+      name: String(it.name || '').trim(),
+      qty: Number(it.qty) > 0 ? Number(it.qty) : 1,
+      unit: it.unit ? String(it.unit) : null,
+      total_price: Math.round(Number(it.total_price) || 0),
+      is_ingredient: isIng,
+      match: isIng && it.match ? String(it.match).trim() : null,
+      suggested_name: isIng && it.suggested_name ? String(it.suggested_name).trim() : null,
+      base_unit: it.base_unit ? String(it.base_unit).trim() : null,
+      pack_size: Number(it.pack_size) > 0 ? Number(it.pack_size) : null,
+      category: it.category && validCats.has(String(it.category)) ? String(it.category) : (isIng ? 'food' : 'other_opex'),
+    }
+  }).filter((it: any) => it.name) : []
 
   return NextResponse.json({ ok: true, vendor: parsed?.vendor || null, date: parsed?.date || null, currency: parsed?.currency || 'VND', items, tax: Math.round(Number(parsed?.tax) || 0), fees: Math.round(Number(parsed?.fees) || 0), grand_total: Math.round(Number(parsed?.grand_total) || 0) })
 }
