@@ -92,16 +92,18 @@ export default function InvoiceScanPage() {
       const { dataUrl, mime } = await compressForUpload(file)
       const r = await fetch('/api/admin/ops/invoice-scan', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ imageBase64: dataUrl, mimeType: mime }),
+        body: JSON.stringify({ imageBase64: dataUrl, mimeType: mime, ingredients: ings.map(i => i.name) }),
       })
       const j = await r.json()
       if (!r.ok) { setMsg(j.error || 'Scan failed'); setScanning(false); return }
       if (j.vendor && !vendor) setVendor(String(j.vendor))
       setVat(String(Math.round(Number(j.tax) || 0)))
       setDelivery(String(Math.round(Number(j.fees) || 0)))
+      // Prefer the AI's match (by ingredient name) and fall back to the local fuzzy guess.
+      const byName = new Map(ings.map(i => [i.name.toLowerCase(), i.id]))
       const parsed: Item[] = (j.items || []).map((it: any) => ({
         name: it.name, qty: Number(it.qty) || 1, total_price: Number(it.total_price) || 0, unit: it.unit || null,
-        ingredientId: guessIngredient(it.name, ings),
+        ingredientId: (it.match && byName.get(String(it.match).toLowerCase())) || guessIngredient(it.name, ings),
       }))
       setItems(parsed)
       if (parsed.length === 0) setMsg('No line items found — try a clearer photo.')
