@@ -10,6 +10,7 @@ type Recipe = {
   yield_qty: number; yield_unit: string; sale_price: number | null;
   is_kegged: boolean; keg_size_ml: number | null; pour_size_ml: number | null;
   description: string | null; description_vi: string | null; active: boolean;
+  menu_name: string | null; menu_name_vi: string | null;
   method: string | null; subtitle: string | null; image_url: string | null;
   plating_dinein: string | null; plating_togo: string | null;
   glass: string | null; ice: string | null; garnish: string | null;
@@ -235,6 +236,12 @@ export default function RecipeDetailPage() {
     if (autoVi && v.trim()) { const vi = await translateToVi(v); if (vi) await saveRecipe({ description_vi: vi }) }
   }
 
+  // Save the customer-facing menu name (separate from the recipe's organizing name). Auto-translates the VN too.
+  async function saveMenuName(v: string) {
+    await saveRecipe({ menu_name: v || null })
+    if (autoVi && v.trim()) { const vi = await translateToVi(v); if (vi) await saveRecipe({ menu_name_vi: vi }) }
+  }
+
   // Rescale a batch: multiply every INGREDIENT component by (newSize / oldSize) and update the batch size.
   // Works for any recipe — yield_qty is the batch size. For kegged drinks, keg_size_ml is kept in sync.
   async function rescaleBatch(newSizeStr: string) {
@@ -270,7 +277,7 @@ export default function RecipeDetailPage() {
     setMenuBusy(true)
     const price = recipe.sale_price ? `${Math.round(Number(recipe.sale_price) / 1000)}k` : 'TBA'
     const { error } = await supabase.from('menu_items').insert({
-      recipe_id: recipeId, section: menuSection, name: recipe.name, name_vi: recipe.name_vi,
+      recipe_id: recipeId, section: menuSection, name: recipe.menu_name || recipe.name, name_vi: recipe.menu_name_vi || recipe.name_vi,
       subtitle: recipe.subtitle, description: recipe.description, description_vi: recipe.description_vi,
       price, is_draft: false, is_available: true, sort_order: 999,
     })
@@ -285,7 +292,7 @@ export default function RecipeDetailPage() {
     setMenuBusy(true)
     const price = recipe.sale_price ? `${Math.round(Number(recipe.sale_price) / 1000)}k` : (menuItem.price || 'TBA')
     const { error } = await supabase.from('menu_items').update({
-      name: recipe.name, name_vi: recipe.name_vi, subtitle: recipe.subtitle,
+      name: recipe.menu_name || recipe.name, name_vi: recipe.menu_name_vi || recipe.name_vi, subtitle: recipe.subtitle,
       description: recipe.description, description_vi: recipe.description_vi, price,
     }).eq('id', menuItem.id)
     setMenuBusy(false)
@@ -306,7 +313,9 @@ export default function RecipeDetailPage() {
   async function uploadPhoto(file: File) {
     const ext = (file.name.split('.').pop() || 'jpg').toLowerCase()
     const path = `recipes/${recipeId}-${Date.now()}.${ext}`
-    const { error } = await supabase.storage.from('venue-assets').upload(path, file, { upsert: true, contentType: file.type })
+    // upsert:false — the path is already unique (recipeId + timestamp), and an upsert would require an
+    // UPDATE policy the venue-assets bucket doesn't have (causing "new row violates row-level security policy").
+    const { error } = await supabase.storage.from('venue-assets').upload(path, file, { upsert: false, contentType: file.type })
     if (error) { alert(error.message); return }
     const { data } = supabase.storage.from('venue-assets').getPublicUrl(path)
     await savePhoto(data.publicUrl)
@@ -448,6 +457,11 @@ export default function RecipeDetailPage() {
           <div><label className="label">Category</label><select defaultValue={recipe.category} onChange={e => saveRecipe({ category: e.target.value })} style={inp}>{['cocktail','beer','wine','na_drink','food','snack','syrup','garnish','other'].map(c => <option key={c} value={c}>{c}</option>)}</select></div>
           <div><label className="label">Subtitle</label><input defaultValue={recipe.subtitle || ''} onBlur={e => saveRecipe({ subtitle: e.target.value })} style={inp} /></div>
           <div><label className="label">Sale price (₫)</label><input defaultValue={recipe.sale_price ?? ''} inputMode="decimal" onBlur={e => { const v = e.target.value.replace(/[^0-9.]/g, ''); saveRecipe({ sale_price: v ? Number(v) : null }) }} style={inp} /></div>
+        </div>
+        <div style={{ margin: '0 0 14px' }}>
+          <label className="label">Menu name (leave blank to use the recipe name on the menu)</label>
+          <input defaultValue={recipe.menu_name || ''} placeholder={recipe.name} onBlur={e => e.target.value !== (recipe.menu_name || '') && saveMenuName(e.target.value)} style={inp} />
+          <input key={recipe.menu_name_vi || 'mv'} defaultValue={recipe.menu_name_vi || ''} placeholder="Tên trên menu (tiếng Việt)…" onBlur={e => e.target.value !== (recipe.menu_name_vi || '') && saveRecipe({ menu_name_vi: e.target.value || null })} style={{ ...inp, marginTop: 6, color: 'var(--accent, #e87830)' }} />
         </div>
         <div style={{ margin: '0 0 20px' }}>
           <label className="label">Description (menu)</label>
