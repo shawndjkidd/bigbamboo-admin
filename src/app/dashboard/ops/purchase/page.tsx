@@ -37,6 +37,14 @@ export default function PurchasePage() {
   const [receipt, setReceipt] = useState<File | null>(null)
   const [saving, setSaving]   = useState(false)
   const [msg, setMsg]         = useState<string | null>(null)
+  // Inline edit state for the recent-purchases list
+  const [editId, setEditId]   = useState<string | null>(null)
+  const [eDate, setEDate]     = useState('')
+  const [eVendor, setEVendor] = useState('')
+  const [eCat, setECat]       = useState('food')
+  const [eAmount, setEAmount] = useState('')
+  const [eNotes, setENotes]   = useState('')
+  const [rowBusy, setRowBusy] = useState(false)
 
   useEffect(() => { init() }, [])
 
@@ -120,6 +128,46 @@ export default function PurchasePage() {
     await loadRecent(venueId)
   }
 
+  function startEdit(r: Row) {
+    setEditId(r.id)
+    setEDate(r.occurred_on)
+    setEVendor(r.vendor || '')
+    setECat(r.category)
+    setEAmount(String(Math.round(Number(r.amount))))
+    setENotes(r.notes || '')
+    setMsg(null)
+  }
+
+  function cancelEdit() { setEditId(null) }
+
+  async function saveEdit(id: string) {
+    const amt = Number(eAmount.replace(/[^\d]/g, ''))
+    if (!amt) { setMsg('Enter an amount'); return }
+    setRowBusy(true); setMsg(null)
+    const { error } = await ops().from('purchases').update({
+      occurred_on: eDate,
+      vendor: eVendor.trim() || null,
+      category: eCat,
+      amount: amt,
+      notes: eNotes.trim() || null,
+    }).eq('id', id)
+    setRowBusy(false)
+    if (error) { setMsg(error.message); return }
+    setEditId(null)
+    setMsg('Updated')
+    await loadRecent(venueId)
+  }
+
+  async function removeRow(r: Row) {
+    if (!confirm(`Delete this purchase?\n\n${r.occurred_on} · ${r.vendor || '—'} · ${vnd(r.amount)}\n${r.notes || ''}\n\nThis can't be undone.`)) return
+    setRowBusy(true); setMsg(null)
+    const { error } = await ops().from('purchases').delete().eq('id', r.id)
+    setRowBusy(false)
+    if (error) { setMsg(error.message); return }
+    setMsg('Deleted')
+    await loadRecent(venueId)
+  }
+
   return (
     <div style={{ maxWidth: 520 }}>
       <h2 style={{ fontSize: 22, fontWeight: 600, marginBottom: 4 }}>Add Purchase</h2>
@@ -179,18 +227,44 @@ export default function PurchasePage() {
         </h3>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
           <thead><tr style={{ background: 'var(--bg-sidebar, #fafafa)' }}>
-            <th style={th}>Date</th><th style={th}>Vendor</th><th style={th}>Cat</th><th style={{ ...th, textAlign: 'right' }}>Amount</th><th style={th}></th>
+            <th style={th}>Date</th><th style={th}>Vendor</th><th style={th}>Cat</th><th style={{ ...th, textAlign: 'right' }}>Amount</th><th style={{ ...th, textAlign: 'right' }}></th>
           </tr></thead>
           <tbody>
             {recent.length === 0 && <tr><td colSpan={5} style={{ padding: 12, color: 'var(--text-muted, #999)' }}>No entries yet.</td></tr>}
             {recent.map(r => (
-              <tr key={r.id} style={{ borderTop: '1px solid var(--border, #eee)' }}>
-                <td style={td}>{r.occurred_on}</td>
-                <td style={{ ...td, color: 'var(--text-muted, #666)' }}>{r.vendor || '—'}</td>
-                <td style={{ ...td, fontSize: 11, color: 'var(--text-muted, #999)' }}>{r.category}</td>
-                <td style={{ ...td, textAlign: 'right' }}>{vnd(r.amount)}</td>
-                <td style={{ ...td, textAlign: 'right' }}>{r.receipt_url ? <button onClick={() => viewReceipt(r.receipt_url!)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 14 }} title="View receipt">📎</button> : ''}</td>
-              </tr>
+              editId === r.id ? (
+                <tr key={r.id} style={{ borderTop: '1px solid var(--border, #eee)', background: 'var(--bg-sidebar, #fafafa)' }}>
+                  <td style={{ ...td, padding: 6 }}>
+                    <input type="date" value={eDate} onChange={e => setEDate(e.target.value)} style={editInp} />
+                    <input type="text" list="vendor-list" value={eVendor} onChange={e => setEVendor(e.target.value)} placeholder="Vendor" style={{ ...editInp, marginTop: 4 }} />
+                    <input type="text" value={eNotes} onChange={e => setENotes(e.target.value)} placeholder="Notes" style={{ ...editInp, marginTop: 4 }} />
+                  </td>
+                  <td colSpan={2} style={{ ...td, padding: 6, verticalAlign: 'top' }}>
+                    <select value={eCat} onChange={e => setECat(e.target.value)} style={editInp}>
+                      {(cats.length ? cats : CATEGORIES.map(c => ({ key: c.v, label: c.label }))).map(c => <option key={c.key} value={c.key}>{c.label}</option>)}
+                    </select>
+                  </td>
+                  <td style={{ ...td, padding: 6, textAlign: 'right', verticalAlign: 'top' }}>
+                    <input type="text" inputMode="numeric" value={eAmount} onChange={e => setEAmount(e.target.value)} style={{ ...editInp, textAlign: 'right', fontWeight: 600 }} />
+                  </td>
+                  <td style={{ ...td, padding: 6, textAlign: 'right', verticalAlign: 'top', whiteSpace: 'nowrap' }}>
+                    <button onClick={() => saveEdit(r.id)} disabled={rowBusy} style={miniPrimary} title="Save">✓</button>
+                    <button onClick={cancelEdit} disabled={rowBusy} style={miniBtn} title="Cancel">✕</button>
+                  </td>
+                </tr>
+              ) : (
+                <tr key={r.id} style={{ borderTop: '1px solid var(--border, #eee)' }}>
+                  <td style={td}>{r.occurred_on}</td>
+                  <td style={{ ...td, color: 'var(--text-muted, #666)' }}>{r.vendor || '—'}</td>
+                  <td style={{ ...td, fontSize: 11, color: 'var(--text-muted, #999)' }}>{r.category}</td>
+                  <td style={{ ...td, textAlign: 'right' }}>{vnd(r.amount)}</td>
+                  <td style={{ ...td, textAlign: 'right', whiteSpace: 'nowrap' }}>
+                    {r.receipt_url && <button onClick={() => viewReceipt(r.receipt_url!)} style={iconBtn} title="View receipt">📎</button>}
+                    <button onClick={() => startEdit(r)} style={iconBtn} title="Edit">✏️</button>
+                    <button onClick={() => removeRow(r)} style={iconBtn} title="Delete">🗑️</button>
+                  </td>
+                </tr>
+              )
             ))}
           </tbody>
         </table>
@@ -209,3 +283,7 @@ const Field = ({ label, children }: { label: string; children: React.ReactNode }
 const inp = { width: '100%', padding: '10px 12px', fontSize: 14, border: '1px solid var(--border, #e5e5e5)', borderRadius: 6, background: 'var(--bg-card, #fff)', color: 'var(--text, #333)' }
 const th  = { padding: '8px 12px', textAlign: 'left' as const, fontWeight: 600, fontSize: 11, textTransform: 'uppercase' as const, color: 'var(--text-muted, #999)', letterSpacing: '0.05em' }
 const td  = { padding: '8px 12px', color: 'var(--text, #333)' }
+const editInp = { width: '100%', padding: '6px 8px', fontSize: 13, border: '1px solid var(--border, #e5e5e5)', borderRadius: 5, background: 'var(--bg-card, #fff)', color: 'var(--text, #333)', boxSizing: 'border-box' as const }
+const iconBtn = { background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, padding: '2px 4px' }
+const miniBtn = { background: 'var(--bg-card, #fff)', border: '1px solid var(--border, #e5e5e5)', color: 'var(--text-secondary, #666)', cursor: 'pointer', fontSize: 13, padding: '5px 9px', borderRadius: 5, marginLeft: 4 }
+const miniPrimary = { background: 'var(--accent, #e87830)', border: '1px solid var(--accent, #e87830)', color: '#fff', cursor: 'pointer', fontSize: 13, padding: '5px 9px', borderRadius: 5 }
