@@ -174,6 +174,9 @@ export default function SettingsPage() {
         </div>
       </div>
 
+      {/* Display links */}
+      <DisplayLinks />
+
       {/* Loyalty Config */}
       <div className="card" style={{ padding: 24 }}>
         <div className="section-title" style={{ marginBottom: 20 }}>Loyalty Program</div>
@@ -181,6 +184,48 @@ export default function SettingsPage() {
       </div>
 
       {toast && <div className="toast">{toast}</div>}
+    </div>
+  )
+}
+
+function DisplayLinks() {
+  const [origin, setOrigin] = useState('')
+  const [copied, setCopied] = useState('')
+  useEffect(() => { setOrigin(window.location.origin) }, [])
+
+  const rows: { label: string; path: string; hint: string }[] = [
+    { label: 'Kitchen display', path: '/kitchen', hint: 'Recipes, add-ons, batches & SOPs — kitchen only' },
+    { label: 'Bar display', path: '/bar', hint: 'Recipes, add-ons, batches & SOPs — bar only' },
+  ]
+
+  async function copy(url: string) {
+    try { await navigator.clipboard.writeText(url); setCopied(url); setTimeout(() => setCopied(''), 1600) } catch {}
+  }
+
+  return (
+    <div className="card" style={{ padding: 24, marginBottom: 20 }}>
+      <div className="section-title" style={{ marginBottom: 6 }}>Kitchen &amp; Bar display links</div>
+      <div style={{ fontSize: 13, color: 'var(--text-muted, #999)', marginBottom: 16 }}>
+        Open these on a phone or tablet, sign in once with a Display account (set its Department to Kitchen or Bar), then Add to Home Screen. Read-only, view-only.
+      </div>
+      <div style={{ display: 'grid', gap: 10 }}>
+        {rows.map(r => {
+          const url = origin + r.path
+          return (
+            <div key={r.path} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', border: '1px solid var(--border, #e5e5e5)', borderRadius: 10, padding: '12px 14px' }}>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontWeight: 600, fontSize: 14 }}>{r.label}</div>
+                <div style={{ fontSize: 12, color: 'var(--text-muted, #999)' }}>{r.hint}</div>
+                <div style={{ fontSize: 13, color: 'var(--accent, #e87830)', marginTop: 4, wordBreak: 'break-all' }}>{url}</div>
+              </div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button className="btn-outline" style={{ padding: '7px 14px', fontSize: 13 }} onClick={() => copy(url)}>{copied === url ? 'Copied!' : 'Copy link'}</button>
+                <a className="btn-outline" style={{ padding: '7px 14px', fontSize: 13, textDecoration: 'none' }} href={r.path} target="_blank" rel="noreferrer">Open</a>
+              </div>
+            </div>
+          )
+        })}
+      </div>
     </div>
   )
 }

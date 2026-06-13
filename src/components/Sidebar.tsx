@@ -38,6 +38,7 @@ const NAV: NavItem[] = [
   { href: '/dashboard/ops/ask', label: 'Ask your data' },
   { href: '/dashboard/ops/sops', label: 'SOPs' },
   { href: '/kitchen', label: 'Kitchen Mode ↗' },
+  { href: '/bar', label: 'Bar Mode ↗' },
 
   { href: '#kitchen', label: 'Kitchen', section: true },
   { href: '/dashboard/ops/ingredients?dept=kitchen', label: 'Ingredients' },
