@@ -149,7 +149,7 @@ export default function SettingsPage() {
         <div className="card" style={{ overflow: 'hidden' }}>
           <table className="data-table" style={{ width: '100%', tableLayout: 'fixed' }}>
             <thead>
-              <tr><th style={{ width: '13%' }}>Name</th><th style={{ width: '24%' }}>Email</th><th style={{ width: '18%' }}>Role</th><th style={{ width: '14%' }}>Department</th><th style={{ width: '11%' }}>Status</th><th style={{ width: '20%', textAlign: 'right' }}>Actions</th></tr>
+              <tr><th style={{ width: '13%' }}>Name</th><th style={{ width: '20%' }}>Email</th><th style={{ width: '17%' }}>Role</th><th style={{ width: '13%' }}>Department</th><th style={{ width: '12%' }}>Status</th><th style={{ width: '25%', textAlign: 'right' }}>Actions</th></tr>
             </thead>
             <tbody>
               {staff.map(s => (
@@ -181,11 +181,11 @@ export default function SettingsPage() {
                   <td><span className={`badge ${s.active ? 'badge-green' : 'badge-red'}`}>{s.active ? 'Active' : 'Inactive'}</span></td>
                   <td style={{ textAlign: 'right' }}>
                     {s.id !== currentUser.id && (
-                      <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
-                        <button onClick={() => toggleActive(s.id, s.active)} className={s.active ? 'btn-red' : 'btn-green'} style={{ padding: '5px 10px', fontSize: 12 }}>
+                      <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end', flexWrap: 'nowrap' }}>
+                        <button onClick={() => toggleActive(s.id, s.active)} className={s.active ? 'btn-red' : 'btn-green'} style={{ padding: '5px 10px', fontSize: 12, whiteSpace: 'nowrap' }}>
                           {s.active ? 'Deactivate' : 'Activate'}
                         </button>
-                        <button onClick={() => deleteStaff(s.email, s.name)} className="btn-red" style={{ padding: '5px 10px', fontSize: 12 }}>Delete</button>
+                        <button onClick={() => deleteStaff(s.email, s.name)} className="btn-red" style={{ padding: '5px 10px', fontSize: 12, whiteSpace: 'nowrap' }}>Delete</button>
                       </div>
                     )}
                   </td>
