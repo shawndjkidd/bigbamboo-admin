@@ -279,6 +279,14 @@ function StockSheet({ station }: { station: 'kitchen' | 'bar' }) {
   const [busy, setBusy] = useState(false)
   const [done, setDone] = useState(false)
   const [err, setErr] = useState('')
+  const [newItems, setNewItems] = useState<{ name: string; units: string; unit: string }[]>([])
+  const [nName, setNName] = useState(''); const [nUnits, setNUnits] = useState(''); const [nUnit, setNUnit] = useState('')
+
+  function addNewItem() {
+    if (!nName.trim() || !nUnits) { setErr('Enter a name and a count for the new item'); return }
+    setErr(''); setNewItems(p => [...p, { name: nName.trim(), units: nUnits, unit: nUnit.trim() }])
+    setNName(''); setNUnits(''); setNUnit('')
+  }
 
   useEffect(() => {
     (async () => {
@@ -292,13 +300,15 @@ function StockSheet({ station }: { station: 'kitchen' | 'bar' }) {
   }, [station])
 
   async function submit() {
-    const p_items = items.filter(i => (counts[i.id] ?? '') !== '' && Number(counts[i.id]) >= 0).map(i => ({ ingredient_id: i.id, units: Number(counts[i.id]) }))
+    const counted = items.filter(i => (counts[i.id] ?? '') !== '' && Number(counts[i.id]) >= 0).map(i => ({ ingredient_id: i.id, units: Number(counts[i.id]) }))
+    const extras = newItems.map(n => ({ new_name: n.name, units: Number(n.units), unit: n.unit }))
+    const p_items = [...counted, ...extras]
     if (!p_items.length) { setErr('Enter at least one count'); return }
     setBusy(true); setErr('')
     const { error } = await ops().rpc('submit_stock_count', { p_station: station, p_items, p_note: null })
     setBusy(false)
     if (error) { setErr(error.message); return }
-    setDone(true); setCounts({})
+    setDone(true); setCounts({}); setNewItems([])
   }
 
   if (loading) return <div style={{ color: '#999', padding: 20 }}>Loading stock list…</div>
@@ -329,7 +339,26 @@ function StockSheet({ station }: { station: 'kitchen' | 'bar' }) {
           </div>
         ))}
       </div>
-      {items.length > 0 && <button onClick={submit} disabled={busy} style={{ width: '100%', marginTop: 18, padding: '15px', fontSize: 16, fontWeight: 700, color: '#fff', background: 'var(--accent, #e87830)', border: 'none', borderRadius: 12, cursor: busy ? 'default' : 'pointer', opacity: busy ? 0.6 : 1 }}>{busy ? 'Submitting…' : 'Submit count'}</button>}
+      <div style={{ marginTop: 22, borderTop: '1px solid var(--border, #eee)', paddingTop: 16 }}>
+        <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#999', marginBottom: 4 }}>Not on the list?</div>
+        <div style={{ fontSize: 13, color: '#999', marginBottom: 10 }}>Add it here — the manager turns it into a real stock item when they review.</div>
+        {newItems.map((n, idx) => (
+          <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 0', borderBottom: '1px solid var(--border, #eee)', fontSize: 14 }}>
+            <span>{n.name} <span style={{ color: '#999', fontSize: 11, marginLeft: 6 }}>NEW</span></span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>{n.units} {n.unit}
+              <button onClick={() => setNewItems(p => p.filter((_, i) => i !== idx))} style={{ background: 'none', border: 'none', color: '#a32d2d', cursor: 'pointer', fontSize: 16 }} aria-label="Remove">×</button>
+            </span>
+          </div>
+        ))}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 70px 80px', gap: 8, marginTop: 10 }}>
+          <input value={nName} onChange={e => setNName(e.target.value)} placeholder="Item name" style={{ padding: '11px 12px', fontSize: 14, border: '1px solid var(--border, #e5e5e5)', borderRadius: 8 }} />
+          <input value={nUnits} onChange={e => setNUnits(e.target.value.replace(/[^\d.]/g, ''))} inputMode="decimal" placeholder="Qty" style={{ padding: '11px 8px', fontSize: 14, border: '1px solid var(--border, #e5e5e5)', borderRadius: 8, textAlign: 'center' }} />
+          <input value={nUnit} onChange={e => setNUnit(e.target.value)} placeholder="unit" style={{ padding: '11px 8px', fontSize: 14, border: '1px solid var(--border, #e5e5e5)', borderRadius: 8, textAlign: 'center' }} />
+        </div>
+        <button onClick={addNewItem} style={{ width: '100%', marginTop: 8, padding: '11px', fontSize: 14, fontWeight: 600, background: 'var(--bg-sidebar, #f3f3f3)', border: '1px solid var(--border, #e5e5e5)', borderRadius: 8, cursor: 'pointer', color: 'var(--text, #333)' }}>+ Add off-list item</button>
+      </div>
+
+      {(items.length > 0 || newItems.length > 0) && <button onClick={submit} disabled={busy} style={{ width: '100%', marginTop: 18, padding: '15px', fontSize: 16, fontWeight: 700, color: '#fff', background: 'var(--accent, #e87830)', border: 'none', borderRadius: 12, cursor: busy ? 'default' : 'pointer', opacity: busy ? 0.6 : 1 }}>{busy ? 'Submitting…' : 'Submit count'}</button>}
     </div>
   )
 }
