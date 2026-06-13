@@ -122,6 +122,37 @@ export async function buildRecipeDetailHtml(id: string): Promise<string> {
   return recipeSectionHtml(id, data, false)
 }
 
+// Structured recipe detail — so the Kitchen page can render it in React and scale the
+// ingredient amounts live (×½, ×2, ×3 …). Only ingredient quantities and the yield scale.
+export type KIngredient = { name: string; name_vi: string | null; qty: number; unit: string }
+export type KRecipeDetail = {
+  name: string; name_vi: string | null; category: string; subtitle: string | null
+  yield_qty: number; yield_unit: string
+  ingredients: KIngredient[]
+  stepsEn: string[]; stepsVi: string[]
+  isDrink: boolean; glass: string | null; ice: string | null; garnish: string | null
+  platingEnDinein: string[]; platingViDinein: string[]
+  platingEnTogo: string[]; platingViTogo: string[]
+}
+export async function fetchRecipeDetail(id: string): Promise<KRecipeDetail | null> {
+  const data = await fetchRecipesFull([id])
+  const r = data.recById.get(id); if (!r) return null
+  const cs = (data.byRecipe.get(id) || []).slice().sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
+  const ingredients: KIngredient[] = cs.map(c => {
+    const o = c.ingredient_id ? data.ingMap.get(c.ingredient_id) : data.subMap.get(c.sub_recipe_id)
+    return { name: o?.name || '—', name_vi: o?.name_vi || null, qty: Number(c.qty), unit: String(c.unit || '') }
+  })
+  const lines = (s: string | null) => String(s || '').split('\n').filter(Boolean)
+  return {
+    name: r.name, name_vi: r.name_vi, category: r.category, subtitle: r.subtitle,
+    yield_qty: Number(r.yield_qty), yield_unit: r.yield_unit,
+    ingredients, stepsEn: lines(r.method), stepsVi: lines(r.method_vi),
+    isDrink: DRINK.has(r.category), glass: r.glass, ice: r.ice, garnish: r.garnish,
+    platingEnDinein: lines(r.plating_dinein), platingViDinein: lines(r.plating_dinein_vi),
+    platingEnTogo: lines(r.plating_togo), platingViTogo: lines(r.plating_togo_vi),
+  }
+}
+
 // Render a single SOP to HTML (used by the live page detail pane). Bilingual: each step
 // shows English and Vietnamese side by side (Vietnamese falls back to blank if not set yet).
 export function buildSopDetailHtml(s: KSop): string {
