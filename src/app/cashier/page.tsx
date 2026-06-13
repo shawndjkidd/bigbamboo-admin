@@ -150,20 +150,23 @@ export default function CashierPage() {
           </>
         )}
 
-        {/* Just closed → summary */}
+        {/* Just closed → summary. Only a shortage is shown; a balanced/over till just reads
+            "Balanced" so nobody treats an overage as a tip. The true over/short is still
+            recorded for the manager's review. */}
         {closed && (
           <Section title="Shift closed">
             <Row label="Opening float" value={vnd(shift!.opening_total)} />
             <Row label="Cash sales" value={vnd(shift!.cash_sales)} />
             <Row label="Paid out" value={'– ' + vnd(shift!.payouts)} />
-            <Row label="Expected in till" value={vnd(shift!.expected)} bold />
             <Row label="Counted in till" value={vnd(shift!.closing_total)} bold />
-            <div style={{ marginTop: 10, padding: '12px 14px', borderRadius: 10, textAlign: 'center',
-              background: Math.abs(Number(shift!.over_short)) < 1000 ? '#e7f5ec' : '#fdecec',
-              color: Math.abs(Number(shift!.over_short)) < 1000 ? '#1d7a46' : '#a32d2d' }}>
-              <div style={{ fontSize: 13 }}>{Number(shift!.over_short) >= 0 ? 'Over' : 'Short'}</div>
-              <div style={{ fontSize: 26, fontWeight: 700 }}>{vnd(Math.abs(Number(shift!.over_short)))}</div>
-            </div>
+            {Number(shift!.over_short) < 0 ? (
+              <div style={{ marginTop: 10, padding: '14px', borderRadius: 10, textAlign: 'center', background: '#fdecec', color: '#a32d2d' }}>
+                <div style={{ fontSize: 13 }}>Short — please recount</div>
+                <div style={{ fontSize: 26, fontWeight: 700 }}>{vnd(Math.abs(Number(shift!.over_short)))}</div>
+              </div>
+            ) : (
+              <div style={{ marginTop: 10, padding: '14px', borderRadius: 10, textAlign: 'center', background: '#e7f5ec', color: '#1d7a46', fontSize: 18, fontWeight: 700 }}>Balanced</div>
+            )}
             <Big onClick={() => { setShift(null); setMsg('') }} disabled={false}>Start a new shift</Big>
           </Section>
         )}
