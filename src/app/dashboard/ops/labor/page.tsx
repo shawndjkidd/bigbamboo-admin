@@ -32,6 +32,11 @@ export default function LaborPage() {
   const [sRate, setSRate] = useState('')
   const [sNotes, setSNotes] = useState('')
 
+  // edit-shift inline
+  const [shEditId, setShEditId] = useState<string | null>(null)
+  const [shHours, setShHours] = useState('')
+  const [shRate, setShRate] = useState('')
+
   useEffect(() => { init() }, [])
   async function init() {
     const { data: { session } } = await supabase.auth.getSession()
@@ -127,6 +132,17 @@ export default function LaborPage() {
     await ops().from('labor_shifts').delete().eq('id', id)
     await load(venueId)
   }
+  function startEditShift(s: Shift) {
+    setShEditId(s.id); setShHours(String(Number(s.hours))); setShRate(String(Number(s.hourly_rate))); setMsg(null)
+  }
+  async function saveShift(id: string) {
+    const hours = Number(shHours); const rate = Number(shRate.replace(/[^\d.]/g, ''))
+    if (!hours || hours <= 0) { setMsg('Enter hours worked'); return }
+    if (!rate || rate <= 0) { setMsg('Enter an hourly rate'); return }
+    const { error } = await ops().from('labor_shifts').update({ hours, hourly_rate: rate }).eq('id', id)
+    if (error) { setMsg(error.message); return }
+    setShEditId(null); await load(venueId)
+  }
 
   if (loading) return <div style={{ color: 'var(--text-muted, #999)', fontSize: 14 }}>Loading…</div>
   if (!(role && canManageRecipes(role))) return <div style={{ color: 'var(--text-muted, #999)', fontSize: 14 }}>Labor is managed by managers.</div>
@@ -177,14 +193,35 @@ export default function LaborPage() {
         <tbody>
           {shifts.length === 0 && <tr><td colSpan={6} style={{ padding: 12, color: 'var(--text-muted, #999)' }}>No shifts logged this month.</td></tr>}
           {shifts.map(s => (
-            <tr key={s.id} style={{ borderTop: '1px solid var(--border, #eee)' }}>
-              <td style={td}>{s.occurred_on}</td>
-              <td style={td}>{empName(s.employee_id)}</td>
-              <td style={{ ...td, textAlign: 'right' }}>{Number(s.hours).toFixed(1)}</td>
-              <td style={{ ...td, textAlign: 'right' }}>{vnd(s.hourly_rate)}</td>
-              <td style={{ ...td, textAlign: 'right', fontWeight: 600 }}>{vnd(s.shift_cost)}</td>
-              <td style={{ ...td, textAlign: 'right' }}><button onClick={() => delShift(s.id)} style={btnLink}>Delete</button></td>
-            </tr>
+            shEditId === s.id ? (
+              <tr key={s.id} style={{ borderTop: '1px solid var(--border, #eee)', background: 'var(--bg-sidebar, #fafafa)' }}>
+                <td style={td}>{s.occurred_on}</td>
+                <td style={td}>{empName(s.employee_id)}</td>
+                <td style={{ ...td, textAlign: 'right' }}>
+                  <input inputMode="decimal" value={shHours} onChange={e => setShHours(e.target.value)} style={{ ...inp, padding: '6px 8px', textAlign: 'right', width: 70 }} />
+                </td>
+                <td style={{ ...td, textAlign: 'right' }}>
+                  <input inputMode="numeric" value={shRate} onChange={e => setShRate(e.target.value)} style={{ ...inp, padding: '6px 8px', textAlign: 'right', width: 90 }} />
+                </td>
+                <td style={{ ...td, textAlign: 'right', fontWeight: 600 }}>{vnd((Number(shHours) || 0) * (Number(shRate.replace(/[^\d.]/g, '')) || 0))}</td>
+                <td style={{ ...td, textAlign: 'right', whiteSpace: 'nowrap' }}>
+                  <button onClick={() => saveShift(s.id)} style={{ ...btnLink, color: 'var(--accent, #e87830)', fontWeight: 600 }}>Save</button>
+                  <button onClick={() => setShEditId(null)} style={{ ...btnLink, marginLeft: 10 }}>Cancel</button>
+                </td>
+              </tr>
+            ) : (
+              <tr key={s.id} style={{ borderTop: '1px solid var(--border, #eee)' }}>
+                <td style={td}>{s.occurred_on}</td>
+                <td style={td}>{empName(s.employee_id)}</td>
+                <td style={{ ...td, textAlign: 'right' }}>{Number(s.hours).toFixed(1)}</td>
+                <td style={{ ...td, textAlign: 'right' }}>{vnd(s.hourly_rate)}</td>
+                <td style={{ ...td, textAlign: 'right', fontWeight: 600 }}>{vnd(s.shift_cost)}</td>
+                <td style={{ ...td, textAlign: 'right', whiteSpace: 'nowrap' }}>
+                  <button onClick={() => startEditShift(s)} style={btnLink}>Edit</button>
+                  <button onClick={() => delShift(s.id)} style={{ ...btnLink, color: 'var(--burgundy, #7b2d3a)', marginLeft: 10 }}>Delete</button>
+                </td>
+              </tr>
+            )
           ))}
         </tbody>
       </table>
