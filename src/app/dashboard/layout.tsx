@@ -31,9 +31,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       if (error) console.error('[dashboard] staff_users lookup error:', error)
       if (!staffUser) { router.push('/login'); return }
       if (!staffUser.active) { router.push('/login'); return }
-      // Kitchen-display accounts are locked to the read-only Kitchen Mode page —
-      // they can never reach the financial dashboard, even by typing a URL.
+      // Single-purpose accounts are locked to their one page — they can never reach the
+      // financial dashboard, even by typing a URL.
       if (staffUser.role === 'kitchen') { router.replace('/kitchen'); return }
+      if (staffUser.role === 'cashier') { router.replace('/cashier'); return }
 
       // single-tenant: hardcoded venue name (was previously a broken join into venues)
       setStaff({ ...staffUser, venue: { name: 'BigBamBoo' } })

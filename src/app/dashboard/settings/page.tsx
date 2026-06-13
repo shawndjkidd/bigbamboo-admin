@@ -57,6 +57,7 @@ export default function SettingsPage() {
     if (role === 'manager') return 'Manager'
     if (role === 'staff') return 'Staff (view)'
     if (role === 'kitchen') return 'Display'
+    if (role === 'cashier') return 'Cashier'
     if (role === 'scanner') return 'Door Staff'
     return role
   }
@@ -101,6 +102,7 @@ export default function SettingsPage() {
                   <option value="manager">Manager</option>
                   <option value="staff">Staff — view only (Kitchen/Bar)</option>
                   <option value="kitchen">Display — recipes &amp; SOPs only (set Dept = Kitchen or Bar)</option>
+                  <option value="cashier">Cashier — cash in/out sheet only</option>
                   <option value="scanner">Door Staff (Scanner Only)</option>
                   <option value="super_admin">Super Admin</option>
                 </select>
@@ -143,6 +145,7 @@ export default function SettingsPage() {
                         <option value="manager">Manager</option>
                         <option value="staff">Staff (view)</option>
                         <option value="kitchen">Display (Kitchen/Bar)</option>
+                        <option value="cashier">Cashier</option>
                         <option value="scanner">Door Staff</option>
                         <option value="super_admin">Super Admin</option>
                       </select>
@@ -196,6 +199,7 @@ function DisplayLinks() {
   const rows: { label: string; path: string; hint: string }[] = [
     { label: 'Kitchen display', path: '/kitchen', hint: 'Recipes, add-ons, batches & SOPs — kitchen only' },
     { label: 'Bar display', path: '/bar', hint: 'Recipes, add-ons, batches & SOPs — bar only' },
+    { label: 'Cashier sheet', path: '/cashier', hint: 'Cash in/out + payouts — cashier only' },
   ]
 
   async function copy(url: string) {

@@ -1,5 +1,5 @@
 'use client'
-import { Suspense } from 'react'
+import { Suspense, useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useSearchParams, useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
@@ -9,6 +9,7 @@ interface NavItem {
   label: string
   section?: boolean
   adminOnly?: boolean
+  copy?: boolean   // clicking copies the full URL to clipboard (for sharing) instead of navigating
 }
 
 const NAV: NavItem[] = [
@@ -37,8 +38,9 @@ const NAV: NavItem[] = [
   { href: '/dashboard/ops/margins', label: 'Margins' },
   { href: '/dashboard/ops/ask', label: 'Ask your data' },
   { href: '/dashboard/ops/sops', label: 'SOPs' },
-  { href: '/kitchen', label: 'Kitchen Mode ↗' },
-  { href: '/bar', label: 'Bar Mode ↗' },
+  { href: '/kitchen', label: 'Kitchen Mode', copy: true },
+  { href: '/bar', label: 'Bar Mode', copy: true },
+  { href: '/cashier', label: 'Cashier Sheet', copy: true },
 
   { href: '#kitchen', label: 'Kitchen', section: true },
   { href: '/dashboard/ops/ingredients?dept=kitchen', label: 'Ingredients' },
@@ -71,6 +73,13 @@ function SidebarInner({ role, venueName }: { role: string; venueName: string }) 
   const navHrefs = NAV.filter(i => !i.section).map(i => i.href.split('?')[0])
   const bestMatch = navHrefs.filter(h => h !== '/dashboard' && (pathname === h || pathname.startsWith(h + '/'))).sort((a, b) => b.length - a.length)[0] || null
   const router = useRouter()
+  const [copied, setCopied] = useState<string | null>(null)
+
+  async function copyLink(href: string) {
+    const url = (typeof window !== 'undefined' ? window.location.origin : '') + href
+    try { await navigator.clipboard.writeText(url) } catch {}
+    setCopied(href); setTimeout(() => setCopied(null), 1600)
+  }
 
   async function handleSignOut() {
     await supabase.auth.signOut()
@@ -127,6 +136,21 @@ function SidebarInner({ role, venueName }: { role: string; venueName: string }) 
               }}>
                 {item.label}
               </div>
+            )
+          }
+
+          if (item.copy) {
+            const done = copied === item.href
+            return (
+              <button key={item.href} onClick={() => copyLink(item.href)} title="Copy link to share" style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
+                width: '100%', padding: '10px 20px', textAlign: 'left', border: 'none',
+                color: 'var(--text-secondary, #666)', background: 'transparent',
+                fontSize: 14, fontWeight: 400, cursor: 'pointer', letterSpacing: '0.01em',
+              }}>
+                <span>{item.label}</span>
+                <span style={{ fontSize: 11, fontWeight: 600, color: done ? 'var(--accent, #e87830)' : 'var(--text-muted, #aaa)' }}>{done ? 'Copied!' : 'Copy'}</span>
+              </button>
             )
           }
 

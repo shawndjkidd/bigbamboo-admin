@@ -16,7 +16,7 @@ export const ROLES_THAT_SEE_DASHBOARD = ['super_admin', 'admin', 'manager'] as c
 export const ROLES_THAT_MANAGE_RECIPES = ['super_admin', 'admin', 'manager'] as const
 export const ROLES_THAT_LOCK_PERIODS = ['super_admin'] as const
 
-export type StaffRole = 'super_admin' | 'admin' | 'manager' | 'staff' | 'scanner' | 'kitchen'
+export type StaffRole = 'super_admin' | 'admin' | 'manager' | 'staff' | 'scanner' | 'kitchen' | 'cashier'
 
 export const canSeeDashboard = (role: StaffRole) =>
   (ROLES_THAT_SEE_DASHBOARD as readonly string[]).includes(role)
