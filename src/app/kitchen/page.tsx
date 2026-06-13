@@ -32,12 +32,18 @@ export default function KitchenPage() {
       if (!session?.user) { router.push('/login'); return }
       const { data: su } = await supabase.from('staff_users').select('active, role').eq('email', session.user.email).maybeSingle()
       if (!su || su.active === false) { router.push('/login'); return }
-      // Only managers+ can export the book; Kitchen Display / staff are view-only.
-      setCanExport(canSeeDashboard((su.role || 'staff') as StaffRole))
-      try {
-        const s = localStorage.getItem('bbb_kitchen_station')
-        if (s === 'kitchen' || s === 'bar' || s === 'all') setStation(s)
-      } catch {}
+      // Only managers+ can export the book and switch stations; Kitchen Display / staff
+      // are view-only and locked to the Kitchen station.
+      const exporter = canSeeDashboard((su.role || 'staff') as StaffRole)
+      setCanExport(exporter)
+      if (exporter) {
+        try {
+          const s = localStorage.getItem('bbb_kitchen_station')
+          if (s === 'kitchen' || s === 'bar' || s === 'all') setStation(s)
+        } catch {}
+      } else {
+        setStation('kitchen')
+      }
       setLoading(false)
     })()
   }, [])
@@ -103,7 +109,7 @@ export default function KitchenPage() {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <span style={{ fontSize: 20, fontWeight: 700, color: 'var(--accent, #e87830)' }}>BigBamBoo Kitchen</span>
-            <Seg value={station} onChange={v => chooseStation(v as KStation)} options={[['kitchen', 'Kitchen'], ['bar', 'Bar'], ['all', 'All']]} />
+            {canExport && <Seg value={station} onChange={v => chooseStation(v as KStation)} options={[['kitchen', 'Kitchen'], ['bar', 'Bar'], ['all', 'All']]} />}
           </div>
           {canExport && (
             <div style={{ display: 'flex', gap: 8 }}>
@@ -144,6 +150,7 @@ export default function KitchenPage() {
               {sopCards.map(s => (
                 <button key={s.id} onClick={() => openSop(s)} style={{ ...card, borderColor: 'var(--border, #e5e5e5)' }}>
                   <div style={{ fontSize: 17, fontWeight: 600, color: 'var(--text, #1a1a1a)' }}>{s.title}</div>
+                  {s.title_vi && <div style={{ fontSize: 14, color: 'var(--accent, #b85c00)', marginTop: 2 }}>{s.title_vi}</div>}
                   <div style={{ fontSize: 11, color: '#999', marginTop: 10, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                     SOP · {s.category}
                   </div>

@@ -25,6 +25,7 @@ export type KSop = {
   id: string; department: string; category: string; title: string
   purpose: string | null; responsible: string | null; frequency: string | null; est_time: string | null
   steps: string | null; note: string | null; sort_order: number; version: number
+  title_vi: string | null; purpose_vi: string | null; steps_vi: string | null; note_vi: string | null
 }
 
 function recipeInStation(category: string, station: KStation) {
@@ -42,7 +43,7 @@ function sopInStation(dept: string, station: KStation) {
 export async function fetchKitchenList(station: KStation): Promise<{ recipes: KRecipe[]; sops: KSop[] }> {
   const [{ data: recs }, { data: sops }] = await Promise.all([
     ops().from('recipes').select('id,name,name_vi,type,category,is_resale').order('name'),
-    supabase.from('sops').select('id,department,category,title,purpose,responsible,frequency,est_time,steps,note,sort_order,version,is_published').order('category').order('sort_order'),
+    supabase.from('sops').select('id,department,category,title,title_vi,purpose,purpose_vi,responsible,frequency,est_time,steps,steps_vi,note,note_vi,sort_order,version,is_published').order('category').order('sort_order'),
   ])
   const recipes = ((recs || []) as any[])
     .filter(r => !r.is_resale && recipeInStation(r.category, station))
@@ -116,18 +117,26 @@ export async function buildRecipeDetailHtml(id: string): Promise<string> {
   return recipeSectionHtml(id, data, false)
 }
 
-// Render a single SOP to HTML (used by the live page detail pane).
+// Render a single SOP to HTML (used by the live page detail pane). Bilingual: each step
+// shows English and Vietnamese side by side (Vietnamese falls back to blank if not set yet).
 export function buildSopDetailHtml(s: KSop): string {
-  const steps = String(s.steps || '').split('\n').filter(Boolean).map(t => `<li>${esc(t)}</li>`).join('')
+  const en = String(s.steps || '').split('\n').filter(Boolean)
+  const vi = String(s.steps_vi || '').split('\n').filter(Boolean)
+  const n = Math.max(en.length, vi.length)
+  const stepRows = Array.from({ length: n }).map((_, i) =>
+    `<tr><td class="num">${i + 1}</td><td>${esc(en[i] || '')}</td><td class="vi">${esc(vi[i] || '')}</td></tr>`).join('')
   const chips = [s.responsible ? `Who: ${esc(s.responsible)}` : '', s.frequency ? `When: ${esc(s.frequency)}` : '', s.est_time ? `Time: ${esc(s.est_time)}` : '']
     .filter(Boolean).map(c => `<span class="chip">${c}</span>`).join('')
   return `<section>
     <h1>${esc(s.title)}</h1>
+    ${s.title_vi ? `<div class="vititle">${esc(s.title_vi)}</div>` : ''}
     <div class="sub">${esc(s.category)} · ${esc(s.department)} SOP</div>
-    ${s.purpose ? `<p style="margin:6px 0 10px;font-size:14px">${esc(s.purpose)}</p>` : ''}
+    ${s.purpose ? `<p style="margin:6px 0 2px;font-size:14px">${esc(s.purpose)}</p>` : ''}
+    ${s.purpose_vi ? `<p style="margin:0 0 10px;font-size:14px;color:#b85c00">${esc(s.purpose_vi)}</p>` : ''}
     ${chips ? `<div style="margin:8px 0">${chips}</div>` : ''}
-    <ol class="sopsteps">${steps || '<li style="color:#999">No steps yet</li>'}</ol>
-    ${s.note ? `<div class="note">${esc(s.note)}</div>` : ''}
+    <h3>Steps · Các bước</h3>
+    <table class="method">${stepRows || '<tr><td colspan="3" style="color:#999">No steps yet</td></tr>'}</table>
+    ${s.note ? `<div class="note">${esc(s.note)}${s.note_vi ? `<br><span style="color:#b85c00">${esc(s.note_vi)}</span>` : ''}</div>` : ''}
   </section>`
 }
 
@@ -237,15 +246,29 @@ export async function buildKitchenPdf(opts: { station: KStation; includeRecipes?
     sopList.forEach(s => {
       newEntry()
       setf(17, true, [26, 26, 26]); const tl = doc.splitTextToSize(String(s.title), CW); doc.text(tl, M, y + 15); y += tl.length * 17 * 1.32
+      if (s.title_vi) { setf(13, false, ACC); const vl = doc.splitTextToSize(String(s.title_vi), CW); doc.text(vl, M, y + 11); y += vl.length * 13 * 1.32 }
       setf(9, false, [120, 120, 120]); doc.text(`${s.category} · ${s.department} SOP`, M, y + 9); y += 16
-      if (s.purpose) { setf(10, false, [60, 60, 60]); const pl = doc.splitTextToSize(String(s.purpose), CW); ensure(pl.length * 10 * 1.32); doc.text(pl, M, y + 9); y += pl.length * 10 * 1.32 + 4 }
+      if (s.purpose) { setf(10, false, [60, 60, 60]); const pl = doc.splitTextToSize(String(s.purpose), CW); ensure(pl.length * 10 * 1.32); doc.text(pl, M, y + 9); y += pl.length * 10 * 1.32 + 2 }
+      if (s.purpose_vi) { setf(10, false, ACC); const pvl = doc.splitTextToSize(String(s.purpose_vi), CW); ensure(pvl.length * 10 * 1.32); doc.text(pvl, M, y + 9); y += pvl.length * 10 * 1.32 + 4 }
       const meta = [s.responsible ? `Who: ${s.responsible}` : '', s.frequency ? `When: ${s.frequency}` : '', s.est_time ? `Time: ${s.est_time}` : ''].filter(Boolean).join('    ')
       if (meta) { setf(9, false, ACC); doc.text(meta, M, y + 9); y += 16 }
-      heading('Steps')
-      const steps = String(s.steps || '').split('\n').filter(Boolean)
-      if (!steps.length) { setf(10, false, [150, 150, 150]); doc.text('No steps yet', M, y + 9); y += 16 }
-      steps.forEach((st, i) => { setf(10, false, [40, 40, 40]); const l = doc.splitTextToSize(`${i + 1}.  ${st}`, CW); ensure(l.length * 10 * 1.32); doc.text(l, M, y + 9); y += l.length * 10 * 1.32 + 2 })
-      if (s.note) { y += 4; setf(10, true, [150, 40, 40]); const nl = doc.splitTextToSize(`Note: ${s.note}`, CW); ensure(nl.length * 10 * 1.32); doc.text(nl, M, y + 9); y += nl.length * 10 * 1.32 }
+      heading('Steps · Các bước')
+      const en = String(s.steps || '').split('\n').filter(Boolean)
+      const vi = String(s.steps_vi || '').split('\n').filter(Boolean)
+      const n = Math.max(en.length, vi.length)
+      if (!n) { setf(10, false, [150, 150, 150]); doc.text('No steps yet', M, y + 9); y += 16 }
+      const sEnX = M + 16, sColW = (CW - 16) / 2 - 8, sViX = sEnX + sColW + 16
+      for (let i = 0; i < n; i++) {
+        const enL = doc.splitTextToSize(en[i] || '', sColW)
+        const viL = doc.splitTextToSize(vi[i] || '', sColW)
+        const rowH = Math.max(enL.length, viL.length, 1) * 10 * 1.32
+        ensure(rowH + 3)
+        setf(10, false, [150, 150, 150]); doc.text(String(i + 1), M, y + 9)
+        setf(10, false, [40, 40, 40]); doc.text(enL, sEnX, y + 9)
+        setf(10, false, ACC); doc.text(viL, sViX, y + 9)
+        y += rowH + 3
+      }
+      if (s.note) { y += 4; setf(10, true, [150, 40, 40]); const nl = doc.splitTextToSize(`Note: ${s.note}${s.note_vi ? '  /  ' + s.note_vi : ''}`, CW); ensure(nl.length * 10 * 1.32); doc.text(nl, M, y + 9); y += nl.length * 10 * 1.32 }
     })
   }
 
