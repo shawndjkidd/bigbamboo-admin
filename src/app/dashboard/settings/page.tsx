@@ -56,7 +56,7 @@ export default function SettingsPage() {
     if (role === 'admin') return 'Admin'
     if (role === 'manager') return 'Manager'
     if (role === 'staff') return 'Staff (view)'
-    if (role === 'kitchen') return 'Kitchen Display'
+    if (role === 'kitchen') return 'Display'
     if (role === 'scanner') return 'Door Staff'
     return role
   }
@@ -100,7 +100,7 @@ export default function SettingsPage() {
                 <select className="input" value={newStaff.role} onChange={e => setNewStaff(p => ({ ...p, role: e.target.value }))}>
                   <option value="manager">Manager</option>
                   <option value="staff">Staff — view only (Kitchen/Bar)</option>
-                  <option value="kitchen">Kitchen Display — recipes &amp; SOPs only (locked iPad)</option>
+                  <option value="kitchen">Display — recipes &amp; SOPs only (set Dept = Kitchen or Bar)</option>
                   <option value="scanner">Door Staff (Scanner Only)</option>
                   <option value="super_admin">Super Admin</option>
                 </select>
@@ -142,7 +142,7 @@ export default function SettingsPage() {
                       <select className="input" value={s.role} onChange={e => updateRole(s.id, e.target.value)} style={{ width: 140, padding: '4px 8px', fontSize: 12 }}>
                         <option value="manager">Manager</option>
                         <option value="staff">Staff (view)</option>
-                        <option value="kitchen">Kitchen Display</option>
+                        <option value="kitchen">Display (Kitchen/Bar)</option>
                         <option value="scanner">Door Staff</option>
                         <option value="super_admin">Super Admin</option>
                       </select>

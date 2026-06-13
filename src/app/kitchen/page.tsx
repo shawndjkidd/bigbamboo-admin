@@ -11,7 +11,7 @@ import {
   RECIPE_BOOK_CSS, type KStation, type KRecipe, type KSop,
 } from '@/lib/ops/kitchenBook'
 
-type TypeFilter = 'all' | 'recipes' | 'batches' | 'sops'
+type TypeFilter = 'all' | 'recipes' | 'addons' | 'batches' | 'sops'
 
 export default function KitchenPage() {
   const router = useRouter()
@@ -30,10 +30,11 @@ export default function KitchenPage() {
     (async () => {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session?.user) { router.push('/login'); return }
-      const { data: su } = await supabase.from('staff_users').select('active, role').eq('email', session.user.email).maybeSingle()
+      const { data: su } = await supabase.from('staff_users').select('active, role, department').eq('email', session.user.email).maybeSingle()
       if (!su || su.active === false) { router.push('/login'); return }
-      // Only managers+ can export the book and switch stations; Kitchen Display / staff
-      // are view-only and locked to the Kitchen station.
+      // Only managers+ can export the book and switch stations. Display / staff accounts are
+      // view-only and locked to their own station by Department: a Bar device only sees the
+      // bar, a Kitchen (or any non-bar) device only sees the kitchen.
       const exporter = canSeeDashboard((su.role || 'staff') as StaffRole)
       setCanExport(exporter)
       if (exporter) {
@@ -42,7 +43,7 @@ export default function KitchenPage() {
           if (s === 'kitchen' || s === 'bar' || s === 'all') setStation(s)
         } catch {}
       } else {
-        setStation('kitchen')
+        setStation(su.department === 'bar' ? 'bar' : 'kitchen')
       }
       setLoading(false)
     })()
@@ -84,10 +85,11 @@ export default function KitchenPage() {
   }
 
   const ql = q.trim().toLowerCase()
-  const showRecipes = type === 'all' || type === 'recipes' || type === 'batches'
+  const showRecipes = type === 'all' || type === 'recipes' || type === 'addons' || type === 'batches'
   const showSops = type === 'all' || type === 'sops'
   const recipeCards = !showRecipes ? [] : recipes.filter(r => {
-    if (type === 'recipes' && !(r.type === 'menu_item' || r.type === 'add_on')) return false
+    if (type === 'recipes' && r.type !== 'menu_item') return false
+    if (type === 'addons' && r.type !== 'add_on') return false
     if (type === 'batches' && !(r.type === 'batch' || r.type === 'sub_recipe')) return false
     if (ql && !(`${r.name} ${r.name_vi || ''}`.toLowerCase().includes(ql))) return false
     return true
@@ -119,7 +121,7 @@ export default function KitchenPage() {
           )}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 12, flexWrap: 'wrap' }}>
-          <Seg value={type} onChange={v => setType(v as TypeFilter)} options={[['all', 'All'], ['recipes', 'Recipes'], ['batches', 'Batches'], ['sops', 'SOPs']]} />
+          <Seg value={type} onChange={v => setType(v as TypeFilter)} options={[['all', 'All'], ['recipes', 'Recipes'], ['addons', 'Add-ons'], ['batches', 'Batches'], ['sops', 'SOPs']]} />
           <input value={q} onChange={e => setQ(e.target.value)} placeholder="Search…" style={{ flex: 1, minWidth: 180, padding: '12px 16px', fontSize: 16, border: '1px solid var(--border, #e5e5e5)', borderRadius: 10, background: 'var(--bg-card, #fff)', color: 'var(--text, #333)' }} />
         </div>
       </div>
