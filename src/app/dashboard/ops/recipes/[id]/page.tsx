@@ -62,6 +62,7 @@ export default function RecipeDetailPage() {
   const [menuSections, setMenuSections] = useState<string[]>(['bites', 'grilled_sourdough', 'add_ons', 'cocktails', 'beer', 'wine', 'na', 'shots', 'special_events'])
   const [menuBusy, setMenuBusy] = useState(false)
   const [genBusy, setGenBusy] = useState(false)
+  const [mnBusy, setMnBusy] = useState(false)
   const [autoVi, setAutoVi] = useState(true)
 
   // add-component form
@@ -241,6 +242,16 @@ export default function RecipeDetailPage() {
   async function saveMenuName(v: string) {
     await saveRecipe({ menu_name: v || null })
     if (autoVi && v.trim()) { const vi = await translateToVi(v); if (vi) await saveRecipe({ menu_name_vi: vi }) }
+  }
+
+  // On-demand AI translation of the menu name → Vietnamese, regardless of the auto-translate toggle.
+  async function translateMenuNameAI() {
+    const src = (recipe?.menu_name || recipe?.name || '').trim()
+    if (!src) return
+    setMnBusy(true)
+    const vi = await translateToVi(src)
+    if (vi) await saveRecipe({ menu_name_vi: vi })
+    setMnBusy(false)
   }
 
   // Draft a customer-facing menu description from the recipe's ingredients via AI, then save it
@@ -491,8 +502,11 @@ export default function RecipeDetailPage() {
           <div><label className="label">Sale price (₫)</label><input defaultValue={recipe.sale_price ?? ''} inputMode="decimal" onBlur={e => { const v = e.target.value.replace(/[^0-9.]/g, ''); saveRecipe({ sale_price: v ? Number(v) : null }) }} style={inp} /></div>
         </div>
         <div style={{ margin: '0 0 14px' }}>
-          <label className="label">Menu name (leave blank to use the recipe name on the menu)</label>
-          <input defaultValue={recipe.menu_name || ''} placeholder={recipe.name} onBlur={e => e.target.value !== (recipe.menu_name || '') && saveMenuName(e.target.value)} style={inp} />
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+            <label className="label" style={{ marginBottom: 0 }}>Menu name (leave blank to use the recipe name on the menu)</label>
+            <button onClick={translateMenuNameAI} disabled={mnBusy} style={{ ...btnLink, color: 'var(--accent, #e87830)', fontWeight: 600 }}>{mnBusy ? 'Translating…' : '✨ Translate'}</button>
+          </div>
+          <input defaultValue={recipe.menu_name || ''} placeholder={recipe.name} onBlur={e => e.target.value !== (recipe.menu_name || '') && saveMenuName(e.target.value)} style={{ ...inp, marginTop: 4 }} />
           <input key={recipe.menu_name_vi || 'mv'} defaultValue={recipe.menu_name_vi || ''} placeholder="Tên trên menu (tiếng Việt)…" onBlur={e => e.target.value !== (recipe.menu_name_vi || '') && saveRecipe({ menu_name_vi: e.target.value || null })} style={{ ...inp, marginTop: 6, color: 'var(--accent, #e87830)' }} />
         </div>
         <div style={{ margin: '0 0 20px' }}>
