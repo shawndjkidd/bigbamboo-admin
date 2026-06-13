@@ -8,6 +8,7 @@ type Sop = {
   purpose: string | null; responsible: string | null; frequency: string | null; est_time: string | null
   steps: string | null; note: string | null; image_url: string | null
   sort_order: number; is_published: boolean; version: number
+  title_vi?: string | null; purpose_vi?: string | null; steps_vi?: string | null; note_vi?: string | null
 }
 
 const CATEGORY_PRESETS = ['Opening', 'Closing', 'Cleaning', 'Safety', 'Service', 'Prep', 'Admin', 'General']
@@ -44,13 +45,46 @@ function SopsInner() {
   const effDept = isManager ? urlDept : (userDept || urlDept)
   const heading = effDept === 'bar' ? 'Bar SOPs' : effDept === 'kitchen' ? 'Kitchen SOPs' : effDept === 'general' ? 'General SOPs' : 'SOPs'
 
+  // English → Vietnamese via the Gemini endpoint. Returns '' on failure.
+  async function translateToVi(text: string): Promise<string> {
+    try {
+      const res = await fetch('/api/admin/ops/translate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text }) })
+      const j = await res.json().catch(() => ({}))
+      return res.ok ? String(j.vi || '') : ''
+    } catch { return '' }
+  }
+  // Translate step lists line-by-line so the Vietnamese keeps the same number of steps
+  // as the English (the Kitchen view pairs them up by line number).
+  async function translateLines(text: string): Promise<string> {
+    const out: string[] = []
+    for (const ln of text.split('\n')) out.push(ln.trim() ? (await translateToVi(ln)) || ln : '')
+    return out.join('\n')
+  }
+  // Build the Vietnamese counterparts for whichever English fields are present.
+  async function viFor(src: { title?: string | null; purpose?: string | null; steps?: string | null; note?: string | null }) {
+    const vi: any = {}
+    if (typeof src.title === 'string' && src.title.trim()) vi.title_vi = await translateToVi(src.title)
+    if (typeof src.purpose === 'string' && src.purpose.trim()) vi.purpose_vi = await translateToVi(src.purpose)
+    if (typeof src.note === 'string' && src.note.trim()) vi.note_vi = await translateToVi(src.note)
+    if (typeof src.steps === 'string' && src.steps.trim()) vi.steps_vi = await translateLines(src.steps)
+    return vi
+  }
+
   async function updateSop(id: string, changes: Partial<Sop>) {
     await supabase.from('sops').update({ ...changes, updated_at: new Date().toISOString() }).eq('id', id)
     setRows(prev => prev.map(s => s.id === id ? { ...s, ...changes } : s)); showToast('Saved')
+    // Auto-translate any English content that changed so the Vietnamese stays in sync.
+    const vi = await viFor(changes as any)
+    if (Object.keys(vi).length) {
+      await supabase.from('sops').update(vi).eq('id', id)
+      setRows(prev => prev.map(s => s.id === id ? { ...s, ...vi } : s)); showToast('Vietnamese updated')
+    }
   }
   async function addSop() {
     if (!nu.title) { showToast('Title required'); return }
-    const { data, error } = await supabase.from('sops').insert({ ...nu, sort_order: rows.length }).select().single()
+    showToast('Translating…')
+    const vi = await viFor(nu)
+    const { data, error } = await supabase.from('sops').insert({ ...nu, ...vi, sort_order: rows.length }).select().single()
     if (error) { showToast('Failed: ' + error.message); return }
     if (data) { setRows(prev => [...prev, data as Sop]); setNu(blank); setShowAdd(false); showToast('SOP added') }
   }

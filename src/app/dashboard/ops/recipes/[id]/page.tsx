@@ -13,6 +13,7 @@ type Recipe = {
   menu_name: string | null; menu_name_vi: string | null;
   method: string | null; subtitle: string | null; image_url: string | null;
   plating_dinein: string | null; plating_togo: string | null;
+  plating_dinein_vi: string | null; plating_togo_vi: string | null;
   glass: string | null; ice: string | null; garnish: string | null;
   published_version: number | null;
   name_vi: string | null; method_vi: string | null;
@@ -242,6 +243,21 @@ export default function RecipeDetailPage() {
   async function saveMenuName(v: string) {
     await saveRecipe({ menu_name: v || null })
     if (autoVi && v.trim()) { const vi = await translateToVi(v); if (vi) await saveRecipe({ menu_name_vi: vi }) }
+  }
+
+  // Translate a step list line-by-line so the Vietnamese keeps the same number of steps
+  // as the English (printouts and the kitchen view pair them up by line).
+  async function translateLines(text: string): Promise<string> {
+    const out: string[] = []
+    for (const ln of text.split('\n')) out.push(ln.trim() ? (await translateToVi(ln)) || ln : '')
+    return out.join('\n')
+  }
+
+  // Save a plating block (dine-in / to-go); auto-translates the Vietnamese when the toggle is on.
+  async function savePlating(which: 'dinein' | 'togo', v: string) {
+    const key = which === 'dinein' ? 'plating_dinein' : 'plating_togo'
+    await saveRecipe({ [key]: v } as any)
+    if (autoVi && v.trim()) { const vi = await translateLines(v); if (vi) await saveRecipe({ [key + '_vi']: vi } as any) }
   }
 
   // On-demand AI translation of the menu name → Vietnamese, regardless of the auto-translate toggle.
@@ -487,7 +503,7 @@ export default function RecipeDetailPage() {
         : recipe.name_vi && <div style={{ fontSize: 17, fontWeight: 500, color: 'var(--accent, #e87830)', marginTop: 2 }}>{recipe.name_vi}</div>}
       {canManage && (
         <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text-muted, #999)', marginTop: 6, cursor: 'pointer' }}>
-          <input type="checkbox" checked={autoVi} onChange={toggleAutoVi} /> Auto-translate name, description & method to Vietnamese when I edit the English
+          <input type="checkbox" checked={autoVi} onChange={toggleAutoVi} /> Auto-translate name, description, method & plating to Vietnamese when I edit the English
         </label>
       )}
       <div style={{ fontSize: 12, color: 'var(--text-muted, #999)', marginTop: 2, marginBottom: 20 }}>
@@ -739,13 +755,13 @@ export default function RecipeDetailPage() {
           <div>
             <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>🍽 Plate — Dine-in</h3>
             {canManage
-              ? <StepsEditor key={recipe.id + '-dinein'} value={recipe.plating_dinein || ''} onSave={v => saveRecipe({ plating_dinein: v })} placeholder="First plating step — basket, garnish, ramekin…" />
+              ? <StepsEditor key={recipe.id + '-dinein'} value={recipe.plating_dinein || ''} onSave={v => savePlating('dinein', v)} placeholder="First plating step — basket, garnish, ramekin…" />
               : <ol style={{ fontSize: 14, lineHeight: 1.8, paddingLeft: 20, margin: 0 }}>{(recipe.plating_dinein || '').split('\n').filter(Boolean).map((t, i) => <li key={i}>{t}</li>)}{!recipe.plating_dinein && <li style={{ listStyle: 'none', color: 'var(--text-muted, #999)' }}>—</li>}</ol>}
           </div>
           <div>
             <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>🥡 Pack — To-go</h3>
             {canManage
-              ? <StepsEditor key={recipe.id + '-togo'} value={recipe.plating_togo || ''} onSave={v => saveRecipe({ plating_togo: v })} placeholder="First packing step — clamshell, vent, sauce cup, bag…" />
+              ? <StepsEditor key={recipe.id + '-togo'} value={recipe.plating_togo || ''} onSave={v => savePlating('togo', v)} placeholder="First packing step — clamshell, vent, sauce cup, bag…" />
               : <ol style={{ fontSize: 14, lineHeight: 1.8, paddingLeft: 20, margin: 0 }}>{(recipe.plating_togo || '').split('\n').filter(Boolean).map((t, i) => <li key={i}>{t}</li>)}{!recipe.plating_togo && <li style={{ listStyle: 'none', color: 'var(--text-muted, #999)' }}>—</li>}</ol>}
           </div>
         </div>

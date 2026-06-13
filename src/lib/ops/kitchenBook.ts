@@ -60,12 +60,13 @@ const esc = (s: any) => String(s ?? '').replace(/[&<>]/g, m => (({ '&': '&amp;',
 type RecipeFull = {
   id: string; name: string; name_vi: string | null; category: string; subtitle: string | null; type: string
   method: string | null; method_vi: string | null; plating_dinein: string | null; plating_togo: string | null
+  plating_dinein_vi: string | null; plating_togo_vi: string | null
   glass: string | null; ice: string | null; garnish: string | null; yield_qty: number; yield_unit: string
 }
 
 async function fetchRecipesFull(ids: string[]) {
   const [{ data: recs }, { data: comps }, { data: ings }, { data: subs }] = await Promise.all([
-    ops().from('recipes').select('id,name,name_vi,category,subtitle,type,method,method_vi,plating_dinein,plating_togo,glass,ice,garnish,yield_qty,yield_unit').in('id', ids),
+    ops().from('recipes').select('id,name,name_vi,category,subtitle,type,method,method_vi,plating_dinein,plating_togo,plating_dinein_vi,plating_togo_vi,glass,ice,garnish,yield_qty,yield_unit').in('id', ids),
     ops().from('recipe_components').select('recipe_id,ingredient_id,sub_recipe_id,qty,unit,sort_order').in('recipe_id', ids),
     ops().from('ingredients').select('id,name,name_vi'),
     ops().from('recipes').select('id,name,name_vi'),
@@ -78,10 +79,14 @@ async function fetchRecipesFull(ids: string[]) {
   return { ingMap, subMap, recById, byRecipe }
 }
 
-function platingBlock(title: string, txt: string | null) {
-  if (!txt) return ''
-  const items = String(txt).split('\n').filter(Boolean).map(t => `<li>${esc(t)}</li>`).join('')
-  return `<h3>${title}</h3><ol>${items}</ol>`
+function platingBlock(title: string, en: string | null, vi: string | null) {
+  if (!en && !vi) return ''
+  const e = String(en || '').split('\n').filter(Boolean)
+  const v = String(vi || '').split('\n').filter(Boolean)
+  const n = Math.max(e.length, v.length)
+  const rows = Array.from({ length: n }).map((_, i) =>
+    `<tr><td class="num">${i + 1}</td><td>${esc(e[i] || '')}</td><td class="vi">${esc(v[i] || '')}</td></tr>`).join('')
+  return `<h3>${title}</h3><table class="method">${rows}</table>`
 }
 
 function recipeSectionHtml(id: string, data: Awaited<ReturnType<typeof fetchRecipesFull>>, lastBreak = true): string {
@@ -98,7 +103,7 @@ function recipeSectionHtml(id: string, data: Awaited<ReturnType<typeof fetchReci
     `<tr><td class="num">${i + 1}</td><td>${esc(stepsEn[i] || '')}</td><td class="vi">${esc(stepsVi[i] || '')}</td></tr>`).join('')
   const extra = DRINK.has(r.category)
     ? `<h3>Build sheet</h3><ul><li><b>Glass:</b> ${esc(r.glass || '-')}</li><li><b>Ice:</b> ${esc(r.ice || '-')}</li><li><b>Garnish:</b> ${esc(r.garnish || '-')}</li></ul>`
-    : platingBlock('Plate — Dine-in', r.plating_dinein) + platingBlock('Pack — To-go', r.plating_togo)
+    : platingBlock('Plate — Dine-in · Bày tại bàn', r.plating_dinein, r.plating_dinein_vi) + platingBlock('Pack — To-go · Đóng gói mang đi', r.plating_togo, r.plating_togo_vi)
   return `<section style="page-break-after:${lastBreak ? 'always' : 'auto'}">
     <h1>${esc(r.name)}</h1>
     ${r.name_vi ? `<div class="vititle">${esc(r.name_vi)}</div>` : ''}
@@ -230,10 +235,23 @@ export async function buildKitchenPdf(opts: { station: KStation; includeRecipes?
       setf(10, false, [40, 40, 40])
       ;[`Glass: ${r.glass || '-'}`, `Ice: ${r.ice || '-'}`, `Garnish: ${r.garnish || '-'}`].forEach(t => { ensure(15); doc.text(t, M, y + 9); y += 15 })
     } else {
-      ([['Plate — Dine-in', r.plating_dinein], ['Pack — To-go', r.plating_togo]] as [string, string | null][]).forEach(([title, txt]) => {
-        if (!txt) return
+      ([['Plate — Dine-in · Bày tại bàn', r.plating_dinein, r.plating_dinein_vi], ['Pack — To-go · Đóng gói mang đi', r.plating_togo, r.plating_togo_vi]] as [string, string | null, string | null][]).forEach(([title, txt, txtVi]) => {
+        if (!txt && !txtVi) return
         heading(title)
-        String(txt).split('\n').filter(Boolean).forEach((s, i) => { setf(10, false, [40, 40, 40]); const l = doc.splitTextToSize(`${i + 1}.  ${s}`, CW); ensure(l.length * 10 * 1.32); doc.text(l, M, y + 9); y += l.length * 10 * 1.32 + 1 })
+        const pe = String(txt || '').split('\n').filter(Boolean)
+        const pv = String(txtVi || '').split('\n').filter(Boolean)
+        const pn = Math.max(pe.length, pv.length)
+        const pEnX = M + 16, pColW = (CW - 16) / 2 - 8, pViX = pEnX + pColW + 16
+        for (let i = 0; i < pn; i++) {
+          const enL = doc.splitTextToSize(pe[i] || '', pColW)
+          const viL = doc.splitTextToSize(pv[i] || '', pColW)
+          const rowH = Math.max(enL.length, viL.length, 1) * 10 * 1.32
+          ensure(rowH + 2)
+          setf(10, false, [150, 150, 150]); doc.text(String(i + 1), M, y + 9)
+          setf(10, false, [40, 40, 40]); doc.text(enL, pEnX, y + 9)
+          setf(10, false, ACC); doc.text(viL, pViX, y + 9)
+          y += rowH + 2
+        }
       })
     }
   })
