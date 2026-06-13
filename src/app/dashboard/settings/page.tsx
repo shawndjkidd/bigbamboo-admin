@@ -7,6 +7,7 @@ export default function SettingsPage() {
   const [currentUser, setCurrentUser] = useState<any>(null)
   const [toast, setToast] = useState('')
   const [showAdd, setShowAdd] = useState(false)
+  const [busy, setBusy] = useState(false)
   const [newStaff, setNewStaff] = useState({ name: '', email: '', role: 'manager', password: '', department: '' })
 
   useEffect(() => { loadData() }, [])
@@ -21,14 +22,33 @@ export default function SettingsPage() {
   }
 
   async function addStaff() {
-    if (!newStaff.name || !newStaff.email || !newStaff.password) return
-    const { error: authError } = await supabase.auth.signUp({ email: newStaff.email, password: newStaff.password })
-    if (authError) { showToast('Error: ' + authError.message); return }
-    await supabase.from('staff_users').insert({ name: newStaff.name, email: newStaff.email, role: newStaff.role, department: newStaff.department || null })
+    if (!newStaff.name || !newStaff.email || !newStaff.password) { showToast('Name, email and password are required'); return }
+    setBusy(true)
+    const { data: { session } } = await supabase.auth.getSession()
+    const res = await fetch('/api/admin/staff', {
+      method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token || ''}` },
+      body: JSON.stringify(newStaff),
+    })
+    const j = await res.json().catch(() => ({}))
+    setBusy(false)
+    if (!res.ok) { showToast('Error: ' + (j.error || 'failed')); return }
     setNewStaff({ name: '', email: '', role: 'manager', password: '', department: '' })
     setShowAdd(false)
-    showToast('Staff member added')
+    showToast('Account created — they can sign in right away.')
     loadData()
+  }
+
+  async function deleteStaff(email: string, name: string) {
+    if (email === currentUser?.email) { showToast("You can't delete your own account."); return }
+    if (!confirm(`Delete ${name} (${email})? This removes their login and cannot be undone.`)) return
+    const { data: { session } } = await supabase.auth.getSession()
+    const res = await fetch('/api/admin/staff?email=' + encodeURIComponent(email), {
+      method: 'DELETE', headers: { Authorization: `Bearer ${session?.access_token || ''}` },
+    })
+    const j = await res.json().catch(() => ({}))
+    if (!res.ok) { showToast('Error: ' + (j.error || 'failed')); return }
+    setStaff(prev => prev.filter(s => s.email !== email))
+    showToast('Account deleted')
   }
 
   async function toggleActive(id: string, active: boolean) {
@@ -127,21 +147,20 @@ export default function SettingsPage() {
 
         {/* Staff list */}
         <div className="card" style={{ overflow: 'hidden' }}>
-          <div style={{ overflowX: 'auto' }}>
-          <table className="data-table" style={{ minWidth: 720 }}>
+          <table className="data-table" style={{ width: '100%', tableLayout: 'fixed' }}>
             <thead>
-              <tr><th>Name</th><th>Email</th><th>Role</th><th>Department</th><th>Status</th><th style={{ textAlign: 'right' }}>Actions</th></tr>
+              <tr><th style={{ width: '13%' }}>Name</th><th style={{ width: '24%' }}>Email</th><th style={{ width: '18%' }}>Role</th><th style={{ width: '14%' }}>Department</th><th style={{ width: '11%' }}>Status</th><th style={{ width: '20%', textAlign: 'right' }}>Actions</th></tr>
             </thead>
             <tbody>
               {staff.map(s => (
                 <tr key={s.id} style={{ opacity: s.active ? 1 : 0.5 }}>
                   <td style={{ fontWeight: 600 }}>{s.name}</td>
-                  <td style={{ color: 'var(--text-secondary)', fontSize: 13 }}>{s.email}</td>
+                  <td style={{ color: 'var(--text-secondary)', fontSize: 13, wordBreak: 'break-all' }}>{s.email}</td>
                   <td>
                     {s.id === currentUser.id ? (
                       <span className={`badge ${roleBadge(s.role)}`}>{roleLabel(s.role)}</span>
                     ) : (
-                      <select className="input" value={s.role} onChange={e => updateRole(s.id, e.target.value)} style={{ width: 140, padding: '4px 8px', fontSize: 12 }}>
+                      <select className="input" value={s.role} onChange={e => updateRole(s.id, e.target.value)} style={{ width: '100%', padding: '4px 8px', fontSize: 12 }}>
                         <option value="manager">Manager</option>
                         <option value="staff">Staff (view)</option>
                         <option value="kitchen">Display (Kitchen/Bar)</option>
@@ -152,7 +171,7 @@ export default function SettingsPage() {
                     )}
                   </td>
                   <td>
-                    <select className="input" value={s.department || ''} onChange={e => updateDepartment(s.id, e.target.value)} style={{ width: 120, padding: '4px 8px', fontSize: 12 }}>
+                    <select className="input" value={s.department || ''} onChange={e => updateDepartment(s.id, e.target.value)} style={{ width: '100%', padding: '4px 8px', fontSize: 12 }}>
                       <option value="">—</option>
                       <option value="kitchen">Kitchen</option>
                       <option value="bar">Bar</option>
@@ -162,18 +181,18 @@ export default function SettingsPage() {
                   <td><span className={`badge ${s.active ? 'badge-green' : 'badge-red'}`}>{s.active ? 'Active' : 'Inactive'}</span></td>
                   <td style={{ textAlign: 'right' }}>
                     {s.id !== currentUser.id && (
-                      <button onClick={() => toggleActive(s.id, s.active)}
-                        className={s.active ? 'btn-red' : 'btn-green'}
-                        style={{ padding: '5px 12px', fontSize: 12 }}>
-                        {s.active ? 'Deactivate' : 'Activate'}
-                      </button>
+                      <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                        <button onClick={() => toggleActive(s.id, s.active)} className={s.active ? 'btn-red' : 'btn-green'} style={{ padding: '5px 10px', fontSize: 12 }}>
+                          {s.active ? 'Deactivate' : 'Activate'}
+                        </button>
+                        <button onClick={() => deleteStaff(s.email, s.name)} className="btn-red" style={{ padding: '5px 10px', fontSize: 12 }}>Delete</button>
+                      </div>
                     )}
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
-          </div>
         </div>
       </div>
 
