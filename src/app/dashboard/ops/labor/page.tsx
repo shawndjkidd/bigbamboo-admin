@@ -17,6 +17,37 @@ function hoursBetween(start: string, end: string): number {
 }
 const hhmm = (t: string | null) => t ? t.slice(0, 5) : ''
 
+// Parse loose time entry into 24h "HH:MM". Bar-smart defaults: a bare hour 1–11 means PM
+// (5 → 17:00, 11 → 23:00); add "a" for AM (1a → 01:00, 12a → 00:00); "530" → 17:30; "17:30" literal.
+function parseTime(input: string): string | null {
+  let s = input.trim().toLowerCase().replace(/[.\s]/g, '')
+  if (!s) return null
+  let ap: 'a' | 'p' | null = null
+  if (/a m?$/.test(s) || s.endsWith('a')) { ap = 'a'; s = s.replace(/am?$/, '') }
+  else if (s.endsWith('pm') || s.endsWith('p')) { ap = 'p'; s = s.replace(/pm?$/, '') }
+  s = s.replace(':', '')
+  if (!/^\d{1,4}$/.test(s)) return null
+  let h: number, m: number
+  if (s.length <= 2) { h = parseInt(s, 10); m = 0 } else { m = parseInt(s.slice(-2), 10); h = parseInt(s.slice(0, -2), 10) }
+  if (h > 23 || m > 59) return null
+  if (ap === 'a') { if (h === 12) h = 0 }
+  else if (ap === 'p') { if (h < 12) h += 12 }
+  else if (h >= 1 && h <= 11) h += 12   // bar default: bare 1–11 → PM
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+}
+function fmt12(hhmm: string): string {
+  const [h, m] = hhmm.split(':').map(Number)
+  const ap = h >= 12 ? 'PM' : 'AM'; let hh = h % 12; if (hh === 0) hh = 12
+  return `${hh}:${String(m).padStart(2, '0')} ${ap}`
+}
+function SmartTime({ value, onChange, placeholder, style }: { value: string; onChange: (v: string) => void; placeholder?: string; style?: React.CSSProperties }) {
+  const [text, setText] = useState(''); const [editing, setEditing] = useState(false)
+  return <input value={editing ? text : (value ? fmt12(value) : '')} placeholder={placeholder} style={style}
+    onFocus={() => { setEditing(true); setText(value || '') }}
+    onChange={e => setText(e.target.value)}
+    onBlur={() => { onChange(parseTime(text) || ''); setEditing(false) }} />
+}
+
 export default function LaborPage() {
   const [role, setRole] = useState<StaffRole | null>(null)
   const [venueId, setVenueId] = useState<string | null>(null)
@@ -188,8 +219,8 @@ export default function LaborPage() {
               </select>
             </div>
             <div style={{ width: 140 }}><label className="label">Date</label><input type="date" value={sDate} onChange={e => setSDate(e.target.value)} style={inp} /></div>
-            <div style={{ width: 110 }}><label className="label">Start</label><input type="time" value={sStart} onChange={e => setSStart(e.target.value)} style={inp} /></div>
-            <div style={{ width: 110 }}><label className="label">Finish</label><input type="time" value={sEnd} onChange={e => setSEnd(e.target.value)} style={inp} /></div>
+            <div style={{ width: 120 }}><label className="label">Start</label><SmartTime value={sStart} onChange={setSStart} placeholder="5pm" style={inp} /></div>
+            <div style={{ width: 120 }}><label className="label">Finish</label><SmartTime value={sEnd} onChange={setSEnd} placeholder="11pm" style={inp} /></div>
             <div style={{ width: 70 }}><label className="label">Hours</label><div style={{ ...inp, display: 'flex', alignItems: 'center', color: 'var(--text-muted, #999)' }}>{hoursBetween(sStart, sEnd) ? hoursBetween(sStart, sEnd).toFixed(1) : '—'}</div></div>
             <div style={{ width: 130 }}><label className="label">Rate (VND/h)</label><input type="text" inputMode="numeric" value={sRate} onChange={e => setSRate(e.target.value)} placeholder="40,000" style={inp} /></div>
             <div style={{ minWidth: 140, flex: 1 }}><label className="label">Notes</label><input type="text" value={sNotes} onChange={e => setSNotes(e.target.value)} placeholder="optional" style={inp} /></div>
