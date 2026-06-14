@@ -11,6 +11,7 @@ export default function CashOutsPage() {
   const [payouts, setPayouts] = useState<Record<string, any[]>>({})
   const [mix, setMix] = useState<Record<string, { cash: number; transfer: number; card: number; total: number }>>({})
   const [tabsByShift, setTabsByShift] = useState<Record<string, any[]>>({})
+  const [tabName, setTabName] = useState(''); const [tabAmt, setTabAmt] = useState('')
   const [loading, setLoading] = useState(true)
   const [open, setOpen] = useState<string | null>(null)
 
@@ -55,6 +56,19 @@ export default function CashOutsPage() {
     if (error) return
     await init()
   }
+  async function addTab(shiftId: string) {
+    const amt = Number(tabAmt.replace(/[^\d.]/g, ''))
+    if (!amt) return
+    const { error } = await ops().rpc('add_cash_tab', { p_shift: shiftId, p_person: tabName, p_amount: amt })
+    if (error) return
+    setTabName(''); setTabAmt(''); await init()
+  }
+  async function delTab(id: string) {
+    if (!confirm('Remove this tab?')) return
+    const { error } = await ops().rpc('delete_cash_tab', { p_tab: id })
+    if (error) return
+    await init()
+  }
   async function saveCashSales(id: string, value: string) {
     const v = value.trim() === '' ? 0 : Number(value.replace(/[^\d.]/g, ''))
     const { error } = await ops().rpc('set_shift_cash_sales', { p_shift: id, p_cash_sales: v })
@@ -93,6 +107,7 @@ export default function CashOutsPage() {
               <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <span style={{ fontWeight: 600 }}>{vnd(o.tab.amount)}</span>
                 <button onClick={() => toggleTab(o.tab.id, true)} style={{ fontSize: 12, padding: '4px 12px', border: 'none', borderRadius: 6, background: 'var(--accent, #e87830)', color: '#fff', cursor: 'pointer' }}>Mark paid</button>
+                <button onClick={() => delTab(o.tab.id)} title="Remove" style={{ fontSize: 16, padding: '0 4px', border: 'none', background: 'transparent', cursor: 'pointer', color: '#a32d2d' }}>×</button>
               </span>
             </div>
           ))}
@@ -183,20 +198,24 @@ export default function CashOutsPage() {
                       </div>
                     )
                   })()}
-                  {(tabsByShift[s.id] || []).length > 0 && (
-                    <div style={{ marginTop: 12, borderTop: '1px solid var(--border, #eee)', paddingTop: 10 }}>
-                      <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted, #888)', marginBottom: 6 }}>Unpaid tabs</div>
-                      {(tabsByShift[s.id] || []).map(t => (
-                        <div key={t.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 13, padding: '3px 0' }}>
-                          <span style={{ textDecoration: t.settled ? 'line-through' : 'none', color: t.settled ? 'var(--text-muted, #999)' : 'inherit' }}>{t.person_name || 'Unnamed tab'}</span>
-                          <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                            <span style={{ color: 'var(--text-muted, #666)' }}>{vnd(t.amount)}</span>
-                            <button onClick={() => toggleTab(t.id, !t.settled)} style={{ fontSize: 11, padding: '2px 8px', border: '1px solid var(--border, #e5e5e5)', borderRadius: 6, background: 'transparent', cursor: 'pointer', color: t.settled ? '#1d7a46' : 'var(--text-secondary, #666)' }}>{t.settled ? 'Paid ✓' : 'Mark paid'}</button>
-                          </span>
-                        </div>
-                      ))}
+                  <div style={{ marginTop: 12, borderTop: '1px solid var(--border, #eee)', paddingTop: 10 }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted, #888)', marginBottom: 6 }}>Unpaid tabs</div>
+                    {(tabsByShift[s.id] || []).map(t => (
+                      <div key={t.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 13, padding: '3px 0' }}>
+                        <span style={{ textDecoration: t.settled ? 'line-through' : 'none', color: t.settled ? 'var(--text-muted, #999)' : 'inherit' }}>{t.person_name || 'Unnamed tab'}</span>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <span style={{ color: 'var(--text-muted, #666)' }}>{vnd(t.amount)}</span>
+                          <button onClick={() => toggleTab(t.id, !t.settled)} style={{ fontSize: 11, padding: '2px 8px', border: '1px solid var(--border, #e5e5e5)', borderRadius: 6, background: 'transparent', cursor: 'pointer', color: t.settled ? '#1d7a46' : 'var(--text-secondary, #666)' }}>{t.settled ? 'Paid ✓' : 'Mark paid'}</button>
+                          <button onClick={() => delTab(t.id)} title="Remove" style={{ fontSize: 14, padding: '0 4px', border: 'none', background: 'transparent', cursor: 'pointer', color: '#a32d2d' }}>×</button>
+                        </span>
+                      </div>
+                    ))}
+                    <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+                      <input value={tabName} onChange={e => setTabName(e.target.value)} placeholder="Name / table" style={{ flex: 1, padding: '6px 8px', fontSize: 13, border: '1px solid var(--border, #e5e5e5)', borderRadius: 6, background: 'var(--bg-card, #fff)', color: 'var(--text, #333)' }} />
+                      <input value={tabAmt} onChange={e => setTabAmt(e.target.value.replace(/[^\d.]/g, ''))} inputMode="numeric" placeholder="Amount" style={{ width: 90, padding: '6px 8px', fontSize: 13, textAlign: 'right', border: '1px solid var(--border, #e5e5e5)', borderRadius: 6, background: 'var(--bg-card, #fff)', color: 'var(--text, #333)' }} />
+                      <button onClick={() => addTab(s.id)} style={{ fontSize: 13, padding: '6px 12px', border: '1px solid var(--border, #e5e5e5)', borderRadius: 6, background: 'var(--bg-sidebar, #f3f3f3)', cursor: 'pointer', fontWeight: 600 }}>+ Tab</button>
                     </div>
-                  )}
+                  </div>
                   {ps.length > 0 && (
                     <div style={{ marginTop: 12, borderTop: '1px solid var(--border, #eee)', paddingTop: 10 }}>
                       <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted, #888)', marginBottom: 6 }}>Payouts (booked as costs)</div>
