@@ -10,6 +10,7 @@ export default function CashOutsPage() {
   const [shifts, setShifts] = useState<any[]>([])
   const [payouts, setPayouts] = useState<Record<string, any[]>>({})
   const [mix, setMix] = useState<Record<string, { cash: number; transfer: number; card: number; total: number }>>({})
+  const [tabsByShift, setTabsByShift] = useState<Record<string, any[]>>({})
   const [loading, setLoading] = useState(true)
   const [open, setOpen] = useState<string | null>(null)
 
@@ -25,6 +26,9 @@ export default function CashOutsPage() {
       const { data: ps } = await ops().from('cash_payouts').select('*').in('shift_id', ids)
       const byS: Record<string, any[]> = {}; (ps || []).forEach((p: any) => { (byS[p.shift_id] = byS[p.shift_id] || []).push(p) })
       setPayouts(byS)
+      const { data: ts } = await ops().from('cash_tabs').select('*').in('shift_id', ids).order('created_at')
+      const byT: Record<string, any[]> = {}; (ts || []).forEach((t: any) => { (byT[t.shift_id] = byT[t.shift_id] || []).push(t) })
+      setTabsByShift(byT)
       // Square sales for each shift's day, split by tender so cash can be reconciled to the till.
       const dates = Array.from(new Set((cs || []).map((c: any) => c.business_date)))
       const { data: si } = await ops().from('sales_items').select('occurred_on, payment_method, gross').in('occurred_on', dates)
@@ -40,6 +44,11 @@ export default function CashOutsPage() {
     setLoading(false)
   }
 
+  async function toggleTab(id: string, settled: boolean) {
+    const { error } = await ops().rpc('set_tab_settled', { p_tab: id, p_settled: settled })
+    if (error) return
+    await init()
+  }
   async function saveCashSales(id: string, value: string) {
     const v = value.trim() === '' ? 0 : Number(value.replace(/[^\d.]/g, ''))
     const { error } = await ops().rpc('set_shift_cash_sales', { p_shift: id, p_cash_sales: v })
@@ -93,6 +102,7 @@ export default function CashOutsPage() {
                     </span>
                   </div>
                   <Row label="− Paid out" value={vnd(s.payouts)} />
+                  {Number(s.open_tabs) > 0 && <Row label="− Unpaid tabs" value={vnd(s.open_tabs)} />}
                   <div style={{ borderTop: '1px solid var(--border, #e5e5e5)', marginTop: 4 }} />
                   <Row label="= Should be in till" value={vnd(s.expected)} bold />
                   <Row label="Actually counted" value={vnd(s.closing_total)} bold />
@@ -103,6 +113,20 @@ export default function CashOutsPage() {
                       <Row label="Bank transfer → bank" value={vnd(mix[s.business_date].transfer)} />
                       {mix[s.business_date].card > 0 && <Row label="Card (external) → bank" value={vnd(mix[s.business_date].card)} />}
                       <Row label="Total sales" value={vnd(mix[s.business_date].total)} bold />
+                    </div>
+                  )}
+                  {(tabsByShift[s.id] || []).length > 0 && (
+                    <div style={{ marginTop: 12, borderTop: '1px solid var(--border, #eee)', paddingTop: 10 }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted, #888)', marginBottom: 6 }}>Unpaid tabs</div>
+                      {(tabsByShift[s.id] || []).map(t => (
+                        <div key={t.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 13, padding: '3px 0' }}>
+                          <span style={{ textDecoration: t.settled ? 'line-through' : 'none', color: t.settled ? 'var(--text-muted, #999)' : 'inherit' }}>{t.person_name || 'Unnamed tab'}</span>
+                          <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <span style={{ color: 'var(--text-muted, #666)' }}>{vnd(t.amount)}</span>
+                            <button onClick={() => toggleTab(t.id, !t.settled)} style={{ fontSize: 11, padding: '2px 8px', border: '1px solid var(--border, #e5e5e5)', borderRadius: 6, background: 'transparent', cursor: 'pointer', color: t.settled ? '#1d7a46' : 'var(--text-secondary, #666)' }}>{t.settled ? 'Paid ✓' : 'Mark paid'}</button>
+                          </span>
+                        </div>
+                      ))}
                     </div>
                   )}
                   {ps.length > 0 && (

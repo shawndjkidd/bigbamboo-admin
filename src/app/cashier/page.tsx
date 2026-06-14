@@ -20,9 +20,10 @@ const clean = (d: Denoms) => { const o: Denoms = {}; NOTES.forEach(n => { if (Nu
 type Shift = {
   id: string; business_date: string; cashier_name: string | null; status: string
   opening_total: number; closing_total: number | null; cash_sales: number | null
-  payouts: number | null; expected: number | null; over_short: number | null
+  payouts: number | null; expected: number | null; over_short: number | null; open_tabs: number | null
 }
 type Payout = { id: string; amount: number; description: string | null; category: string | null }
+type Tab = { id: string; person_name: string | null; amount: number }
 
 export default function CashierPage() {
   const router = useRouter()
@@ -30,6 +31,8 @@ export default function CashierPage() {
   const [email, setEmail] = useState('')
   const [shift, setShift] = useState<Shift | null>(null)
   const [payouts, setPayouts] = useState<Payout[]>([])
+  const [tabs, setTabs] = useState<Tab[]>([])
+  const [tabName, setTabName] = useState(''); const [tabAmt, setTabAmt] = useState('')
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState('')
 
@@ -61,8 +64,21 @@ export default function CashierPage() {
     const { data } = await ops().from('cash_shifts').select('*').eq('cashier_email', em).eq('status', 'open').order('opened_at', { ascending: false }).limit(1)
     const s = (data && data[0]) as Shift | undefined
     setShift(s || null)
-    if (s) { const { data: p } = await ops().from('cash_payouts').select('id, amount, description, category').eq('shift_id', s.id).order('occurred_at'); setPayouts((p as Payout[]) || []) }
-    else setPayouts([])
+    if (s) {
+      const { data: p } = await ops().from('cash_payouts').select('id, amount, description, category').eq('shift_id', s.id).order('occurred_at'); setPayouts((p as Payout[]) || [])
+      const { data: t } = await ops().from('cash_tabs').select('id, person_name, amount').eq('shift_id', s.id).order('created_at'); setTabs((t as Tab[]) || [])
+    } else { setPayouts([]); setTabs([]) }
+  }
+
+  async function addTab() {
+    const amt = Number(tabAmt.replace(/[^\d.]/g, ''))
+    if (!amt) { setMsg('Enter the tab amount'); return }
+    if (!shift) return
+    setBusy(true); setMsg('')
+    const { error } = await ops().rpc('add_cash_tab', { p_shift: shift.id, p_person: tabName, p_amount: amt })
+    setBusy(false)
+    if (error) { setMsg(error.message); return }
+    setTabName(''); setTabAmt(''); await loadShift(email)
   }
 
   async function startShift() {
@@ -70,7 +86,7 @@ export default function CashierPage() {
     const { data, error } = await ops().rpc('open_cash_shift', { p_denoms: clean(openD) })
     setBusy(false)
     if (error) { setMsg(error.message); return }
-    setOpenD({}); setShift(data as Shift); setPayouts([])
+    setOpenD({}); setShift(data as Shift); setPayouts([]); setTabs([])
   }
 
   async function addPayout() {
@@ -145,6 +161,22 @@ export default function CashierPage() {
               </div>
             </Section>
 
+            <Section title="Tabs — ordered but not paid">
+              <div style={{ fontSize: 13, color: '#999', marginBottom: 10 }}>Someone who left without paying / said they'll pay later. The till will look short by this amount, so log it here with their name.</div>
+              {tabs.map(t => (
+                <div key={t.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid var(--border, #eee)', fontSize: 14 }}>
+                  <span>{t.person_name || 'Unnamed tab'}</span>
+                  <span style={{ fontWeight: 600 }}>{vnd(t.amount)}</span>
+                </div>
+              ))}
+              {tabs.length > 0 && <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', fontWeight: 700 }}><span>Total unpaid</span><span>{vnd(tabs.reduce((s, t) => s + Number(t.amount), 0))}</span></div>}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 120px', gap: 8, marginTop: 10 }}>
+                <input value={tabName} onChange={e => setTabName(e.target.value)} placeholder="Customer name / table" style={inp} />
+                <input value={tabAmt} onChange={e => setTabAmt(e.target.value.replace(/[^\d.]/g, ''))} inputMode="numeric" placeholder="Amount (₫)" style={{ ...inp, textAlign: 'right' }} />
+              </div>
+              <button onClick={addTab} disabled={busy} style={{ ...inp, width: '100%', marginTop: 8, background: 'var(--bg-sidebar,#f3f3f3)', cursor: 'pointer', fontWeight: 600 }}>+ Add unpaid tab</button>
+            </Section>
+
             <Section title="Cash sales this shift">
               <div style={{ fontSize: 13, color: '#999', marginBottom: 8 }}>Read the cash sales total off the Square register and type it here. Leave blank only if you don't have it.</div>
               <input value={cashSales} onChange={e => setCashSales(e.target.value.replace(/[^\d.]/g, ''))} inputMode="numeric" placeholder="Cash sales (₫)" style={{ ...inp, fontSize: 18, fontWeight: 600 }} />
@@ -166,6 +198,7 @@ export default function CashierPage() {
             <Row label="Opening float" value={vnd(shift!.opening_total)} />
             <Row label="Cash sales" value={vnd(shift!.cash_sales)} />
             <Row label="Paid out" value={'– ' + vnd(shift!.payouts)} />
+            {Number(shift!.open_tabs) > 0 && <Row label="Unpaid tabs" value={'– ' + vnd(shift!.open_tabs)} />}
             <Row label="Counted in till" value={vnd(shift!.closing_total)} bold />
             {Number(shift!.over_short) < 0 ? (
               <div style={{ marginTop: 10, padding: '14px', borderRadius: 10, textAlign: 'center', background: '#fdecec', color: '#a32d2d' }}>
