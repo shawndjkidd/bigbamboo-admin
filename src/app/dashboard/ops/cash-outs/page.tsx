@@ -56,6 +56,14 @@ export default function CashOutsPage() {
         sc[sh.id] = Math.round(cash)
       })
       setShiftCash(sc)
+      // Smart drawer: auto-fill cash sales from the shift's own window for any closed shift
+      // that doesn't have a figure yet, so the over/short is right without anyone tapping.
+      const toApply = (cs || []).filter((sh: any) => sh.status === 'closed' && Number(sh.cash_sales || 0) === 0 && (sc[sh.id] || 0) > 0)
+      if (toApply.length) {
+        for (const sh of toApply) await ops().rpc('set_shift_cash_sales', { p_shift: sh.id, p_cash_sales: sc[sh.id] })
+        const { data: cs2 } = await ops().from('cash_shifts').select('*').order('opened_at', { ascending: false }).limit(60)
+        if (cs2) setShifts(cs2)
+      }
     }
     setLoading(false)
   }

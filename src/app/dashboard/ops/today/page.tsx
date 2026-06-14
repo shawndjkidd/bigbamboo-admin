@@ -103,13 +103,10 @@ export default function CashReconPage() {
       ops().from('sales_daily').select('occurred_on, net, source').eq('venue_id', vid).order('occurred_on', { ascending: false }).limit(120),
     ])
     setRecent((rc as ReconRow[]) || [])
-    // One row per day — prefer the Square figure when a day also has a manual entry
-    const m = new Map<string, { occurred_on: string; net: number | null; source?: string }>()
-    for (const d of ((sd as any[]) || [])) {
-      const ex = m.get(d.occurred_on)
-      if (!ex || (d.source === 'square' && ex.source !== 'square')) m.set(d.occurred_on, d)
-    }
-    setRecentSales(Array.from(m.values()))
+    // Sum every source per day (Square + any manual adjustments, e.g. offline-flush corrections)
+    const m = new Map<string, number>()
+    for (const d of ((sd as any[]) || [])) m.set(d.occurred_on, (m.get(d.occurred_on) || 0) + Number(d.net || 0))
+    setRecentSales(Array.from(m.entries()).map(([occurred_on, net]) => ({ occurred_on, net })))
   }
 
   const oFloat = num(openingFloat), cSales = num(cashSales), kSales = num(cardSales), oSales = num(otherSales)
