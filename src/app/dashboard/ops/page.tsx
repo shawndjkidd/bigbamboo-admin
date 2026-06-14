@@ -82,13 +82,11 @@ export default function OpsDashboard() {
     const accRows = (pnlAcc.data || []) as any[]
     const accSum = (k: string) => accRows.reduce((a, r) => a + Number(r[k] || 0), 0)
 
-    // One row per day — prefer the Square figure when a day also has a manual entry
-    const byDayMap = new Map<string, SalesRow>()
-    for (const sr of salesRows) {
-      const ex = byDayMap.get(sr.occurred_on)
-      if (!ex || (sr.source === 'square' && ex.source !== 'square')) byDayMap.set(sr.occurred_on, sr)
-    }
-    const dedupedDaily = Array.from(byDayMap.values()).sort((a, b) => a.occurred_on.localeCompare(b.occurred_on))
+    // One row per day = SUM of every source (Square + manual adjustments like offline-flush fixes).
+    // Newest day first, to match the Recent days list on the Overview.
+    const byDayMap = new Map<string, number>()
+    for (const sr of salesRows) byDayMap.set(sr.occurred_on, (byDayMap.get(sr.occurred_on) || 0) + Number(sr.gross || 0))
+    const dedupedDaily: SalesRow[] = Array.from(byDayMap.entries()).map(([occurred_on, gross]) => ({ occurred_on, gross, source: 'sum' })).sort((a, b) => b.occurred_on.localeCompare(a.occurred_on))
 
     // P&L tiles come from the same accrual view the Overview P&L uses, so the two pages agree
     setPnl({

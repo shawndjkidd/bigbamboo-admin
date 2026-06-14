@@ -9,7 +9,7 @@ export default function CashOutsPage() {
   const [role, setRole] = useState<StaffRole | null>(null)
   const [shifts, setShifts] = useState<any[]>([])
   const [payouts, setPayouts] = useState<Record<string, any[]>>({})
-  const [mix, setMix] = useState<Record<string, { cash: number; transfer: number; card: number; total: number }>>({})
+  const [shiftMix, setShiftMix] = useState<Record<string, { cash: number; transfer: number; card: number; total: number }>>({})
   const [shiftCash, setShiftCash] = useState<Record<string, number>>({})
   const [tabsByShift, setTabsByShift] = useState<Record<string, any[]>>({})
   const [tabName, setTabName] = useState(''); const [tabAmt, setTabAmt] = useState('')
@@ -34,28 +34,26 @@ export default function CashOutsPage() {
       // Square sales for each shift's day, split by tender so cash can be reconciled to the till.
       const dates = Array.from(new Set((cs || []).map((c: any) => c.business_date)))
       const { data: si } = await ops().from('sales_items').select('occurred_on, occurred_at, payment_method, gross').in('occurred_on', dates)
-      const m: Record<string, any> = {}
-      ;(si || []).forEach((r: any) => {
-        const b = m[r.occurred_on] || { cash: 0, transfer: 0, card: 0, total: 0 }
-        const g = Number(r.gross || 0); const pm = (r.payment_method || '').toUpperCase()
-        if (pm.includes('CASH')) b.cash += g; else if (pm.includes('CARD')) b.card += g; else b.transfer += g
-        b.total += g; m[r.occurred_on] = b
-      })
-      setMix(m)
-      // Cash rung up only while each drawer was open (open → close) — the figure that should be in that till.
+      // Everything is scoped to each shift's own open→close window, so a batch that uploaded
+      // outside the shift (e.g. an offline flush) never inflates the cash-out.
+      const sm: Record<string, { cash: number; transfer: number; card: number; total: number }> = {}
       const sc: Record<string, number> = {}
       ;(cs || []).forEach((sh: any) => {
         const open = new Date(sh.opened_at).getTime()
         const close = sh.closed_at ? new Date(sh.closed_at).getTime() : Date.now()
-        let cash = 0
+        const b = { cash: 0, transfer: 0, card: 0, total: 0 }
         ;(si || []).forEach((r: any) => {
-          if (r.occurred_on !== sh.business_date || !(r.payment_method || '').toUpperCase().includes('CASH')) return
+          if (r.occurred_on !== sh.business_date) return
           const t = new Date(r.occurred_at).getTime()
-          if (t >= open && t <= close) cash += Number(r.gross || 0)
+          if (t < open || t > close) return
+          const g = Number(r.gross || 0); const pm = (r.payment_method || '').toUpperCase()
+          if (pm.includes('CASH')) b.cash += g; else if (pm.includes('CARD')) b.card += g; else b.transfer += g
+          b.total += g
         })
-        sc[sh.id] = Math.round(cash)
+        sm[sh.id] = { cash: Math.round(b.cash), transfer: Math.round(b.transfer), card: Math.round(b.card), total: Math.round(b.total) }
+        sc[sh.id] = Math.round(b.cash)
       })
-      setShiftCash(sc)
+      setShiftMix(sm); setShiftCash(sc)
       // Smart drawer: auto-fill cash sales from the shift's own window for any closed shift
       // that doesn't have a figure yet, so the over/short is right without anyone tapping.
       const toApply = (cs || []).filter((sh: any) => sh.status === 'closed' && Number(sh.cash_sales || 0) === 0 && (sc[sh.id] || 0) > 0)
@@ -187,17 +185,17 @@ export default function CashOutsPage() {
                   <div style={{ borderTop: '1px solid var(--border, #e5e5e5)', marginTop: 4 }} />
                   <Row label="= Should be in till" value={vnd(s.expected)} bold />
                   <Row label="Actually counted" value={vnd(s.closing_total)} bold />
-                  {mix[s.business_date] && (
+                  {shiftMix[s.id] && (
                     <div style={{ marginTop: 12, borderTop: '1px solid var(--border, #eee)', paddingTop: 10 }}>
-                      <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted, #888)', marginBottom: 6 }}>Sales this day by method (Square)</div>
-                      <Row label="Cash → till" value={vnd(mix[s.business_date].cash)} />
-                      <Row label="Bank transfer → bank" value={vnd(mix[s.business_date].transfer)} />
-                      {mix[s.business_date].card > 0 && <Row label="Card (external) → bank" value={vnd(mix[s.business_date].card)} />}
-                      <Row label="Total sales" value={vnd(mix[s.business_date].total)} bold />
+                      <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted, #888)', marginBottom: 6 }}>Sales this shift by method (Square)</div>
+                      <Row label="Cash → till" value={vnd(shiftMix[s.id].cash)} />
+                      <Row label="Bank transfer → bank" value={vnd(shiftMix[s.id].transfer)} />
+                      {shiftMix[s.id].card > 0 && <Row label="Card (external) → bank" value={vnd(shiftMix[s.id].card)} />}
+                      <Row label="Total sales" value={vnd(shiftMix[s.id].total)} bold />
                     </div>
                   )}
-                  {mix[s.business_date] && mix[s.business_date].transfer > 0 && (() => {
-                    const sqTransfer = mix[s.business_date].transfer
+                  {shiftMix[s.id] && shiftMix[s.id].transfer > 0 && (() => {
+                    const sqTransfer = shiftMix[s.id].transfer
                     const bank = s.bank_received == null ? null : Number(s.bank_received)
                     const diff = bank == null ? null : bank - sqTransfer
                     return (

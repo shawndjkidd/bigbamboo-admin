@@ -67,14 +67,12 @@ export default function Overview() {
   const monthStr = td.slice(0, 7)
   const weekAgo = (() => { const d = new Date(); d.setDate(d.getDate() - 6); return d.toISOString().split('T')[0] })()
   const num = (n: number | null) => Number(n || 0)
-  // One figure per day: if a day has both a manual entry and a Square sync, prefer Square (actual POS).
+  // One figure per day = SUM of every source (Square sync + any manual adjustments such as
+  // offline-flush day corrections), so a day reads its true net.
   const salesByDay: DaySale[] = (() => {
-    const m = new Map<string, DaySale>()
-    for (const d of sales) {
-      const ex = m.get(d.occurred_on)
-      if (!ex || (d.source === 'square' && ex.source !== 'square')) m.set(d.occurred_on, d)
-    }
-    return Array.from(m.values()).sort((a, b) => b.occurred_on.localeCompare(a.occurred_on))
+    const m = new Map<string, number>()
+    for (const d of sales) m.set(d.occurred_on, (m.get(d.occurred_on) || 0) + num(d.net))
+    return Array.from(m.entries()).map(([occurred_on, net]) => ({ occurred_on, net, gross: net })).sort((a, b) => b.occurred_on.localeCompare(a.occurred_on))
   })()
   const todayNet = salesByDay.filter(d => d.occurred_on === td).reduce((a, d) => a + num(d.net), 0)
   const weekNet = salesByDay.filter(d => d.occurred_on >= weekAgo).reduce((a, d) => a + num(d.net), 0)
