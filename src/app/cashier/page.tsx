@@ -23,7 +23,7 @@ type Shift = {
   payouts: number | null; expected: number | null; over_short: number | null; open_tabs: number | null; tips: number | null
 }
 type Payout = { id: string; amount: number; description: string | null; category: string | null }
-type Tab = { id: string; person_name: string | null; amount: number; claimed?: boolean; shift_id?: string | null; paid_method?: string | null }
+type Tab = { id: string; person_name: string | null; amount: number; claimed?: boolean; shift_id?: string | null; paid_method?: string | null; contact?: string | null }
 
 export default function CashierPage() {
   const router = useRouter()
@@ -33,8 +33,8 @@ export default function CashierPage() {
   const [payouts, setPayouts] = useState<Payout[]>([])
   const [tabs, setTabs] = useState<Tab[]>([])
   const [outstanding, setOutstanding] = useState<Tab[]>([])
-  const [tabName, setTabName] = useState(''); const [tabAmt, setTabAmt] = useState('')
-  const [otName, setOtName] = useState(''); const [otAmt, setOtAmt] = useState('')
+  const [tabName, setTabName] = useState(''); const [tabAmt, setTabAmt] = useState(''); const [tabContact, setTabContact] = useState('')
+  const [otName, setOtName] = useState(''); const [otAmt, setOtAmt] = useState(''); const [otContact, setOtContact] = useState('')
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState('')
 
@@ -69,9 +69,9 @@ export default function CashierPage() {
     setShift(s || null)
     if (s) {
       const { data: p } = await ops().from('cash_payouts').select('id, amount, description, category').eq('shift_id', s.id).order('occurred_at'); setPayouts((p as Payout[]) || [])
-      const { data: t } = await ops().from('cash_tabs').select('id, person_name, amount').eq('shift_id', s.id).order('created_at'); setTabs((t as Tab[]) || [])
+      const { data: t } = await ops().from('cash_tabs').select('id, person_name, amount, contact').eq('shift_id', s.id).order('created_at'); setTabs((t as Tab[]) || [])
     } else { setPayouts([]); setTabs([]) }
-    const { data: ot } = await ops().from('cash_tabs').select('id, person_name, amount, claimed, shift_id, paid_method').eq('settled', false).order('created_at')
+    const { data: ot } = await ops().from('cash_tabs').select('id, person_name, amount, claimed, shift_id, paid_method, contact').eq('settled', false).order('created_at')
     setOutstanding((ot as Tab[]) || [])
   }
 
@@ -79,10 +79,10 @@ export default function CashierPage() {
     const amt = Number(otAmt.replace(/[^\d.]/g, ''))
     if (!amt) { setMsg('Enter the tab amount'); return }
     setBusy(true); setMsg('')
-    const { error } = await ops().rpc('add_cash_tab', { p_shift: shift?.id ?? null, p_person: otName, p_amount: amt })
+    const { error } = await ops().rpc('add_cash_tab', { p_shift: shift?.id ?? null, p_person: otName, p_amount: amt, p_contact: otContact })
     setBusy(false)
     if (error) { setMsg(error.message); return }
-    setOtName(''); setOtAmt(''); await loadShift(email)
+    setOtName(''); setOtAmt(''); setOtContact(''); await loadShift(email)
   }
   async function claimTab(id: string, claimed: boolean, method?: string) {
     const { error } = await ops().rpc('claim_cash_tab', { p_tab: id, p_claimed: claimed, p_method: method ?? null })
@@ -95,10 +95,10 @@ export default function CashierPage() {
     if (!amt) { setMsg('Enter the tab amount'); return }
     if (!shift) return
     setBusy(true); setMsg('')
-    const { error } = await ops().rpc('add_cash_tab', { p_shift: shift.id, p_person: tabName, p_amount: amt })
+    const { error } = await ops().rpc('add_cash_tab', { p_shift: shift.id, p_person: tabName, p_amount: amt, p_contact: tabContact })
     setBusy(false)
     if (error) { setMsg(error.message); return }
-    setTabName(''); setTabAmt(''); await loadShift(email)
+    setTabName(''); setTabAmt(''); setTabContact(''); await loadShift(email)
   }
 
   async function startShift() {
@@ -186,15 +186,16 @@ export default function CashierPage() {
               <div style={{ fontSize: 13, color: '#999', marginBottom: 10 }}>Someone who left without paying / said they'll pay later. The till will look short by this amount, so log it here with their name.</div>
               {tabs.map(t => (
                 <div key={t.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid var(--border, #eee)', fontSize: 14 }}>
-                  <span>{t.person_name || 'Unnamed tab'}</span>
+                  <span>{t.person_name || 'Unnamed tab'}{t.contact && <span style={{ marginLeft: 8, fontSize: 12, color: '#999' }}>· {t.contact}</span>}</span>
                   <span style={{ fontWeight: 600 }}>{vnd(t.amount)}</span>
                 </div>
               ))}
               {tabs.length > 0 && <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', fontWeight: 700 }}><span>Total unpaid</span><span>{vnd(tabs.reduce((s, t) => s + Number(t.amount), 0))}</span></div>}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 120px', gap: 8, marginTop: 10 }}>
-                <input value={tabName} onChange={e => setTabName(e.target.value)} placeholder="Customer name / table" style={inp} />
+                <input value={tabName} onChange={e => setTabName(e.target.value)} placeholder="Full name" style={inp} />
                 <input value={tabAmt} onChange={e => setTabAmt(e.target.value.replace(/[^\d.]/g, ''))} inputMode="numeric" placeholder="Amount (₫)" style={{ ...inp, textAlign: 'right' }} />
               </div>
+              <input value={tabContact} onChange={e => setTabContact(e.target.value)} placeholder="Phone / contact (optional)" style={{ ...inp, width: '100%', marginTop: 8 }} />
               <button onClick={addTab} disabled={busy} style={{ ...inp, width: '100%', marginTop: 8, background: 'var(--bg-sidebar,#f3f3f3)', cursor: 'pointer', fontWeight: 600 }}>+ Add unpaid tab</button>
             </Section>
 
@@ -245,7 +246,7 @@ export default function CashierPage() {
           {outstanding.length === 0 && <div style={{ fontSize: 14, color: '#999', padding: '4px 0' }}>No outstanding tabs.</div>}
           {outstanding.map(t => (
             <div key={t.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid var(--border, #eee)', fontSize: 14 }}>
-              <span>{t.person_name || 'Unnamed tab'}{t.claimed && <span style={{ marginLeft: 8, fontSize: 11, color: '#b8631c', background: '#fdecdc', padding: '1px 8px', borderRadius: 100 }}>paid · {t.paid_method === 'cash' ? 'cash' : 'QR'} · awaiting confirm</span>}</span>
+              <span>{t.person_name || 'Unnamed tab'}{t.contact && <span style={{ marginLeft: 8, fontSize: 12, color: '#999' }}>· {t.contact}</span>}{t.claimed && <span style={{ marginLeft: 8, fontSize: 11, color: '#b8631c', background: '#fdecdc', padding: '1px 8px', borderRadius: 100 }}>paid · {t.paid_method === 'cash' ? 'cash' : 'QR'} · awaiting confirm</span>}</span>
               <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <span style={{ fontWeight: 600 }}>{vnd(t.amount)}</span>
                 {t.claimed ? (
@@ -260,9 +261,10 @@ export default function CashierPage() {
             </div>
           ))}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 120px', gap: 8, marginTop: 12 }}>
-            <input value={otName} onChange={e => setOtName(e.target.value)} placeholder="Customer name / table" style={inp} />
+            <input value={otName} onChange={e => setOtName(e.target.value)} placeholder="Full name" style={inp} />
             <input value={otAmt} onChange={e => setOtAmt(e.target.value.replace(/[^\d.]/g, ''))} inputMode="numeric" placeholder="Amount (₫)" style={{ ...inp, textAlign: 'right' }} />
           </div>
+          <input value={otContact} onChange={e => setOtContact(e.target.value)} placeholder="Phone / contact (optional)" style={{ ...inp, width: '100%', marginTop: 8 }} />
           <button onClick={addOutstandingTab} disabled={busy} style={{ ...inp, width: '100%', marginTop: 8, background: 'var(--bg-sidebar,#f3f3f3)', cursor: 'pointer', fontWeight: 600 }}>+ Add unpaid tab</button>
         </Section>
       </div>

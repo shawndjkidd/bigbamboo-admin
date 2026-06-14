@@ -35,17 +35,57 @@ function parseTime(input: string): string | null {
   else if (h >= 1 && h <= 11) h += 12   // bar default: bare 1–11 → PM
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
 }
+const pad2 = (n: number) => String(n).padStart(2, '0')
 function fmt12(hhmm: string): string {
   const [h, m] = hhmm.split(':').map(Number)
   const ap = h >= 12 ? 'PM' : 'AM'; let hh = h % 12; if (hh === 0) hh = 12
   return `${hh}:${String(m).padStart(2, '0')} ${ap}`
 }
+// All half-hour slots, ordered like a bar day (opens ~late morning → after midnight),
+// filtered by what the user has typed so far. Typing "3" shows 3:00 PM, 3:30 PM, 3:00 AM, 3:30 AM.
+function timeOptions(text: string): { value: string; label: string }[] {
+  let raw = (text || '').trim().toLowerCase().replace(/[.\s]/g, '')
+  let ap: 'a' | 'p' | null = null
+  if (/am?$/.test(raw)) { ap = 'a'; raw = raw.replace(/am?$/, '') }
+  else if (/pm?$/.test(raw)) { ap = 'p'; raw = raw.replace(/pm?$/, '') }
+  const digits = raw.replace(':', '')
+  const all: { value: string; label: string; key: string; mer: 'a' | 'p'; ord: number }[] = []
+  for (let h = 0; h < 24; h++) {
+    for (const m of [0, 30]) {
+      const value = `${pad2(h)}:${pad2(m)}`
+      const h12 = (h % 12) || 12
+      all.push({ value, label: fmt12(value), key: `${h12}${pad2(m)}`, mer: h < 12 ? 'a' : 'p', ord: h < 5 ? h + 24 : h })
+    }
+  }
+  let opts = all
+  if (ap) opts = opts.filter(o => o.mer === ap)
+  if (digits) opts = opts.filter(o => o.key.startsWith(digits))
+  opts.sort((a, b) => a.ord - b.ord)
+  return opts.map(o => ({ value: o.value, label: o.label }))
+}
 function SmartTime({ value, onChange, placeholder, style }: { value: string; onChange: (v: string) => void; placeholder?: string; style?: React.CSSProperties }) {
-  const [text, setText] = useState(''); const [editing, setEditing] = useState(false)
-  return <input value={editing ? text : (value ? fmt12(value) : '')} placeholder={placeholder} style={style}
-    onFocus={() => { setEditing(true); setText(value || '') }}
-    onChange={e => setText(e.target.value)}
-    onBlur={() => { onChange(parseTime(text) || ''); setEditing(false) }} />
+  const [text, setText] = useState(''); const [open, setOpen] = useState(false)
+  const opts = open ? timeOptions(text).slice(0, 8) : []
+  const pick = (v: string) => { onChange(v); setOpen(false); setText('') }
+  return (
+    <div style={{ position: 'relative' }}>
+      <input value={open ? text : (value ? fmt12(value) : '')} placeholder={placeholder} style={style}
+        onFocus={() => { setOpen(true); setText('') }}
+        onChange={e => setText(e.target.value)}
+        onBlur={() => { setTimeout(() => { setOpen(false); if (text.trim()) { const p = parseTime(text); if (p) onChange(p) } }, 150) }}
+        onKeyDown={e => { if (e.key === 'Enter' && opts.length) { e.preventDefault(); pick(opts[0].value) } else if (e.key === 'Escape') { setOpen(false) } }} />
+      {open && opts.length > 0 && (
+        <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 4, zIndex: 30, maxHeight: 224, overflowY: 'auto', background: 'var(--bg-card, #1f1f1f)', border: '1px solid var(--border, #3a3a3a)', borderRadius: 8, boxShadow: '0 8px 24px rgba(0,0,0,0.4)' }}>
+          {opts.map(o => (
+            <button key={o.value} type="button" onMouseDown={e => { e.preventDefault(); pick(o.value) }}
+              style={{ display: 'block', width: '100%', textAlign: 'left', padding: '8px 12px', fontSize: 14, border: 'none', background: 'transparent', color: 'var(--text, #eee)', cursor: 'pointer' }}
+              onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-sidebar, #2a2a2a)')}
+              onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>{o.label}</button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
 }
 
 export default function LaborPage() {
