@@ -4,7 +4,18 @@ import { ops, vnd, today, canManageRecipes, type StaffRole } from '@/lib/ops/api
 import { supabase } from '@/lib/supabase'
 
 type Emp = { id: string; name: string; role_title: string | null; base_rate: number | null; active: boolean }
-type Shift = { id: string; employee_id: string; occurred_on: string; hours: number; hourly_rate: number; shift_cost: number | null; notes: string | null }
+type Shift = { id: string; employee_id: string; occurred_on: string; hours: number; hourly_rate: number; shift_cost: number | null; notes: string | null; start_time: string | null; end_time: string | null }
+
+// Hours between a start and finish HH:MM, rolling past midnight (e.g. 17:00 → 01:00 = 8h).
+function hoursBetween(start: string, end: string): number {
+  if (!start || !end) return 0
+  const [sh, sm] = start.split(':').map(Number)
+  const [eh, em] = end.split(':').map(Number)
+  let mins = (eh * 60 + em) - (sh * 60 + sm)
+  if (mins < 0) mins += 24 * 60
+  return Math.round((mins / 60) * 100) / 100
+}
+const hhmm = (t: string | null) => t ? t.slice(0, 5) : ''
 
 export default function LaborPage() {
   const [role, setRole] = useState<StaffRole | null>(null)
@@ -28,7 +39,8 @@ export default function LaborPage() {
   // log-shift form
   const [sEmp, setSEmp] = useState('')
   const [sDate, setSDate] = useState(today())
-  const [sHours, setSHours] = useState('')
+  const [sStart, setSStart] = useState('')
+  const [sEnd, setSEnd] = useState('')
   const [sRate, setSRate] = useState('')
   const [sNotes, setSNotes] = useState('')
 
@@ -52,7 +64,7 @@ export default function LaborPage() {
     const monthStart = today().slice(0, 8) + '01'
     const [{ data: e }, { data: s }] = await Promise.all([
       ops().from('employees').select('id, name, role_title, base_rate, active').eq('venue_id', vid).order('name'),
-      ops().from('labor_shifts').select('id, employee_id, occurred_on, hours, hourly_rate, shift_cost, notes').eq('venue_id', vid).gte('occurred_on', monthStart).order('occurred_on', { ascending: false }),
+      ops().from('labor_shifts').select('id, employee_id, occurred_on, hours, hourly_rate, shift_cost, notes, start_time, end_time').eq('venue_id', vid).gte('occurred_on', monthStart).order('occurred_on', { ascending: false }),
     ])
     setEmps((e as Emp[]) || [])
     setShifts((s as Shift[]) || [])
@@ -62,7 +74,7 @@ export default function LaborPage() {
   const empName = (id: string) => emps.find(e => e.id === id)?.name || '—'
   const monthTotal = useMemo(() => shifts.reduce((t, s) => t + (Number(s.shift_cost) || 0), 0), [shifts])
   const monthHours = useMemo(() => shifts.reduce((t, s) => t + (Number(s.hours) || 0), 0), [shifts])
-  const previewCost = (Number(sHours) || 0) * (Number(sRate) || 0)
+  const previewCost = hoursBetween(sStart, sEnd) * (Number(sRate.replace(/[^\d.]/g, '')) || 0)
 
   async function addEmployee() {
     if (!venueId || !eName.trim()) { setMsg('Employee needs a name'); return }
@@ -114,17 +126,18 @@ export default function LaborPage() {
   async function logShift() {
     if (!venueId) return
     if (!sEmp) { setMsg('Pick an employee'); return }
-    const hours = Number(sHours); const rate = Number(sRate.replace(/[^\d.]/g, ''))
-    if (!hours || hours <= 0) { setMsg('Enter hours worked'); return }
+    if (!sStart || !sEnd) { setMsg('Enter a start and finish time'); return }
+    const hours = hoursBetween(sStart, sEnd); const rate = Number(sRate.replace(/[^\d.]/g, ''))
+    if (!hours || hours <= 0) { setMsg('Finish time must be after start time'); return }
     if (!rate || rate <= 0) { setMsg('Enter an hourly rate'); return }
     setMsg(null)
     const { error } = await ops().from('labor_shifts').insert({
       venue_id: venueId, employee_id: sEmp, occurred_on: sDate,
-      hours, hourly_rate: rate,
+      hours, hourly_rate: rate, start_time: sStart, end_time: sEnd,
       source: 'manual', notes: sNotes.trim() || null,
     })
     if (error) { setMsg(error.message); return }
-    setSHours(''); setSNotes('')
+    setSStart(''); setSEnd(''); setSNotes('')
     await load(venueId)
   }
   async function delShift(id: string) {
@@ -175,7 +188,9 @@ export default function LaborPage() {
               </select>
             </div>
             <div style={{ width: 140 }}><label className="label">Date</label><input type="date" value={sDate} onChange={e => setSDate(e.target.value)} style={inp} /></div>
-            <div style={{ width: 90 }}><label className="label">Hours</label><input type="text" inputMode="decimal" value={sHours} onChange={e => setSHours(e.target.value)} placeholder="8" style={inp} /></div>
+            <div style={{ width: 110 }}><label className="label">Start</label><input type="time" value={sStart} onChange={e => setSStart(e.target.value)} style={inp} /></div>
+            <div style={{ width: 110 }}><label className="label">Finish</label><input type="time" value={sEnd} onChange={e => setSEnd(e.target.value)} style={inp} /></div>
+            <div style={{ width: 70 }}><label className="label">Hours</label><div style={{ ...inp, display: 'flex', alignItems: 'center', color: 'var(--text-muted, #999)' }}>{hoursBetween(sStart, sEnd) ? hoursBetween(sStart, sEnd).toFixed(1) : '—'}</div></div>
             <div style={{ width: 130 }}><label className="label">Rate (VND/h)</label><input type="text" inputMode="numeric" value={sRate} onChange={e => setSRate(e.target.value)} placeholder="40,000" style={inp} /></div>
             <div style={{ minWidth: 140, flex: 1 }}><label className="label">Notes</label><input type="text" value={sNotes} onChange={e => setSNotes(e.target.value)} placeholder="optional" style={inp} /></div>
             <button onClick={logShift} style={btnPrimary}>Add{previewCost > 0 ? ` · ${vnd(previewCost)}` : ''}</button>
@@ -213,7 +228,7 @@ export default function LaborPage() {
               <tr key={s.id} style={{ borderTop: '1px solid var(--border, #eee)' }}>
                 <td style={td}>{s.occurred_on}</td>
                 <td style={td}>{empName(s.employee_id)}</td>
-                <td style={{ ...td, textAlign: 'right' }}>{Number(s.hours).toFixed(1)}</td>
+                <td style={{ ...td, textAlign: 'right' }}>{Number(s.hours).toFixed(1)}{s.start_time && s.end_time && <div style={{ fontSize: 11, color: 'var(--text-muted, #999)' }}>{hhmm(s.start_time)}–{hhmm(s.end_time)}</div>}</td>
                 <td style={{ ...td, textAlign: 'right' }}>{vnd(s.hourly_rate)}</td>
                 <td style={{ ...td, textAlign: 'right', fontWeight: 600 }}>{vnd(s.shift_cost)}</td>
                 <td style={{ ...td, textAlign: 'right', whiteSpace: 'nowrap' }}>

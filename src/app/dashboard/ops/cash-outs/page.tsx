@@ -106,6 +106,7 @@ export default function CashOutsPage() {
   if (loading) return <div style={{ color: 'var(--text-muted, #999)', fontSize: 14 }}>Loading…</div>
   if (!(role && canManageRecipes(role))) return <div style={{ color: 'var(--text-muted, #999)', fontSize: 14 }}>Managers only.</div>
 
+  const isSuper = !!role && ['super_admin', 'admin'].includes(role)
   // Every still-unpaid tab across all shifts — the running "who owes us money" list.
   const outstanding: { tab: any; date: string }[] = []
   shifts.forEach(s => (tabsByShift[s.id] || []).forEach((t: any) => { if (!t.settled) outstanding.push({ tab: t, date: s.business_date }) }))
@@ -126,8 +127,9 @@ export default function CashOutsPage() {
             <div key={o.tab.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 14, padding: '6px 0', borderTop: '1px solid var(--border, #eee)' }}>
               <span>{o.tab.person_name || 'Unnamed tab'} <span style={{ color: 'var(--text-muted, #999)', fontSize: 12 }}>· {o.date}</span></span>
               <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                {o.tab.claimed && <span style={{ fontSize: 11, color: '#b8631c', background: 'var(--badge-orange-bg, #fdecdc)', padding: '1px 8px', borderRadius: 100 }}>paid · awaiting confirm</span>}
                 <span style={{ fontWeight: 600 }}>{vnd(o.tab.amount)}</span>
-                <button onClick={() => toggleTab(o.tab.id, true)} style={{ fontSize: 12, padding: '4px 12px', border: 'none', borderRadius: 6, background: 'var(--accent, #e87830)', color: '#fff', cursor: 'pointer' }}>Mark paid</button>
+                {isSuper && <button onClick={() => toggleTab(o.tab.id, true)} style={{ fontSize: 12, padding: '4px 12px', border: 'none', borderRadius: 6, background: 'var(--accent, #e87830)', color: '#fff', cursor: 'pointer' }}>Confirm paid</button>}
                 <button onClick={() => delTab(o.tab.id)} title="Remove" style={{ fontSize: 16, padding: '0 4px', border: 'none', background: 'transparent', cursor: 'pointer', color: '#a32d2d' }}>×</button>
               </span>
             </div>
@@ -224,9 +226,10 @@ export default function CashOutsPage() {
                     {(tabsByShift[s.id] || []).map(t => (
                       <div key={t.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 13, padding: '3px 0' }}>
                         <span style={{ textDecoration: t.settled ? 'line-through' : 'none', color: t.settled ? 'var(--text-muted, #999)' : 'inherit' }}>{t.person_name || 'Unnamed tab'}</span>
-                        <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          {t.claimed && !t.settled && <span style={{ fontSize: 10, color: '#b8631c', background: 'var(--badge-orange-bg, #fdecdc)', padding: '1px 6px', borderRadius: 100 }}>awaiting confirm</span>}
                           <span style={{ color: 'var(--text-muted, #666)' }}>{vnd(t.amount)}</span>
-                          <button onClick={() => toggleTab(t.id, !t.settled)} style={{ fontSize: 11, padding: '2px 8px', border: '1px solid var(--border, #e5e5e5)', borderRadius: 6, background: 'transparent', cursor: 'pointer', color: t.settled ? '#1d7a46' : 'var(--text-secondary, #666)' }}>{t.settled ? 'Paid ✓' : 'Mark paid'}</button>
+                          {(isSuper || t.settled) && <button onClick={() => toggleTab(t.id, !t.settled)} style={{ fontSize: 11, padding: '2px 8px', border: '1px solid var(--border, #e5e5e5)', borderRadius: 6, background: 'transparent', cursor: 'pointer', color: t.settled ? '#1d7a46' : 'var(--text-secondary, #666)' }}>{t.settled ? 'Confirmed ✓' : 'Confirm paid'}</button>}
                           <button onClick={() => delTab(t.id)} title="Remove" style={{ fontSize: 14, padding: '0 4px', border: 'none', background: 'transparent', cursor: 'pointer', color: '#a32d2d' }}>×</button>
                         </span>
                       </div>
