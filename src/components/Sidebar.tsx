@@ -24,6 +24,7 @@ const NAV: NavItem[] = [
   { href: '/dashboard/ops/square', label: 'Square POS' },
   { href: '/dashboard/ops/labor', label: 'Labor' },
   { href: '/dashboard/ops/cash', label: 'Cash management' },
+  { href: '/dashboard/ops/cash-outs', label: 'Cash-outs' },
   { href: '/dashboard/ops/events', label: 'Event P&L' },
   { href: '/dashboard/ops/menu-map', label: 'Menu map' },
   { href: '/dashboard/ops/categories', label: 'Categories' },
