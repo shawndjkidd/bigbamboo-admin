@@ -20,7 +20,7 @@ const clean = (d: Denoms) => { const o: Denoms = {}; NOTES.forEach(n => { if (Nu
 type Shift = {
   id: string; business_date: string; cashier_name: string | null; status: string
   opening_total: number; closing_total: number | null; cash_sales: number | null
-  payouts: number | null; expected: number | null; over_short: number | null; open_tabs: number | null
+  payouts: number | null; expected: number | null; over_short: number | null; open_tabs: number | null; tips: number | null
 }
 type Payout = { id: string; amount: number; description: string | null; category: string | null }
 type Tab = { id: string; person_name: string | null; amount: number }
@@ -45,6 +45,7 @@ export default function CashierPage() {
   const [poCat, setPoCat] = useState('food')
   // cash sales typed off the Square register at close
   const [cashSales, setCashSales] = useState('')
+  const [tips, setTips] = useState('')
 
   useEffect(() => {
     (async () => {
@@ -106,10 +107,11 @@ export default function CashierPage() {
     if (!confirm('Close this shift? This records your end-of-shift count and the over/short.')) return
     setBusy(true); setMsg('')
     const cs = cashSales.trim() === '' ? null : Number(cashSales.replace(/[^\d.]/g, ''))
-    const { data, error } = await ops().rpc('close_cash_shift', { p_shift: shift.id, p_denoms: clean(closeD), p_cash_sales: cs })
+    const tp = tips.trim() === '' ? 0 : Number(tips.replace(/[^\d.]/g, ''))
+    const { data, error } = await ops().rpc('close_cash_shift', { p_shift: shift.id, p_denoms: clean(closeD), p_cash_sales: cs, p_tips: tp })
     setBusy(false)
     if (error) { setMsg(error.message); return }
-    setCloseD({}); setCashSales(''); setShift(data as Shift) // now status='closed' → shows summary
+    setCloseD({}); setCashSales(''); setTips(''); setShift(data as Shift) // now status='closed' → shows summary
   }
 
   const payoutTotal = payouts.reduce((t, p) => t + Number(p.amount), 0)
@@ -182,6 +184,11 @@ export default function CashierPage() {
               <input value={cashSales} onChange={e => setCashSales(e.target.value.replace(/[^\d.]/g, ''))} inputMode="numeric" placeholder="Cash sales (₫)" style={{ ...inp, fontSize: 18, fontWeight: 600 }} />
             </Section>
 
+            <Section title="Cash tips this shift">
+              <div style={{ fontSize: 13, color: '#999', marginBottom: 8 }}>Tips paid in cash that are still in the drawer. This is why the till is a bit over — logging it keeps the count balanced.</div>
+              <input value={tips} onChange={e => setTips(e.target.value.replace(/[^\d.]/g, ''))} inputMode="numeric" placeholder="Cash tips (₫)" style={{ ...inp, fontSize: 18, fontWeight: 600 }} />
+            </Section>
+
             <Section title="End of shift — count the till">
               <Counter d={closeD} setD={setCloseD} />
               <Total label="Counted in till" value={denomTotal(closeD)} />
@@ -197,6 +204,7 @@ export default function CashierPage() {
           <Section title="Shift closed">
             <Row label="Opening float" value={vnd(shift!.opening_total)} />
             <Row label="Cash sales" value={vnd(shift!.cash_sales)} />
+            {Number(shift!.tips) > 0 && <Row label="Cash tips" value={'+ ' + vnd(shift!.tips)} />}
             <Row label="Paid out" value={'– ' + vnd(shift!.payouts)} />
             {Number(shift!.open_tabs) > 0 && <Row label="Unpaid tabs" value={'– ' + vnd(shift!.open_tabs)} />}
             <Row label="Counted in till" value={vnd(shift!.closing_total)} bold />

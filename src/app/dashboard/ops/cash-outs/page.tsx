@@ -55,6 +55,12 @@ export default function CashOutsPage() {
     if (error) return
     await init()
   }
+  async function saveTips(id: string, value: string) {
+    const v = value.trim() === '' ? 0 : Number(value.replace(/[^\d.]/g, ''))
+    const { error } = await ops().rpc('set_shift_tips', { p_shift: id, p_tips: v })
+    if (error) return
+    await init()
+  }
 
   if (loading) return <div style={{ color: 'var(--text-muted, #999)', fontSize: 14 }}>Loading…</div>
   if (!(role && canManageRecipes(role))) return <div style={{ color: 'var(--text-muted, #999)', fontSize: 14 }}>Managers only.</div>
@@ -98,6 +104,13 @@ export default function CashOutsPage() {
                     </span>
                     <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                       <input key={'cs' + s.id + s.cash_sales} defaultValue={s.cash_sales ?? ''} onBlur={e => e.target.value !== String(s.cash_sales ?? '') && saveCashSales(s.id, e.target.value)} inputMode="numeric" placeholder="0" style={{ width: 120, padding: '5px 8px', fontSize: 14, textAlign: 'right', border: '1px solid var(--border, #e5e5e5)', borderRadius: 6, background: 'var(--bg-card, #fff)', color: 'var(--text, #333)' }} />
+                      <span style={{ color: 'var(--text-muted, #999)' }}>₫</span>
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '5px 0', fontSize: 14, gap: 8 }}>
+                    <span style={{ color: 'var(--text-muted, #777)' }}>+ Cash tips</span>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <input key={'tp' + s.id + s.tips} defaultValue={s.tips ?? ''} onBlur={e => e.target.value !== String(s.tips ?? '') && saveTips(s.id, e.target.value)} inputMode="numeric" placeholder="0" style={{ width: 120, padding: '5px 8px', fontSize: 14, textAlign: 'right', border: '1px solid var(--border, #e5e5e5)', borderRadius: 6, background: 'var(--bg-card, #fff)', color: 'var(--text, #333)' }} />
                       <span style={{ color: 'var(--text-muted, #999)' }}>₫</span>
                     </span>
                   </div>
