@@ -9,6 +9,7 @@ export default function CashOutsPage() {
   const [role, setRole] = useState<StaffRole | null>(null)
   const [shifts, setShifts] = useState<any[]>([])
   const [payouts, setPayouts] = useState<Record<string, any[]>>({})
+  const [mix, setMix] = useState<Record<string, { cash: number; transfer: number; card: number; total: number }>>({})
   const [loading, setLoading] = useState(true)
   const [open, setOpen] = useState<string | null>(null)
 
@@ -24,6 +25,17 @@ export default function CashOutsPage() {
       const { data: ps } = await ops().from('cash_payouts').select('*').in('shift_id', ids)
       const byS: Record<string, any[]> = {}; (ps || []).forEach((p: any) => { (byS[p.shift_id] = byS[p.shift_id] || []).push(p) })
       setPayouts(byS)
+      // Square sales for each shift's day, split by tender so cash can be reconciled to the till.
+      const dates = Array.from(new Set((cs || []).map((c: any) => c.business_date)))
+      const { data: si } = await ops().from('sales_items').select('occurred_on, payment_method, gross').in('occurred_on', dates)
+      const m: Record<string, any> = {}
+      ;(si || []).forEach((r: any) => {
+        const b = m[r.occurred_on] || { cash: 0, transfer: 0, card: 0, total: 0 }
+        const g = Number(r.gross || 0); const pm = (r.payment_method || '').toUpperCase()
+        if (pm.includes('CASH')) b.cash += g; else if (pm.includes('CARD')) b.card += g; else b.transfer += g
+        b.total += g; m[r.occurred_on] = b
+      })
+      setMix(m)
     }
     setLoading(false)
   }
@@ -74,6 +86,15 @@ export default function CashOutsPage() {
                   <Row label="Expected in till" value={vnd(s.expected)} bold />
                   <Row label="Counted in till" value={vnd(s.closing_total)} bold />
                   {closed && <Row label={os < 0 ? 'Short' : 'Over'} value={vnd(Math.abs(os))} color={os < 0 ? '#a32d2d' : '#1d7a46'} bold />}
+                  {mix[s.business_date] && (
+                    <div style={{ marginTop: 12, borderTop: '1px solid var(--border, #eee)', paddingTop: 10 }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted, #888)', marginBottom: 6 }}>Sales this day by method (Square)</div>
+                      <Row label="Cash → till" value={vnd(mix[s.business_date].cash)} />
+                      <Row label="Bank transfer → bank" value={vnd(mix[s.business_date].transfer)} />
+                      {mix[s.business_date].card > 0 && <Row label="Card (external) → bank" value={vnd(mix[s.business_date].card)} />}
+                      <Row label="Total sales" value={vnd(mix[s.business_date].total)} bold />
+                    </div>
+                  )}
                   {ps.length > 0 && (
                     <div style={{ marginTop: 12, borderTop: '1px solid var(--border, #eee)', paddingTop: 10 }}>
                       <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted, #888)', marginBottom: 6 }}>Payouts (booked as costs)</div>

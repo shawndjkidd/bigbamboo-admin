@@ -14,6 +14,14 @@ type PosCash = {
 }
 
 const num = (s: string) => Number((s || '').replace(/[^\d.-]/g, '')) || 0
+// Friendly labels for Square tender types.
+function methodLabel(m: string) {
+  const u = (m || '').toUpperCase()
+  if (u.includes('CASH')) return 'cash'
+  if (u.includes('CARD')) return 'card'
+  if (!u) return '—'
+  return 'bank transfer' // OTHER / external tender = VietQR bank transfer
+}
 
 export default function CashReconPage() {
   const [role, setRole] = useState<StaffRole | null>(null)
@@ -179,7 +187,7 @@ export default function CashReconPage() {
           <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted, #999)', marginBottom: 12 }}>Sales {hasPos && <span style={{ color: 'var(--accent, #e87830)' }}>· from Square</span>}</div>
           <Field label="Cash sales (₫)"><input inputMode="numeric" value={cashSales} onChange={e => setCashSales(e.target.value)} style={inp} /></Field>
           <Field label="Card sales (₫)"><input inputMode="numeric" value={cardSales} onChange={e => setCardSales(e.target.value)} style={inp} /></Field>
-          <Field label="Other (transfer / Grab) (₫)"><input inputMode="numeric" value={otherSales} onChange={e => setOtherSales(e.target.value)} style={inp} /></Field>
+          <Field label="Bank transfer (₫)"><input inputMode="numeric" value={otherSales} onChange={e => setOtherSales(e.target.value)} style={inp} /></Field>
         </div>
         {/* Cash drawer side */}
         <div className="card" style={{ padding: 18 }}>
@@ -271,7 +279,7 @@ export default function CashReconPage() {
                   <td style={{ ...td, textAlign: 'right' }}>{it.qty}</td>
                   <td style={{ ...td, textAlign: 'right' }}>{vnd(it.unit)}</td>
                   <td style={{ ...td, textAlign: 'right', fontWeight: 600 }}>{vnd(it.qty * it.unit)}</td>
-                  <td style={{ ...td, fontSize: 11, color: 'var(--text-muted, #999)' }}>{(it.method || '').replace('_', ' ').toLowerCase()}</td>
+                  <td style={{ ...td, fontSize: 11, color: 'var(--text-muted, #999)' }}>{methodLabel(it.method)}</td>
                 </tr>
               ))}
             </tbody>
