@@ -58,6 +58,24 @@ function StaffAccounts() {
     if (!res.ok) { showToast('Error: ' + (j.error || 'failed')); return }
     setStaff(prev => prev.filter(s => s.email !== email)); showToast('Account deleted')
   }
+  async function resetPassword(email: string, name: string) {
+    const pw = window.prompt(`New password for ${name} (${email}) — at least 6 characters.\nThis also signs them out of any current device.`)
+    if (pw == null) return
+    if (pw.length < 6) { showToast('Password must be at least 6 characters'); return }
+    const { data: { session } } = await supabase.auth.getSession()
+    const res = await fetch('/api/admin/staff', { method: 'PATCH', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token || ''}` }, body: JSON.stringify({ email, password: pw }) })
+    const j = await res.json().catch(() => ({}))
+    if (!res.ok) { showToast('Error: ' + (j.error || 'failed')); return }
+    showToast('Password changed & signed out everywhere')
+  }
+  async function forceLogout(email: string, name: string) {
+    if (!confirm(`Sign ${name} out of all devices now?`)) return
+    const { data: { session } } = await supabase.auth.getSession()
+    const res = await fetch('/api/admin/staff', { method: 'PATCH', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token || ''}` }, body: JSON.stringify({ email, logout: true }) })
+    const j = await res.json().catch(() => ({}))
+    if (!res.ok) { showToast('Error: ' + (j.error || 'failed')); return }
+    showToast('Signed out of all devices')
+  }
   async function toggleActive(id: string, active: boolean) {
     await supabase.from('staff_users').update({ active: !active }).eq('id', id)
     setStaff(prev => prev.map(s => s.id === id ? { ...s, active: !active } : s)); showToast(active ? 'Account deactivated' : 'Account activated')
@@ -125,7 +143,7 @@ function StaffAccounts() {
 
       <table className="data-table" style={{ width: '100%', tableLayout: 'fixed' }}>
         <thead>
-          <tr><th style={{ width: '13%' }}>Name</th><th style={{ width: '20%' }}>Email</th><th style={{ width: '17%' }}>Role</th><th style={{ width: '13%' }}>Department</th><th style={{ width: '12%' }}>Status</th><th style={{ width: '25%', textAlign: 'right' }}>Actions</th></tr>
+          <tr><th style={{ width: '12%' }}>Name</th><th style={{ width: '16%' }}>Email</th><th style={{ width: '16%' }}>Role</th><th style={{ width: '13%' }}>Department</th><th style={{ width: '10%' }}>Status</th><th style={{ width: '33%', textAlign: 'right' }}>Actions</th></tr>
         </thead>
         <tbody>
           {staff.map(s => (
@@ -154,7 +172,9 @@ function StaffAccounts() {
               <td><span className={`badge ${s.active ? 'badge-green' : 'badge-red'}`}>{s.active ? 'Active' : 'Inactive'}</span></td>
               <td style={{ textAlign: 'right' }}>
                 {s.id !== currentUser?.id && (
-                  <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end', flexWrap: 'nowrap' }}>
+                  <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                    <button onClick={() => resetPassword(s.email, s.name)} className="btn-outline" style={{ padding: '5px 10px', fontSize: 12, whiteSpace: 'nowrap' }}>Password</button>
+                    <button onClick={() => forceLogout(s.email, s.name)} className="btn-outline" style={{ padding: '5px 10px', fontSize: 12, whiteSpace: 'nowrap' }}>Log out</button>
                     <button onClick={() => toggleActive(s.id, s.active)} className={s.active ? 'btn-red' : 'btn-green'} style={{ padding: '5px 10px', fontSize: 12, whiteSpace: 'nowrap' }}>{s.active ? 'Deactivate' : 'Activate'}</button>
                     <button onClick={() => deleteStaff(s.email, s.name)} className="btn-red" style={{ padding: '5px 10px', fontSize: 12, whiteSpace: 'nowrap' }}>Delete</button>
                   </div>
