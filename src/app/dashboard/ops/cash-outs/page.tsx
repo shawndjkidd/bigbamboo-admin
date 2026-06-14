@@ -71,10 +71,34 @@ export default function CashOutsPage() {
   if (loading) return <div style={{ color: 'var(--text-muted, #999)', fontSize: 14 }}>Loading…</div>
   if (!(role && canManageRecipes(role))) return <div style={{ color: 'var(--text-muted, #999)', fontSize: 14 }}>Managers only.</div>
 
+  // Every still-unpaid tab across all shifts — the running "who owes us money" list.
+  const outstanding: { tab: any; date: string }[] = []
+  shifts.forEach(s => (tabsByShift[s.id] || []).forEach((t: any) => { if (!t.settled) outstanding.push({ tab: t, date: s.business_date }) }))
+  const outstandingTotal = outstanding.reduce((sum, o) => sum + Number(o.tab.amount), 0)
+
   return (
     <div style={{ maxWidth: 720 }}>
       <h2 style={{ fontSize: 22, fontWeight: 600 }}>Cash-outs</h2>
       <div style={{ fontSize: 13, color: 'var(--text-muted, #999)', marginTop: 2, marginBottom: 18 }}>Cashier shift open/close counts, payouts and over/short. Cash sales come from Square card/cash data — if Square is behind, that figure may read low.</div>
+
+      {outstanding.length > 0 && (
+        <div className="card" style={{ padding: 18, marginBottom: 18, borderLeft: '3px solid var(--accent, #e87830)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 10 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--accent, #e87830)' }}>Outstanding tabs — not yet paid</div>
+            <div style={{ fontSize: 16, fontWeight: 700 }}>{vnd(outstandingTotal)}</div>
+          </div>
+          {outstanding.map(o => (
+            <div key={o.tab.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 14, padding: '6px 0', borderTop: '1px solid var(--border, #eee)' }}>
+              <span>{o.tab.person_name || 'Unnamed tab'} <span style={{ color: 'var(--text-muted, #999)', fontSize: 12 }}>· {o.date}</span></span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{ fontWeight: 600 }}>{vnd(o.tab.amount)}</span>
+                <button onClick={() => toggleTab(o.tab.id, true)} style={{ fontSize: 12, padding: '4px 12px', border: 'none', borderRadius: 6, background: 'var(--accent, #e87830)', color: '#fff', cursor: 'pointer' }}>Mark paid</button>
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+
       {shifts.length === 0 && <div style={{ color: 'var(--text-muted, #999)', fontSize: 14 }}>No cash-outs yet.</div>}
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
