@@ -70,22 +70,32 @@ export default function CashOutsPage() {
                 <span style={{ fontSize: 12, color: 'var(--text-muted, #999)' }}>{s.cashier_name || s.cashier_email}</span>
                 {!closed
                   ? <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 100, background: 'var(--badge-orange-bg, #fdecdc)', color: '#b8631c' }}>open</span>
-                  : <span style={{ fontSize: 13, fontWeight: 700, color: os < 0 ? '#a32d2d' : '#1d7a46' }}>{os < 0 ? 'Short ' : os > 0 ? 'Over ' : ''}{vnd(Math.abs(os))}</span>}
+                  : (() => { const v = verdict(os); return <span style={{ fontSize: 13, fontWeight: 700, color: v.color }}>{Math.abs(os) < 1000 ? 'Balanced' : `${v.label} ${vnd(Math.abs(os))}`}</span> })()}
               </div>
               {isOpen && (
                 <div style={{ marginTop: 14 }}>
+                  {closed && (() => { const v = verdict(os); return (
+                    <div style={{ background: v.bg, color: v.color, borderRadius: 10, padding: '12px 14px', textAlign: 'center', marginBottom: 16 }}>
+                      <div style={{ fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 600 }}>{v.headline}</div>
+                      <div style={{ fontSize: 26, fontWeight: 700, marginTop: 2 }}>{Math.abs(os) < 1000 ? vnd(0) : (os < 0 ? '– ' : '+ ') + vnd(Math.abs(os))}</div>
+                    </div>
+                  ) })()}
                   <Row label="Opening float" value={vnd(s.opening_total)} />
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '5px 0', fontSize: 14 }}>
-                    <span style={{ color: 'var(--text-muted, #777)' }}>Cash sales</span>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '5px 0', fontSize: 14, gap: 8, flexWrap: 'wrap' }}>
+                    <span style={{ color: 'var(--text-muted, #777)', display: 'flex', alignItems: 'center', gap: 8 }}>+ Cash sales
+                      {mix[s.business_date] && mix[s.business_date].cash > 0 && Number(s.cash_sales || 0) !== Math.round(mix[s.business_date].cash) && (
+                        <button onClick={() => saveCashSales(s.id, String(Math.round(mix[s.business_date].cash)))} style={{ fontSize: 11, padding: '3px 8px', border: '1px solid var(--accent, #e87830)', color: 'var(--accent, #e87830)', background: 'transparent', borderRadius: 6, cursor: 'pointer' }}>Use Square: {vnd(mix[s.business_date].cash)}</button>
+                      )}
+                    </span>
                     <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                       <input key={'cs' + s.id + s.cash_sales} defaultValue={s.cash_sales ?? ''} onBlur={e => e.target.value !== String(s.cash_sales ?? '') && saveCashSales(s.id, e.target.value)} inputMode="numeric" placeholder="0" style={{ width: 120, padding: '5px 8px', fontSize: 14, textAlign: 'right', border: '1px solid var(--border, #e5e5e5)', borderRadius: 6, background: 'var(--bg-card, #fff)', color: 'var(--text, #333)' }} />
                       <span style={{ color: 'var(--text-muted, #999)' }}>₫</span>
                     </span>
                   </div>
-                  <Row label="Paid out" value={'– ' + vnd(s.payouts)} />
-                  <Row label="Expected in till" value={vnd(s.expected)} bold />
-                  <Row label="Counted in till" value={vnd(s.closing_total)} bold />
-                  {closed && <Row label={os < 0 ? 'Short' : 'Over'} value={vnd(Math.abs(os))} color={os < 0 ? '#a32d2d' : '#1d7a46'} bold />}
+                  <Row label="− Paid out" value={vnd(s.payouts)} />
+                  <div style={{ borderTop: '1px solid var(--border, #e5e5e5)', marginTop: 4 }} />
+                  <Row label="= Should be in till" value={vnd(s.expected)} bold />
+                  <Row label="Actually counted" value={vnd(s.closing_total)} bold />
                   {mix[s.business_date] && (
                     <div style={{ marginTop: 12, borderTop: '1px solid var(--border, #eee)', paddingTop: 10 }}>
                       <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted, #888)', marginBottom: 6 }}>Sales this day by method (Square)</div>
@@ -113,6 +123,14 @@ export default function CashOutsPage() {
       </div>
     </div>
   )
+}
+
+// Plain-language verdict for a shift's over/short. Over and short both need attention
+// (amber / red); only a near-zero difference is "balanced" green.
+function verdict(os: number) {
+  if (Math.abs(os) < 1000) return { label: 'Balanced', headline: 'Till balances', color: '#1d7a46', bg: '#e7f5ec' }
+  if (os < 0) return { label: 'Short', headline: 'Drawer is short', color: '#a32d2d', bg: '#fdecec' }
+  return { label: 'Over', headline: 'Drawer is over — check cash sales', color: '#b8631c', bg: '#fdecdc' }
 }
 
 function Row({ label, value, bold, color }: { label: string; value: string; bold?: boolean; color?: string }) {
