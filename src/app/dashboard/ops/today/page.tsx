@@ -44,6 +44,7 @@ export default function CashReconPage() {
   const [pos, setPos] = useState<PosCash | null>(null)
   const [recentSales, setRecentSales] = useState<{ occurred_on: string; net: number | null; source?: string }[]>([])
   const [dayItems, setDayItems] = useState<{ name: string; qty: number; unit: number; time: string; method: string }[]>([])
+  const [flush, setFlush] = useState<{ iso: string; orders: number; total: number; time: string; corrected: boolean } | null>(null)
 
   useEffect(() => { init() }, [])
   useEffect(() => { if (venueId) loadDate(venueId, date) }, [date]) // eslint-disable-line
@@ -64,7 +65,7 @@ export default function CashReconPage() {
     // 1) Existing reconciliation for the day (if already saved)
     const { data: rec } = await ops().from('cash_recon').select('*').eq('venue_id', vid).eq('occurred_on', d).maybeSingle()
     // 2) Square line items for the day → cash / card / other split
-    const { data: items } = await ops().from('sales_items').select('menu_item_name, qty, unit_price, payment_method, occurred_at').eq('venue_id', vid).eq('occurred_on', d).order('occurred_at')
+    const { data: items } = await ops().from('sales_items').select('menu_item_name, qty, unit_price, payment_method, occurred_at, source_id').eq('venue_id', vid).eq('occurred_on', d).order('occurred_at')
     let posCash = 0, posCard = 0, posOther = 0
     for (const it of (items || []) as any[]) {
       const g = Number(it.qty || 0) * Number(it.unit_price || 0)
@@ -74,6 +75,27 @@ export default function CashReconPage() {
       else posOther += g
     }
     setHasPos((items || []).length > 0)
+
+    // Offline-flush detector: a burst of many distinct orders all stamped the same minute is
+    // Square uploading a queue after the iPad reconnected — i.e. a previous day's sales.
+    const byMin = new Map<string, { orders: Set<string>; total: number; iso: string }>()
+    for (const it of (items || []) as any[]) {
+      if (!it.occurred_at) continue
+      const dt = new Date(it.occurred_at)
+      const iso = new Date(Date.UTC(dt.getUTCFullYear(), dt.getUTCMonth(), dt.getUTCDate(), dt.getUTCHours(), dt.getUTCMinutes())).toISOString()
+      const b = byMin.get(iso) || { orders: new Set<string>(), total: 0, iso }
+      b.orders.add(String(it.source_id || '').split(':')[0])
+      b.total += Number(it.qty || 0) * Number(it.unit_price || 0)
+      byMin.set(iso, b)
+    }
+    let fl: { iso: string; orders: number; total: number } | null = null
+    byMin.forEach(b => { if (b.orders.size >= 8 && (!fl || b.orders.size > fl.orders)) fl = { iso: b.iso, orders: b.orders.size, total: Math.round(b.total) } })
+    if (fl) {
+      const { data: corr } = await ops().from('offline_flush_corrections').select('id').eq('from_date', d).eq('batch_at', (fl as any).iso)
+      const t = new Date((fl as any).iso)
+      setFlush({ ...(fl as any), time: t.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Ho_Chi_Minh' }), corrected: (corr || []).length > 0 })
+    } else setFlush(null)
+
     setDayItems(((items || []) as any[]).map(it => ({
       name: it.menu_item_name || '—',
       qty: Number(it.qty || 0),
@@ -154,6 +176,17 @@ export default function CashReconPage() {
     await loadRecent(venueId)
   }
 
+  async function redateFlush() {
+    if (!flush || !venueId) return
+    const prev = new Date(date + 'T12:00:00'); prev.setDate(prev.getDate() - 1)
+    const to = `${prev.getFullYear()}-${String(prev.getMonth() + 1).padStart(2, '0')}-${String(prev.getDate()).padStart(2, '0')}`
+    if (!confirm(`Move this ${vnd(flush.total)} batch (${flush.orders} orders uploaded together at ${flush.time}) from ${date} to ${to}?\n\nThis looks like ${to}'s sales that uploaded late after the POS reconnected.`)) return
+    const { error } = await ops().rpc('redate_offline_batch', { p_from: date, p_to: to, p_amount: flush.total, p_batch_at: flush.iso })
+    if (error) { setMsg(error.message); return }
+    setMsg('Moved to ' + to)
+    await loadDate(venueId, date); await loadRecent(venueId)
+  }
+
   if (loading) return <div style={{ color: 'var(--text-muted, #999)', fontSize: 14 }}>Loading…</div>
   if (!canManage) return <div style={{ color: 'var(--text-muted, #999)', fontSize: 14 }}>Daily cash reconciliation is available to managers.</div>
 
@@ -168,6 +201,17 @@ export default function CashReconPage() {
       <div style={{ fontSize: 13, color: 'var(--text-muted, #999)', marginBottom: 20 }}>
         {fromPos ? 'Cash drawer figures are pulled from your POS (below). The manual boxes are only a fallback / override.' : 'No POS cash-drawer shift for this day yet — open & close the drawer in the POS and sync, and it fills in automatically. Until then you can enter figures manually below.'}
       </div>
+
+      {flush && (
+        <div style={{ padding: '12px 16px', borderRadius: 10, marginBottom: 20, fontSize: 14,
+          background: flush.corrected ? '#e7f5ec' : '#fdecdc', color: flush.corrected ? '#1d7a46' : '#8a4b12',
+          border: `1px solid ${flush.corrected ? '#bfe3cb' : '#f0cfa0'}` }}>
+          {flush.corrected
+            ? <>✓ An offline batch of <b>{vnd(flush.total)}</b> on this day was already moved to its correct day.</>
+            : <>⚠ <b>{flush.orders} orders ({vnd(flush.total)})</b> all uploaded together at {flush.time} — likely the previous night's sales arriving late after the POS reconnected.
+                <button onClick={redateFlush} style={{ marginLeft: 10, padding: '5px 12px', background: 'var(--accent, #e87830)', color: '#fff', border: 'none', borderRadius: 6, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Move to the day before</button></>}
+        </div>
+      )}
 
       {/* Summary */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 24 }}>
