@@ -10,6 +10,7 @@ export default function CashOutsPage() {
   const [shifts, setShifts] = useState<any[]>([])
   const [payouts, setPayouts] = useState<Record<string, any[]>>({})
   const [mix, setMix] = useState<Record<string, { cash: number; transfer: number; card: number; total: number }>>({})
+  const [shiftCash, setShiftCash] = useState<Record<string, number>>({})
   const [tabsByShift, setTabsByShift] = useState<Record<string, any[]>>({})
   const [tabName, setTabName] = useState(''); const [tabAmt, setTabAmt] = useState('')
   const [loading, setLoading] = useState(true)
@@ -32,7 +33,7 @@ export default function CashOutsPage() {
       setTabsByShift(byT)
       // Square sales for each shift's day, split by tender so cash can be reconciled to the till.
       const dates = Array.from(new Set((cs || []).map((c: any) => c.business_date)))
-      const { data: si } = await ops().from('sales_items').select('occurred_on, payment_method, gross').in('occurred_on', dates)
+      const { data: si } = await ops().from('sales_items').select('occurred_on, occurred_at, payment_method, gross').in('occurred_on', dates)
       const m: Record<string, any> = {}
       ;(si || []).forEach((r: any) => {
         const b = m[r.occurred_on] || { cash: 0, transfer: 0, card: 0, total: 0 }
@@ -41,6 +42,20 @@ export default function CashOutsPage() {
         b.total += g; m[r.occurred_on] = b
       })
       setMix(m)
+      // Cash rung up only while each drawer was open (open → close) — the figure that should be in that till.
+      const sc: Record<string, number> = {}
+      ;(cs || []).forEach((sh: any) => {
+        const open = new Date(sh.opened_at).getTime()
+        const close = sh.closed_at ? new Date(sh.closed_at).getTime() : Date.now()
+        let cash = 0
+        ;(si || []).forEach((r: any) => {
+          if (r.occurred_on !== sh.business_date || !(r.payment_method || '').toUpperCase().includes('CASH')) return
+          const t = new Date(r.occurred_at).getTime()
+          if (t >= open && t <= close) cash += Number(r.gross || 0)
+        })
+        sc[sh.id] = Math.round(cash)
+      })
+      setShiftCash(sc)
     }
     setLoading(false)
   }
@@ -143,8 +158,8 @@ export default function CashOutsPage() {
                   <Row label="Opening float" value={vnd(s.opening_total)} />
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '5px 0', fontSize: 14, gap: 8, flexWrap: 'wrap' }}>
                     <span style={{ color: 'var(--text-muted, #777)', display: 'flex', alignItems: 'center', gap: 8 }}>+ Cash sales
-                      {mix[s.business_date] && mix[s.business_date].cash > 0 && Number(s.cash_sales || 0) !== Math.round(mix[s.business_date].cash) && (
-                        <button onClick={() => saveCashSales(s.id, String(Math.round(mix[s.business_date].cash)))} style={{ fontSize: 11, padding: '3px 8px', border: '1px solid var(--accent, #e87830)', color: 'var(--accent, #e87830)', background: 'transparent', borderRadius: 6, cursor: 'pointer' }}>Use Square: {vnd(mix[s.business_date].cash)}</button>
+                      {shiftCash[s.id] > 0 && Number(s.cash_sales || 0) !== shiftCash[s.id] && (
+                        <button onClick={() => saveCashSales(s.id, String(shiftCash[s.id]))} title="Cash rung up while this drawer was open" style={{ fontSize: 11, padding: '3px 8px', border: '1px solid var(--accent, #e87830)', color: 'var(--accent, #e87830)', background: 'transparent', borderRadius: 6, cursor: 'pointer' }}>Use shift cash: {vnd(shiftCash[s.id])}</button>
                       )}
                     </span>
                     <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
