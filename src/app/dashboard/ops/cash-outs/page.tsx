@@ -28,6 +28,13 @@ export default function CashOutsPage() {
     setLoading(false)
   }
 
+  async function saveCashSales(id: string, value: string) {
+    const v = value.trim() === '' ? 0 : Number(value.replace(/[^\d.]/g, ''))
+    const { error } = await ops().rpc('set_shift_cash_sales', { p_shift: id, p_cash_sales: v })
+    if (error) return
+    await init()
+  }
+
   if (loading) return <div style={{ color: 'var(--text-muted, #999)', fontSize: 14 }}>Loading…</div>
   if (!(role && canManageRecipes(role))) return <div style={{ color: 'var(--text-muted, #999)', fontSize: 14 }}>Managers only.</div>
 
@@ -56,7 +63,13 @@ export default function CashOutsPage() {
               {isOpen && (
                 <div style={{ marginTop: 14 }}>
                   <Row label="Opening float" value={vnd(s.opening_total)} />
-                  <Row label="Cash sales (Square)" value={vnd(s.cash_sales)} />
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '5px 0', fontSize: 14 }}>
+                    <span style={{ color: 'var(--text-muted, #777)' }}>Cash sales</span>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <input key={'cs' + s.id + s.cash_sales} defaultValue={s.cash_sales ?? ''} onBlur={e => e.target.value !== String(s.cash_sales ?? '') && saveCashSales(s.id, e.target.value)} inputMode="numeric" placeholder="0" style={{ width: 120, padding: '5px 8px', fontSize: 14, textAlign: 'right', border: '1px solid var(--border, #e5e5e5)', borderRadius: 6, background: 'var(--bg-card, #fff)', color: 'var(--text, #333)' }} />
+                      <span style={{ color: 'var(--text-muted, #999)' }}>₫</span>
+                    </span>
+                  </div>
                   <Row label="Paid out" value={'– ' + vnd(s.payouts)} />
                   <Row label="Expected in till" value={vnd(s.expected)} bold />
                   <Row label="Counted in till" value={vnd(s.closing_total)} bold />

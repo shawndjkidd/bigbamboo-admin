@@ -40,6 +40,8 @@ export default function CashierPage() {
   const [poAmt, setPoAmt] = useState('')
   const [poDesc, setPoDesc] = useState('')
   const [poCat, setPoCat] = useState('food')
+  // cash sales typed off the Square register at close
+  const [cashSales, setCashSales] = useState('')
 
   useEffect(() => {
     (async () => {
@@ -87,10 +89,11 @@ export default function CashierPage() {
     if (!shift) return
     if (!confirm('Close this shift? This records your end-of-shift count and the over/short.')) return
     setBusy(true); setMsg('')
-    const { data, error } = await ops().rpc('close_cash_shift', { p_shift: shift.id, p_denoms: clean(closeD) })
+    const cs = cashSales.trim() === '' ? null : Number(cashSales.replace(/[^\d.]/g, ''))
+    const { data, error } = await ops().rpc('close_cash_shift', { p_shift: shift.id, p_denoms: clean(closeD), p_cash_sales: cs })
     setBusy(false)
     if (error) { setMsg(error.message); return }
-    setCloseD({}); setShift(data as Shift) // now status='closed' → shows summary
+    setCloseD({}); setCashSales(''); setShift(data as Shift) // now status='closed' → shows summary
   }
 
   const payoutTotal = payouts.reduce((t, p) => t + Number(p.amount), 0)
@@ -140,6 +143,11 @@ export default function CashierPage() {
                 <select value={poCat} onChange={e => setPoCat(e.target.value)} style={inp}>{PAYOUT_CATS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select>
                 <button onClick={addPayout} disabled={busy} style={{ ...inp, background: 'var(--bg-sidebar,#f3f3f3)', cursor: 'pointer', fontWeight: 600 }}>+ Add payout</button>
               </div>
+            </Section>
+
+            <Section title="Cash sales this shift">
+              <div style={{ fontSize: 13, color: '#999', marginBottom: 8 }}>Read the cash sales total off the Square register and type it here. Leave blank only if you don't have it.</div>
+              <input value={cashSales} onChange={e => setCashSales(e.target.value.replace(/[^\d.]/g, ''))} inputMode="numeric" placeholder="Cash sales (₫)" style={{ ...inp, fontSize: 18, fontWeight: 600 }} />
             </Section>
 
             <Section title="End of shift — count the till">
