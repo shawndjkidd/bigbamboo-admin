@@ -44,6 +44,12 @@ export default function CashOutsPage() {
     setLoading(false)
   }
 
+  async function saveBankReceived(id: string, value: string) {
+    const v = value.trim() === '' ? null : Number(value.replace(/[^\d.]/g, ''))
+    const { error } = await ops().rpc('set_shift_bank_received', { p_shift: id, p_amount: v })
+    if (error) return
+    await init()
+  }
   async function toggleTab(id: string, settled: boolean) {
     const { error } = await ops().rpc('set_tab_settled', { p_tab: id, p_settled: settled })
     if (error) return
@@ -128,6 +134,31 @@ export default function CashOutsPage() {
                       <Row label="Total sales" value={vnd(mix[s.business_date].total)} bold />
                     </div>
                   )}
+                  {mix[s.business_date] && mix[s.business_date].transfer > 0 && (() => {
+                    const sqTransfer = mix[s.business_date].transfer
+                    const bank = s.bank_received == null ? null : Number(s.bank_received)
+                    const diff = bank == null ? null : bank - sqTransfer
+                    return (
+                      <div style={{ marginTop: 12, borderTop: '1px solid var(--border, #eee)', paddingTop: 10 }}>
+                        <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted, #888)', marginBottom: 6 }}>Transfer / QR reconciliation</div>
+                        <Row label="Square transfer sales" value={vnd(sqTransfer)} />
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '5px 0', fontSize: 14, gap: 8 }}>
+                          <span style={{ color: 'var(--text-muted, #777)' }}>Actually received in bank</span>
+                          <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <input key={'bk' + s.id + s.bank_received} defaultValue={s.bank_received ?? ''} onBlur={e => e.target.value !== String(s.bank_received ?? '') && saveBankReceived(s.id, e.target.value)} inputMode="numeric" placeholder="from bank app" style={{ width: 130, padding: '5px 8px', fontSize: 14, textAlign: 'right', border: '1px solid var(--border, #e5e5e5)', borderRadius: 6, background: 'var(--bg-card, #fff)', color: 'var(--text, #333)' }} />
+                            <span style={{ color: 'var(--text-muted, #999)' }}>₫</span>
+                          </span>
+                        </div>
+                        {diff != null && (
+                          <div style={{ marginTop: 8, padding: '10px 12px', borderRadius: 8, background: Math.abs(diff) < 1000 ? '#e7f5ec' : diff > 0 ? '#fdecdc' : '#fdecec', color: Math.abs(diff) < 1000 ? '#1d7a46' : diff > 0 ? '#b8631c' : '#a32d2d', fontSize: 13 }}>
+                            {Math.abs(diff) < 1000 ? 'Transfers match ✓'
+                              : diff > 0 ? <>Bank received <b>{vnd(diff)}</b> more than rung up — likely <b>QR tips</b>.</>
+                              : <>Bank is <b>{vnd(Math.abs(diff))}</b> short of transfer sales — a transfer didn't land or was mis-tagged.</>}
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })()}
                   {(tabsByShift[s.id] || []).length > 0 && (
                     <div style={{ marginTop: 12, borderTop: '1px solid var(--border, #eee)', paddingTop: 10 }}>
                       <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted, #888)', marginBottom: 6 }}>Unpaid tabs</div>
