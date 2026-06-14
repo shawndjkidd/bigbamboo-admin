@@ -23,7 +23,7 @@ type Shift = {
   payouts: number | null; expected: number | null; over_short: number | null; open_tabs: number | null; tips: number | null
 }
 type Payout = { id: string; amount: number; description: string | null; category: string | null }
-type Tab = { id: string; person_name: string | null; amount: number; claimed?: boolean; shift_id?: string | null }
+type Tab = { id: string; person_name: string | null; amount: number; claimed?: boolean; shift_id?: string | null; paid_method?: string | null }
 
 export default function CashierPage() {
   const router = useRouter()
@@ -71,7 +71,7 @@ export default function CashierPage() {
       const { data: p } = await ops().from('cash_payouts').select('id, amount, description, category').eq('shift_id', s.id).order('occurred_at'); setPayouts((p as Payout[]) || [])
       const { data: t } = await ops().from('cash_tabs').select('id, person_name, amount').eq('shift_id', s.id).order('created_at'); setTabs((t as Tab[]) || [])
     } else { setPayouts([]); setTabs([]) }
-    const { data: ot } = await ops().from('cash_tabs').select('id, person_name, amount, claimed, shift_id').eq('settled', false).order('created_at')
+    const { data: ot } = await ops().from('cash_tabs').select('id, person_name, amount, claimed, shift_id, paid_method').eq('settled', false).order('created_at')
     setOutstanding((ot as Tab[]) || [])
   }
 
@@ -84,8 +84,8 @@ export default function CashierPage() {
     if (error) { setMsg(error.message); return }
     setOtName(''); setOtAmt(''); await loadShift(email)
   }
-  async function claimTab(id: string, claimed: boolean) {
-    const { error } = await ops().rpc('claim_cash_tab', { p_tab: id, p_claimed: claimed })
+  async function claimTab(id: string, claimed: boolean, method?: string) {
+    const { error } = await ops().rpc('claim_cash_tab', { p_tab: id, p_claimed: claimed, p_method: method ?? null })
     if (error) { setMsg(error.message); return }
     await loadShift(email)
   }
@@ -241,14 +241,21 @@ export default function CashierPage() {
 
         {/* Always-visible running list of unpaid tabs the cashier can manage */}
         <Section title="Outstanding tabs — money still owed">
-          <div style={{ fontSize: 13, color: '#999', marginBottom: 10 }}>Everyone who hasn't paid yet. When they pay you, tap "Got it" — a manager then confirms it.</div>
+          <div style={{ fontSize: 13, color: '#999', marginBottom: 10 }}>Everyone who hasn't paid yet. When they pay you, tap how they paid — <b>Cash</b> adds it to today's drawer, <b>QR</b> goes to the bank. A manager then confirms it.</div>
           {outstanding.length === 0 && <div style={{ fontSize: 14, color: '#999', padding: '4px 0' }}>No outstanding tabs.</div>}
           {outstanding.map(t => (
             <div key={t.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid var(--border, #eee)', fontSize: 14 }}>
-              <span>{t.person_name || 'Unnamed tab'}{t.claimed && <span style={{ marginLeft: 8, fontSize: 11, color: '#b8631c', background: '#fdecdc', padding: '1px 8px', borderRadius: 100 }}>paid · awaiting confirm</span>}</span>
-              <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <span>{t.person_name || 'Unnamed tab'}{t.claimed && <span style={{ marginLeft: 8, fontSize: 11, color: '#b8631c', background: '#fdecdc', padding: '1px 8px', borderRadius: 100 }}>paid · {t.paid_method === 'cash' ? 'cash' : 'QR'} · awaiting confirm</span>}</span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <span style={{ fontWeight: 600 }}>{vnd(t.amount)}</span>
-                <button onClick={() => claimTab(t.id, !t.claimed)} style={{ fontSize: 12, padding: '5px 12px', borderRadius: 8, border: '1px solid ' + (t.claimed ? '#e5e5e5' : 'var(--accent, #e87830)'), background: t.claimed ? 'transparent' : 'var(--accent, #e87830)', color: t.claimed ? '#999' : '#fff', cursor: 'pointer', fontWeight: 600 }}>{t.claimed ? 'Undo' : 'Got it'}</button>
+                {t.claimed ? (
+                  <button onClick={() => claimTab(t.id, false)} style={{ fontSize: 12, padding: '5px 12px', borderRadius: 8, border: '1px solid #e5e5e5', background: 'transparent', color: '#999', cursor: 'pointer', fontWeight: 600 }}>Undo</button>
+                ) : (
+                  <>
+                    <button onClick={() => claimTab(t.id, true, 'cash')} style={{ fontSize: 12, padding: '5px 12px', borderRadius: 8, border: '1px solid var(--accent, #e87830)', background: 'var(--accent, #e87830)', color: '#fff', cursor: 'pointer', fontWeight: 600 }}>Cash</button>
+                    <button onClick={() => claimTab(t.id, true, 'transfer')} style={{ fontSize: 12, padding: '5px 12px', borderRadius: 8, border: '1px solid var(--accent, #e87830)', background: 'transparent', color: 'var(--accent, #e87830)', cursor: 'pointer', fontWeight: 600 }}>QR</button>
+                  </>
+                )}
               </span>
             </div>
           ))}
