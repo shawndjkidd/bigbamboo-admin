@@ -42,11 +42,11 @@ function sopInStation(dept: string, station: KStation) {
 // ── Browse list (cards) ─────────────────────────────────────
 export async function fetchKitchenList(station: KStation): Promise<{ recipes: KRecipe[]; sops: KSop[] }> {
   const [{ data: recs }, { data: sops }] = await Promise.all([
-    ops().from('recipes').select('id,name,name_vi,type,category,is_resale').order('name'),
+    ops().from('recipes').select('id,name,name_vi,type,category,is_resale,show_in_station').order('name'),
     supabase.from('sops').select('id,department,category,title,title_vi,purpose,purpose_vi,responsible,frequency,est_time,steps,steps_vi,note,note_vi,sort_order,version,is_published').order('category').order('sort_order'),
   ])
   const recipes = ((recs || []) as any[])
-    .filter(r => !r.is_resale && recipeInStation(r.category, station))
+    .filter(r => !r.is_resale && r.show_in_station !== false && recipeInStation(r.category, station))
     .map(r => ({ id: r.id, name: r.name, name_vi: r.name_vi, type: r.type, category: r.category }))
   const sopRows = ((sops || []) as any[])
     .filter(s => s.is_published !== false && sopInStation(s.department, station))

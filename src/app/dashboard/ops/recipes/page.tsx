@@ -27,6 +27,8 @@ export default function RecipesPage() {
   const [station, setStation] = useState<'all' | 'kitchen' | 'bar'>('all')
   const [resaleIds, setResaleIds] = useState<Set<string>>(new Set())
   const [keggedIds, setKeggedIds] = useState<Set<string>>(new Set())
+  const [hiddenIds, setHiddenIds] = useState<Set<string>>(new Set())
+  const [visBusy, setVisBusy] = useState(false)
   const [serveCost, setServeCost] = useState<Map<string, number>>(new Map())
   const [nameVi, setNameVi] = useState<Map<string, string>>(new Map())
   const [showResale, setShowResale] = useState(false)
@@ -68,12 +70,13 @@ export default function RecipesPage() {
     setLoading(true)
     const [{ data }, { data: rec }, { data: serve }] = await Promise.all([
       ops().from('v_recipe_cost').select('*').order('name'),
-      ops().from('recipes').select('id, is_resale, is_kegged, name_vi'),
+      ops().from('recipes').select('id, is_resale, is_kegged, name_vi, show_in_station'),
       ops().from('v_recipe_serve_cost').select('recipe_id, serve_cost'),
     ])
     setRows((data as RecipeWithCost[]) || [])
     setResaleIds(new Set((rec || []).filter((x: any) => x.is_resale).map((x: any) => x.id)))
     setKeggedIds(new Set((rec || []).filter((x: any) => x.is_kegged).map((x: any) => x.id)))
+    setHiddenIds(new Set((rec || []).filter((x: any) => x.show_in_station === false).map((x: any) => x.id)))
     setNameVi(new Map((rec || []).filter((x: any) => x.name_vi).map((x: any) => [x.id, x.name_vi as string])))
     setServeCost(new Map((serve || []).map((x: any) => [x.recipe_id, Number(x.serve_cost)])))
     setLoading(false)
@@ -85,6 +88,23 @@ export default function RecipesPage() {
   function toggleAll(ids: string[]) {
     const allSel = ids.length > 0 && ids.every(id => selected.has(id))
     setSelected(allSel ? new Set() : new Set(ids))
+  }
+
+  // Show / hide the selected recipes in the kitchen & bar station book (/kitchen, /bar).
+  // Hidden recipes stay fully here in the admin — they're just kept off the staff screens
+  // so cooks and bartenders only see what's current.
+  async function setStaffVisibility(ids: string[], visible: boolean) {
+    if (!ids.length || visBusy) return
+    setVisBusy(true)
+    try {
+      const { error } = await ops().from('recipes').update({ show_in_station: visible }).in('id', ids)
+      if (error) { alert(error.message); return }
+      setHiddenIds(prev => {
+        const n = new Set(prev)
+        ids.forEach(id => { visible ? n.delete(id) : n.add(id) })
+        return n
+      })
+    } finally { setVisBusy(false) }
   }
 
   // Build the bilingual recipe-book HTML (sections) — shared by Print, Share and Download.
@@ -394,6 +414,21 @@ export default function RecipesPage() {
             {label}
           </button>
         ))}
+        {canManage && (
+          <>
+            <span style={{ width: 1, alignSelf: 'stretch', background: 'var(--border, #e5e5e5)', margin: '0 4px' }} />
+            <button onClick={() => setStaffVisibility(Array.from(selected), false)} disabled={selected.size === 0 || visBusy}
+              title="Hide the selected recipes from the kitchen & bar staff screens"
+              style={{ ...btnOutline, padding: '7px 14px', opacity: selected.size === 0 || visBusy ? 0.45 : 1, cursor: selected.size === 0 || visBusy ? 'default' : 'pointer' }}>
+              🙈 Hide from staff
+            </button>
+            <button onClick={() => setStaffVisibility(Array.from(selected), true)} disabled={selected.size === 0 || visBusy}
+              title="Show the selected recipes on the kitchen & bar staff screens"
+              style={{ ...btnOutline, padding: '7px 14px', opacity: selected.size === 0 || visBusy ? 0.45 : 1, cursor: selected.size === 0 || visBusy ? 'default' : 'pointer' }}>
+              👁 Show to staff
+            </button>
+          </>
+        )}
       </div>
 
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
@@ -427,6 +462,7 @@ export default function RecipesPage() {
                 </td>
                 <td style={td}>
                   <Link href={`/dashboard/ops/recipes/${r.recipe_id}`} style={{ color: 'var(--accent, #e87830)', textDecoration: 'none', fontWeight: 600 }}>{r.name}</Link>
+                  {hiddenIds.has(r.recipe_id) && <span title="Hidden from the kitchen & bar staff screens" style={{ marginLeft: 8, fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-muted, #999)', border: '1px solid var(--border, #e5e5e5)', borderRadius: 5, padding: '1px 6px', verticalAlign: 'middle' }}>🙈 Hidden</span>}
                   {nameVi.get(r.recipe_id) && <div style={{ fontSize: 11, color: 'var(--text-muted, #999)' }}>{nameVi.get(r.recipe_id)}</div>}
                 </td>
                 <td style={{ ...td, fontSize: 11, color: 'var(--text-muted, #999)' }}>{r.type}</td>

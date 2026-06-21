@@ -9,7 +9,7 @@ type Recipe = {
   id: string; name: string; type: string; category: string;
   yield_qty: number; yield_unit: string; sale_price: number | null;
   is_kegged: boolean; keg_size_ml: number | null; pour_size_ml: number | null;
-  description: string | null; description_vi: string | null; active: boolean;
+  description: string | null; description_vi: string | null; active: boolean; show_in_station: boolean;
   menu_name: string | null; menu_name_vi: string | null;
   method: string | null; subtitle: string | null; image_url: string | null;
   plating_dinein: string | null; plating_togo: string | null;
@@ -504,6 +504,11 @@ export default function RecipeDetailPage() {
       {canManage && (
         <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text-muted, #999)', marginTop: 6, cursor: 'pointer' }}>
           <input type="checkbox" checked={autoVi} onChange={toggleAutoVi} /> Auto-translate name, description, method & plating to Vietnamese when I edit the English
+        </label>
+      )}
+      {canManage && (
+        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text-muted, #999)', marginTop: 6, cursor: 'pointer' }}>
+          <input type="checkbox" checked={recipe.show_in_station !== false} onChange={e => saveRecipe({ show_in_station: e.target.checked })} /> Show on the kitchen &amp; bar staff screens (uncheck to hide old / off-menu recipes from staff)
         </label>
       )}
       <div style={{ fontSize: 12, color: 'var(--text-muted, #999)', marginTop: 2, marginBottom: 20 }}>
