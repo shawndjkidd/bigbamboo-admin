@@ -80,22 +80,31 @@ function timeOptions(text: string): { value: string; label: string }[] {
 }
 function SmartTime({ value, onChange, placeholder, style }: { value: string; onChange: (v: string) => void; placeholder?: string; style?: React.CSSProperties }) {
   const [text, setText] = useState(''); const [open, setOpen] = useState(false)
+  const [hi, setHi] = useState(0)   // keyboard-highlighted option index
   const opts = open ? timeOptions(text).slice(0, 8) : []
   const pick = (v: string) => { onChange(v); setOpen(false); setText('') }
+  // keep the highlight in range whenever the option list changes
+  useEffect(() => { setHi(h => Math.min(Math.max(h, 0), Math.max(opts.length - 1, 0))) }, [opts.length])
   return (
     <div style={{ position: 'relative' }}>
       <input value={open ? text : (value ? fmt12(value) : '')} placeholder={placeholder} style={style}
-        onFocus={() => { setOpen(true); setText('') }}
-        onChange={e => setText(e.target.value)}
+        onFocus={() => { setOpen(true); setText(''); setHi(0) }}
+        onChange={e => { setText(e.target.value); setHi(0) }}
         onBlur={() => { setTimeout(() => { setOpen(false); if (text.trim()) { const p = parseTime(text); if (p) onChange(p) } }, 150) }}
-        onKeyDown={e => { if (e.key === 'Enter' && opts.length) { e.preventDefault(); pick(opts[0].value) } else if (e.key === 'Escape') { setOpen(false) } }} />
+        onKeyDown={e => {
+          if (!open) return
+          if (e.key === 'ArrowDown') { e.preventDefault(); setHi(h => Math.min(h + 1, opts.length - 1)) }
+          else if (e.key === 'ArrowUp') { e.preventDefault(); setHi(h => Math.max(h - 1, 0)) }
+          else if (e.key === 'Enter' && opts.length) { e.preventDefault(); pick(opts[Math.min(hi, opts.length - 1)].value) }
+          else if (e.key === 'Escape') { setOpen(false) }
+        }} />
       {open && opts.length > 0 && (
-        <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 4, zIndex: 30, maxHeight: 224, overflowY: 'auto', background: 'var(--bg-card, #1f1f1f)', border: '1px solid var(--border, #3a3a3a)', borderRadius: 8, boxShadow: '0 8px 24px rgba(0,0,0,0.4)' }}>
-          {opts.map(o => (
+        <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 4, zIndex: 30, maxHeight: 224, overflowY: 'auto', WebkitOverflowScrolling: 'touch', background: 'var(--bg-card, #1f1f1f)', border: '1px solid var(--border, #3a3a3a)', borderRadius: 8, boxShadow: '0 8px 24px rgba(0,0,0,0.4)' }}>
+          {opts.map((o, i) => (
             <button key={o.value} type="button" onMouseDown={e => { e.preventDefault(); pick(o.value) }}
-              style={{ display: 'block', width: '100%', textAlign: 'left', padding: '8px 12px', fontSize: 14, border: 'none', background: 'transparent', color: 'var(--text, #eee)', cursor: 'pointer' }}
-              onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-sidebar, #2a2a2a)')}
-              onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>{o.label}</button>
+              ref={el => { if (el && i === hi && open) el.scrollIntoView({ block: 'nearest' }) }}
+              style={{ display: 'block', width: '100%', textAlign: 'left', padding: '8px 12px', fontSize: 14, border: 'none', background: i === hi ? 'var(--bg-sidebar, #2a2a2a)' : 'transparent', color: 'var(--text, #eee)', cursor: 'pointer' }}
+              onMouseEnter={() => setHi(i)}>{o.label}</button>
           ))}
         </div>
       )}
@@ -134,8 +143,10 @@ export default function LaborPage() {
 
   // edit-shift inline
   const [shEditId, setShEditId] = useState<string | null>(null)
-  const [shHours, setShHours] = useState('')
+  const [shHours, setShHours] = useState('')   // fallback for legacy shifts with no start/finish on record
   const [shRate, setShRate] = useState('')
+  const [shStart, setShStart] = useState('')
+  const [shEnd, setShEnd] = useState('')
 
   // per-employee detail drawer (hours breakdown + pay-out)
   const [accounts, setAccounts] = useState<Account[]>([])
@@ -264,13 +275,26 @@ export default function LaborPage() {
     await load(venueId)
   }
   function startEditShift(s: Shift) {
-    setShEditId(s.id); setShHours(String(Number(s.hours))); setShRate(String(Number(s.hourly_rate))); setMsg(null)
+    setShEditId(s.id)
+    setShStart(s.start_time ? hhmm(s.start_time) : '')
+    setShEnd(s.end_time ? hhmm(s.end_time) : '')
+    setShHours(String(Number(s.hours)))   // fallback if the shift was logged without times
+    setShRate(String(Number(s.hourly_rate))); setMsg(null)
   }
   async function saveShift(id: string) {
-    const hours = Number(shHours); const rate = Number(shRate.replace(/[^\d.]/g, ''))
-    if (!hours || hours <= 0) { setMsg('Enter hours worked'); return }
+    const rate = Number(shRate.replace(/[^\d.]/g, ''))
     if (!rate || rate <= 0) { setMsg('Enter an hourly rate'); return }
-    const { error } = await ops().from('labor_shifts').update({ hours, hourly_rate: rate }).eq('id', id)
+    // Prefer start/finish times (recompute hours from them). Fall back to the
+    // raw hours only when this shift has no times entered (legacy/imported rows).
+    let hours: number, startVal: string | null, endVal: string | null
+    if (shStart && shEnd) {
+      hours = hoursBetween(shStart, shEnd); startVal = shStart; endVal = shEnd
+      if (!hours || hours <= 0) { setMsg('Finish time must be after start time'); return }
+    } else {
+      hours = Number(shHours); startVal = null; endVal = null
+      if (!hours || hours <= 0) { setMsg('Enter a start and finish time'); return }
+    }
+    const { error } = await ops().from('labor_shifts').update({ hours, hourly_rate: rate, start_time: startVal, end_time: endVal }).eq('id', id)
     if (error) { setMsg(error.message); return }
     setShEditId(null); await load(venueId)
   }
@@ -414,21 +438,30 @@ export default function LaborPage() {
           {shifts.length === 0 && <tr><td colSpan={6} style={{ padding: 12, color: 'var(--text-muted, #999)' }}>No shifts logged in {monthLabel(selMonth)}.</td></tr>}
           {shifts.map(s => (
             shEditId === s.id ? (
-              <tr key={s.id} style={{ borderTop: '1px solid var(--border, #eee)', background: 'var(--bg-sidebar, #fafafa)' }}>
-                <td style={td}>{s.occurred_on}</td>
-                <td style={td}>{empName(s.employee_id)}</td>
-                <td style={{ ...td, textAlign: 'right' }}>
-                  <input inputMode="decimal" value={shHours} onChange={e => setShHours(e.target.value)} style={{ ...inp, padding: '6px 8px', textAlign: 'right', width: 70 }} />
-                </td>
-                <td style={{ ...td, textAlign: 'right' }}>
-                  <input inputMode="numeric" value={shRate} onChange={e => setShRate(e.target.value)} style={{ ...inp, padding: '6px 8px', textAlign: 'right', width: 90 }} />
-                </td>
-                <td style={{ ...td, textAlign: 'right', fontWeight: 600 }}>{vnd((Number(shHours) || 0) * (Number(shRate.replace(/[^\d.]/g, '')) || 0))}</td>
-                <td style={{ ...td, textAlign: 'right', whiteSpace: 'nowrap' }}>
-                  <button onClick={() => saveShift(s.id)} style={{ ...btnLink, color: 'var(--accent, #e87830)', fontWeight: 600 }}>Save</button>
-                  <button onClick={() => setShEditId(null)} style={{ ...btnLink, marginLeft: 10 }}>Cancel</button>
-                </td>
-              </tr>
+              (() => {
+                const editHours = (shStart && shEnd) ? hoursBetween(shStart, shEnd) : (Number(shHours) || 0)
+                return (
+                <tr key={s.id} style={{ borderTop: '1px solid var(--border, #eee)', background: 'var(--bg-sidebar, #fafafa)' }}>
+                  <td style={td}>{s.occurred_on}</td>
+                  <td style={td}>{empName(s.employee_id)}</td>
+                  <td style={{ ...td, textAlign: 'right' }}>
+                    <div style={{ display: 'flex', gap: 6, alignItems: 'center', justifyContent: 'flex-end' }}>
+                      <div style={{ width: 92 }}><div style={{ ...miniLabel }}>Start</div><SmartTime value={shStart} onChange={setShStart} placeholder="5pm" style={{ ...inp, padding: '6px 8px' }} /></div>
+                      <div style={{ width: 92 }}><div style={{ ...miniLabel }}>Finish</div><SmartTime value={shEnd} onChange={setShEnd} placeholder="11pm" style={{ ...inp, padding: '6px 8px' }} /></div>
+                      <div style={{ minWidth: 38, textAlign: 'right', color: 'var(--text-muted, #999)', fontWeight: 600 }}>{editHours ? `${editHours.toFixed(1)}h` : '—'}</div>
+                    </div>
+                  </td>
+                  <td style={{ ...td, textAlign: 'right' }}>
+                    <input inputMode="numeric" value={shRate} onChange={e => setShRate(e.target.value)} style={{ ...inp, padding: '6px 8px', textAlign: 'right', width: 90 }} />
+                  </td>
+                  <td style={{ ...td, textAlign: 'right', fontWeight: 600 }}>{vnd(editHours * (Number(shRate.replace(/[^\d.]/g, '')) || 0))}</td>
+                  <td style={{ ...td, textAlign: 'right', whiteSpace: 'nowrap' }}>
+                    <button onClick={() => saveShift(s.id)} style={{ ...btnLink, color: 'var(--accent, #e87830)', fontWeight: 600 }}>Save</button>
+                    <button onClick={() => setShEditId(null)} style={{ ...btnLink, marginLeft: 10 }}>Cancel</button>
+                  </td>
+                </tr>
+                )
+              })()
             ) : (
               <tr key={s.id} style={{ borderTop: '1px solid var(--border, #eee)' }}>
                 <td style={td}>{s.occurred_on}</td>
@@ -642,4 +675,5 @@ const th = { padding: '8px 12px', textAlign: 'left' as const, fontWeight: 600, f
 const td = { padding: '10px 12px', color: 'var(--text, #333)' }
 const btnPrimary = { padding: '10px 16px', background: 'var(--accent, #e87830)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' as const }
 const navBtn = { width: 34, height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, lineHeight: 1, border: '1px solid var(--border, #e5e5e5)', borderRadius: 8, background: 'var(--bg-input, #fff)', color: 'var(--text, #333)', cursor: 'pointer' }
+const miniLabel = { fontSize: 9, fontWeight: 600, textTransform: 'uppercase' as const, letterSpacing: '0.04em', color: 'var(--text-muted, #999)', marginBottom: 2, textAlign: 'left' as const }
 const btnLink = { padding: '4px 8px', background: 'transparent', color: 'var(--burgundy, #7b2d3a)', border: 'none', cursor: 'pointer', fontSize: 13 }
