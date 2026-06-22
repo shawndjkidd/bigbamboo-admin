@@ -579,13 +579,14 @@ export default function LaborPage() {
                   </tbody>
                 </table>
 
-                {/* settlement: earned vs paid */}
+                {/* settlement: earned vs paid — Earned & Outstanding fill the payout amount on click */}
                 <div style={hdr}>Pay</div>
-                <div style={{ display: 'flex', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
-                  <Stat label="Earned" value={vnd(totalEarned)} />
+                <div style={{ display: 'flex', gap: 12, marginBottom: 6, flexWrap: 'wrap' }}>
+                  <Stat label="Earned" value={vnd(totalEarned)} onClick={totalEarned > 0 ? () => setPoAmt(String(Math.round(totalEarned))) : undefined} />
                   <Stat label="Paid out" value={vnd(totalPaid)} />
-                  <Stat label="Outstanding" value={vnd(outstanding)} />
+                  <Stat label="Outstanding" value={vnd(outstanding)} onClick={outstanding > 0 ? () => setPoAmt(String(Math.round(outstanding))) : undefined} />
                 </div>
+                <div style={{ fontSize: 11, color: 'var(--text-muted, #999)', marginBottom: 16 }}>Tap Earned or Outstanding to drop that amount into the payout below.</div>
 
                 {/* record a pay out */}
                 <div className="card" style={{ padding: 16, marginBottom: 16 }}>
@@ -662,8 +663,10 @@ export default function LaborPage() {
   )
 }
 
-const Stat = ({ label, value }: { label: string; value: string }) => (
-  <div className="card" style={{ padding: '12px 16px', minWidth: 150 }}>
+const Stat = ({ label, value, onClick }: { label: string; value: string; onClick?: () => void }) => (
+  <div className="card" onClick={onClick}
+    title={onClick ? 'Click to use this amount' : undefined}
+    style={{ padding: '12px 16px', minWidth: 150, cursor: onClick ? 'pointer' : 'default', border: onClick ? '1px solid var(--accent, #e87830)' : undefined }}>
     <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted, #999)' }}>{label}</div>
     <div style={{ fontSize: 20, fontWeight: 700, marginTop: 4 }}>{value}</div>
   </div>
