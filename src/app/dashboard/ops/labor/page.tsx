@@ -383,7 +383,7 @@ export default function LaborPage() {
   const lastMonth = byMonth.find(m => m.ym === prevYm)
 
   return (
-    <div style={{ maxWidth: 760 }}>
+    <div style={{ maxWidth: 1180 }}>
       <h2 style={{ fontSize: 22, fontWeight: 600 }}>Labor</h2>
       <div style={{ fontSize: 13, color: 'var(--text-muted, #999)', marginTop: 2, marginBottom: 20 }}>
         Log shifts here and they feed the Labor line on your P&amp;L.
@@ -403,6 +403,11 @@ export default function LaborPage() {
         <Stat label="Shifts logged" value={String(shifts.length)} />
       </div>
 
+      {/* two columns on wide screens (shifts | staff), single column when narrow */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(380px, 1fr))', gap: 24, alignItems: 'start' }}>
+
+      {/* ── left column: log a shift + this month's shifts ── */}
+      <div>
       {/* Log a shift */}
       <div className="card" style={{ padding: 16, marginBottom: 20 }}>
         <div style={hdr}>Log a shift</div>
@@ -478,7 +483,10 @@ export default function LaborPage() {
           ))}
         </tbody>
       </table>
+      </div>{/* ── end left column ── */}
 
+      {/* ── right column: staff roster ── */}
+      <div>
       {/* Employees */}
       <div className="card" style={{ padding: 16, marginBottom: 16 }}>
         <div style={hdr}>Add an employee</div>
@@ -529,6 +537,9 @@ export default function LaborPage() {
         </tbody>
       </table>
       {msg && <div style={{ fontSize: 12, color: msg.startsWith('✓') ? '#548235' : 'var(--burgundy, #7b2d3a)', marginTop: 10 }}>{msg}</div>}
+      </div>{/* ── end right column ── */}
+
+      </div>{/* ── end two-column grid ── */}
 
       {/* ───────────── Employee detail drawer: hours breakdown + pay out ───────────── */}
       {drawerEmp && (
