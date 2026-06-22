@@ -158,7 +158,7 @@ export default function LaborPage() {
   // pay-out form (inside drawer)
   const [poAmt, setPoAmt] = useState('')
   const [poDate, setPoDate] = useState(today())
-  const [poMethod, setPoMethod] = useState<'cash' | 'transfer'>('cash')
+  const [poMethod, setPoMethod] = useState<'cash' | 'transfer'>('transfer')
   const [poAccount, setPoAccount] = useState('')
   const [poNote, setPoNote] = useState('')
 
@@ -303,7 +303,7 @@ export default function LaborPage() {
   async function openDrawer(e: Emp) {
     setDrawerEmp(e); setDrawerMsg(null); setDrawerBusy(true)
     setDrawerShifts([]); setDrawerPayouts([])
-    setPoAmt(''); setPoDate(today()); setPoMethod('cash'); setPoNote('')
+    setPoAmt(''); setPoDate(today()); setPoMethod('transfer'); setPoNote('')
     const [{ data: s }, { data: p }] = await Promise.all([
       ops().from('labor_shifts').select('id, employee_id, occurred_on, hours, hourly_rate, shift_cost, notes, start_time, end_time').eq('employee_id', e.id).order('occurred_on', { ascending: false }),
       ops().from('labor_payouts').select('id, employee_id, amount, paid_on, method, note, cash_movement_id').eq('employee_id', e.id).order('paid_on', { ascending: false }),
@@ -383,7 +383,18 @@ export default function LaborPage() {
   const lastMonth = byMonth.find(m => m.ym === prevYm)
 
   return (
-    <div style={{ maxWidth: 1180 }}>
+    <div style={{ maxWidth: 1340 }}>
+      <style>{`
+        .labor-cols { display: grid; grid-template-columns: 1fr; gap: 24px; align-items: start; }
+        /* when stacked, a horizontal rule separates the staff section from the shifts above it */
+        .labor-right { border-top: 1px solid var(--border, #e5e5e5); padding-top: 24px; margin-top: 4px; }
+        @media (min-width: 1080px) {
+          /* shifts column gets more room than the staff column */
+          .labor-cols { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 0; }
+          /* a vertical divider line sits between the two columns */
+          .labor-right { border-top: none; padding-top: 0; margin-top: 0; border-left: 1px solid var(--border, #e5e5e5); margin-left: 28px; padding-left: 28px; }
+        }
+      `}</style>
       <h2 style={{ fontSize: 22, fontWeight: 600 }}>Labor</h2>
       <div style={{ fontSize: 13, color: 'var(--text-muted, #999)', marginTop: 2, marginBottom: 20 }}>
         Log shifts here and they feed the Labor line on your P&amp;L.
@@ -404,10 +415,11 @@ export default function LaborPage() {
       </div>
 
       {/* two columns on wide screens (shifts | staff), single column when narrow */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(380px, 1fr))', gap: 24, alignItems: 'start' }}>
+      <div className="labor-cols">
 
       {/* ── left column: log a shift + this month's shifts ── */}
       <div>
+      <div style={{ ...hdr, fontSize: 14, color: 'var(--text, #333)', marginBottom: 14 }}>Shifts</div>
       {/* Log a shift */}
       <div className="card" style={{ padding: 16, marginBottom: 20 }}>
         <div style={hdr}>Log a shift</div>
@@ -447,7 +459,7 @@ export default function LaborPage() {
                 const editHours = (shStart && shEnd) ? hoursBetween(shStart, shEnd) : (Number(shHours) || 0)
                 return (
                 <tr key={s.id} style={{ borderTop: '1px solid var(--border, #eee)', background: 'var(--bg-sidebar, #fafafa)' }}>
-                  <td style={td}>{s.occurred_on}</td>
+                  <td style={{ ...td, whiteSpace: 'nowrap' }}>{s.occurred_on}</td>
                   <td style={td}>{empName(s.employee_id)}</td>
                   <td style={{ ...td, textAlign: 'right' }}>
                     <div style={{ display: 'flex', gap: 6, alignItems: 'center', justifyContent: 'flex-end' }}>
@@ -469,7 +481,7 @@ export default function LaborPage() {
               })()
             ) : (
               <tr key={s.id} style={{ borderTop: '1px solid var(--border, #eee)' }}>
-                <td style={td}>{s.occurred_on}</td>
+                <td style={{ ...td, whiteSpace: 'nowrap' }}>{s.occurred_on}</td>
                 <td style={td}>{empName(s.employee_id)}</td>
                 <td style={{ ...td, textAlign: 'right' }}>{Number(s.hours).toFixed(1)}{s.start_time && s.end_time && <div style={{ fontSize: 11, color: 'var(--text-muted, #999)' }}>{hhmm(s.start_time)}–{hhmm(s.end_time)}</div>}</td>
                 <td style={{ ...td, textAlign: 'right' }}>{vnd(s.hourly_rate)}</td>
@@ -486,7 +498,8 @@ export default function LaborPage() {
       </div>{/* ── end left column ── */}
 
       {/* ── right column: staff roster ── */}
-      <div>
+      <div className="labor-right">
+      <div style={{ ...hdr, fontSize: 14, color: 'var(--text, #333)', marginBottom: 14 }}>Staff</div>
       {/* Employees */}
       <div className="card" style={{ padding: 16, marginBottom: 16 }}>
         <div style={hdr}>Add an employee</div>
@@ -524,7 +537,7 @@ export default function LaborPage() {
                 </button>
               </td>
               <td style={td}>{e.role_title || '—'}</td>
-              <td style={{ ...td, textAlign: 'right' }}>{e.base_rate != null ? vnd(e.base_rate) : '—'}</td>
+              <td style={{ ...td, textAlign: 'right', whiteSpace: 'nowrap' }}>{e.base_rate != null ? vnd(e.base_rate) : '—'}</td>
               <td style={td}>{e.active ? 'Active' : 'Inactive'}</td>
               <td style={{ ...td, textAlign: 'right', whiteSpace: 'nowrap' }}>
                 <button onClick={() => openDrawer(e)} style={btnLink}>Hours</button>
@@ -614,8 +627,8 @@ export default function LaborPage() {
                     <div style={{ width: 130 }}>
                       <label className="label">Method</label>
                       <select value={poMethod} onChange={e => setPoMethod(e.target.value as 'cash' | 'transfer')} style={inp}>
-                        <option value="cash">Cash</option>
                         <option value="transfer">Bank transfer</option>
+                        <option value="cash">Cash</option>
                       </select>
                     </div>
                     {poMethod === 'cash' && (
