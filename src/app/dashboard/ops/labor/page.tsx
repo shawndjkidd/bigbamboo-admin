@@ -14,6 +14,12 @@ function monthLabel(ym: string): string {
   return new Date(y, m - 1, 1).toLocaleString('en-US', { month: 'short', year: 'numeric' })
 }
 const ymOf = (d: string) => d.slice(0, 7)
+// step a "YYYY-MM" string forward/back by n months
+function shiftMonth(ym: string, n: number): string {
+  const [y, m] = ym.split('-').map(Number)
+  const d = new Date(y, m - 1 + n, 1)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+}
 
 // Hours between a start and finish HH:MM, rolling past midnight (e.g. 17:00 → 01:00 = 8h).
 function hoursBetween(start: string, end: string): number {
@@ -104,6 +110,8 @@ export default function LaborPage() {
   const [shifts, setShifts] = useState<Shift[]>([])
   const [loading, setLoading] = useState(true)
   const [msg, setMsg] = useState<string | null>(null)
+  // which month the page is showing (YYYY-MM); defaults to the current month
+  const [selMonth, setSelMonth] = useState(today().slice(0, 7))
 
   // add-employee form
   const [eName, setEName] = useState('')
@@ -144,6 +152,14 @@ export default function LaborPage() {
   const [poNote, setPoNote] = useState('')
 
   useEffect(() => { init() }, [])
+  // reload shifts when the user pages to a different month (skips the first mount,
+  // where init() already does the initial load)
+  const didMount = useMemo(() => ({ v: false }), [])
+  useEffect(() => {
+    if (!didMount.v) { didMount.v = true; return }
+    if (venueId) load(venueId)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selMonth])
   async function init() {
     const { data: { session } } = await supabase.auth.getSession()
     const user = session?.user; if (!user) return
@@ -155,10 +171,13 @@ export default function LaborPage() {
   }
   async function load(vid: string | null) {
     if (!vid) { setLoading(false); return }
-    const monthStart = today().slice(0, 8) + '01'
+    // shifts for the currently-selected month [monthStart, nextMonthStart)
+    const monthStart = selMonth + '-01'
+    const [my, mm] = selMonth.split('-').map(Number)
+    const nextMonthStart = mm === 12 ? `${my + 1}-01-01` : `${my}-${pad2(mm + 1)}-01`
     const [{ data: e }, { data: s }, { data: acc }] = await Promise.all([
       ops().from('employees').select('id, name, role_title, base_rate, active').eq('venue_id', vid).order('name'),
-      ops().from('labor_shifts').select('id, employee_id, occurred_on, hours, hourly_rate, shift_cost, notes, start_time, end_time').eq('venue_id', vid).gte('occurred_on', monthStart).order('occurred_on', { ascending: false }),
+      ops().from('labor_shifts').select('id, employee_id, occurred_on, hours, hourly_rate, shift_cost, notes, start_time, end_time').eq('venue_id', vid).gte('occurred_on', monthStart).lt('occurred_on', nextMonthStart).order('occurred_on', { ascending: false }),
       ops().from('v_cash_balances').select('account_id, name, kind').eq('venue_id', vid),
     ])
     setEmps((e as Emp[]) || [])
@@ -346,9 +365,17 @@ export default function LaborPage() {
         Log shifts here and they feed the Labor line on your P&amp;L.
       </div>
 
+      {/* month navigator */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+        <button onClick={() => setSelMonth(shiftMonth(selMonth, -1))} style={navBtn} title="Previous month">‹</button>
+        <div style={{ minWidth: 130, textAlign: 'center', fontWeight: 600, fontSize: 15 }}>{monthLabel(selMonth)}</div>
+        <button onClick={() => setSelMonth(shiftMonth(selMonth, 1))} disabled={selMonth >= nowYm} style={{ ...navBtn, opacity: selMonth >= nowYm ? 0.35 : 1, cursor: selMonth >= nowYm ? 'default' : 'pointer' }} title="Next month">›</button>
+        {selMonth !== nowYm && <button onClick={() => setSelMonth(nowYm)} style={{ ...btnLink, color: 'var(--accent, #e87830)' }}>Jump to this month</button>}
+      </div>
+
       <div style={{ display: 'flex', gap: 16, marginBottom: 24, flexWrap: 'wrap' }}>
-        <Stat label="This month — labor" value={vnd(monthTotal)} />
-        <Stat label="This month — hours" value={`${monthHours.toFixed(1)} h`} />
+        <Stat label={`${monthLabel(selMonth)} — labor`} value={vnd(monthTotal)} />
+        <Stat label={`${monthLabel(selMonth)} — hours`} value={`${monthHours.toFixed(1)} h`} />
         <Stat label="Shifts logged" value={String(shifts.length)} />
       </div>
 
@@ -378,13 +405,13 @@ export default function LaborPage() {
       </div>
 
       {/* Recent shifts */}
-      <div style={hdr}>This month&apos;s shifts</div>
+      <div style={hdr}>{monthLabel(selMonth)} shifts</div>
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14, marginBottom: 28 }}>
         <thead><tr style={{ background: 'var(--bg-sidebar, #fafafa)' }}>
           <th style={th}>Date</th><th style={th}>Employee</th><th style={{ ...th, textAlign: 'right' }}>Hours</th><th style={{ ...th, textAlign: 'right' }}>Rate</th><th style={{ ...th, textAlign: 'right' }}>Cost</th><th style={th}></th>
         </tr></thead>
         <tbody>
-          {shifts.length === 0 && <tr><td colSpan={6} style={{ padding: 12, color: 'var(--text-muted, #999)' }}>No shifts logged this month.</td></tr>}
+          {shifts.length === 0 && <tr><td colSpan={6} style={{ padding: 12, color: 'var(--text-muted, #999)' }}>No shifts logged in {monthLabel(selMonth)}.</td></tr>}
           {shifts.map(s => (
             shEditId === s.id ? (
               <tr key={s.id} style={{ borderTop: '1px solid var(--border, #eee)', background: 'var(--bg-sidebar, #fafafa)' }}>
@@ -614,4 +641,5 @@ const inp = { width: '100%', padding: '10px 12px', fontSize: 14, border: '1px so
 const th = { padding: '8px 12px', textAlign: 'left' as const, fontWeight: 600, fontSize: 11, textTransform: 'uppercase' as const, color: 'var(--text-muted, #999)', letterSpacing: '0.05em' }
 const td = { padding: '10px 12px', color: 'var(--text, #333)' }
 const btnPrimary = { padding: '10px 16px', background: 'var(--accent, #e87830)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' as const }
+const navBtn = { width: 34, height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, lineHeight: 1, border: '1px solid var(--border, #e5e5e5)', borderRadius: 8, background: 'var(--bg-input, #fff)', color: 'var(--text, #333)', cursor: 'pointer' }
 const btnLink = { padding: '4px 8px', background: 'transparent', color: 'var(--burgundy, #7b2d3a)', border: 'none', cursor: 'pointer', fontSize: 13 }
