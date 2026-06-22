@@ -5,6 +5,15 @@ import { supabase } from '@/lib/supabase'
 
 type Emp = { id: string; name: string; role_title: string | null; base_rate: number | null; active: boolean }
 type Shift = { id: string; employee_id: string; occurred_on: string; hours: number; hourly_rate: number; shift_cost: number | null; notes: string | null; start_time: string | null; end_time: string | null }
+type Payout = { id: string; employee_id: string; amount: number; paid_on: string; method: string; note: string | null; cash_movement_id: string | null }
+type Account = { account_id: string; name: string; kind: string }
+
+// "2026-06" → "Jun 2026". Used to label the per-employee monthly breakdown.
+function monthLabel(ym: string): string {
+  const [y, m] = ym.split('-').map(Number)
+  return new Date(y, m - 1, 1).toLocaleString('en-US', { month: 'short', year: 'numeric' })
+}
+const ymOf = (d: string) => d.slice(0, 7)
 
 // Hours between a start and finish HH:MM, rolling past midnight (e.g. 17:00 → 01:00 = 8h).
 function hoursBetween(start: string, end: string): number {
@@ -120,6 +129,20 @@ export default function LaborPage() {
   const [shHours, setShHours] = useState('')
   const [shRate, setShRate] = useState('')
 
+  // per-employee detail drawer (hours breakdown + pay-out)
+  const [accounts, setAccounts] = useState<Account[]>([])
+  const [drawerEmp, setDrawerEmp] = useState<Emp | null>(null)
+  const [drawerShifts, setDrawerShifts] = useState<Shift[]>([])
+  const [drawerPayouts, setDrawerPayouts] = useState<Payout[]>([])
+  const [drawerBusy, setDrawerBusy] = useState(false)
+  const [drawerMsg, setDrawerMsg] = useState<string | null>(null)
+  // pay-out form (inside drawer)
+  const [poAmt, setPoAmt] = useState('')
+  const [poDate, setPoDate] = useState(today())
+  const [poMethod, setPoMethod] = useState<'cash' | 'transfer'>('cash')
+  const [poAccount, setPoAccount] = useState('')
+  const [poNote, setPoNote] = useState('')
+
   useEffect(() => { init() }, [])
   async function init() {
     const { data: { session } } = await supabase.auth.getSession()
@@ -133,12 +156,17 @@ export default function LaborPage() {
   async function load(vid: string | null) {
     if (!vid) { setLoading(false); return }
     const monthStart = today().slice(0, 8) + '01'
-    const [{ data: e }, { data: s }] = await Promise.all([
+    const [{ data: e }, { data: s }, { data: acc }] = await Promise.all([
       ops().from('employees').select('id, name, role_title, base_rate, active').eq('venue_id', vid).order('name'),
       ops().from('labor_shifts').select('id, employee_id, occurred_on, hours, hourly_rate, shift_cost, notes, start_time, end_time').eq('venue_id', vid).gte('occurred_on', monthStart).order('occurred_on', { ascending: false }),
+      ops().from('v_cash_balances').select('account_id, name, kind').eq('venue_id', vid),
     ])
     setEmps((e as Emp[]) || [])
     setShifts((s as Shift[]) || [])
+    const accs = (acc as Account[]) || []
+    setAccounts(accs)
+    // default the pay-out source to the Safe (wages usually come out of the safe)
+    if (!poAccount) setPoAccount(accs.find(a => a.kind === 'safe')?.account_id || accs[0]?.account_id || '')
     setLoading(false)
   }
 
@@ -228,9 +256,88 @@ export default function LaborPage() {
     setShEditId(null); await load(venueId)
   }
 
+  // ───────────────────────── employee detail drawer ─────────────────────────
+  async function openDrawer(e: Emp) {
+    setDrawerEmp(e); setDrawerMsg(null); setDrawerBusy(true)
+    setDrawerShifts([]); setDrawerPayouts([])
+    setPoAmt(''); setPoDate(today()); setPoMethod('cash'); setPoNote('')
+    const [{ data: s }, { data: p }] = await Promise.all([
+      ops().from('labor_shifts').select('id, employee_id, occurred_on, hours, hourly_rate, shift_cost, notes, start_time, end_time').eq('employee_id', e.id).order('occurred_on', { ascending: false }),
+      ops().from('labor_payouts').select('id, employee_id, amount, paid_on, method, note, cash_movement_id').eq('employee_id', e.id).order('paid_on', { ascending: false }),
+    ])
+    setDrawerShifts((s as Shift[]) || [])
+    setDrawerPayouts((p as Payout[]) || [])
+    setDrawerBusy(false)
+  }
+  function closeDrawer() { setDrawerEmp(null); setDrawerShifts([]); setDrawerPayouts([]); setDrawerMsg(null) }
+
+  async function recordPayout() {
+    if (!venueId || !drawerEmp) return
+    const amt = Number(poAmt.replace(/[^\d.]/g, ''))
+    if (!amt || amt <= 0) { setDrawerMsg('Enter an amount to pay out'); return }
+    if (poMethod === 'cash' && !poAccount) { setDrawerMsg('Pick which cash account it comes out of'); return }
+    setDrawerBusy(true); setDrawerMsg(null)
+    let cashMovementId: string | null = null
+    // Cash pay-outs also leave the cash drawer: write a negative cash_movements row.
+    // Bank transfers don't touch the physical cash, so they skip this.
+    if (poMethod === 'cash') {
+      const { data: mv, error: mErr } = await ops().from('cash_movements').insert({
+        venue_id: venueId, account_id: poAccount, amount: -Math.abs(amt), type: 'payout',
+        person: drawerEmp.name, note: poNote.trim() || `Wage payout — ${drawerEmp.name}`,
+        occurred_at: new Date(poDate + 'T12:00:00').toISOString(),
+      }).select('id').single()
+      if (mErr) { setDrawerMsg(mErr.message); setDrawerBusy(false); return }
+      cashMovementId = mv?.id || null
+    }
+    const { error } = await ops().from('labor_payouts').insert({
+      venue_id: venueId, employee_id: drawerEmp.id, amount: Math.abs(amt), paid_on: poDate,
+      method: poMethod, cash_movement_id: cashMovementId, note: poNote.trim() || null, created_by: role,
+    })
+    if (error) {
+      // roll back the cash movement so we don't leave an orphaned deduction
+      if (cashMovementId) await ops().from('cash_movements').delete().eq('id', cashMovementId)
+      setDrawerMsg(error.message); setDrawerBusy(false); return
+    }
+    setPoAmt(''); setPoNote('')
+    setDrawerMsg(`✓ Paid ${vnd(amt)} to ${drawerEmp.name}${poMethod === 'cash' ? ' — taken from cash' : ''}.`)
+    await openDrawer(drawerEmp)  // reload drawer totals
+  }
+
+  async function deletePayout(p: Payout) {
+    if (!drawerEmp || !isSuper) return
+    if (!confirm(`Delete this ${vnd(p.amount)} payout? ${p.cash_movement_id ? 'The matching cash deduction will also be removed.' : ''}`)) return
+    setDrawerBusy(true)
+    if (p.cash_movement_id) await ops().from('cash_movements').delete().eq('id', p.cash_movement_id)
+    await ops().from('labor_payouts').delete().eq('id', p.id)
+    await openDrawer(drawerEmp)
+  }
+
   if (loading) return <div style={{ color: 'var(--text-muted, #999)', fontSize: 14 }}>Loading…</div>
   if (!(role && canManageRecipes(role))) return <div style={{ color: 'var(--text-muted, #999)', fontSize: 14 }}>Labor is managed by managers.</div>
   const activeEmps = emps.filter(e => e.active)
+  const isSuper = role === 'super_admin'
+
+  // Drawer derived figures: hours + cost grouped by calendar month, and the
+  // earned / paid / outstanding settlement for the selected employee.
+  const nowYm = today().slice(0, 7)
+  const prevYm = (() => { const [y, m] = nowYm.split('-').map(Number); const d = new Date(y, m - 2, 1); return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}` })()
+  const byMonth: { ym: string; hours: number; cost: number }[] = (() => {
+    const map = new Map<string, { hours: number; cost: number }>()
+    for (const s of drawerShifts) {
+      const k = ymOf(s.occurred_on)
+      const cur = map.get(k) || { hours: 0, cost: 0 }
+      cur.hours += Number(s.hours) || 0
+      cur.cost += Number(s.shift_cost) || 0
+      map.set(k, cur)
+    }
+    return Array.from(map.entries()).map(([ym, v]) => ({ ym, ...v })).sort((a, b) => b.ym.localeCompare(a.ym))
+  })()
+  const totalEarned = drawerShifts.reduce((t, s) => t + (Number(s.shift_cost) || 0), 0)
+  const totalHours = drawerShifts.reduce((t, s) => t + (Number(s.hours) || 0), 0)
+  const totalPaid = drawerPayouts.reduce((t, p) => t + (Number(p.amount) || 0), 0)
+  const outstanding = Math.max(totalEarned - totalPaid, 0)
+  const thisMonth = byMonth.find(m => m.ym === nowYm)
+  const lastMonth = byMonth.find(m => m.ym === prevYm)
 
   return (
     <div style={{ maxWidth: 760 }}>
@@ -342,11 +449,17 @@ export default function LaborPage() {
             </tr>
           ) : (
             <tr key={e.id} style={{ borderTop: '1px solid var(--border, #eee)', opacity: e.active ? 1 : 0.5 }}>
-              <td style={{ ...td, fontWeight: 600 }}>{e.name}</td>
+              <td style={{ ...td, fontWeight: 600 }}>
+                <button onClick={() => openDrawer(e)} title="View hours & pay out"
+                  style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', fontWeight: 600, color: 'var(--accent, #e87830)', cursor: 'pointer', textAlign: 'left' }}>
+                  {e.name}
+                </button>
+              </td>
               <td style={td}>{e.role_title || '—'}</td>
               <td style={{ ...td, textAlign: 'right' }}>{e.base_rate != null ? vnd(e.base_rate) : '—'}</td>
               <td style={td}>{e.active ? 'Active' : 'Inactive'}</td>
               <td style={{ ...td, textAlign: 'right', whiteSpace: 'nowrap' }}>
+                <button onClick={() => openDrawer(e)} style={btnLink}>Hours</button>
                 <button onClick={() => startEdit(e)} style={btnLink}>Edit</button>
                 <button onClick={() => toggleEmp(e)} style={btnLink}>{e.active ? 'Deactivate' : 'Reactivate'}</button>
                 <button onClick={() => deleteEmp(e)} style={{ ...btnLink, color: 'var(--burgundy, #7b2d3a)' }}>Delete</button>
@@ -356,6 +469,135 @@ export default function LaborPage() {
         </tbody>
       </table>
       {msg && <div style={{ fontSize: 12, color: msg.startsWith('✓') ? '#548235' : 'var(--burgundy, #7b2d3a)', marginTop: 10 }}>{msg}</div>}
+
+      {/* ───────────── Employee detail drawer: hours breakdown + pay out ───────────── */}
+      {drawerEmp && (
+        <>
+          <div onClick={closeDrawer} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 40 }} />
+          <div style={{ position: 'fixed', top: 0, right: 0, bottom: 0, width: 'min(460px, 100%)', background: 'var(--bg-card, #fff)', borderLeft: '1px solid var(--border, #e5e5e5)', boxShadow: '-8px 0 24px rgba(0,0,0,0.2)', zIndex: 41, overflowY: 'auto', padding: 24 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
+              <div>
+                <div style={{ fontSize: 20, fontWeight: 700 }}>{drawerEmp.name}</div>
+                <div style={{ fontSize: 13, color: 'var(--text-muted, #999)' }}>{drawerEmp.role_title || 'Staff'}{drawerEmp.base_rate != null ? ` · ${vnd(drawerEmp.base_rate)}/h` : ''}</div>
+              </div>
+              <button onClick={closeDrawer} style={{ ...btnLink, fontSize: 20, color: 'var(--text-muted, #999)' }}>✕</button>
+            </div>
+
+            {drawerBusy && drawerShifts.length === 0 ? (
+              <div style={{ color: 'var(--text-muted, #999)', fontSize: 14, marginTop: 16 }}>Loading…</div>
+            ) : (
+              <>
+                {/* quick this-month / last-month hours */}
+                <div style={{ display: 'flex', gap: 12, marginTop: 16, marginBottom: 20, flexWrap: 'wrap' }}>
+                  <Stat label="This month" value={`${(thisMonth?.hours || 0).toFixed(1)} h`} />
+                  <Stat label="Last month" value={`${(lastMonth?.hours || 0).toFixed(1)} h`} />
+                  <Stat label="All-time hours" value={`${totalHours.toFixed(1)} h`} />
+                </div>
+
+                {/* month-by-month breakdown */}
+                <div style={hdr}>Hours by month</div>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14, marginBottom: 24 }}>
+                  <thead><tr style={{ background: 'var(--bg-sidebar, #fafafa)' }}>
+                    <th style={th}>Month</th><th style={{ ...th, textAlign: 'right' }}>Hours</th><th style={{ ...th, textAlign: 'right' }}>Labor cost</th>
+                  </tr></thead>
+                  <tbody>
+                    {byMonth.length === 0 && <tr><td colSpan={3} style={{ padding: 12, color: 'var(--text-muted, #999)' }}>No shifts logged.</td></tr>}
+                    {byMonth.map(m => (
+                      <tr key={m.ym} style={{ borderTop: '1px solid var(--border, #eee)' }}>
+                        <td style={td}>{monthLabel(m.ym)}</td>
+                        <td style={{ ...td, textAlign: 'right' }}>{m.hours.toFixed(1)}</td>
+                        <td style={{ ...td, textAlign: 'right' }}>{vnd(m.cost)}</td>
+                      </tr>
+                    ))}
+                    {byMonth.length > 0 && (
+                      <tr style={{ borderTop: '2px solid var(--border, #ddd)', fontWeight: 700 }}>
+                        <td style={td}>Total</td>
+                        <td style={{ ...td, textAlign: 'right' }}>{totalHours.toFixed(1)}</td>
+                        <td style={{ ...td, textAlign: 'right' }}>{vnd(totalEarned)}</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+
+                {/* settlement: earned vs paid */}
+                <div style={hdr}>Pay</div>
+                <div style={{ display: 'flex', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
+                  <Stat label="Earned" value={vnd(totalEarned)} />
+                  <Stat label="Paid out" value={vnd(totalPaid)} />
+                  <Stat label="Outstanding" value={vnd(outstanding)} />
+                </div>
+
+                {/* record a pay out */}
+                <div className="card" style={{ padding: 16, marginBottom: 16 }}>
+                  <div style={hdr}>Pay {drawerEmp.name.split(' ')[0]} out</div>
+                  <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+                    <div style={{ width: 150 }}>
+                      <label className="label">Amount (VND)</label>
+                      <input type="text" inputMode="numeric" value={poAmt} onChange={e => setPoAmt(e.target.value)} placeholder={outstanding > 0 ? Math.round(outstanding).toLocaleString('en-US') : '0'} style={inp} />
+                    </div>
+                    <div style={{ width: 140 }}>
+                      <label className="label">Date</label>
+                      <input type="date" value={poDate} onChange={e => setPoDate(e.target.value)} style={inp} />
+                    </div>
+                    <div style={{ width: 130 }}>
+                      <label className="label">Method</label>
+                      <select value={poMethod} onChange={e => setPoMethod(e.target.value as 'cash' | 'transfer')} style={inp}>
+                        <option value="cash">Cash</option>
+                        <option value="transfer">Bank transfer</option>
+                      </select>
+                    </div>
+                    {poMethod === 'cash' && (
+                      <div style={{ width: 130 }}>
+                        <label className="label">From</label>
+                        <select value={poAccount} onChange={e => setPoAccount(e.target.value)} style={inp}>
+                          {accounts.map(a => <option key={a.account_id} value={a.account_id}>{a.name}</option>)}
+                        </select>
+                      </div>
+                    )}
+                    <div style={{ flex: 1, minWidth: 140 }}>
+                      <label className="label">Note</label>
+                      <input type="text" value={poNote} onChange={e => setPoNote(e.target.value)} placeholder="optional" style={inp} />
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginTop: 12 }}>
+                    {outstanding > 0 && (
+                      <button onClick={() => setPoAmt(String(Math.round(outstanding)))} style={{ ...btnLink, color: 'var(--accent, #e87830)' }}>
+                        Fill outstanding ({vnd(outstanding)})
+                      </button>
+                    )}
+                    <button onClick={recordPayout} disabled={drawerBusy} style={{ ...btnPrimary, opacity: drawerBusy ? 0.6 : 1 }}>Record payout</button>
+                  </div>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted, #999)', marginTop: 8 }}>
+                    {poMethod === 'cash' ? 'Cash payouts are deducted from the selected cash account.' : 'Bank transfers are logged only — they don’t touch the cash drawer.'}
+                  </div>
+                  {drawerMsg && <div style={{ fontSize: 12, color: drawerMsg.startsWith('✓') ? '#548235' : 'var(--burgundy, #7b2d3a)', marginTop: 8 }}>{drawerMsg}</div>}
+                </div>
+
+                {/* payout history */}
+                <div style={hdr}>Payout history</div>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
+                  <thead><tr style={{ background: 'var(--bg-sidebar, #fafafa)' }}>
+                    <th style={th}>Date</th><th style={th}>Method</th><th style={{ ...th, textAlign: 'right' }}>Amount</th><th style={th}></th>
+                  </tr></thead>
+                  <tbody>
+                    {drawerPayouts.length === 0 && <tr><td colSpan={4} style={{ padding: 12, color: 'var(--text-muted, #999)' }}>No payouts yet.</td></tr>}
+                    {drawerPayouts.map(p => (
+                      <tr key={p.id} style={{ borderTop: '1px solid var(--border, #eee)' }}>
+                        <td style={td}>{p.paid_on}{p.note && <div style={{ fontSize: 11, color: 'var(--text-muted, #999)' }}>{p.note}</div>}</td>
+                        <td style={td}>{p.method === 'cash' ? 'Cash' : 'Transfer'}</td>
+                        <td style={{ ...td, textAlign: 'right', fontWeight: 600 }}>{vnd(p.amount)}</td>
+                        <td style={{ ...td, textAlign: 'right' }}>
+                          {isSuper && <button onClick={() => deletePayout(p)} style={{ ...btnLink, color: 'var(--burgundy, #7b2d3a)' }}>Delete</button>}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </>
+            )}
+          </div>
+        </>
+      )}
     </div>
   )
 }
