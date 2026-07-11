@@ -5,7 +5,7 @@
 //  Same logic as before — search → pick → nickname → submit.
 // ═══════════════════════════════════════════════════════════════
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { type Lang, LANG_KEY, translations } from '@/i18n/guest'
 
 interface Track {
@@ -135,6 +135,12 @@ export default function JukeboxGuestPage() {
   const [results, setResults] = useState<Track[]>([])
   const [searching, setSearching] = useState(false)
   const [searchErr, setSearchErr] = useState('')
+  // Pagination: nextOffset === null → no more pages. loadingMore is a
+  // separate flag from `searching` so the initial spinner and the
+  // load-more spinner can render in different places.
+  const [nextOffset, setNextOffset] = useState<number | null>(null)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const loadMoreRef = useRef<HTMLDivElement | null>(null)
 
   const [picked, setPicked] = useState<Track | null>(null)
   const [nickname, setNickname] = useState('')
@@ -193,19 +199,25 @@ export default function JukeboxGuestPage() {
     if (query.trim().length < 2) {
       setResults([])
       setSearchErr('')
+      setNextOffset(null)
       return
     }
     setSearching(true)
     setSearchErr('')
+    setNextOffset(null)
     debounceRef.current = window.setTimeout(async () => {
       try {
         const r = await fetch(
-          `/api/jukebox/search?q=${encodeURIComponent(query.trim())}&device_id=${encodeURIComponent(deviceId)}`,
+          `/api/jukebox/search?q=${encodeURIComponent(query.trim())}&device_id=${encodeURIComponent(deviceId)}&offset=0`,
           { cache: 'no-store' },
         )
         const j = await r.json()
-        if (j.ok) setResults(j.data.tracks || [])
-        else setSearchErr(j.error?.message || t.searchFailed)
+        if (j.ok) {
+          setResults(j.data.tracks || [])
+          setNextOffset(j.data.next_offset ?? null)
+        } else {
+          setSearchErr(j.error?.message || t.searchFailed)
+        }
       } catch {
         setSearchErr(t.searchFailed)
       } finally {
@@ -214,6 +226,59 @@ export default function JukeboxGuestPage() {
     }, 300)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query, deviceId])
+
+  // Load the next page. Guarded so multiple triggers don't fire the same call.
+  const loadMore = useCallback(async () => {
+    if (loadingMore || nextOffset === null || !deviceId) return
+    setLoadingMore(true)
+    const currentQuery = query.trim()
+    const offsetForThisCall = nextOffset
+    try {
+      const r = await fetch(
+        `/api/jukebox/search?q=${encodeURIComponent(currentQuery)}&device_id=${encodeURIComponent(deviceId)}&offset=${offsetForThisCall}`,
+        { cache: 'no-store' },
+      )
+      const j = await r.json()
+      // Guard against stale responses if the user changed the query mid-fetch.
+      if (currentQuery !== query.trim()) return
+      if (j.ok) {
+        setResults((prev) => {
+          // De-dupe: Spotify occasionally repeats a track across offsets.
+          const seen = new Set(prev.map((t) => t.id))
+          const merged = [...prev]
+          for (const track of (j.data.tracks || []) as Track[]) {
+            if (!seen.has(track.id)) {
+              seen.add(track.id)
+              merged.push(track)
+            }
+          }
+          return merged
+        })
+        setNextOffset(j.data.next_offset ?? null)
+      }
+    } catch {
+      // Silent — user can retry by scrolling again.
+    } finally {
+      setLoadingMore(false)
+    }
+  }, [loadingMore, nextOffset, deviceId, query])
+
+  // IntersectionObserver: fire loadMore when the sentinel div near the bottom
+  // of the results list scrolls into view. rootMargin: 400px so we load
+  // roughly one screen ahead of where the user is scrolling.
+  useEffect(() => {
+    if (nextOffset === null) return
+    const sentinel = loadMoreRef.current
+    if (!sentinel) return
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) void loadMore()
+      },
+      { rootMargin: '400px 0px' },
+    )
+    io.observe(sentinel)
+    return () => io.disconnect()
+  }, [nextOffset, loadMore])
 
   useEffect(() => {
     if (!picked) return
@@ -439,6 +504,15 @@ export default function JukeboxGuestPage() {
                   </button>
                 </div>
               ))}
+              {/* Sentinel — IntersectionObserver in the search effect
+                  triggers the next page when this scrolls into view. */}
+              <div ref={loadMoreRef} style={{ height: 1 }} />
+              {loadingMore && <div style={hint}>{t.searching}</div>}
+              {nextOffset === null && results.length >= 20 && (
+                <div style={{ ...hint, opacity: 0.6, marginTop: 6 }}>
+                  {t.endOfResults}
+                </div>
+              )}
             </div>
           )}
 

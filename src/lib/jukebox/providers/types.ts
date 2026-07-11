@@ -52,7 +52,7 @@ export interface PlaylistFetchResult {
 export interface PlaybackProvider {
   searchTracks(
     query: string,
-    opts?: { limit?: number; market?: string },
+    opts?: { limit?: number; market?: string; offset?: number },
   ): Promise<ProviderResult<Track[]>>;
   getTrack(trackId: string): Promise<ProviderResult<Track>>;
   addToQueue(trackId: string): Promise<ProviderResult<void>>;

@@ -188,7 +188,7 @@ export class SpotifyProvider implements PlaybackProvider {
 
   async searchTracks(
     query: string,
-    opts?: { limit?: number; market?: string },
+    opts?: { limit?: number; market?: string; offset?: number },
   ): Promise<ProviderResult<Track[]>> {
     const q = (query || '').trim();
     if (!q) return { ok: true, value: [] };
@@ -196,9 +196,13 @@ export class SpotifyProvider implements PlaybackProvider {
     // Spotify rejects `limit=N` for some Development-mode apps with
     // {"error":{"status":400,"message":"Invalid limit"}} — let Spotify use
     // its default of 20 and clamp client-side instead.
-    const cap = Math.min(Math.max(opts?.limit ?? 12, 1), 20);
+    const cap = Math.min(Math.max(opts?.limit ?? 20, 1), 20);
+    // Offset for pagination. Spotify Web API caps offset at 1000. Anything
+    // beyond that returns empty; we mirror that by not making the network
+    // call when offset >= 1000.
+    const offset = Math.max(0, Math.min(opts?.offset ?? 0, 1000));
 
-    const key = cacheKey(q, market);
+    const key = cacheKey(q, market) + `:o${offset}`;
     const cached = searchCache.get(key);
     if (cached && cached.expiresAt > Date.now()) {
       return { ok: true, value: cached.tracks.slice(0, cap) };
@@ -207,9 +211,10 @@ export class SpotifyProvider implements PlaybackProvider {
     const tok = await getAppToken();
     if (tok.ok === false) return { ok: false, error: tok.error };
 
+    const offsetParam = offset > 0 ? `&offset=${offset}` : '';
     const url = `${SPOTIFY_API}/search?q=${encodeURIComponent(
       q,
-    )}&type=track&market=${encodeURIComponent(market)}`;
+    )}&type=track&market=${encodeURIComponent(market)}${offsetParam}`;
     let res: Response;
     try {
       res = await fetch(url, {
