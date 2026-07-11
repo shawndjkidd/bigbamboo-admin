@@ -270,9 +270,11 @@ export class SpotifyProvider implements PlaybackProvider {
       return { ok: true, value: cached.tracks.slice(0, cap) };
     }
 
-    const fetchPage = async (rawQ: string, pageOffset: number): Promise<
-      { ok: true; items: Track[] } | { ok: false; error: ProviderError }
-    > => {
+    type FetchPageResult =
+      | { ok: true; items: Track[] }
+      | { ok: false; error: ProviderError };
+
+    const fetchPage = async (rawQ: string, pageOffset: number): Promise<FetchPageResult> => {
       const offsetParam = pageOffset > 0 ? `&offset=${pageOffset}` : '';
       const marketParam = useMarket ? `&market=${market}` : '';
       const url = `${SPOTIFY_API}/search?q=${encodeURIComponent(rawQ)}&type=track&limit=${cap}${marketParam}${offsetParam}`;
@@ -359,15 +361,18 @@ export class SpotifyProvider implements PlaybackProvider {
     };
 
     if (doArtistBias) {
-      const [generalRes, artistRes, topTracksArr] = await Promise.all([
-        fetchPage(q, 0),
-        fetchPage(artistQ, 0),
-        fetchTopTracksForArtist(),
-      ]);
-      if (!generalRes.ok) return { ok: false, error: generalRes.error };
+      const [generalRes, artistRes, topTracksArr]: [FetchPageResult, FetchPageResult, Track[]] =
+        await Promise.all([
+          fetchPage(q, 0),
+          fetchPage(artistQ, 0),
+          fetchTopTracksForArtist(),
+        ]);
+      if (generalRes.ok === false) {
+        return { ok: false, error: generalRes.error };
+      }
       // If artist-scoped fails we still return the general set — don't block.
-      const artistItems = artistRes.ok ? artistRes.items : [];
-      const generalItems = generalRes.items;
+      const artistItems: Track[] = artistRes.ok ? artistRes.items : [];
+      const generalItems: Track[] = generalRes.items;
 
       // Merge order (dedupe by track id):
       //   1. Artist top-tracks       — Spotify's own popularity ranking.
@@ -397,8 +402,10 @@ export class SpotifyProvider implements PlaybackProvider {
     }
 
     // Offset > 0: just paginate the general search.
-    const page = await fetchPage(q, offset);
-    if (!page.ok) return { ok: false, error: page.error };
+    const page: FetchPageResult = await fetchPage(q, offset);
+    if (page.ok === false) {
+      return { ok: false, error: page.error };
+    }
     searchCache.set(cacheKeyForCall, { tracks: page.items, expiresAt: Date.now() + SEARCH_TTL_MS });
     return { ok: true, value: page.items.slice(0, cap) };
   }
