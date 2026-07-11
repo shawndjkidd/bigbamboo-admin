@@ -3,6 +3,7 @@ import { getServiceClient } from '@/lib/supabase';
 import { getJukeboxVenueId } from '@/lib/jukebox/venue';
 import { getRequestIp, hashIp } from '@/lib/jukebox/crypto';
 import { rateLimit, sweepRateLimit } from '@/lib/jukebox/rateLimit';
+import { autopilotFlushIfDue } from '@/lib/jukebox/autopilotFlush';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -20,6 +21,15 @@ export async function GET(req: NextRequest) {
 
   const venueId = await getJukeboxVenueId();
   const sb = getServiceClient();
+
+  // Opportunistic autopilot self-healing: try to push any approved+failed
+  // rows to Spotify. Internally rate-limited (once per ~8s per venue) so
+  // multiple polling clients don't slam the Spotify API. Awaited inline
+  // because Vercel serverless functions can terminate before a
+  // fire-and-forget promise settles; the flush is a no-op fast path most
+  // of the time (just one settings read + zero-row query).
+  await autopilotFlushIfDue(venueId);
+
   const { data } = await sb
     .from('jukebox_public_queue')
     .select('*')
