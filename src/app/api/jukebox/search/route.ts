@@ -12,7 +12,9 @@ import {
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-const PAGE_SIZE = 20;
+// Spotify Dev Mode max limit is 10 as of Feb 2026 (was 50). Once we move to
+// Extended Quota Mode we can bump this back to 50 for fewer round-trips.
+const PAGE_SIZE = 10;
 const MAX_OFFSET = 1000;
 
 export async function GET(req: NextRequest) {

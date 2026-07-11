@@ -203,10 +203,11 @@ export class SpotifyProvider implements PlaybackProvider {
     // are caught at request time by getTrack().
     const market = (opts?.market ?? '').trim().toUpperCase();
     const useMarket = market && market !== 'GLOBAL' && /^[A-Z]{2}$/.test(market);
-    // Spotify rejects `limit=N` for some Development-mode apps with
-    // {"error":{"status":400,"message":"Invalid limit"}} — let Spotify use
-    // its default of 20 and clamp client-side instead.
-    const cap = Math.min(Math.max(opts?.limit ?? 20, 1), 20);
+    // Feb 2026 Spotify Dev Mode change: /search default limit dropped from
+    // 20 to 5 and max dropped from 50 to 10. We MUST send limit=10 explicitly
+    // or Spotify gives us 5. Once we're on Extended Quota Mode we can raise
+    // this back to 50 per call.
+    const cap = Math.min(Math.max(opts?.limit ?? 10, 1), 10);
     // Offset for pagination. Spotify Web API caps offset at 1000. Anything
     // beyond that returns empty; we mirror that by not making the network
     // call when offset >= 1000.
@@ -223,9 +224,10 @@ export class SpotifyProvider implements PlaybackProvider {
 
     const offsetParam = offset > 0 ? `&offset=${offset}` : '';
     const marketParam = useMarket ? `&market=${market}` : '';
+    // Explicit limit needed post-Feb-2026 (see cap comment above).
     const url = `${SPOTIFY_API}/search?q=${encodeURIComponent(
       q,
-    )}&type=track${marketParam}${offsetParam}`;
+    )}&type=track&limit=${cap}${marketParam}${offsetParam}`;
     let res: Response;
     try {
       res = await fetch(url, {
@@ -242,8 +244,30 @@ export class SpotifyProvider implements PlaybackProvider {
       console.error('[spotify.search] http', res.status, 'url:', url, 'body:', body);
       return { ok: false, error: mapHttpError(res.status, res.headers.get('retry-after')) };
     }
-    const json = (await res.json()) as { tracks?: { items?: SpotifyTrackJson[] } };
+    const json = (await res.json()) as {
+      tracks?: {
+        items?: SpotifyTrackJson[];
+        total?: number;
+        limit?: number;
+        offset?: number;
+        next?: string | null;
+      };
+    };
     const items = (json.tracks?.items || []).map(mapTrack);
+    // Diagnostic — log Spotify's own paging fields so we can see whether
+    // Spotify itself is limiting the response (Dev Mode restrictions, etc.)
+    // vs the local `cap` slice.
+    console.log('[spotify.search]', {
+      q,
+      market: useMarket ? market : 'GLOBAL',
+      offset,
+      spotify_total: json.tracks?.total ?? null,
+      spotify_limit: json.tracks?.limit ?? null,
+      spotify_offset: json.tracks?.offset ?? null,
+      spotify_next_present: !!json.tracks?.next,
+      raw_items: items.length,
+      cap,
+    });
     searchCache.set(key, { tracks: items, expiresAt: Date.now() + SEARCH_TTL_MS });
     return { ok: true, value: items.slice(0, cap) };
   }
