@@ -290,9 +290,23 @@ export default function JukeboxGuestPage() {
 
   const cooldownMs = useMemo(() => {
     if (typeof window === 'undefined') return 0
+    // Wait for settings before deciding — otherwise we might briefly clear a
+    // real timer during the initial fetch.
+    if (!settings) return 0
+    // If the venue's current cooldown is 0, ignore any stale localStorage
+    // timer left over from an earlier submit when cooldown was higher.
+    // Otherwise cap the stored timer at the current cooldown window so
+    // dropping the setting takes effect on the next page tick.
+    const maxWindowMs = settings.guest_cooldown_minutes * 60_000
+    if (maxWindowMs === 0) {
+      // Clear the key so we don't check it every second forever.
+      try { localStorage.removeItem(NEXT_AVAILABLE_KEY) } catch { /* ignore */ }
+      return 0
+    }
     const v = Number(localStorage.getItem(NEXT_AVAILABLE_KEY) || 0)
-    return Math.max(0, v - now)
-  }, [now])
+    const raw = Math.max(0, v - now)
+    return Math.min(raw, maxWindowMs)
+  }, [now, settings])
 
   async function handleSubmit() {
     if (!picked || submitting) return
