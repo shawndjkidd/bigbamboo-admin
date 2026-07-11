@@ -213,63 +213,103 @@ export class SpotifyProvider implements PlaybackProvider {
     // call when offset >= 1000.
     const offset = Math.max(0, Math.min(opts?.offset ?? 0, 1000));
 
-    const key = cacheKey(q, useMarket ? market : 'GLOBAL') + `:o${offset}`;
-    const cached = searchCache.get(key);
+    const tok = await getAppToken();
+    if (tok.ok === false) return { ok: false, error: tok.error };
+    const bearer = tok.value;
+    const marketLabel = useMarket ? market : 'GLOBAL';
+
+    // Artist-bias behaviour. On the first page (offset=0) we run TWO parallel
+    // searches:
+    //   1. artist-scoped:  q=artist:"<query>"  → matches artists named X
+    //   2. general:        q=<query>           → Spotify's default relevance
+    // Then we merge: artist matches take the top slots (up to `cap`), general
+    // fills the rest, dedup by track id. This makes "Willie Nelson" surface
+    // Willie Nelson tracks before random-tracks-that-mention-Willie.
+    //
+    // On subsequent pages (offset>0) we only do the general query. Cache is
+    // keyed with `:artistBias` on page 0 so the merged result doesn't collide
+    // with the raw general search cache.
+    const doArtistBias = offset === 0;
+    const cacheKeyForCall = cacheKey(q, marketLabel)
+      + `:o${offset}`
+      + (doArtistBias ? ':ab' : '');
+    const cached = searchCache.get(cacheKeyForCall);
     if (cached && cached.expiresAt > Date.now()) {
       return { ok: true, value: cached.tracks.slice(0, cap) };
     }
 
-    const tok = await getAppToken();
-    if (tok.ok === false) return { ok: false, error: tok.error };
-
-    const offsetParam = offset > 0 ? `&offset=${offset}` : '';
-    const marketParam = useMarket ? `&market=${market}` : '';
-    // Explicit limit needed post-Feb-2026 (see cap comment above).
-    const url = `${SPOTIFY_API}/search?q=${encodeURIComponent(
-      q,
-    )}&type=track&limit=${cap}${marketParam}${offsetParam}`;
-    let res: Response;
-    try {
-      res = await fetch(url, {
-        headers: { Authorization: `Bearer ${tok.value}` },
-        cache: 'no-store',
-      });
-    } catch (e: unknown) {
-      return { ok: false, error: { kind: 'network_error', message: String(e) } };
-    }
-    if (!res.ok) {
-      // Log the actual Spotify error body so Vercel logs show the cause.
-      let body = '';
-      try { body = (await res.text()).slice(0, 500); } catch { /* ignore */ }
-      console.error('[spotify.search] http', res.status, 'url:', url, 'body:', body);
-      return { ok: false, error: mapHttpError(res.status, res.headers.get('retry-after')) };
-    }
-    const json = (await res.json()) as {
-      tracks?: {
-        items?: SpotifyTrackJson[];
-        total?: number;
-        limit?: number;
-        offset?: number;
-        next?: string | null;
+    const fetchPage = async (rawQ: string, pageOffset: number): Promise<
+      { ok: true; items: Track[] } | { ok: false; error: ProviderError }
+    > => {
+      const offsetParam = pageOffset > 0 ? `&offset=${pageOffset}` : '';
+      const marketParam = useMarket ? `&market=${market}` : '';
+      const url = `${SPOTIFY_API}/search?q=${encodeURIComponent(rawQ)}&type=track&limit=${cap}${marketParam}${offsetParam}`;
+      let res: Response;
+      try {
+        res = await fetch(url, {
+          headers: { Authorization: `Bearer ${bearer}` },
+          cache: 'no-store',
+        });
+      } catch (e: unknown) {
+        return { ok: false, error: { kind: 'network_error', message: String(e) } };
+      }
+      if (!res.ok) {
+        let body = '';
+        try { body = (await res.text()).slice(0, 500); } catch { /* ignore */ }
+        console.error('[spotify.search] http', res.status, 'url:', url, 'body:', body);
+        return { ok: false, error: mapHttpError(res.status, res.headers.get('retry-after')) };
+      }
+      const json = (await res.json()) as {
+        tracks?: { items?: SpotifyTrackJson[]; total?: number; next?: string | null };
       };
+      const items = (json.tracks?.items || []).map(mapTrack);
+      console.log('[spotify.search]', {
+        q: rawQ,
+        market: marketLabel,
+        offset: pageOffset,
+        spotify_total: json.tracks?.total ?? null,
+        raw_items: items.length,
+        cap,
+      });
+      return { ok: true, items };
     };
-    const items = (json.tracks?.items || []).map(mapTrack);
-    // Diagnostic — log Spotify's own paging fields so we can see whether
-    // Spotify itself is limiting the response (Dev Mode restrictions, etc.)
-    // vs the local `cap` slice.
-    console.log('[spotify.search]', {
-      q,
-      market: useMarket ? market : 'GLOBAL',
-      offset,
-      spotify_total: json.tracks?.total ?? null,
-      spotify_limit: json.tracks?.limit ?? null,
-      spotify_offset: json.tracks?.offset ?? null,
-      spotify_next_present: !!json.tracks?.next,
-      raw_items: items.length,
-      cap,
-    });
-    searchCache.set(key, { tracks: items, expiresAt: Date.now() + SEARCH_TTL_MS });
-    return { ok: true, value: items.slice(0, cap) };
+
+    // Build the artist-scoped query. Spotify's field-scope syntax requires the
+    // value to be quoted when it contains spaces: q=artist:"Willie Nelson".
+    // We keep the whole thing quoted regardless (safe for one word too).
+    const artistQ = `artist:"${q.replace(/"/g, '')}"`;
+
+    if (doArtistBias) {
+      const [generalRes, artistRes] = await Promise.all([
+        fetchPage(q, 0),
+        fetchPage(artistQ, 0),
+      ]);
+      if (!generalRes.ok) return { ok: false, error: generalRes.error };
+      // If artist-scoped fails we still return the general set — don't block.
+      const artistItems = artistRes.ok ? artistRes.items : [];
+      const generalItems = generalRes.items;
+
+      const seen = new Set<string>();
+      const merged: Track[] = [];
+      for (const t of artistItems) {
+        if (t.id && !seen.has(t.id)) { seen.add(t.id); merged.push(t); }
+      }
+      for (const t of generalItems) {
+        if (t.id && !seen.has(t.id)) { seen.add(t.id); merged.push(t); }
+      }
+      const capped = merged.slice(0, cap);
+      searchCache.set(cacheKeyForCall, { tracks: capped, expiresAt: Date.now() + SEARCH_TTL_MS });
+      console.log('[spotify.search] merged', {
+        q, artist_hits: artistItems.length, general_hits: generalItems.length, merged: capped.length,
+      });
+      return { ok: true, value: capped };
+    }
+
+    // Offset > 0: just paginate the general search.
+    const page = await fetchPage(q, offset);
+    if (!page.ok) return { ok: false, error: page.error };
+    searchCache.set(cacheKeyForCall, { tracks: page.items, expiresAt: Date.now() + SEARCH_TTL_MS });
+    return { ok: true, value: page.items.slice(0, cap) };
   }
 
   async getTrack(trackId: string): Promise<ProviderResult<Track>> {
