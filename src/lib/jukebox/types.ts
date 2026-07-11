@@ -124,7 +124,8 @@ export type RejectionCode =
   | 'invalid_input'
   | 'profanity'
   | 'not_in_playlist'
-  | 'genre_blocked';
+  | 'genre_blocked'
+  | 'genre_not_allowed';
 
 export interface ApiError {
   code: string;

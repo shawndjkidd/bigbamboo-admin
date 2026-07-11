@@ -25,6 +25,7 @@ const ALLOWED_PATCH_FIELDS = new Set([
   'wifi_network',
   'wifi_password',
   'blocked_genres',
+  'allowed_genres',
   'logo_url',
 ]);
 

@@ -64,3 +64,25 @@ export function isGenreBlocked(artistGenres: string[], blockedGenres: string[]):
     lower.some((g) => g.includes(blocked.toLowerCase())),
   );
 }
+
+/**
+ * Genre allowlist check. Returns true if the request should be ALLOWED, false
+ * if it should be rejected.
+ *
+ * Behavior:
+ *   - empty allowlist → feature off, everything passes (returns true)
+ *   - non-empty allowlist + artist has no genres → reject (returns false)
+ *     Reason: allowlist is strict. If we can't classify the artist, we can't
+ *     confirm they fit the venue's musical brief tonight.
+ *   - non-empty allowlist + artist has genres → substring match, any hit wins.
+ *     e.g. allowedGenres ['country'] passes 'contemporary country', 'outlaw
+ *     country', 'country rock'. Case-insensitive.
+ */
+export function isGenreAllowed(artistGenres: string[], allowedGenres: string[]): boolean {
+  if (!allowedGenres.length) return true;              // feature off
+  if (!artistGenres.length) return false;              // unclassified → strict reject
+  const lower = artistGenres.map((g) => g.toLowerCase());
+  return allowedGenres.some((allowed) =>
+    lower.some((g) => g.includes(allowed.toLowerCase())),
+  );
+}

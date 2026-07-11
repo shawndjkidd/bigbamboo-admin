@@ -478,6 +478,10 @@ function BlocklistTab({
   const [genreInput, setGenreInput] = useState('')
   const [genreLoaded, setGenreLoaded] = useState(false)
 
+  // Genre allowlist state ("Genre lock" — only these genres are playable)
+  const [allowedGenres, setAllowedGenres] = useState<string[]>([])
+  const [allowedGenreInput, setAllowedGenreInput] = useState('')
+
   const load = useCallback(async () => {
     const j = await apiFetch('/api/admin/jukebox/blocklist')
     if (j.ok) setRows((j.data as { entries: BlockEntry[] }).entries)
@@ -487,8 +491,9 @@ function BlocklistTab({
   useEffect(() => {
     apiFetch('/api/admin/jukebox/settings').then((j) => {
       if (j.ok) {
-        const s = j.data as { blocked_genres?: string[] | null }
+        const s = j.data as { blocked_genres?: string[] | null; allowed_genres?: string[] | null }
         setBlockedGenres(s.blocked_genres ?? [])
+        setAllowedGenres(s.allowed_genres ?? [])
       }
       setGenreLoaded(true)
     })
@@ -517,6 +522,36 @@ function BlocklistTab({
 
   function removeGenre(g: string) {
     saveGenres(blockedGenres.filter((x) => x !== g))
+  }
+
+  async function saveAllowedGenres(genres: string[]) {
+    const j = await apiFetch('/api/admin/jukebox/settings', {
+      method: 'PATCH',
+      body: JSON.stringify({ allowed_genres: genres }),
+    })
+    if (j.ok) {
+      setAllowedGenres(genres)
+      onAction('Saved')
+    } else {
+      onAction((j.error as { message?: string } | undefined)?.message || 'Save failed')
+    }
+  }
+
+  function addAllowedGenre() {
+    const g = allowedGenreInput.trim().toLowerCase()
+    if (!g || allowedGenres.includes(g)) { setAllowedGenreInput(''); return }
+    const next = [...allowedGenres, g]
+    setAllowedGenreInput('')
+    saveAllowedGenres(next)
+  }
+
+  function removeAllowedGenre(g: string) {
+    saveAllowedGenres(allowedGenres.filter((x) => x !== g))
+  }
+
+  function addAllowedGenreQuick(g: string) {
+    if (allowedGenres.includes(g)) return
+    saveAllowedGenres([...allowedGenres, g])
   }
 
   async function add() {
@@ -583,6 +618,85 @@ function BlocklistTab({
           </table>
         </div>
       )}
+
+      <div className="card" style={{ padding: 16, marginBottom: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+          <div className="section-title">Only these genres (Genre lock)</div>
+          {allowedGenres.length > 0 && (
+            <span style={{
+              fontSize: 11, fontWeight: 700, letterSpacing: '0.06em',
+              padding: '3px 8px', borderRadius: 6,
+              background: 'var(--badge-green-bg)', color: 'var(--badge-green-text)',
+              border: '1px solid var(--badge-green-border)',
+            }}>LOCKED</span>
+          )}
+        </div>
+        <div style={{ fontSize: 12, color: 'var(--adm-text-muted)', marginBottom: 12 }}>
+          Restrict the jukebox to songs whose artist matches at least one of these genres.
+          Substring match — e.g. &ldquo;country&rdquo; allows &ldquo;contemporary country&rdquo;, &ldquo;country rock&rdquo;, etc.
+          Case-insensitive. Artists with no genre data on Spotify are rejected while the lock is on.
+          <strong> Leave empty to allow all genres (feature off).</strong>
+        </div>
+        {genreLoaded && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
+            {allowedGenres.length === 0 && (
+              <span style={{ fontSize: 13, color: 'var(--adm-text-muted)' }}>No lock — every genre is allowed.</span>
+            )}
+            {allowedGenres.map((g) => (
+              <span
+                key={g}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 6,
+                  padding: '4px 10px', borderRadius: 8,
+                  background: 'var(--badge-green-bg)', color: 'var(--badge-green-text)',
+                  border: '1px solid var(--badge-green-border)',
+                  fontSize: 12, fontWeight: 500,
+                }}
+              >
+                {g}
+                <button
+                  onClick={() => removeAllowedGenre(g)}
+                  style={{
+                    background: 'none', border: 'none', cursor: 'pointer',
+                    color: 'inherit', padding: 0, lineHeight: 1, fontSize: 14,
+                  }}
+                  title={`Remove ${g}`}
+                >
+                  ×
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
+        <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+          <input
+            className="input"
+            placeholder="e.g. country, jazz, blues"
+            value={allowedGenreInput}
+            onChange={(e) => setAllowedGenreInput(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addAllowedGenre() } }}
+            style={{ flex: 1 }}
+          />
+          <Button variant="primary" onClick={addAllowedGenre} disabled={!allowedGenreInput.trim()}>Add</Button>
+        </div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+          <span style={{ fontSize: 11, color: 'var(--adm-text-muted)', alignSelf: 'center', marginRight: 4 }}>Quick add:</span>
+          {['country', 'rock', 'jazz', 'blues', 'indie', 'pop', 'hip hop', 'r&b', 'electronic', 'reggae', 'latin', 'k-pop', 'j-pop', 'vietnamese', 'folk'].map((g) => (
+            <button
+              key={g}
+              onClick={() => addAllowedGenreQuick(g)}
+              disabled={allowedGenres.includes(g)}
+              style={{
+                fontSize: 11, padding: '3px 8px', borderRadius: 6, cursor: 'pointer',
+                background: allowedGenres.includes(g) ? 'var(--adm-subtle-bg)' : 'transparent',
+                color: allowedGenres.includes(g) ? 'var(--adm-text-muted)' : 'var(--adm-text)',
+                border: '1px solid var(--adm-border)',
+                opacity: allowedGenres.includes(g) ? 0.5 : 1,
+              }}
+            >{g}</button>
+          ))}
+        </div>
+      </div>
 
       <div className="card" style={{ padding: 16 }}>
         <div className="section-title" style={{ marginBottom: 4 }}>Blocked genres</div>

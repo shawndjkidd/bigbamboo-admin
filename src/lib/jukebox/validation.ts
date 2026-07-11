@@ -15,7 +15,7 @@ import {
   queueAtCapacity,
   wasRecentlyRequested,
 } from './cooldowns';
-import { getArtistGenres, isGenreBlocked } from './genres';
+import { getArtistGenres, isGenreAllowed, isGenreBlocked } from './genres';
 
 export interface ValidationContext {
   venueId: string;
@@ -95,14 +95,30 @@ export async function validateRequest(
     return reject('blocklisted', 'This song is blocked tonight.');
   }
 
-  // 6.5. Genre blocklist
-  type GenreSettings = JukeboxSettings & { blocked_genres?: string[] };
-  const blockedGenres = ((settings as GenreSettings).blocked_genres ?? []).filter(Boolean);
-  if (blockedGenres.length > 0 && artistIds.length > 0) {
+  // 6.5. Genre blocklist AND genre allowlist. One artist genre lookup covers both.
+  // Allowlist runs strict: if venue has an allowlist and the artist has no
+  // genres in Spotify (unclassified artist), the request is rejected. See
+  // isGenreAllowed docs for reasoning.
+  type GenreSettings = JukeboxSettings & { blocked_genres?: string[]; allowed_genres?: string[] };
+  const gs = settings as GenreSettings;
+  const blockedGenres = (gs.blocked_genres ?? []).filter(Boolean);
+  const allowedGenres = (gs.allowed_genres ?? []).filter(Boolean);
+  if ((blockedGenres.length > 0 || allowedGenres.length > 0) && artistIds.length > 0) {
     const primaryArtistId = artistIds[0];
     const artistGenres = await getArtistGenres(ctx.venueId, primaryArtistId);
-    if (isGenreBlocked(artistGenres, blockedGenres)) {
+    if (blockedGenres.length > 0 && isGenreBlocked(artistGenres, blockedGenres)) {
       return reject('genre_blocked', "This genre isn't on the playlist tonight.");
+    }
+    if (allowedGenres.length > 0 && !isGenreAllowed(artistGenres, allowedGenres)) {
+      const humanList =
+        allowedGenres.length === 1
+          ? allowedGenres[0]
+          : allowedGenres.slice(0, -1).join(', ') + ' or ' + allowedGenres[allowedGenres.length - 1];
+      return reject(
+        'genre_not_allowed',
+        `We're only playing ${humanList} tonight — try a song from one of those genres.`,
+        { allowed_genres: allowedGenres },
+      );
     }
   }
 
