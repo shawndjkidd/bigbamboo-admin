@@ -19,7 +19,11 @@ export async function GET(req: NextRequest) {
   sweepRateLimit();
   const url = new URL(req.url);
   const q = (url.searchParams.get('q') || '').trim();
-  const market = (url.searchParams.get('market') || 'VN').slice(0, 2).toUpperCase();
+  // Empty string → global search (no market filter). Was 'VN' but VN's country
+  // catalog is thin — Luke Bryan queries returned ~5 tracks. Global surfaces
+  // the full catalog; unplayable-in-market tracks are rare and get caught at
+  // request time by getTrack().
+  const market = (url.searchParams.get('market') || '').slice(0, 2).toUpperCase();
   const deviceId = (url.searchParams.get('device_id') || '').slice(0, 64);
   const offsetRaw = parseInt(url.searchParams.get('offset') || '0', 10);
   const offset = Number.isFinite(offsetRaw)
@@ -72,6 +76,7 @@ export async function GET(req: NextRequest) {
   const provider = getProvider('spotify', venueId);
   const res = await provider.searchTracks(q, { limit: PAGE_SIZE, offset, market });
   if (res.ok === false) {
+    console.error('[jukebox/search] provider error', { q, market, offset, err: res.error });
     return NextResponse.json(
       { ok: false, error: { code: res.error.kind, message: 'Search failed.', meta: res.error } },
       { status: res.error.kind === 'rate_limited' ? 429 : 502 },
@@ -81,6 +86,9 @@ export async function GET(req: NextRequest) {
   // (or the offset is already at the ceiling), stop paginating client-side.
   const hasMore = res.value.length === PAGE_SIZE && offset + PAGE_SIZE < MAX_OFFSET;
   const nextOffset = hasMore ? offset + PAGE_SIZE : null;
+  // Diagnostic: log the result count so we can see when Spotify's market
+  // filter starves a query.
+  console.log('[jukebox/search]', { q, market, offset, returned: res.value.length, hasMore });
   return NextResponse.json({
     ok: true,
     data: { tracks: res.value, curated: false, next_offset: nextOffset },

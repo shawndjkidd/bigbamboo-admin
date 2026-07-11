@@ -192,7 +192,17 @@ export class SpotifyProvider implements PlaybackProvider {
   ): Promise<ProviderResult<Track[]>> {
     const q = (query || '').trim();
     if (!q) return { ok: true, value: [] };
-    const market = opts?.market || 'VN';
+    // Empty string / 'GLOBAL' → don't send market and get Spotify's global
+    // catalog. Real 2-letter market codes still get passed through when the
+    // caller explicitly wants to restrict.
+    //
+    // Why default to global: BBB in VN was passing market=VN which starves
+    // Western catalogues (a Luke Bryan search would return ~5 tracks instead
+    // of 40+ because Spotify's VN catalog for US country is thin). Global
+    // search returns everything; unplayable tracks are rare edge cases and
+    // are caught at request time by getTrack().
+    const market = (opts?.market ?? '').trim().toUpperCase();
+    const useMarket = market && market !== 'GLOBAL' && /^[A-Z]{2}$/.test(market);
     // Spotify rejects `limit=N` for some Development-mode apps with
     // {"error":{"status":400,"message":"Invalid limit"}} — let Spotify use
     // its default of 20 and clamp client-side instead.
@@ -202,7 +212,7 @@ export class SpotifyProvider implements PlaybackProvider {
     // call when offset >= 1000.
     const offset = Math.max(0, Math.min(opts?.offset ?? 0, 1000));
 
-    const key = cacheKey(q, market) + `:o${offset}`;
+    const key = cacheKey(q, useMarket ? market : 'GLOBAL') + `:o${offset}`;
     const cached = searchCache.get(key);
     if (cached && cached.expiresAt > Date.now()) {
       return { ok: true, value: cached.tracks.slice(0, cap) };
@@ -212,9 +222,10 @@ export class SpotifyProvider implements PlaybackProvider {
     if (tok.ok === false) return { ok: false, error: tok.error };
 
     const offsetParam = offset > 0 ? `&offset=${offset}` : '';
+    const marketParam = useMarket ? `&market=${market}` : '';
     const url = `${SPOTIFY_API}/search?q=${encodeURIComponent(
       q,
-    )}&type=track&market=${encodeURIComponent(market)}${offsetParam}`;
+    )}&type=track${marketParam}${offsetParam}`;
     let res: Response;
     try {
       res = await fetch(url, {
