@@ -99,6 +99,38 @@ interface SpotifyTrackJson {
   album?: { name?: string; images?: { url: string; width?: number }[] };
 }
 
+interface SpotifyArtistJson {
+  id: string;
+  name: string;
+  popularity?: number;
+}
+
+/**
+ * Loose name-match heuristic used to decide whether Spotify's top artist hit
+ * is actually the artist the guest was asking for. We normalize (lowercase,
+ * strip diacritics + punctuation) then require either substring match or a
+ * shared word of length >= 3. This lets "Willie Nelson" match "Willie Nelson"
+ * but rejects "willie" vs "The Willie Colon Orchestra Presents X" style
+ * false-positives where Spotify's ranker picked something surprising.
+ */
+function artistNameMatches(query: string, artistName: string): boolean {
+  const norm = (s: string) =>
+    s
+      .toLowerCase()
+      .normalize('NFKD')
+      .replace(/[̀-ͯ]/g, '')
+      .replace(/[^a-z0-9\s]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  const q = norm(query);
+  const a = norm(artistName);
+  if (!q || !a) return false;
+  if (a.includes(q) || q.includes(a)) return true;
+  const qWords = new Set(q.split(' ').filter((w) => w.length >= 3));
+  const aWords = a.split(' ').filter((w) => w.length >= 3);
+  return aWords.some((w) => qWords.has(w));
+}
+
 function pickArt(images?: { url: string; width?: number }[]): string | null {
   if (!images || !images.length) return null;
   // Prefer ~300px image; fall back to the first.
@@ -279,18 +311,73 @@ export class SpotifyProvider implements PlaybackProvider {
     // We keep the whole thing quoted regardless (safe for one word too).
     const artistQ = `artist:"${q.replace(/"/g, '')}"`;
 
+    // Fetch the artist's top tracks — the "same as Spotify's own app" flow.
+    // Steps:
+    //   1. Search artists (limit=3) with the raw query.
+    //   2. If the top hit's name loosely matches the query (see
+    //      artistNameMatches), fetch /v1/artists/{id}/top-tracks.
+    // Falls back to empty on any failure — never blocks the general search.
+    const topTracksMarket = useMarket ? market : 'US'; // top-tracks endpoint requires a market
+    const fetchTopTracksForArtist = async (): Promise<Track[]> => {
+      const artistSearchUrl = `${SPOTIFY_API}/search?q=${encodeURIComponent(q)}&type=artist&limit=3`;
+      let ares: Response;
+      try {
+        ares = await fetch(artistSearchUrl, {
+          headers: { Authorization: `Bearer ${bearer}` },
+          cache: 'no-store',
+        });
+      } catch {
+        return [];
+      }
+      if (!ares.ok) return [];
+      const ajson = (await ares.json()) as {
+        artists?: { items?: SpotifyArtistJson[] };
+      };
+      const artists = ajson.artists?.items ?? [];
+      const bestArtist = artists.find((a) => artistNameMatches(q, a.name));
+      if (!bestArtist) {
+        console.log('[spotify.search] top-tracks: no matching artist for', q, 'first3=', artists.slice(0, 3).map((a) => a.name));
+        return [];
+      }
+      const topUrl = `${SPOTIFY_API}/artists/${encodeURIComponent(bestArtist.id)}/top-tracks?market=${topTracksMarket}`;
+      let tres: Response;
+      try {
+        tres = await fetch(topUrl, {
+          headers: { Authorization: `Bearer ${bearer}` },
+          cache: 'no-store',
+        });
+      } catch {
+        return [];
+      }
+      if (!tres.ok) return [];
+      const tjson = (await tres.json()) as { tracks?: SpotifyTrackJson[] };
+      const tracks = (tjson.tracks ?? []).map(mapTrack);
+      console.log('[spotify.search] top-tracks matched', {
+        q, artist: bestArtist.name, artist_id: bestArtist.id, count: tracks.length,
+      });
+      return tracks;
+    };
+
     if (doArtistBias) {
-      const [generalRes, artistRes] = await Promise.all([
+      const [generalRes, artistRes, topTracksArr] = await Promise.all([
         fetchPage(q, 0),
         fetchPage(artistQ, 0),
+        fetchTopTracksForArtist(),
       ]);
       if (!generalRes.ok) return { ok: false, error: generalRes.error };
       // If artist-scoped fails we still return the general set — don't block.
       const artistItems = artistRes.ok ? artistRes.items : [];
       const generalItems = generalRes.items;
 
+      // Merge order (dedupe by track id):
+      //   1. Artist top-tracks       — Spotify's own popularity ranking.
+      //   2. Artist-scoped search    — deep cuts, features, alternate versions.
+      //   3. General search          — anything else that matched the query.
       const seen = new Set<string>();
       const merged: Track[] = [];
+      for (const t of topTracksArr) {
+        if (t.id && !seen.has(t.id)) { seen.add(t.id); merged.push(t); }
+      }
       for (const t of artistItems) {
         if (t.id && !seen.has(t.id)) { seen.add(t.id); merged.push(t); }
       }
@@ -300,7 +387,11 @@ export class SpotifyProvider implements PlaybackProvider {
       const capped = merged.slice(0, cap);
       searchCache.set(cacheKeyForCall, { tracks: capped, expiresAt: Date.now() + SEARCH_TTL_MS });
       console.log('[spotify.search] merged', {
-        q, artist_hits: artistItems.length, general_hits: generalItems.length, merged: capped.length,
+        q,
+        top_tracks: topTracksArr.length,
+        artist_scoped: artistItems.length,
+        general: generalItems.length,
+        merged: capped.length,
       });
       return { ok: true, value: capped };
     }
