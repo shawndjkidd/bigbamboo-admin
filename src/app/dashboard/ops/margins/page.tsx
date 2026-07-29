@@ -91,7 +91,7 @@ export default function MarginsPage() {
             return (
               <tr key={r.id} style={{ borderTop: '1px solid var(--border, #eee)' }}>
                 <td style={td}>
-                  <Link href={`/dashboard/ops/recipes/${r.id}`} style={{ color: 'var(--text, #333)', textDecoration: 'none' }}>{r.name}</Link>
+                  <Link href={`/dashboard/ops/recipes/${r.id}?from=margins`} style={{ color: 'var(--text, #333)', textDecoration: 'none' }}>{r.name}</Link>
                   {r.type === 'add_on' && <span style={{ color: 'var(--text-muted, #999)', fontSize: 11 }}> · add-on</span>}
                 </td>
                 <td style={{ ...td, textAlign: 'right' }}>{r.cost != null ? vnd(r.cost) : '—'}</td>

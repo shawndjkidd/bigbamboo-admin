@@ -48,6 +48,7 @@ export default function RecipeDetailPage() {
   const recipeId = params.id as string
 
   const [role, setRole] = useState<StaffRole | null>(null)
+  const [viewOnly, setViewOnly] = useState(false)
   const [recipe, setRecipe] = useState<Recipe | null>(null)
   const [components, setComponents] = useState<Component[]>([])
   const [cost, setCost] = useState<Cost | null>(null)
@@ -74,6 +75,10 @@ export default function RecipeDetailPage() {
   const [addBusy, setAddBusy] = useState(false)
   const [msg, setMsg] = useState<string | null>(null)
 
+  useEffect(() => {
+    const p = new URLSearchParams(window.location.search)
+    setViewOnly(p.get('from') === 'margins')
+  }, [])
   useEffect(() => { init() }, [recipeId])
   useEffect(() => { if (recipe?.yield_qty != null) setKegInput(String(Number(recipe.yield_qty))) }, [recipe?.yield_qty])
   useEffect(() => { if (recipe?.yield_unit) setYieldUnitInput(recipe.yield_unit) }, [recipe?.yield_unit])
@@ -465,7 +470,7 @@ export default function RecipeDetailPage() {
   }
 
   if (loading || !recipe) return <div style={{ color: '#999', fontSize: 14 }}>Loading…</div>
-  const canManage = role && canManageRecipes(role)
+  const canManage = role && canManageRecipes(role) && !viewOnly
   const packagingCost = components.reduce((sum, c) => {
     const isPkg = c.ingredient && c.ingredient.category === 'consumable'
     return isPkg ? sum + Number(c.qty) * (c.ingredient!.current_cost_per_base || 0) : sum
@@ -494,7 +499,14 @@ export default function RecipeDetailPage() {
   return (
     <div>
       {/* 1. Back link + title + meta */}
-      <Link href="/dashboard/ops/recipes" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text-secondary)', textDecoration: 'none', border: '1px solid var(--border)', borderRadius: 8, padding: '6px 12px', marginBottom: 14 }}>← Back to recipes</Link>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
+        {viewOnly
+          ? <Link href="/dashboard/ops/margins" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text-secondary)', textDecoration: 'none', border: '1px solid var(--border)', borderRadius: 8, padding: '6px 12px' }}>← Back to margins</Link>
+          : <Link href="/dashboard/ops/recipes" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text-secondary)', textDecoration: 'none', border: '1px solid var(--border)', borderRadius: 8, padding: '6px 12px' }}>← Back to recipes</Link>}
+        {viewOnly && (
+          <Link href={`/dashboard/ops/recipes/${recipeId}`} style={{ fontSize: 13, color: 'var(--accent, #e87830)', textDecoration: 'none' }}>Edit recipe →</Link>
+        )}
+      </div>
       {canManage
         ? <input defaultValue={recipe.name} onBlur={e => e.target.value !== recipe.name && saveName(e.target.value)} style={{ ...inp, fontSize: 26, fontWeight: 700, maxWidth: 560, display: 'block' }} />
         : <h2 style={{ fontSize: 26, fontWeight: 700, margin: 0 }}>{recipe.name}</h2>}
