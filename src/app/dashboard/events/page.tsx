@@ -2,10 +2,13 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import TeaserField from '@/components/TeaserField'
+import { useT, pick } from '@/i18n/admin'
 
 const BLANK_EVENT = {
-  title: '', type: '', description: '', teaser: '', event_date: '', start_time: '', end_time: '',
-  facebook_link: '', image_url: '', is_free: true, ticket_price: '', ticket_link: '', capacity: '', rsvp_enabled: true, internal_tickets_enabled: true,
+  title: '', title_vi: '', type: '', description: '', teaser: '', teaser_vi: '',
+  event_date: '', start_time: '', end_time: '',
+  facebook_link: '', image_url: '', is_free: true, ticket_price: '', ticket_link: '', capacity: '',
+  rsvp_enabled: true, internal_tickets_enabled: true,
   is_recurring: false, recurrence_pattern: 'weekly'
 }
 
@@ -26,6 +29,7 @@ function getNextOccurrence(dateStr: string, pattern: string): string {
 }
 
 export default function EventsPage() {
+  const { t } = useT()
   const [events, setEvents] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [showAdd, setShowAdd] = useState(false)
@@ -53,8 +57,11 @@ export default function EventsPage() {
   async function addEvent() {
     if (!newEvent.title) return
     const { data } = await supabase.from('events').insert({
-      title: newEvent.title, type: newEvent.type, description: newEvent.description,
+      title: newEvent.title,
+      title_vi: newEvent.title_vi?.trim() || null,
+      type: newEvent.type, description: newEvent.description,
       teaser: newEvent.teaser?.trim() || null,
+      teaser_vi: newEvent.teaser_vi?.trim() || null,
       event_date: newEvent.event_date || null, start_time: newEvent.start_time || null,
       end_time: newEvent.end_time || null, facebook_link: newEvent.facebook_link || null,
       image_url: newEvent.image_url || null, is_free: newEvent.is_free,
@@ -69,22 +76,22 @@ export default function EventsPage() {
       setEvents(prev => [...prev, data])
       setNewEvent({ ...BLANK_EVENT })
       setShowAdd(false)
-      showToast('Event created')
+      showToast(t.events.created)
     }
   }
 
   async function updateEvent(id: string, changes: any) {
     await supabase.from('events').update({ ...changes, updated_at: new Date().toISOString() }).eq('id', id)
     setEvents(prev => prev.map(e => e.id === id ? { ...e, ...changes } : e))
-    showToast('Saved')
+    showToast(t.common.saved)
   }
 
   async function deleteEvent(id: string) {
-    if (!confirm('Remove this event?')) return
+    if (!confirm(t.events.confirmRemove)) return
     await supabase.from('events').delete().eq('id', id)
     setEvents(prev => prev.filter(e => e.id !== id))
     if (expandedOrders === id) setExpandedOrders(null)
-    showToast('Removed')
+    showToast(t.common.removed)
   }
 
   async function checkIn(orderId: string, checked: boolean) {
@@ -92,14 +99,14 @@ export default function EventsPage() {
       checked_in: !checked, checked_in_at: !checked ? new Date().toISOString() : null
     }).eq('id', orderId)
     setOrders(prev => prev.map(o => o.id === orderId ? { ...o, checked_in: !checked } : o))
-    showToast(!checked ? 'Checked in' : 'Unchecked')
+    showToast(!checked ? t.events.checkedIn : t.events.notYet)
   }
 
   function showToast(msg: string) { setToast(msg); setTimeout(() => setToast(''), 2500) }
 
   function formatDate(dateStr: string) {
-    if (!dateStr) return '\u2014'
-    return new Date(dateStr + 'T00:00:00').toLocaleDateString('en', { weekday: 'short', day: 'numeric', month: 'short' })
+    if (!dateStr) return '—'
+    return new Date(dateStr + 'T00:00:00').toLocaleDateString(t.cal.locale, { weekday: 'short', day: 'numeric', month: 'short' })
   }
 
   const upcomingEvents = events.filter(e => {
@@ -112,113 +119,119 @@ export default function EventsPage() {
     return e.event_date && new Date(e.event_date) < new Date(new Date().toISOString().split('T')[0])
   })
 
+  const cardProps = {
+    orders, editingId,
+    onToggleEdit: (id: string) => setEditingId(editingId === id ? null : id),
+    onLoadOrders: loadOrders, onUpdate: updateEvent, onDelete: deleteEvent, onCheckIn: checkIn,
+    formatDate,
+  }
+
   return (
     <div style={{ maxWidth: 900 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 28 }}>
         <div>
-          <div className="page-title">Events</div>
-          <div style={{ fontSize: 14, color: 'var(--text-muted)', marginTop: 4 }}>{events.length} event{events.length !== 1 ? 's' : ''} total</div>
+          <div className="page-title">{t.events.title}</div>
+          <div style={{ fontSize: 14, color: 'var(--text-muted)', marginTop: 4 }}>{t.events.total(events.length)}</div>
         </div>
         <button className="btn-accent" onClick={() => setShowAdd(!showAdd)} style={{ fontSize: 14, padding: '10px 20px' }}>
-          + Create Event
+          {t.events.create}
         </button>
       </div>
 
       {showAdd && (
         <div className="card" style={{ padding: 24, marginBottom: 24, borderColor: 'var(--accent)', borderStyle: 'dashed' }}>
-          <div className="section-title" style={{ color: 'var(--accent)', marginBottom: 18 }}>New Event</div>
+          <div className="section-title" style={{ color: 'var(--accent)', marginBottom: 18 }}>{t.events.newEvent}</div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
-            <div><label className="label">Event Title</label><input className="input" value={newEvent.title} onChange={e => setNewEvent((p: any) => ({ ...p, title: e.target.value }))} placeholder="BigBamBoo Sunday Market" /></div>
-            <div><label className="label">Type</label><input className="input" value={newEvent.type} onChange={e => setNewEvent((p: any) => ({ ...p, type: e.target.value }))} placeholder="Sunday Market / Live Music / Party" /></div>
+            <div><label className="label">{t.events.eventTitle}</label><input className="input" value={newEvent.title} onChange={e => setNewEvent((p: any) => ({ ...p, title: e.target.value }))} placeholder={t.events.placeholderTitle} /></div>
+            <div><label className="label">{t.events.type}</label><input className="input" value={newEvent.type} onChange={e => setNewEvent((p: any) => ({ ...p, type: e.target.value }))} placeholder={t.events.placeholderType} /></div>
+          </div>
+          <div style={{ marginBottom: 14 }}>
+            <label className="label">{t.events.eventTitleVi}</label>
+            <input className="input" value={newEvent.title_vi} onChange={e => setNewEvent((p: any) => ({ ...p, title_vi: e.target.value }))} placeholder={t.events.placeholderTitle} />
+            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 5 }}>{t.events.titleViHint}</div>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14, marginBottom: 14 }}>
-            <div><label className="label">Date</label><input className="input" type="date" value={newEvent.event_date} onChange={e => setNewEvent((p: any) => ({ ...p, event_date: e.target.value }))} /></div>
-            <div><label className="label">Start Time</label><input className="input" type="time" value={newEvent.start_time} onChange={e => setNewEvent((p: any) => ({ ...p, start_time: e.target.value }))} /></div>
-            <div><label className="label">End Time</label><input className="input" type="time" value={newEvent.end_time} onChange={e => setNewEvent((p: any) => ({ ...p, end_time: e.target.value }))} /></div>
+            <div><label className="label">{t.common.date}</label><input className="input" type="date" value={newEvent.event_date} onChange={e => setNewEvent((p: any) => ({ ...p, event_date: e.target.value }))} /></div>
+            <div><label className="label">{t.events.startTime}</label><input className="input" type="time" value={newEvent.start_time} onChange={e => setNewEvent((p: any) => ({ ...p, start_time: e.target.value }))} /></div>
+            <div><label className="label">{t.events.endTime}</label><input className="input" type="time" value={newEvent.end_time} onChange={e => setNewEvent((p: any) => ({ ...p, end_time: e.target.value }))} /></div>
           </div>
-          <div style={{ marginBottom: 14 }}><label className="label">Description</label><input className="input" value={newEvent.description} onChange={e => setNewEvent((p: any) => ({ ...p, description: e.target.value }))} placeholder="Short event description" /></div>
+          <div style={{ marginBottom: 14 }}><label className="label">{t.common.description}</label><input className="input" value={newEvent.description} onChange={e => setNewEvent((p: any) => ({ ...p, description: e.target.value }))} placeholder={t.events.placeholderDesc} /></div>
           <TeaserField
             labelClass="label"
             value={newEvent.teaser || ''}
             onChange={v => setNewEvent((p: any) => ({ ...p, teaser: v }))}
+            valueVi={newEvent.teaser_vi || ''}
+            onChangeVi={v => setNewEvent((p: any) => ({ ...p, teaser_vi: v }))}
           />
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
-            <div><label className="label">Facebook Event Link</label><input className="input" value={newEvent.facebook_link} onChange={e => setNewEvent((p: any) => ({ ...p, facebook_link: e.target.value }))} placeholder="https://facebook.com/events/..." /></div>
-            <div><label className="label">Event Photo URL</label><input className="input" value={newEvent.image_url} onChange={e => setNewEvent((p: any) => ({ ...p, image_url: e.target.value }))} placeholder="https://... or /images/event.jpg" /></div>
+            <div><label className="label">{t.events.facebookLink}</label><input className="input" value={newEvent.facebook_link} onChange={e => setNewEvent((p: any) => ({ ...p, facebook_link: e.target.value }))} placeholder="https://facebook.com/events/..." /></div>
+            <div><label className="label">{t.events.photoUrl}</label><input className="input" value={newEvent.image_url} onChange={e => setNewEvent((p: any) => ({ ...p, image_url: e.target.value }))} placeholder="https://... or /images/event.jpg" /></div>
           </div>
           <div className="card" style={{ padding: 18, marginBottom: 18, background: 'var(--bg-subtle)' }}>
-            <div className="section-title" style={{ marginBottom: 14 }}>Ticketing</div>
+            <div className="section-title" style={{ marginBottom: 14 }}>{t.events.ticketing}</div>
             <div style={{ display: 'flex', gap: 20, marginBottom: 14 }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, color: 'var(--text-secondary)', cursor: 'pointer' }}><input type="radio" checked={newEvent.is_free} onChange={() => setNewEvent((p: any) => ({ ...p, is_free: true }))} style={{ accentColor: 'var(--accent)' }} /> Free entry</label>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, color: 'var(--text-secondary)', cursor: 'pointer' }}><input type="radio" checked={!newEvent.is_free} onChange={() => setNewEvent((p: any) => ({ ...p, is_free: false }))} style={{ accentColor: 'var(--accent)' }} /> Paid tickets</label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, color: 'var(--text-secondary)', cursor: 'pointer' }}><input type="radio" checked={newEvent.is_free} onChange={() => setNewEvent((p: any) => ({ ...p, is_free: true }))} style={{ accentColor: 'var(--accent)' }} /> {t.events.freeEntry}</label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, color: 'var(--text-secondary)', cursor: 'pointer' }}><input type="radio" checked={!newEvent.is_free} onChange={() => setNewEvent((p: any) => ({ ...p, is_free: false }))} style={{ accentColor: 'var(--accent)' }} /> {t.events.paidTickets}</label>
             </div>
             {!newEvent.is_free && (
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
-                <div><label className="label">Ticket Price (VND)</label><input className="input" type="number" value={newEvent.ticket_price} onChange={e => setNewEvent((p: any) => ({ ...p, ticket_price: e.target.value }))} placeholder="150000" /></div>
-                <div><label className="label">Buy Tickets Link</label><input className="input" value={newEvent.ticket_link} onChange={e => setNewEvent((p: any) => ({ ...p, ticket_link: e.target.value }))} placeholder="Momo / bank link" /></div>
+                <div><label className="label">{t.events.ticketPrice}</label><input className="input" type="number" value={newEvent.ticket_price} onChange={e => setNewEvent((p: any) => ({ ...p, ticket_price: e.target.value }))} placeholder="150000" /></div>
+                <div><label className="label">{t.events.buyLink}</label><input className="input" value={newEvent.ticket_link} onChange={e => setNewEvent((p: any) => ({ ...p, ticket_link: e.target.value }))} placeholder="Momo / bank link" /></div>
               </div>
             )}
             {!newEvent.is_free && (
-              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, color: 'var(--text-secondary)', cursor: 'pointer', marginBottom: 14 }}><input type="checkbox" checked={newEvent.internal_tickets_enabled} onChange={e => setNewEvent((p: any) => ({ ...p, internal_tickets_enabled: e.target.checked }))} style={{ accentColor: 'var(--accent)' }} /> Show our Buy-now order form on the site <span style={{ fontSize: 12, color: 'var(--text-muted, #999)' }}>(uncheck if you sell tickets via the link above)</span></label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, color: 'var(--text-secondary)', cursor: 'pointer', marginBottom: 14 }}><input type="checkbox" checked={newEvent.internal_tickets_enabled} onChange={e => setNewEvent((p: any) => ({ ...p, internal_tickets_enabled: e.target.checked }))} style={{ accentColor: 'var(--accent)' }} /> {t.events.showOrderForm} <span style={{ fontSize: 12, color: 'var(--text-muted, #999)' }}>{t.events.showOrderFormHint}</span></label>
             )}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-              <div><label className="label">Capacity</label><input className="input" type="number" value={newEvent.capacity} onChange={e => setNewEvent((p: any) => ({ ...p, capacity: e.target.value }))} placeholder="Leave blank = unlimited" /></div>
-              <div style={{ display: 'flex', alignItems: 'flex-end', paddingBottom: 4 }}><label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, color: 'var(--text-secondary)', cursor: 'pointer' }}><input type="checkbox" checked={newEvent.rsvp_enabled} onChange={e => setNewEvent((p: any) => ({ ...p, rsvp_enabled: e.target.checked }))} style={{ accentColor: 'var(--accent)' }} /> Show RSVP form on site</label></div>
+              <div><label className="label">{t.events.capacity}</label><input className="input" type="number" value={newEvent.capacity} onChange={e => setNewEvent((p: any) => ({ ...p, capacity: e.target.value }))} placeholder={t.events.unlimited} /></div>
+              <div style={{ display: 'flex', alignItems: 'flex-end', paddingBottom: 4 }}><label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, color: 'var(--text-secondary)', cursor: 'pointer' }}><input type="checkbox" checked={newEvent.rsvp_enabled} onChange={e => setNewEvent((p: any) => ({ ...p, rsvp_enabled: e.target.checked }))} style={{ accentColor: 'var(--accent)' }} /> {t.events.rsvpOnSite}</label></div>
             </div>
           </div>
           <div className="card" style={{ padding: 18, marginBottom: 18, background: 'var(--bg-subtle)' }}>
-            <div className="section-title" style={{ marginBottom: 14 }}>Recurring</div>
+            <div className="section-title" style={{ marginBottom: 14 }}>{t.events.recurring}</div>
             <div style={{ display: 'flex', gap: 20, alignItems: 'center' }}>
               <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, color: 'var(--text-secondary)', cursor: 'pointer' }}>
                 <input type="checkbox" checked={newEvent.is_recurring} onChange={e => setNewEvent((p: any) => ({ ...p, is_recurring: e.target.checked }))} style={{ accentColor: 'var(--accent)' }} />
-                This is a recurring event
+                {t.events.isRecurring}
               </label>
               {newEvent.is_recurring && (
                 <select className="input" value={newEvent.recurrence_pattern} onChange={e => setNewEvent((p: any) => ({ ...p, recurrence_pattern: e.target.value }))} style={{ width: 'auto', minWidth: 140 }}>
-                  <option value="weekly">Every week</option>
-                  <option value="biweekly">Every 2 weeks</option>
-                  <option value="monthly">Every month</option>
+                  <option value="weekly">{t.events.weekly}</option>
+                  <option value="biweekly">{t.events.biweekly}</option>
+                  <option value="monthly">{t.events.monthly}</option>
                 </select>
               )}
             </div>
           </div>
           <div style={{ display: 'flex', gap: 10 }}>
-            <button className="btn-accent" onClick={addEvent}>Create Event</button>
-            <button className="btn-outline" onClick={() => setShowAdd(false)}>Cancel</button>
+            <button className="btn-accent" onClick={addEvent}>{t.events.createConfirm}</button>
+            <button className="btn-outline" onClick={() => setShowAdd(false)}>{t.common.cancel}</button>
           </div>
         </div>
       )}
 
       {loading ? (
-        <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>Loading events...</div>
+        <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>{t.events.loadingEvents}</div>
       ) : events.length === 0 ? (
-        <div className="card" style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>No events yet. Create your first event above.</div>
+        <div className="card" style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>{t.events.empty}</div>
       ) : (
         <>
           {upcomingEvents.length > 0 && (
             <div style={{ marginBottom: 32 }}>
-              <div className="section-title" style={{ marginBottom: 14 }}>Upcoming & Active</div>
+              <div className="section-title" style={{ marginBottom: 14 }}>{t.events.upcoming}</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                 {upcomingEvents.map(event => (
-                  <EventCard key={event.id} event={event} isExpanded={expandedOrders === event.id}
-                    orders={orders} editingId={editingId}
-                    onToggleEdit={(id: string) => setEditingId(editingId === id ? null : id)}
-                    onLoadOrders={loadOrders} onUpdate={updateEvent} onDelete={deleteEvent} onCheckIn={checkIn}
-                    formatDate={formatDate} />
+                  <EventCard key={event.id} event={event} isExpanded={expandedOrders === event.id} {...cardProps} />
                 ))}
               </div>
             </div>
           )}
           {pastEvents.length > 0 && (
             <div>
-              <div className="section-title" style={{ marginBottom: 14, color: 'var(--text-muted)' }}>Past Events</div>
+              <div className="section-title" style={{ marginBottom: 14, color: 'var(--text-muted)' }}>{t.events.past}</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                 {pastEvents.map(event => (
-                  <EventCard key={event.id} event={event} isExpanded={expandedOrders === event.id}
-                    orders={orders} editingId={editingId}
-                    onToggleEdit={(id: string) => setEditingId(editingId === id ? null : id)}
-                    onLoadOrders={loadOrders} onUpdate={updateEvent} onDelete={deleteEvent} onCheckIn={checkIn}
-                    formatDate={formatDate} isPast />
+                  <EventCard key={event.id} event={event} isExpanded={expandedOrders === event.id} {...cardProps} isPast />
                 ))}
               </div>
             </div>
@@ -232,86 +245,109 @@ export default function EventsPage() {
 }
 
 function EventCard({ event, isExpanded, orders, editingId, onToggleEdit, onLoadOrders, onUpdate, onDelete, onCheckIn, formatDate, isPast }: any) {
+  const { t, lang } = useT()
   const isEditing = editingId === event.id
   const [teaser, setTeaser] = useState<string>(event.teaser || '')
+  const [teaserVi, setTeaserVi] = useState<string>(event.teaser_vi || '')
 
-  useEffect(() => { setTeaser(event.teaser || '') }, [event.id, event.teaser])
+  useEffect(() => {
+    setTeaser(event.teaser || '')
+    setTeaserVi(event.teaser_vi || '')
+  }, [event.id, event.teaser, event.teaser_vi])
+
+  function commitTeasers() {
+    const changes: any = {}
+    if ((teaser.trim() || null) !== (event.teaser || null)) changes.teaser = teaser.trim() || null
+    if ((teaserVi.trim() || null) !== (event.teaser_vi || null)) changes.teaser_vi = teaserVi.trim() || null
+    if (Object.keys(changes).length) onUpdate(event.id, changes)
+  }
+
+  const shownTitle = pick(lang, event.title, event.title_vi)
+  const shownTeaser = pick(lang, event.teaser, event.teaser_vi)
+
   return (
     <div className="card" style={{ padding: 22, opacity: isPast ? 0.7 : 1 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: isEditing ? 18 : 0 }}>
         <div>
-          <div style={{ fontFamily: 'Bebas Neue', fontSize: 22, letterSpacing: '0.04em', color: 'var(--text)', marginBottom: 6 }}>{event.title}</div>
+          <div style={{ fontFamily: 'Bebas Neue', fontSize: 22, letterSpacing: '0.04em', color: 'var(--text)', marginBottom: 6 }}>{shownTitle}</div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
             {event.type && <span className="badge badge-gray">{event.type}</span>}
             <span className="badge badge-blue">{formatDate(event.is_recurring && event.event_date ? getNextOccurrence(event.event_date, event.recurrence_pattern) : event.event_date)}</span>
-            {event.start_time && <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>{event.start_time}{event.end_time && ` \u2013 ${event.end_time}`}</span>}
-            {event.is_free ? <span className="badge badge-green">Free</span> : <span className="badge badge-orange">{event.ticket_price?.toLocaleString()}d</span>}
-            {!event.is_published && <span className="badge badge-red">Draft</span>}
-            {event.is_recurring && <span className="badge badge-blue" style={{ background: 'var(--accent)', color: '#fff' }}>🔄 {event.recurrence_pattern === 'monthly' ? 'Monthly' : event.recurrence_pattern === 'biweekly' ? 'Biweekly' : 'Weekly'}</span>}
+            {event.start_time && <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>{event.start_time}{event.end_time && ` – ${event.end_time}`}</span>}
+            {event.is_free ? <span className="badge badge-green">{t.events.free}</span> : <span className="badge badge-orange">{event.ticket_price?.toLocaleString()}d</span>}
+            {!event.is_published && <span className="badge badge-red">{t.events.draft}</span>}
+            {event.is_recurring && <span className="badge badge-blue" style={{ background: 'var(--accent)', color: '#fff' }}>{event.recurrence_pattern === 'monthly' ? t.events.monthlyBadge : event.recurrence_pattern === 'biweekly' ? t.events.biweeklyBadge : t.events.weeklyBadge}</span>}
           </div>
-          {event.teaser && !isEditing && (
+          {shownTeaser && !isEditing && (
             <div style={{ fontSize: 13, color: 'var(--text-secondary)', fontStyle: 'italic', marginTop: 8, maxWidth: 460, lineHeight: 1.5 }}>
-              &ldquo;{event.teaser}&rdquo;
+              &ldquo;{shownTeaser}&rdquo;
             </div>
           )}
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
-          <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text-secondary)', cursor: 'pointer' }}><input type="checkbox" checked={!!event.is_published} onChange={e => onUpdate(event.id, { is_published: e.target.checked })} style={{ accentColor: 'var(--green)' }} /> Published</label>
-          <button className="btn-outline" onClick={() => onToggleEdit(event.id)} style={{ padding: '6px 12px', fontSize: 12 }}>{isEditing ? 'Done' : 'Edit'}</button>
-          <button className="btn-outline" onClick={() => onLoadOrders(event.id)} style={{ padding: '6px 12px', fontSize: 12 }}>{isExpanded ? 'Hide' : 'Attendees'}</button>
-          <button className="btn-red" onClick={() => onDelete(event.id)} style={{ padding: '6px 10px', fontSize: 12 }}>Remove</button>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text-secondary)', cursor: 'pointer' }}><input type="checkbox" checked={!!event.is_published} onChange={e => onUpdate(event.id, { is_published: e.target.checked })} style={{ accentColor: 'var(--green)' }} /> {t.events.published}</label>
+          <button className="btn-outline" onClick={() => onToggleEdit(event.id)} style={{ padding: '6px 12px', fontSize: 12 }}>{isEditing ? t.common.done : t.common.edit}</button>
+          <button className="btn-outline" onClick={() => onLoadOrders(event.id)} style={{ padding: '6px 12px', fontSize: 12 }}>{isExpanded ? t.events.hide : t.events.attendees}</button>
+          <button className="btn-red" onClick={() => onDelete(event.id)} style={{ padding: '6px 10px', fontSize: 12 }}>{t.common.remove}</button>
         </div>
       </div>
       {isEditing && (
         <div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 12 }}>
-            <div><label className="label">Date</label><input className="input" type="date" defaultValue={event.event_date || ''} onBlur={e => onUpdate(event.id, { event_date: e.target.value })} /></div>
-            <div><label className="label">Start</label><input className="input" type="time" defaultValue={event.start_time || ''} onBlur={e => onUpdate(event.id, { start_time: e.target.value })} /></div>
-            <div><label className="label">End</label><input className="input" type="time" defaultValue={event.end_time || ''} onBlur={e => onUpdate(event.id, { end_time: e.target.value })} /></div>
+          <div style={{ marginBottom: 12 }}>
+            <label className="label">{t.events.eventTitleVi}</label>
+            <input className="input" defaultValue={event.title_vi || ''} onBlur={e => onUpdate(event.id, { title_vi: e.target.value.trim() || null })} placeholder={t.events.placeholderTitle} />
+            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 5 }}>{t.events.titleViHint}</div>
           </div>
-          <div style={{ marginBottom: 12 }}><label className="label">Description</label><input className="input" defaultValue={event.description || ''} onBlur={e => onUpdate(event.id, { description: e.target.value })} /></div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 12 }}>
+            <div><label className="label">{t.common.date}</label><input className="input" type="date" defaultValue={event.event_date || ''} onBlur={e => onUpdate(event.id, { event_date: e.target.value })} /></div>
+            <div><label className="label">{t.events.start}</label><input className="input" type="time" defaultValue={event.start_time || ''} onBlur={e => onUpdate(event.id, { start_time: e.target.value })} /></div>
+            <div><label className="label">{t.events.end}</label><input className="input" type="time" defaultValue={event.end_time || ''} onBlur={e => onUpdate(event.id, { end_time: e.target.value })} /></div>
+          </div>
+          <div style={{ marginBottom: 12 }}><label className="label">{t.common.description}</label><input className="input" defaultValue={event.description || ''} onBlur={e => onUpdate(event.id, { description: e.target.value })} /></div>
           <TeaserField
             labelClass="label"
             value={teaser}
             onChange={setTeaser}
-            onBlur={() => { if ((teaser.trim() || null) !== (event.teaser || null)) onUpdate(event.id, { teaser: teaser.trim() || null }) }}
+            valueVi={teaserVi}
+            onChangeVi={setTeaserVi}
+            onBlur={commitTeasers}
           />
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
-            <div><label className="label">Facebook Link</label><input className="input" defaultValue={event.facebook_link || ''} onBlur={e => onUpdate(event.id, { facebook_link: e.target.value })} /></div>
-            <div><label className="label">Photo URL</label><input className="input" defaultValue={event.image_url || ''} onBlur={e => onUpdate(event.id, { image_url: e.target.value || null })} /></div>
+            <div><label className="label">{t.events.facebookShort}</label><input className="input" defaultValue={event.facebook_link || ''} onBlur={e => onUpdate(event.id, { facebook_link: e.target.value })} /></div>
+            <div><label className="label">{t.events.photoShort}</label><input className="input" defaultValue={event.image_url || ''} onBlur={e => onUpdate(event.id, { image_url: e.target.value || null })} /></div>
           </div>
           <div className="card" style={{ padding: 16, marginBottom: 12, background: 'var(--bg-subtle)' }}>
-            <div className="section-title" style={{ marginBottom: 12 }}>Ticketing</div>
+            <div className="section-title" style={{ marginBottom: 12 }}>{t.events.ticketing}</div>
             <div style={{ display: 'flex', gap: 20, marginBottom: 12 }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, color: 'var(--text-secondary)', cursor: 'pointer' }}><input type="radio" checked={!!event.is_free} onChange={() => onUpdate(event.id, { is_free: true, ticket_price: 0 })} style={{ accentColor: 'var(--accent)' }} /> Free</label>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, color: 'var(--text-secondary)', cursor: 'pointer' }}><input type="radio" checked={!event.is_free} onChange={() => onUpdate(event.id, { is_free: false })} style={{ accentColor: 'var(--accent)' }} /> Paid</label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, color: 'var(--text-secondary)', cursor: 'pointer' }}><input type="radio" checked={!!event.is_free} onChange={() => onUpdate(event.id, { is_free: true, ticket_price: 0 })} style={{ accentColor: 'var(--accent)' }} /> {t.events.free}</label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, color: 'var(--text-secondary)', cursor: 'pointer' }}><input type="radio" checked={!event.is_free} onChange={() => onUpdate(event.id, { is_free: false })} style={{ accentColor: 'var(--accent)' }} /> {t.events.paid}</label>
             </div>
             {!event.is_free && (
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
-                <div><label className="label">Price (VND)</label><input className="input" type="number" defaultValue={event.ticket_price || ''} onBlur={e => onUpdate(event.id, { ticket_price: parseInt(e.target.value) || 0 })} /></div>
-                <div><label className="label">Ticket Link</label><input className="input" defaultValue={event.ticket_link || ''} onBlur={e => onUpdate(event.id, { ticket_link: e.target.value })} /></div>
+                <div><label className="label">{t.events.price}</label><input className="input" type="number" defaultValue={event.ticket_price || ''} onBlur={e => onUpdate(event.id, { ticket_price: parseInt(e.target.value) || 0 })} /></div>
+                <div><label className="label">{t.events.ticketLink}</label><input className="input" defaultValue={event.ticket_link || ''} onBlur={e => onUpdate(event.id, { ticket_link: e.target.value })} /></div>
               </div>
             )}
             {!event.is_free && (
-              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text-secondary)', cursor: 'pointer', marginBottom: 12 }}><input type="checkbox" checked={(event as any).internal_tickets_enabled !== false} onChange={e => onUpdate(event.id, { internal_tickets_enabled: e.target.checked } as any)} style={{ accentColor: 'var(--accent)' }} /> Show our Buy-now order form on the site <span style={{ fontSize: 12, color: 'var(--text-muted, #999)' }}>(uncheck if selling via the ticket link)</span></label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text-secondary)', cursor: 'pointer', marginBottom: 12 }}><input type="checkbox" checked={(event as any).internal_tickets_enabled !== false} onChange={e => onUpdate(event.id, { internal_tickets_enabled: e.target.checked } as any)} style={{ accentColor: 'var(--accent)' }} /> {t.events.showOrderForm} <span style={{ fontSize: 12, color: 'var(--text-muted, #999)' }}>{t.events.showOrderFormHint}</span></label>
             )}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-              <div><label className="label">Capacity</label><input className="input" type="number" defaultValue={event.capacity || ''} onBlur={e => onUpdate(event.id, { capacity: e.target.value ? parseInt(e.target.value) : null })} placeholder="Unlimited" /></div>
-              <div style={{ display: 'flex', alignItems: 'flex-end', paddingBottom: 4 }}><label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, color: 'var(--text-secondary)', cursor: 'pointer' }}><input type="checkbox" checked={!!event.rsvp_enabled} onChange={e => onUpdate(event.id, { rsvp_enabled: e.target.checked })} style={{ accentColor: 'var(--accent)' }} /> RSVP on site</label></div>
+              <div><label className="label">{t.events.capacity}</label><input className="input" type="number" defaultValue={event.capacity || ''} onBlur={e => onUpdate(event.id, { capacity: e.target.value ? parseInt(e.target.value) : null })} placeholder={t.events.unlimitedShort} /></div>
+              <div style={{ display: 'flex', alignItems: 'flex-end', paddingBottom: 4 }}><label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, color: 'var(--text-secondary)', cursor: 'pointer' }}><input type="checkbox" checked={!!event.rsvp_enabled} onChange={e => onUpdate(event.id, { rsvp_enabled: e.target.checked })} style={{ accentColor: 'var(--accent)' }} /> {t.events.rsvpShort}</label></div>
             </div>
           </div>
           <div className="card" style={{ padding: 16, marginTop: 12, background: 'var(--bg-subtle)' }}>
-            <div className="section-title" style={{ marginBottom: 12 }}>Recurring</div>
+            <div className="section-title" style={{ marginBottom: 12 }}>{t.events.recurring}</div>
             <div style={{ display: 'flex', gap: 20, alignItems: 'center' }}>
               <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, color: 'var(--text-secondary)', cursor: 'pointer' }}>
                 <input type="checkbox" checked={!!event.is_recurring} onChange={e => onUpdate(event.id, { is_recurring: e.target.checked, recurrence_pattern: e.target.checked ? (event.recurrence_pattern || 'weekly') : null })} style={{ accentColor: 'var(--accent)' }} />
-                Recurring event
+                {t.events.recurringShort}
               </label>
               {event.is_recurring && (
                 <select className="input" value={event.recurrence_pattern || 'weekly'} onChange={e => onUpdate(event.id, { recurrence_pattern: e.target.value })} style={{ width: 'auto', minWidth: 140 }}>
-                  <option value="weekly">Every week</option>
-                  <option value="biweekly">Every 2 weeks</option>
-                  <option value="monthly">Every month</option>
+                  <option value="weekly">{t.events.weekly}</option>
+                  <option value="biweekly">{t.events.biweekly}</option>
+                  <option value="monthly">{t.events.monthly}</option>
                 </select>
               )}
             </div>
@@ -320,20 +356,20 @@ function EventCard({ event, isExpanded, orders, editingId, onToggleEdit, onLoadO
       )}
       {isExpanded && (
         <div style={{ marginTop: 18, borderTop: '1px solid var(--border)', paddingTop: 18 }}>
-          <div className="section-title" style={{ marginBottom: 14 }}>Attendees \u2014 {orders.length} registered</div>
+          <div className="section-title" style={{ marginBottom: 14 }}>{t.events.attendeesCount(orders.length)}</div>
           {orders.length === 0 ? (
-            <div style={{ fontSize: 14, color: 'var(--text-muted)' }}>No RSVPs yet</div>
+            <div style={{ fontSize: 14, color: 'var(--text-muted)' }}>{t.events.noRsvps}</div>
           ) : (
             <table className="data-table">
-              <thead><tr><th>Name</th><th>Contact</th><th>Qty</th><th>Status</th><th style={{ textAlign: 'right' }}>Check In</th></tr></thead>
+              <thead><tr><th>{t.events.name}</th><th>{t.events.contact}</th><th>{t.events.qty}</th><th>{t.events.status}</th><th style={{ textAlign: 'right' }}>{t.events.checkIn}</th></tr></thead>
               <tbody>
                 {orders.map((o: any) => (
                   <tr key={o.id}>
                     <td style={{ fontWeight: 500 }}>{o.name}</td>
-                    <td style={{ fontSize: 13, color: 'var(--text-muted)' }}>{o.email}{o.phone && ` \u00b7 ${o.phone}`}</td>
+                    <td style={{ fontSize: 13, color: 'var(--text-muted)' }}>{o.email}{o.phone && ` · ${o.phone}`}</td>
                     <td>{o.quantity || 1}</td>
-                    <td><span className={`badge ${o.checked_in ? 'badge-green' : 'badge-gray'}`}>{o.checked_in ? 'Checked In' : 'Not yet'}</span></td>
-                    <td style={{ textAlign: 'right' }}><button className={o.checked_in ? 'btn-green' : 'btn-outline'} onClick={() => onCheckIn(o.id, o.checked_in)} style={{ padding: '5px 12px', fontSize: 12 }}>{o.checked_in ? 'Undo' : 'Check In'}</button></td>
+                    <td><span className={`badge ${o.checked_in ? 'badge-green' : 'badge-gray'}`}>{o.checked_in ? t.events.checkedIn : t.events.notYet}</span></td>
+                    <td style={{ textAlign: 'right' }}><button className={o.checked_in ? 'btn-green' : 'btn-outline'} onClick={() => onCheckIn(o.id, o.checked_in)} style={{ padding: '5px 12px', fontSize: 12 }}>{o.checked_in ? t.events.undo : t.events.checkIn}</button></td>
                   </tr>
                 ))}
               </tbody>

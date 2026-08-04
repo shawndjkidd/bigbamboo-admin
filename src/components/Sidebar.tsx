@@ -3,6 +3,7 @@ import { Suspense, useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useSearchParams, useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import { useT, setAdminLang, type Lang } from '@/i18n/admin'
 
 interface NavItem {
   href: string
@@ -78,6 +79,8 @@ function SidebarInner({ role, venueName }: { role: string; venueName: string }) 
   const bestMatch = navHrefs.filter(h => h !== '/dashboard' && (pathname === h || pathname.startsWith(h + '/'))).sort((a, b) => b.length - a.length)[0] || null
   const router = useRouter()
   const [copied, setCopied] = useState<string | null>(null)
+  const { t, lang } = useT()
+  const label = (k: string) => t.nav[k] || k
 
   async function copyLink(href: string) {
     const url = (typeof window !== 'undefined' ? window.location.origin : '') + href
@@ -138,7 +141,7 @@ function SidebarInner({ role, venueName }: { role: string; venueName: string }) 
                 borderTop: i > 0 ? '1px solid var(--border, #e5e5e5)' : 'none',
                 marginTop: i > 0 ? 6 : 0,
               }}>
-                {item.label}
+                {label(item.label)}
               </div>
             )
           }
@@ -152,7 +155,7 @@ function SidebarInner({ role, venueName }: { role: string; venueName: string }) 
                 color: 'var(--text-secondary, #666)', background: 'transparent',
                 fontSize: 14, fontWeight: 400, cursor: 'pointer', letterSpacing: '0.01em',
               }}>
-                <span>{item.label}</span>
+                <span>{label(item.label)}</span>
                 <span style={{ fontSize: 11, fontWeight: 600, color: done ? 'var(--accent, #e87830)' : 'var(--text-muted, #aaa)' }}>{done ? 'Copied!' : 'Copy'}</span>
               </button>
             )
@@ -167,14 +170,34 @@ function SidebarInner({ role, venueName }: { role: string; venueName: string }) 
               textDecoration: 'none', transition: 'all 0.12s',
               letterSpacing: '0.01em',
             }}>
-              {item.label}
+              {label(item.label)}
             </Link>
           )
         })}
       </nav>
 
       {/* Footer */}
-      <div style={{ padding: '14px 20px', borderTop: '1px solid var(--border, #e5e5e5)', display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <div style={{ padding: '14px 20px', borderTop: '1px solid var(--border, #e5e5e5)', display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div role="group" aria-label={t.language} style={{ display: 'flex', gap: 4 }}>
+          {(['en', 'vi'] as Lang[]).map(l => (
+            <button
+              key={l}
+              onClick={() => setAdminLang(l)}
+              aria-pressed={lang === l}
+              style={{
+                flex: 1, padding: '5px 0', borderRadius: 7, cursor: 'pointer',
+                fontSize: 12, fontWeight: lang === l ? 600 : 400,
+                border: '1px solid',
+                borderColor: lang === l ? 'var(--accent, #e87830)' : 'var(--border, #e5e5e5)',
+                background: lang === l ? 'var(--accent-light, rgba(232,120,48,.1))' : 'transparent',
+                color: lang === l ? 'var(--accent, #e87830)' : 'var(--text-muted, #999)',
+                transition: 'all .15s',
+              }}
+            >
+              {l === 'en' ? 'EN' : 'VI'}
+            </button>
+          ))}
+        </div>
         <button onClick={toggleTheme} style={{
           color: 'var(--text-muted, #999)', fontSize: 13, fontWeight: 400,
           background: 'none', border: 'none', cursor: 'pointer', padding: 0, textAlign: 'left',

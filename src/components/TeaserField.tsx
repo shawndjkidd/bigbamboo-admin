@@ -1,4 +1,5 @@
 'use client'
+import { useT } from '@/i18n/admin'
 
 export const MAX_TEASER_WORDS = 15
 
@@ -7,7 +8,7 @@ export function countWords(s: string): number {
   return t ? t.split(/\s+/).length : 0
 }
 
-/** Keeps typing capped at MAX_TEASER_WORDS words without fighting the caret. */
+/** Keeps a pasted value inside the word cap without mangling it. */
 export function clampWords(s: string, max: number = MAX_TEASER_WORDS): string {
   const words = (s || '').split(/\s+/).filter(Boolean)
   if (words.length <= max) return s
@@ -17,26 +18,69 @@ export function clampWords(s: string, max: number = MAX_TEASER_WORDS): string {
 type Props = {
   value: string
   onChange: (v: string) => void
+  valueVi?: string
+  onChangeVi?: (v: string) => void
   onBlur?: () => void
-  label?: string
   labelClass?: string
-  hint?: string
-  placeholder?: string
 }
 
 /**
- * One-line hook shown to promoters on the public calendar.
- * Hard-capped at 15 words with a live counter.
+ * The one-liner shown under an event name on the public calendar.
+ * English and Vietnamese, each hard-capped at 15 words with its own counter.
  */
 export default function TeaserField({
   value,
   onChange,
+  valueVi,
+  onChangeVi,
   onBlur,
-  label = 'Teaser',
   labelClass,
-  hint = 'One line that makes people want in. Shown under the name on the public calendar.',
-  placeholder = 'Vinyl, natural wine and zero pretension.',
 }: Props) {
+  const { t } = useT()
+
+  return (
+    <div style={{ marginBottom: 16 }}>
+      <One
+        label={t.teaser.labelEn}
+        labelClass={labelClass}
+        value={value}
+        onChange={onChange}
+        onBlur={onBlur}
+        hint={t.teaser.hint}
+        atMaxText={t.teaser.atMax}
+        wordsText={t.teaser.words}
+        placeholder={t.teaser.placeholder}
+      />
+      {onChangeVi && (
+        <One
+          label={t.teaser.labelVi}
+          labelClass={labelClass}
+          value={valueVi || ''}
+          onChange={onChangeVi}
+          onBlur={onBlur}
+          hint={t.teaser.hintVi}
+          atMaxText={t.teaser.atMax}
+          wordsText={t.teaser.words}
+          placeholder={t.teaser.placeholderVi}
+        />
+      )}
+    </div>
+  )
+}
+
+function One({
+  label, labelClass, value, onChange, onBlur, hint, atMaxText, wordsText, placeholder,
+}: {
+  label: string
+  labelClass?: string
+  value: string
+  onChange: (v: string) => void
+  onBlur?: () => void
+  hint: string
+  atMaxText: string
+  wordsText: (n: number, max: number) => string
+  placeholder: string
+}) {
   const n = countWords(value)
   const atMax = n >= MAX_TEASER_WORDS
 
@@ -49,7 +93,7 @@ export default function TeaserField({
   }
 
   return (
-    <div style={{ marginBottom: 16 }}>
+    <div style={{ marginBottom: 14 }}>
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, marginBottom: 6 }}>
         <label
           className={labelClass}
@@ -67,7 +111,7 @@ export default function TeaserField({
             whiteSpace: 'nowrap',
           }}
         >
-          {n} / {MAX_TEASER_WORDS} words
+          {wordsText(n, MAX_TEASER_WORDS)}
         </span>
       </div>
 
@@ -82,7 +126,7 @@ export default function TeaserField({
       />
 
       <div style={{ fontSize: 11, color: atMax ? 'var(--accent)' : 'var(--text-muted)', marginTop: 5 }}>
-        {atMax ? "That's the lot — 15 words max. Trim something to add more." : hint}
+        {atMax ? atMaxText : hint}
       </div>
     </div>
   )

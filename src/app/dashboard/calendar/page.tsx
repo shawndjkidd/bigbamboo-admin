@@ -2,10 +2,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import TeaserField from '@/components/TeaserField'
+import { useT, pick } from '@/i18n/admin'
 
-const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December']
-const DOWS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun']
-// Fri, Sat, Sun are the trading nights (index within DOWS)
+// Fri, Sat, Sun are the trading nights (index within the day-of-week row)
 const TRADING = [4, 5, 6]
 
 type Slot = {
@@ -13,16 +12,21 @@ type Slot = {
   date: string
   status: string
   label?: string | null
+  label_vi?: string | null
   teaser?: string | null
+  teaser_vi?: string | null
   is_public?: boolean
   notes?: string | null
 }
 
-type Ev = { title: string; teaser: string | null }
+type Ev = { title: string; title_vi: string | null; teaser: string | null; teaser_vi: string | null }
 
-const BLANK: Slot = { date: '', status: 'booked', label: '', teaser: '', is_public: false, notes: '' }
+const BLANK: Slot = {
+  date: '', status: 'booked', label: '', label_vi: '', teaser: '', teaser_vi: '', is_public: false, notes: '',
+}
 
 export default function CalendarPage() {
+  const { t, lang } = useT()
   const [cursor, setCursor] = useState(() => { const d = new Date(); d.setDate(1); return d })
   const [slots, setSlots] = useState<Record<string, Slot>>({})
   const [events, setEvents] = useState<Record<string, Ev>>({})
@@ -38,13 +42,17 @@ export default function CalendarPage() {
     setLoading(true)
     const [{ data: av }, { data: ev }] = await Promise.all([
       supabase.from('venue_availability').select('*'),
-      supabase.from('events').select('event_date, title, teaser, is_published').eq('is_published', true),
+      supabase.from('events').select('event_date, title, title_vi, teaser, teaser_vi, is_published').eq('is_published', true),
     ])
     const m: Record<string, Slot> = {}
     ;(av || []).forEach((r: any) => { m[r.date] = r })
     setSlots(m)
     const e: Record<string, Ev> = {}
-    ;(ev || []).forEach((r: any) => { if (r.event_date) e[r.event_date] = { title: r.title, teaser: r.teaser ?? null } })
+    ;(ev || []).forEach((r: any) => {
+      if (r.event_date) e[r.event_date] = {
+        title: r.title, title_vi: r.title_vi ?? null, teaser: r.teaser ?? null, teaser_vi: r.teaser_vi ?? null,
+      }
+    })
     setEvents(e)
     setLoading(false)
   }
@@ -61,7 +69,9 @@ export default function CalendarPage() {
       date: form.date,
       status: form.status,
       label: form.label?.trim() || null,
+      label_vi: form.label_vi?.trim() || null,
       teaser: form.teaser?.trim() || null,
+      teaser_vi: form.teaser_vi?.trim() || null,
       is_public: !!form.is_public,
       notes: form.notes?.trim() || null,
     }
@@ -71,10 +81,10 @@ export default function CalendarPage() {
       .select()
       .single()
     setSaving(false)
-    if (error) return showToast("Couldn't save. Try again.")
+    if (error) return showToast(t.common.tryAgain)
     setSlots(p => ({ ...p, [form.date]: data }))
     setSelected(null)
-    showToast('Date updated')
+    showToast(t.cal.dateUpdated)
   }
 
   async function clearDay() {
@@ -83,7 +93,7 @@ export default function CalendarPage() {
     setSaving(false)
     setSlots(p => { const n = { ...p }; delete n[form.date]; return n })
     setSelected(null)
-    showToast('Date is open again')
+    showToast(t.cal.dateOpened)
   }
 
   function showToast(m: string) { setToast(m); setTimeout(() => setToast(''), 2600) }
@@ -104,6 +114,27 @@ export default function CalendarPage() {
   function statusOf(key: string) {
     if (events[key]) return 'booked'
     return slots[key]?.status || 'open'
+  }
+
+  const TONES: Record<string, { bd: string; bg: string; fg: string; word: string }> = {
+    booked: {
+      bd: 'var(--badge-red-border)',
+      bg: 'linear-gradient(160deg, var(--badge-red-bg) 0%, transparent 85%), var(--bg-card)',
+      fg: 'var(--badge-red-text)',
+      word: t.cal.statusBooked,
+    },
+    hold: {
+      bd: 'var(--badge-orange-border)',
+      bg: 'linear-gradient(160deg, var(--badge-orange-bg) 0%, transparent 85%), var(--bg-card)',
+      fg: 'var(--badge-orange-text)',
+      word: t.cal.statusHold,
+    },
+    blocked: {
+      bd: 'var(--border)',
+      bg: 'var(--bg-subtle)',
+      fg: 'var(--text-muted)',
+      word: t.cal.statusBlocked,
+    },
   }
 
   // ── month summary ──
@@ -128,14 +159,13 @@ export default function CalendarPage() {
       {/* ── Header ── */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap' }}>
         <div>
-          <div className="page-title">Venue calendar</div>
+          <div className="page-title">{t.cal.title}</div>
           <p style={{ ...muted, fontSize: 13, margin: '6px 0 0', maxWidth: 520, lineHeight: 1.55 }}>
-            Click a date to book it, hold it or block it. Whatever stays open shows as available to promoters on{' '}
-            <span style={{ color: 'var(--accent)' }}>bigbamboo.app/pitch</span>.
+            {t.cal.blurb} <span style={{ color: 'var(--accent)' }}>bigbamboo.app/pitch</span>.
           </p>
         </div>
         <button className="btn-outline" onClick={load} disabled={loading} style={{ fontSize: 13 }}>
-          {loading ? 'Loading…' : 'Refresh'}
+          {loading ? t.common.loading : t.common.refresh}
         </button>
       </div>
 
@@ -149,27 +179,27 @@ export default function CalendarPage() {
             fontFamily: "'Bebas Neue', sans-serif", fontSize: 34, letterSpacing: '0.03em',
             color: 'var(--text)', lineHeight: 1,
           }}>
-            {MONTHS[mo]} <span style={{ color: 'var(--text-muted)' }}>{y}</span>
+            {t.cal.months[mo]} <span style={{ color: 'var(--text-muted)' }}>{y}</span>
           </div>
           {!loading && (
             <div style={{ display: 'flex', gap: 7, alignItems: 'center', flexWrap: 'wrap' }}>
-              <Chip n={summary.booked} label="booked" color="var(--badge-red-text)" />
-              {summary.hold > 0 && <Chip n={summary.hold} label="on hold" color="var(--badge-orange-text)" />}
-              <Chip n={summary.openTrading} label="open Fri–Sun" color="var(--text-secondary)" />
+              <Chip n={summary.booked} label={t.cal.booked} color="var(--badge-red-text)" />
+              {summary.hold > 0 && <Chip n={summary.hold} label={t.cal.onHold} color="var(--badge-orange-text)" />}
+              <Chip n={summary.openTrading} label={t.cal.openTrading} color="var(--text-secondary)" />
             </div>
           )}
         </div>
 
         <div style={{ display: 'flex', gap: 6 }}>
-          <NavBtn label="Previous month" onClick={() => setCursor(p => shift(p, -1))}>‹</NavBtn>
+          <NavBtn label={t.cal.prevMonth} onClick={() => setCursor(p => shift(p, -1))}>‹</NavBtn>
           <button
             className="btn-outline"
             onClick={() => { const d = new Date(); d.setDate(1); setCursor(d) }}
             style={{ fontSize: 12, padding: '0 14px', height: 32 }}
           >
-            Today
+            {t.common.today}
           </button>
-          <NavBtn label="Next month" onClick={() => setCursor(p => shift(p, 1))}>›</NavBtn>
+          <NavBtn label={t.cal.nextMonth} onClick={() => setCursor(p => shift(p, 1))}>›</NavBtn>
         </div>
       </div>
 
@@ -181,20 +211,20 @@ export default function CalendarPage() {
             position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, display: 'grid',
             gridTemplateColumns: 'repeat(7,1fr)', gap: 7, pointerEvents: 'none',
           }}>
-            {DOWS.map((d, i) => (
+            {t.cal.dows.map((d, i) => (
               <div key={d} className={TRADING.includes(i) ? 'cal-band' : undefined} />
             ))}
           </div>
 
           {/* day-of-week header */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 7, position: 'relative' }}>
-            {DOWS.map((d, i) => {
-              const t = TRADING.includes(i)
+            {t.cal.dows.map((d, i) => {
+              const trading = TRADING.includes(i)
               return (
                 <div key={d} className="cal-eyebrow" style={{
                   textAlign: 'center', padding: '11px 0 12px',
-                  color: t ? 'var(--accent)' : 'var(--text-muted)',
-                  opacity: t ? 1 : 0.55,
+                  color: trading ? 'var(--accent)' : 'var(--text-muted)',
+                  opacity: trading ? 1 : 0.55,
                   fontSize: 10,
                 }}>
                   {d}
@@ -218,8 +248,12 @@ export default function CalendarPage() {
               const st = statusOf(key)
               const ev = events[key]
               const slot = slots[key]
-              const title = ev?.title || slot?.label || ''
-              const teaser = ev ? ev.teaser : (slot?.teaser || null)
+              const title = ev
+                ? pick(lang, ev.title, ev.title_vi)
+                : pick(lang, slot?.label, slot?.label_vi)
+              const teaser = ev
+                ? pick(lang, ev.teaser, ev.teaser_vi)
+                : pick(lang, slot?.teaser, slot?.teaser_vi)
               const tone = TONES[st] || null
 
               const cls = [
@@ -234,7 +268,7 @@ export default function CalendarPage() {
                   className={cls}
                   onClick={() => !isPast && openDay(key)}
                   disabled={isPast}
-                  aria-label={`${d} ${MONTHS[mo]} — ${tone ? tone.word : isTrading ? 'open' : 'closed'}`}
+                  aria-label={`${d} ${t.cal.months[mo]} — ${tone ? tone.word : isTrading ? t.cal.statusOpen : ''}`}
                   style={{
                     background: tone ? tone.bg : undefined,
                     borderColor: tone ? tone.bd : undefined,
@@ -255,7 +289,7 @@ export default function CalendarPage() {
                     }}>
                       {d}
                     </span>
-                    {isToday && <span className="cal-eyebrow" style={{ fontSize: 9, color: 'var(--accent)' }}>Today</span>}
+                    {isToday && <span className="cal-eyebrow" style={{ fontSize: 9, color: 'var(--accent)' }}>{t.common.today}</span>}
                   </div>
 
                   {tone && (
@@ -284,13 +318,13 @@ export default function CalendarPage() {
 
                   {ev && (
                     <span className="cal-eyebrow" style={{ fontSize: 9, color: 'var(--accent)', marginTop: 'auto' }}>
-                      Ticketed event
+                      {t.cal.ticketedEvent}
                     </span>
                   )}
 
                   {!tone && isTrading && !isPast && (
                     <span className="cal-eyebrow" style={{ fontSize: 9, color: 'var(--text-muted)', marginTop: 'auto', opacity: .6 }}>
-                      Open
+                      {t.cal.statusOpen}
                     </span>
                   )}
                 </button>
@@ -302,12 +336,12 @@ export default function CalendarPage() {
 
       {/* ── Legend ── */}
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginTop: 14 }}>
-        <Key bg="var(--bg-card)" bd="var(--border)" text="Open" />
-        <Key bg="var(--badge-orange-bg)" bd="var(--badge-orange-text)" text="On hold" />
-        <Key bg="var(--badge-red-bg)" bd="var(--badge-red-text)" text="Booked" />
-        <Key bg="var(--bg-subtle)" bd="var(--text-muted)" text="Blocked" />
+        <Key bg="var(--bg-card)" bd="var(--border)" text={t.cal.statusOpen} />
+        <Key bg="var(--badge-orange-bg)" bd="var(--badge-orange-text)" text={t.cal.statusHold} />
+        <Key bg="var(--badge-red-bg)" bd="var(--badge-red-text)" text={t.cal.statusBooked} />
+        <Key bg="var(--bg-subtle)" bd="var(--text-muted)" text={t.cal.statusBlocked} />
         <span style={{ ...muted, fontSize: 12, marginLeft: 'auto', maxWidth: 380, textAlign: 'right', lineHeight: 1.5 }}>
-          Fri–Sun are shaded as trading nights. Published events fill their own date automatically.
+          {t.cal.legendNote}
         </span>
       </div>
 
@@ -327,28 +361,32 @@ export default function CalendarPage() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, marginBottom: 22 }}>
               <div>
                 <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 26, letterSpacing: '0.03em', color: 'var(--text)', lineHeight: 1.1 }}>
-                  {new Date(selected + 'T00:00:00').toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })}
+                  {new Date(selected + 'T00:00:00').toLocaleDateString(t.cal.locale, { weekday: 'long', day: 'numeric', month: 'long' })}
                 </div>
                 {events[selected] && (
                   <div style={{ fontSize: 12, color: 'var(--accent)', marginTop: 5 }}>
-                    Ticketed event: {events[selected].title}
+                    {t.cal.eventPrefix} {pick(lang, events[selected].title, events[selected].title_vi)}
                   </div>
                 )}
               </div>
               <button className="btn-outline" onClick={() => setSelected(null)} style={{ padding: '0 12px', fontSize: 13, height: 32 }}>
-                Close
+                {t.common.close}
               </button>
             </div>
 
             {events[selected] ? (
               <p style={{ ...muted, fontSize: 13, lineHeight: 1.65, margin: '0 0 8px' }}>
-                This date is filled by a published event, teaser and all. Edit it on the Events page — changes show up here and on the public calendar automatically.
+                {t.cal.eventLocked}
               </p>
             ) : (
               <>
-                <Field label="Status">
+                <Field label={t.cal.status}>
                   <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                    {[['booked', 'Booked'], ['hold', 'On hold'], ['blocked', 'Blocked']].map(([k, l]) => (
+                    {[
+                      ['booked', t.cal.statusBooked],
+                      ['hold', t.cal.statusHold],
+                      ['blocked', t.cal.statusBlocked],
+                    ].map(([k, l]) => (
                       <button
                         key={k}
                         onClick={() => setForm(f => ({ ...f, status: k }))}
@@ -368,19 +406,29 @@ export default function CalendarPage() {
                   </div>
                 </Field>
 
-                <Field label="Name" hint="What's on. Shown publicly only if you switch it on below.">
+                <Field label={t.cal.nameLabel} hint={t.cal.nameHint}>
                   <input
                     className="input"
                     value={form.label || ''}
-                    placeholder="Private event, wedding, deep clean…"
+                    placeholder={t.cal.namePlaceholder}
                     onChange={e => setForm(f => ({ ...f, label: e.target.value }))}
+                  />
+                </Field>
+
+                <Field label={t.cal.nameLabelVi} hint={t.cal.nameViHint}>
+                  <input
+                    className="input"
+                    value={form.label_vi || ''}
+                    placeholder={t.cal.namePlaceholder}
+                    onChange={e => setForm(f => ({ ...f, label_vi: e.target.value }))}
                   />
                 </Field>
 
                 <TeaserField
                   value={form.teaser || ''}
                   onChange={v => setForm(f => ({ ...f, teaser: v }))}
-                  hint="One line under the name on the public calendar. Only shows if the label is public."
+                  valueVi={form.teaser_vi || ''}
+                  onChangeVi={v => setForm(f => ({ ...f, teaser_vi: v }))}
                 />
 
                 <label style={{
@@ -391,9 +439,9 @@ export default function CalendarPage() {
                   transition: 'all .15s',
                 }}>
                   <span>
-                    <span style={{ fontSize: 14, color: 'var(--text)', display: 'block', fontWeight: 500 }}>Show this publicly</span>
+                    <span style={{ fontSize: 14, color: 'var(--text)', display: 'block', fontWeight: 500 }}>{t.cal.showPublicly}</span>
                     <span style={{ ...muted, fontSize: 12 }}>
-                      {form.is_public ? 'Promoters see the name and teaser — free marketing' : 'Promoters just see “Booked”'}
+                      {form.is_public ? t.cal.showPubliclyOn : t.cal.showPubliclyOff}
                     </span>
                   </span>
                   <input
@@ -404,22 +452,22 @@ export default function CalendarPage() {
                   />
                 </label>
 
-                <Field label="Private note" hint="Only you see this. Never leaves the admin.">
+                <Field label={t.cal.privateNote} hint={t.cal.privateNoteHint}>
                   <input
                     className="input"
                     value={form.notes || ''}
-                    placeholder="Deposit paid, contact name…"
+                    placeholder={t.cal.privateNotePlaceholder}
                     onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
                   />
                 </Field>
 
                 <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
                   <button className="btn-accent" onClick={save} disabled={saving} style={{ flex: 1 }}>
-                    {saving ? 'Saving…' : 'Save date'}
+                    {saving ? t.common.saving : t.cal.saveDate}
                   </button>
                   {slots[selected] && (
                     <button className="btn-outline" onClick={clearDay} disabled={saving}>
-                      Mark open
+                      {t.cal.markOpen}
                     </button>
                   )}
                 </div>
@@ -432,27 +480,6 @@ export default function CalendarPage() {
       {toast && <div className="toast">{toast}</div>}
     </div>
   )
-}
-
-const TONES: Record<string, { bd: string; bg: string; fg: string; word: string }> = {
-  booked: {
-    bd: 'var(--badge-red-border)',
-    bg: 'linear-gradient(160deg, var(--badge-red-bg) 0%, transparent 85%), var(--bg-card)',
-    fg: 'var(--badge-red-text)',
-    word: 'Booked',
-  },
-  hold: {
-    bd: 'var(--badge-orange-border)',
-    bg: 'linear-gradient(160deg, var(--badge-orange-bg) 0%, transparent 85%), var(--bg-card)',
-    fg: 'var(--badge-orange-text)',
-    word: 'On hold',
-  },
-  blocked: {
-    bd: 'var(--border)',
-    bg: 'var(--bg-subtle)',
-    fg: 'var(--text-muted)',
-    word: 'Blocked',
-  },
 }
 
 function shift(d: Date, by: number) {
