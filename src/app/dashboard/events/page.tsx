@@ -1,9 +1,10 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
+import TeaserField from '@/components/TeaserField'
 
 const BLANK_EVENT = {
-  title: '', type: '', description: '', event_date: '', start_time: '', end_time: '',
+  title: '', type: '', description: '', teaser: '', event_date: '', start_time: '', end_time: '',
   facebook_link: '', image_url: '', is_free: true, ticket_price: '', ticket_link: '', capacity: '', rsvp_enabled: true, internal_tickets_enabled: true,
   is_recurring: false, recurrence_pattern: 'weekly'
 }
@@ -53,6 +54,7 @@ export default function EventsPage() {
     if (!newEvent.title) return
     const { data } = await supabase.from('events').insert({
       title: newEvent.title, type: newEvent.type, description: newEvent.description,
+      teaser: newEvent.teaser?.trim() || null,
       event_date: newEvent.event_date || null, start_time: newEvent.start_time || null,
       end_time: newEvent.end_time || null, facebook_link: newEvent.facebook_link || null,
       image_url: newEvent.image_url || null, is_free: newEvent.is_free,
@@ -135,6 +137,11 @@ export default function EventsPage() {
             <div><label className="label">End Time</label><input className="input" type="time" value={newEvent.end_time} onChange={e => setNewEvent((p: any) => ({ ...p, end_time: e.target.value }))} /></div>
           </div>
           <div style={{ marginBottom: 14 }}><label className="label">Description</label><input className="input" value={newEvent.description} onChange={e => setNewEvent((p: any) => ({ ...p, description: e.target.value }))} placeholder="Short event description" /></div>
+          <TeaserField
+            labelClass="label"
+            value={newEvent.teaser || ''}
+            onChange={v => setNewEvent((p: any) => ({ ...p, teaser: v }))}
+          />
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
             <div><label className="label">Facebook Event Link</label><input className="input" value={newEvent.facebook_link} onChange={e => setNewEvent((p: any) => ({ ...p, facebook_link: e.target.value }))} placeholder="https://facebook.com/events/..." /></div>
             <div><label className="label">Event Photo URL</label><input className="input" value={newEvent.image_url} onChange={e => setNewEvent((p: any) => ({ ...p, image_url: e.target.value }))} placeholder="https://... or /images/event.jpg" /></div>
@@ -226,6 +233,9 @@ export default function EventsPage() {
 
 function EventCard({ event, isExpanded, orders, editingId, onToggleEdit, onLoadOrders, onUpdate, onDelete, onCheckIn, formatDate, isPast }: any) {
   const isEditing = editingId === event.id
+  const [teaser, setTeaser] = useState<string>(event.teaser || '')
+
+  useEffect(() => { setTeaser(event.teaser || '') }, [event.id, event.teaser])
   return (
     <div className="card" style={{ padding: 22, opacity: isPast ? 0.7 : 1 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: isEditing ? 18 : 0 }}>
@@ -239,6 +249,11 @@ function EventCard({ event, isExpanded, orders, editingId, onToggleEdit, onLoadO
             {!event.is_published && <span className="badge badge-red">Draft</span>}
             {event.is_recurring && <span className="badge badge-blue" style={{ background: 'var(--accent)', color: '#fff' }}>🔄 {event.recurrence_pattern === 'monthly' ? 'Monthly' : event.recurrence_pattern === 'biweekly' ? 'Biweekly' : 'Weekly'}</span>}
           </div>
+          {event.teaser && !isEditing && (
+            <div style={{ fontSize: 13, color: 'var(--text-secondary)', fontStyle: 'italic', marginTop: 8, maxWidth: 460, lineHeight: 1.5 }}>
+              &ldquo;{event.teaser}&rdquo;
+            </div>
+          )}
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
           <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text-secondary)', cursor: 'pointer' }}><input type="checkbox" checked={!!event.is_published} onChange={e => onUpdate(event.id, { is_published: e.target.checked })} style={{ accentColor: 'var(--green)' }} /> Published</label>
@@ -255,6 +270,12 @@ function EventCard({ event, isExpanded, orders, editingId, onToggleEdit, onLoadO
             <div><label className="label">End</label><input className="input" type="time" defaultValue={event.end_time || ''} onBlur={e => onUpdate(event.id, { end_time: e.target.value })} /></div>
           </div>
           <div style={{ marginBottom: 12 }}><label className="label">Description</label><input className="input" defaultValue={event.description || ''} onBlur={e => onUpdate(event.id, { description: e.target.value })} /></div>
+          <TeaserField
+            labelClass="label"
+            value={teaser}
+            onChange={setTeaser}
+            onBlur={() => { if ((teaser.trim() || null) !== (event.teaser || null)) onUpdate(event.id, { teaser: teaser.trim() || null }) }}
+          />
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
             <div><label className="label">Facebook Link</label><input className="input" defaultValue={event.facebook_link || ''} onBlur={e => onUpdate(event.id, { facebook_link: e.target.value })} /></div>
             <div><label className="label">Photo URL</label><input className="input" defaultValue={event.image_url || ''} onBlur={e => onUpdate(event.id, { image_url: e.target.value || null })} /></div>
