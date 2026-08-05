@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useState, Suspense } from 'react'
+import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { ops, vnd, canManageRecipes, type StaffRole } from '@/lib/ops/api'
 import { supabase } from '@/lib/supabase'
@@ -31,6 +32,12 @@ type VendorRow = {
   email: string | null; order_notes: string | null; delivery_days: string | null
 }
 
+/** Recipes that reference an ingredient. An ingredient in a recipe cannot be
+ *  deleted — the foreign key refuses it — and the old error said so without
+ *  saying WHICH recipes, which left you guessing. Now the count is on the row
+ *  before you try, and the names are one click away. */
+type Usage = { recipeId: string; recipeName: string }
+
 function IngredientsInner() {
   const sp = useSearchParams()
   const dept = sp.get('dept') // 'bar' | 'kitchen' | null
@@ -52,6 +59,9 @@ function IngredientsInner() {
   const [showVendorForm, setShowVendorForm] = useState(false)
   const [showForm, setShowForm] = useState(false)
   const [editing, setEditing] = useState<Row | null>(null)
+  const [usage, setUsage] = useState<Record<string, Usage[]>>({})
+  const [usageFor, setUsageFor] = useState<Row | null>(null)
+  const [showArchived, setShowArchived] = useState(false)
 
   useEffect(() => { init() }, [])
   async function init() {
@@ -65,18 +75,64 @@ function IngredientsInner() {
   }
   async function load() {
     setLoading(true)
-    const [{ data: ing }, { data: vend }] = await Promise.all([
+    const [{ data: ing }, { data: vend }, { data: comps }] = await Promise.all([
       ops().from('ingredients').select('*').order('name'),
       ops().from('vendors').select('*').order('name'),
+      /* One pass to learn which recipes touch which ingredient, rather than a
+         query per row. sub_recipe_id rows are ignored — they link recipe to
+         recipe, not to an ingredient.
+
+         The embed MUST name the constraint. recipe_components has two foreign
+         keys into recipes (recipe_id and sub_recipe_id), so a bare
+         `recipes(id, name)` is ambiguous and PostgREST refuses it outright. */
+      ops()
+        .from('recipe_components')
+        .select('ingredient_id, recipe_id, recipes!recipe_components_recipe_id_fkey(id, name)')
+        .not('ingredient_id', 'is', null),
     ])
     setRows((ing as Row[]) || [])
     setVendors((vend as VendorRow[]) || [])
+
+    const map: Record<string, Usage[]> = {}
+    ;(comps || []).forEach((c: any) => {
+      const rec = Array.isArray(c.recipes) ? c.recipes[0] : c.recipes
+      if (!c.ingredient_id || !rec) return
+      const list = map[c.ingredient_id] || (map[c.ingredient_id] = [])
+      // A recipe can use the same ingredient more than once (two measures of
+      // the same spirit). Count the recipe once.
+      if (!list.some(u => u.recipeId === rec.id)) list.push({ recipeId: rec.id, recipeName: rec.name })
+    })
+    Object.values(map).forEach(l => l.sort((a, b) => a.recipeName.localeCompare(b.recipeName)))
+    setUsage(map)
     setLoading(false)
   }
+  /* Archiving is the right move for something you have stopped ordering but
+     might reorder — a keg you are off for a season. Deleting would take the
+     purchase history and cost history with it and break any recipe holding it.
+     Archiving keeps all of that and just gets it out of the way. */
+  async function toggleArchive(r: Row) {
+    const { error } = await ops().from('ingredients').update({ active: !r.active }).eq('id', r.id)
+    if (error) { alert(error.message); return }
+    load()
+  }
+
   async function deleteRow(r: Row) {
+    const used = usage[r.id] || []
+    /* Refuse before hitting the database when we already know the FK will, and
+       say what is in the way. The old flow let you confirm, failed, and told you
+       only that "it's used in a recipe". */
+    if (used.length) {
+      setUsageFor(r)
+      return
+    }
     if (!confirm(`Delete "${r.name}"? This can't be undone.`)) return
     const { error } = await ops().from('ingredients').delete().eq('id', r.id)
-    if (error) { alert(error.code === '23503' ? `Can't delete "${r.name}" — it's used in a recipe.` : error.message); return }
+    if (error) {
+      // Belt and braces: the map could be stale if someone edited a recipe in
+      // another tab.
+      if (error.code === '23503') { await load(); setUsageFor(r); return }
+      alert(error.message); return
+    }
     load()
   }
   const canManage = role && canManageRecipes(role)
@@ -91,7 +147,12 @@ function IngredientsInner() {
   const vendorMap = new Map(vendors.map(v => [v.name, v]))
   const vendorNames = Array.from(new Set([...suppliers, ...vendors.map(v => v.name)].filter(Boolean))).sort((a, b) => a.localeCompare(b))
 
+  /* `active` has existed on this table since the beginning and nothing ever
+     read it — six ingredients were already flagged inactive and still showing.
+     The list is live-only by default now; archived ones are one toggle away. */
+  const archivedCount = scoped.filter(r => !r.active).length
   const filtered = scoped.filter(r => {
+    if (r.active === showArchived) return false
     if (supplierFilter !== 'all' && (r.supplier || '').trim() !== supplierFilter) return false
     if (catFilter !== 'all' && r.category !== catFilter) return false
     if (filter && !(r.name.toLowerCase().includes(filter.toLowerCase()) || (r.supplier || '').toLowerCase().includes(filter.toLowerCase()))) return false
@@ -226,7 +287,19 @@ function IngredientsInner() {
             </select>
           </label>
         )}
+        {view === 'list' && archivedCount > 0 && (
+          <button onClick={() => setShowArchived(v => !v)}
+            style={{ marginLeft: 'auto', background: showArchived ? 'var(--bg-hover)' : 'transparent', border: '1px solid var(--border)', color: showArchived ? 'var(--text)' : 'var(--text-secondary)', borderRadius: 7, padding: '8px 13px', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}>
+            {showArchived ? `← Back to live list` : `Archived (${archivedCount})`}
+          </button>
+        )}
       </div>
+
+      {showArchived && (
+        <div style={{ fontSize: 13, color: 'var(--text-secondary)', background: 'var(--bg-subtle)', border: '1px solid var(--border-light)', borderRadius: 8, padding: '10px 13px', marginBottom: 12 }}>
+          Archived ingredients keep their purchase and cost history and stay attached to any recipe using them. They just don’t clutter the live list. Hit <strong>Restore</strong> to bring one back.
+        </div>
+      )}
 
       <input type="text" placeholder="Search by name or supplier…" value={filter} onChange={e => setFilter(e.target.value)} style={{ ...inp, marginBottom: 12 }} />
 
@@ -349,23 +422,51 @@ function IngredientsInner() {
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
           <thead><tr style={{ background: 'var(--bg-sidebar, #fafafa)' }}>
             <th style={th}>Name</th><th style={th}>Supplier</th><th style={th}>Category</th>
-            <th style={{ ...th, textAlign: 'right' }}>Cost / base</th><th style={th}></th>
+            <th style={{ ...th, textAlign: 'right' }}>Cost / base</th>
+            <th style={{ ...th, textAlign: 'right' }}>Used in</th><th style={th}></th>
           </tr></thead>
           <tbody>
-            {filtered.length === 0 && <tr><td colSpan={5} style={{ padding: 14, color: 'var(--text-muted, #999)' }}>Nothing here yet.</td></tr>}
-            {filtered.map(r => (
+            {filtered.length === 0 && <tr><td colSpan={6} style={{ padding: 14, color: 'var(--text-muted, #999)' }}>Nothing here yet.</td></tr>}
+            {filtered.map(r => {
+              const used = usage[r.id] || []
+              return (
               <tr key={r.id} onClick={() => openEdit(r)} style={{ borderTop: '1px solid var(--border, #eee)', cursor: canManage ? 'pointer' : 'default' }}>
                 <td style={{ ...td, fontWeight: 600 }}>{r.name}</td>
                 <td style={{ ...td, color: 'var(--text-secondary, #666)' }}>{r.supplier || '—'}</td>
                 <td style={{ ...td, color: 'var(--text-muted, #999)' }}>{r.category}</td>
                 <td style={{ ...td, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{vnd(r.current_cost_per_base)} / {r.base_unit}</td>
                 <td style={{ ...td, textAlign: 'right' }} onClick={e => e.stopPropagation()}>
-                  {canManage && <button onClick={() => deleteRow(r)} style={btnTrash} title="Delete" aria-label="Delete">🗑</button>}
+                  {used.length
+                    ? <button onClick={() => setUsageFor(r)} title="Show the recipes using this"
+                        style={{ background: 'var(--badge-orange-bg)', border: '1px solid var(--badge-orange-border)', color: 'var(--accent)', borderRadius: 100, padding: '3px 11px', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>
+                        {used.length} {used.length === 1 ? 'recipe' : 'recipes'}
+                      </button>
+                    : <span style={{ color: 'var(--text-muted, #999)', fontSize: 13 }}>—</span>}
+                </td>
+                <td style={{ ...td, textAlign: 'right' }} onClick={e => e.stopPropagation()}>
+                  {canManage && (
+                    <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>
+                      <button onClick={() => toggleArchive(r)}
+                        title={r.active ? 'Archive — hides it from the list but keeps its history' : 'Restore to the live list'}
+                        style={{ background: 'transparent', border: '1px solid var(--border)', color: 'var(--text-secondary)', borderRadius: 7, padding: '4px 11px', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}>
+                        {r.active ? 'Archive' : 'Restore'}
+                      </button>
+                      <button onClick={() => deleteRow(r)} style={btnTrash} title="Delete permanently" aria-label="Delete">🗑</button>
+                    </span>
+                  )}
                 </td>
               </tr>
-            ))}
+            )})}
           </tbody>
         </table>
+      )}
+
+      {usageFor && (
+        <UsageModal
+          row={usageFor}
+          used={usage[usageFor.id] || []}
+          onClose={() => setUsageFor(null)}
+        />
       )}
 
       {showForm && venueId && (
@@ -374,6 +475,44 @@ function IngredientsInner() {
       {showVendorForm && venueId && editVendor && (
         <VendorForm venueId={venueId} editing={editVendor} onClose={() => { setShowVendorForm(false); setEditVendor(null) }} onSaved={() => { setShowVendorForm(false); setEditVendor(null); load() }} />
       )}
+    </div>
+  )
+}
+
+/* Where an ingredient is actually used.
+ *
+ * The point is not to explain the failed delete — it is to give you somewhere
+ * to go. Each recipe links straight through, so swapping an ingredient for a
+ * different product is: open each recipe, change the line, come back, delete. */
+function UsageModal({ row, used, onClose }: { row: Row; used: Usage[]; onClose: () => void }) {
+  return (
+    <div onClick={e => e.target === e.currentTarget && onClose()}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 9000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+      <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 14, padding: 24, width: 'min(520px, 100%)', maxHeight: '85vh', overflowY: 'auto', boxShadow: 'var(--shadow-lg)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, marginBottom: 6 }}>
+          <div style={{ fontSize: 19, fontWeight: 700, color: 'var(--text)' }}>{row.name}</div>
+          <button onClick={onClose} aria-label="Close"
+            style={{ background: 'var(--bg-hover)', border: '1px solid var(--border-light)', color: 'var(--text-secondary)', width: 30, height: 30, borderRadius: '50%', cursor: 'pointer', fontSize: 15, flexShrink: 0, fontFamily: 'inherit' }}>✕</button>
+        </div>
+
+        <p style={{ fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.6, margin: '0 0 18px' }}>
+          {used.length === 0
+            ? 'Not used in any recipe — this one can be deleted.'
+            : <>Used in <strong>{used.length}</strong> {used.length === 1 ? 'recipe' : 'recipes'}, so it can’t be deleted yet. Swap it out of each one first, then delete it here.</>}
+        </p>
+
+        {used.length > 0 && (
+          <div style={{ border: '1px solid var(--border-light)', borderRadius: 10, overflow: 'hidden' }}>
+            {used.map((u, i) => (
+              <Link key={u.recipeId} href={`/dashboard/ops/recipes/${u.recipeId}`}
+                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, padding: '12px 14px', textDecoration: 'none', color: 'var(--text)', fontSize: 15, borderTop: i ? '1px solid var(--border-light)' : 'none', background: 'var(--bg-subtle)' }}>
+                <span>{u.recipeName}</span>
+                <span style={{ color: 'var(--accent)', fontSize: 14, whiteSpace: 'nowrap' }}>Open →</span>
+              </Link>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   )
 }
