@@ -1,10 +1,8 @@
 // supabase/functions/notify-pitch-zalo/index.ts
-// Fires when a new event pitch is submitted
-// Sends a Zalo OA message to Shawn's personal number via Zalo API
-// Also sends a WhatsApp fallback via wa.me link in the message
+// Fires when a new event pitch is submitted.
+// Sends a Zalo OA message if credentials are present, and always emails via Resend.
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -16,16 +14,15 @@ serve(async (req) => {
 
   try {
     const payload = await req.json()
-    // This function is called via Supabase Database Webhook on INSERT to event_pitches
+    // Called by the on_event_pitch_created trigger on public.event_pitches
     const pitch = payload.record
 
     if (!pitch) throw new Error('No pitch data in payload')
 
     const ZALO_TOKEN = Deno.env.get('ZALO_OA_TOKEN')
-    const SHAWN_ZALO_ID = Deno.env.get('SHAWN_ZALO_USER_ID') // Shawn's Zalo user ID
+    const SHAWN_ZALO_ID = Deno.env.get('SHAWN_ZALO_USER_ID')
     const ADMIN_URL = 'https://admin.bigbamboo.app/dashboard/pitches'
 
-    const has = (v: boolean) => v ? '✓' : '—'
     const got = [
       pitch.has_performers && 'Performers',
       pitch.has_vendors && 'Vendors',
@@ -44,41 +41,51 @@ serve(async (req) => {
     ].filter(Boolean).join(', ') || 'Not specified'
 
     const msg = [
-      '🎉 NEW EVENT PITCH',
+      'NEW EVENT PITCH',
       '',
-      `📌 ${pitch.event_name}`,
-      `🎭 ${pitch.event_type}`,
-      `👤 ${pitch.name}`,
-      `📱 ${pitch.whatsapp || pitch.email || '—'}`,
-      `👥 ${pitch.expected_attendance || '?'} people expected`,
-      `📅 ${pitch.preferred_day || 'Day flexible'} · ${pitch.how_far_out || '?'}`,
+      `Event:    ${pitch.event_name}`,
+      `Type:     ${pitch.event_type}`,
+      `From:     ${pitch.name}`,
+      `Contact:  ${pitch.whatsapp || pitch.email || '-'}`,
+      `Crowd:    ${pitch.expected_attendance || '?'} expected`,
+      `Timing:   ${pitch.preferred_day || 'Day flexible'} - ${pitch.how_far_out || '?'}`,
       '',
-      `✅ Has: ${got}`,
-      `🙏 Needs: ${needs}`,
+      `Has:      ${got}`,
+      `Needs:    ${needs}`,
       '',
-      `🔗 View full pitch:`,
+      'View full pitch:',
       ADMIN_URL,
     ].join('\n')
 
-    // Send via Zalo OA API if token available
+    const results: Record<string, unknown> = {}
+
+    // Zalo OA — only fires once both secrets exist.
+    // NOTE: Zalo OA access tokens expire after 1 hour, so a static ZALO_OA_TOKEN
+    // secret stops working almost immediately. Making this durable needs the
+    // refresh-token rotation flow, not a fixed secret.
     if (ZALO_TOKEN && SHAWN_ZALO_ID) {
-      await fetch('https://openapi.zalo.me/v2.0/oa/message', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'access_token': ZALO_TOKEN,
-        },
-        body: JSON.stringify({
-          recipient: { user_id: SHAWN_ZALO_ID },
-          message: { text: msg }
+      try {
+        const z = await fetch('https://openapi.zalo.me/v3.0/oa/message/cs', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'access_token': ZALO_TOKEN },
+          body: JSON.stringify({
+            recipient: { user_id: SHAWN_ZALO_ID },
+            message: { text: msg },
+          }),
         })
-      })
+        results.zalo = await z.json().catch(() => ({ status: z.status }))
+      } catch (e) {
+        results.zalo = { error: String(e) }
+      }
+    } else {
+      results.zalo = 'skipped - ZALO_OA_TOKEN / SHAWN_ZALO_USER_ID not set'
     }
 
-    // Always send via Resend email as reliable fallback
+    // Email via Resend — the dependable channel.
     const RESEND_KEY = Deno.env.get('RESEND_API_KEY')
     if (RESEND_KEY) {
-      await fetch('https://api.resend.com/emails', {
+      const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;')
+      const r = await fetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${RESEND_KEY}`,
@@ -87,21 +94,25 @@ serve(async (req) => {
         body: JSON.stringify({
           from: 'BigBamBoo Pitches <tickets@bigbamboo.app>',
           to: ['shawndjkidd@gmail.com'],
-          subject: `🎉 New Event Pitch: ${pitch.event_name} (${pitch.event_type})`,
-          html: `<pre style="font-family:monospace;font-size:14px;line-height:1.7;background:#0E2220;color:#F5EED8;padding:24px;border-radius:12px">${msg.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</pre>
-          <br><a href="${ADMIN_URL}" style="background:#E8A820;color:#1a0800;padding:12px 28px;border-radius:100px;text-decoration:none;font-weight:700;font-family:sans-serif">View Full Pitch →</a>`
-        })
+          reply_to: pitch.email || undefined,
+          subject: `New event pitch: ${pitch.event_name} (${pitch.event_type})`,
+          html:
+            `<pre style="font-family:ui-monospace,monospace;font-size:14px;line-height:1.7;background:#0E2220;color:#F5EED8;padding:24px;border-radius:12px;white-space:pre-wrap">${esc(msg)}</pre>` +
+            `<br><a href="${ADMIN_URL}" style="background:#E8A820;color:#1a0800;padding:12px 28px;border-radius:100px;text-decoration:none;font-weight:700;font-family:sans-serif">View full pitch</a>`,
+        }),
       })
+      results.email = await r.json().catch(() => ({ status: r.status }))
+    } else {
+      results.email = 'skipped - RESEND_API_KEY not set'
     }
 
-    return new Response(JSON.stringify({ success: true }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    return new Response(JSON.stringify({ success: true, results }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
-
-  } catch (err: any) {
-    return new Response(JSON.stringify({ error: err.message }), {
+  } catch (err) {
+    return new Response(JSON.stringify({ error: String(err) }), {
       status: 400,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
   }
 })
