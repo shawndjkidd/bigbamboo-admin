@@ -470,7 +470,7 @@ function IngredientsInner() {
       )}
 
       {showForm && venueId && (
-        <IngredientForm venueId={venueId} editing={editing} vendorNames={vendorNames} onClose={() => { setShowForm(false); setEditing(null) }} onSaved={() => { setShowForm(false); setEditing(null); load() }} />
+        <IngredientForm venueId={venueId} editing={editing} vendorNames={vendorNames} used={(editing && usage[editing.id]) || []} onClose={() => { setShowForm(false); setEditing(null) }} onSaved={() => { setShowForm(false); setEditing(null); load() }} />
       )}
       {showVendorForm && venueId && editVendor && (
         <VendorForm venueId={venueId} editing={editVendor} onClose={() => { setShowVendorForm(false); setEditVendor(null) }} onSaved={() => { setShowVendorForm(false); setEditVendor(null); load() }} />
@@ -592,7 +592,7 @@ function VendorForm({ venueId, editing, onClose, onSaved }: { venueId: string; e
   )
 }
 
-function IngredientForm({ venueId, editing, vendorNames, onClose, onSaved }: { venueId: string; editing: Row | null; vendorNames: string[]; onClose: () => void; onSaved: () => void }) {
+function IngredientForm({ venueId, editing, vendorNames, used, onClose, onSaved }: { venueId: string; editing: Row | null; vendorNames: string[]; used: Usage[]; onClose: () => void; onSaved: () => void }) {
   const [name, setName] = useState(editing?.name || '')
   const [category, setCategory] = useState(editing?.category || 'food')
   const [supplier, setSupplier] = useState(editing?.supplier || '')
@@ -680,6 +680,32 @@ function IngredientForm({ venueId, editing, vendorNames, onClose, onSaved }: { v
               : 'Enter the pack price + the size, and the cost per ' + baseUnit + ' is worked out for you — or just type the cost per ' + baseUnit + ' directly.'}
           </div>
           <Field label={'Par level (' + baseUnit + ', optional)'}><input inputMode="decimal" value={parLevel} onChange={e => setParLevel(e.target.value)} style={inp} /></Field>
+
+          {/* Where it is used, right here in the form.
+              Clicking an ingredient row opens this form — that is the natural
+              gesture for "show me what this is in", and previously the recipe
+              list lived only on a small chip out in the table, which is not
+              where anyone looks. */}
+          {editing && (
+            <div style={{ borderTop: '1px solid var(--border, #eee)', paddingTop: 12 }}>
+              <div style={{ fontSize: 12, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted, #999)', marginBottom: 8 }}>
+                Used in {used.length} {used.length === 1 ? 'recipe' : 'recipes'}
+              </div>
+              {used.length === 0
+                ? <div style={{ fontSize: 13, color: 'var(--text-muted, #999)' }}>Not in any recipe — this one can be deleted outright.</div>
+                : (
+                  <div style={{ border: '1px solid var(--border-light, #eee)', borderRadius: 8, overflow: 'hidden', marginBottom: 4 }}>
+                    {used.map((u, i) => (
+                      <Link key={u.recipeId} href={`/dashboard/ops/recipes/${u.recipeId}`}
+                        style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, padding: '10px 12px', textDecoration: 'none', color: 'var(--text)', fontSize: 14, borderTop: i ? '1px solid var(--border-light, #eee)' : 'none', background: 'var(--bg-subtle)' }}>
+                        <span>{u.recipeName}</span>
+                        <span style={{ color: 'var(--accent)', fontSize: 13, whiteSpace: 'nowrap' }}>Open →</span>
+                      </Link>
+                    ))}
+                  </div>
+                )}
+            </div>
+          )}
 
           {editing && (
             <div style={{ borderTop: '1px solid var(--border, #eee)', paddingTop: 12 }}>
