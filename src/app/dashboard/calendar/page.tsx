@@ -337,13 +337,11 @@ export default function CalendarPage() {
         </div>
       </div>
 
-      {/* ── Legend ── */}
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginTop: 14 }}>
-        <Key bg="var(--bg-card)" bd="var(--border)" text={t.cal.statusOpen} />
-        <Key bg="var(--badge-orange-bg)" bd="var(--badge-orange-text)" text={t.cal.statusHold} />
-        <Key bg="var(--badge-red-bg)" bd="var(--badge-red-text)" text={t.cal.statusBooked} />
-        <Key bg="var(--bg-subtle)" bd="var(--text-muted)" text={t.cal.statusBlocked} />
-        <span style={{ ...muted, fontSize: 12, marginLeft: 'auto', maxWidth: 380, textAlign: 'right', lineHeight: 1.5 }}>
+      {/* The colour key that used to sit here said the same thing as the count
+          chips beside the month name, one screen further down. The note stays —
+          it explains behaviour the colours don't. */}
+      <div style={{ display: 'flex', marginTop: 14 }}>
+        <span style={{ ...muted, fontSize: 12, marginLeft: 'auto', maxWidth: 420, textAlign: 'right', lineHeight: 1.5 }}>
           {t.cal.legendNote}
         </span>
       </div>
@@ -509,15 +507,6 @@ function Chip({ n, label, color }: { n: number; label: string; color: string }) 
     <span className="cal-chip">
       <span className="cal-dot" style={{ background: color }} />
       <b style={{ color }}>{n}</b> {label}
-    </span>
-  )
-}
-
-function Key({ bg, bd, text }: { bg: string; bd: string; text: string }) {
-  return (
-    <span className="cal-chip">
-      <span style={{ width: 12, height: 12, borderRadius: 4, background: bg, border: `1px solid ${bd}` }} />
-      {text}
     </span>
   )
 }
