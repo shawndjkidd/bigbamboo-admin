@@ -35,7 +35,11 @@ export default function OpsDashboard() {
   const [overallTop, setOverallTop] = useState<{ name: string; sales: number; category: string; share: number }[]>([])
   const [mix, setMix] = useState<{ bar: number; kitchen: number; other: number; total: number }>({ bar: 0, kitchen: 0, other: 0, total: 0 })
   const [loading, setLoading] = useState(true)
-  const [period, setPeriod] = useState<'mtd' | 'last_month' | 'ytd'>('mtd')
+  const [period, setPeriod] = useState<'mtd' | 'last_month' | 'ytd' | 'month'>('mtd')
+  /* Any specific month, for the questions the three presets can't answer —
+     "how did the Tet week actually go", "compare March to March". Holds
+     YYYY-MM; only consulted when period === 'month'. */
+  const [pickedMonth, setPickedMonth] = useState('')
 
   useEffect(() => {
     (async () => {
@@ -47,23 +51,43 @@ export default function OpsDashboard() {
       setRole(su?.role || 'staff')
       await load(period)
     })()
-  }, [period])
+    // re-runs when a different month is picked, not just a different preset
+  }, [period, pickedMonth])
 
   async function load(p: typeof period) {
     setLoading(true)
-    // Date range
-    const now = new Date()
+    /* Date range.
+     *
+     * This used to build the boundaries with `new Date(y, m, d)` — which is
+     * LOCAL time — and then read them back with getUTCMonth()/getUTCDate().
+     * In Vietnam (UTC+7) local midnight on 1 July is 30 June 17:00 UTC, so the
+     * month came back one lower. "Last Month" in August therefore asked for
+     * 2026-06-01 → 2026-07-30: two months of sales, and July's last day
+     * missing. Every figure on the page was wrong, quietly.
+     *
+     * today() is already Asia/Ho_Chi_Minh, so the window is derived from that
+     * same string and the arithmetic is plain integers. No Date object is ever
+     * built in one zone and read in another. */
+    const pad = (n: number) => String(n).padStart(2, '0')
+    // day 0 of month m (1-based) = last day of month m; UTC in and UTC out.
+    const lastDayOf = (yy: number, mm: number) => new Date(Date.UTC(yy, mm, 0)).getUTCDate()
+
+    const [ty, tm] = today().split('-').map(Number)
     let start: string, end: string
     if (p === 'mtd') {
-      start = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}-01`
+      start = `${ty}-${pad(tm)}-01`
       end = today()
     } else if (p === 'last_month') {
-      const lm = new Date(now.getUTCFullYear(), now.getUTCMonth() - 1, 1)
-      start = `${lm.getUTCFullYear()}-${String(lm.getUTCMonth() + 1).padStart(2, '0')}-01`
-      const eom = new Date(now.getUTCFullYear(), now.getUTCMonth(), 0)
-      end = `${eom.getUTCFullYear()}-${String(eom.getUTCMonth() + 1).padStart(2, '0')}-${String(eom.getUTCDate()).padStart(2, '0')}`
+      const py = tm === 1 ? ty - 1 : ty
+      const pm = tm === 1 ? 12 : tm - 1
+      start = `${py}-${pad(pm)}-01`
+      end = `${py}-${pad(pm)}-${pad(lastDayOf(py, pm))}`
+    } else if (p === 'month' && /^\d{4}-\d{2}$/.test(pickedMonth)) {
+      const [my, mm] = pickedMonth.split('-').map(Number)
+      start = `${pickedMonth}-01`
+      end = `${pickedMonth}-${pad(lastDayOf(my, mm))}`
     } else {
-      start = `${now.getUTCFullYear()}-01-01`
+      start = `${ty}-01-01`
       end = today()
     }
 
@@ -178,15 +202,32 @@ export default function OpsDashboard() {
           <h2 style={{ fontSize: 22, fontWeight: 600, color: 'var(--text, #333)' }}>Operations Dashboard</h2>
           <div style={{ fontSize: 12, color: 'var(--text-muted, #999)', marginTop: 2 }}>BigBamBoo · Live P&L</div>
         </div>
-        <div style={{ display: 'flex', gap: 4 }}>
+        <div style={{ display: 'flex', gap: 5, alignItems: 'center', flexWrap: 'wrap' }}>
           {(['mtd', 'last_month', 'ytd'] as const).map(p => (
             <button key={p} onClick={() => setPeriod(p)} style={{
-              padding: '6px 12px', fontSize: 12, borderRadius: 6, cursor: 'pointer',
+              padding: '7px 13px', fontSize: 13, borderRadius: 6, cursor: 'pointer',
               background: period === p ? 'var(--accent, #e87830)' : 'transparent',
               color: period === p ? '#fff' : 'var(--text-muted, #999)',
               border: '1px solid var(--border, #e5e5e5)',
             }}>{p === 'mtd' ? 'This Month' : p === 'last_month' ? 'Last Month' : 'YTD'}</button>
           ))}
+          {/* Any month, back to whenever the books start. Picking one selects
+              it; the three presets above stay one click away. */}
+          <input
+            type="month"
+            value={pickedMonth}
+            max={today().substring(0, 7)}
+            onChange={e => { setPickedMonth(e.target.value); setPeriod(e.target.value ? 'month' : 'mtd') }}
+            aria-label="Pick a month"
+            style={{
+              padding: '6px 10px', fontSize: 13, borderRadius: 6, cursor: 'pointer',
+              background: period === 'month' ? 'var(--accent, #e87830)' : 'transparent',
+              color: period === 'month' ? '#fff' : 'var(--text-muted, #999)',
+              border: '1px solid var(--border, #e5e5e5)',
+              colorScheme: period === 'month' ? 'dark' : undefined,
+              fontFamily: 'inherit',
+            }}
+          />
         </div>
       </div>
 
