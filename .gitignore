@@ -17,3 +17,6 @@ out/
 .DS_Store
 *.pem
 .vercel-import.env
+
+# typescript build artifact — regenerated on every compile
+tsconfig.tsbuildinfo
