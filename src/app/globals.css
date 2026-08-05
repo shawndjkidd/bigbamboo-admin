@@ -30,6 +30,12 @@
   --badge-orange-bg: rgba(234,88,12,0.1);
   --badge-orange-text: #ea580c;
   --badge-orange-border: rgba(234,88,12,0.2);
+  /* A real green, only for the venue calendar. --badge-green-* is deliberately
+     grey in this theme, so "booked" needs its own token to read as confirmed
+     at a glance against the orange of "on hold". */
+  --cal-booked-bg: rgba(22,163,74,0.12);
+  --cal-booked-text: #15803d;
+  --cal-booked-border: rgba(22,163,74,0.3);
   --badge-gray-bg: rgba(113,113,122,0.1);
   --badge-gray-text: #52525b;
   --badge-gray-border: rgba(113,113,122,0.2);
@@ -71,6 +77,9 @@
   --badge-orange-bg: rgba(234,88,12,0.15);
   --badge-orange-text: #f97316;
   --badge-orange-border: rgba(234,88,12,0.25);
+  --cal-booked-bg: rgba(34,197,94,0.16);
+  --cal-booked-text: #4ade80;
+  --cal-booked-border: rgba(34,197,94,0.34);
   --badge-gray-bg: rgba(161,161,170,0.15);
   --badge-gray-text: #a1a1aa;
   --badge-gray-border: rgba(161,161,170,0.25);
@@ -121,7 +130,9 @@ select.input { height: 40px; }
 .badge-gray { background: var(--badge-gray-bg); color: var(--badge-gray-text); border: 1px solid var(--badge-gray-border); }
 .badge-blue { background: var(--badge-blue-bg); color: var(--badge-blue-text); border: 1px solid var(--badge-blue-border); }
 .section-title { font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted); }
-.page-title { font-family: 'Bebas Neue', sans-serif; font-size: 32px; letter-spacing: 0.04em; color: var(--bbb-yellow); line-height: 1; text-shadow: 0 3px 10px rgba(0,0,0,0.7); }
+/* No text-shadow. It was a dark glow tuned for the old dark-only theme; on the
+   light theme it renders as a grubby halo behind every page heading. */
+.page-title { font-family: 'Bebas Neue', sans-serif; font-size: 34px; letter-spacing: 0.04em; color: var(--bbb-yellow); line-height: 1.05; }
 .menu-pill-active, .menu-pill-inactive { height: 38px; display: inline-flex; align-items: center; border-radius: 100px; font-size: 14px; font-weight: 600; padding: 0 18px; cursor: pointer; transition: all .15s; }
 .menu-pill-active { background: var(--accent); color: #fff; border: 1.5px solid var(--accent); }
 .menu-pill-inactive { background: var(--bg-hover); color: var(--text-secondary); border: 1.5px solid var(--border); }

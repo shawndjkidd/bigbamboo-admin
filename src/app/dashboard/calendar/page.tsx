@@ -117,10 +117,13 @@ export default function CalendarPage() {
   }
 
   const TONES: Record<string, { bd: string; bg: string; fg: string; word: string }> = {
+    /* Booked is green, on-hold is the theme orange. They used to be red and
+       orange — two warm tones side by side, so a confirmed night and a
+       pencilled one looked near enough identical at a glance. */
     booked: {
-      bd: 'var(--badge-red-border)',
-      bg: 'linear-gradient(160deg, var(--badge-red-bg) 0%, transparent 85%), var(--bg-card)',
-      fg: 'var(--badge-red-text)',
+      bd: 'var(--cal-booked-border)',
+      bg: 'linear-gradient(160deg, var(--cal-booked-bg) 0%, transparent 85%), var(--bg-card)',
+      fg: 'var(--cal-booked-text)',
       word: t.cal.statusBooked,
     },
     hold: {
@@ -183,7 +186,7 @@ export default function CalendarPage() {
           </div>
           {!loading && (
             <div style={{ display: 'flex', gap: 7, alignItems: 'center', flexWrap: 'wrap' }}>
-              <Chip n={summary.booked} label={t.cal.booked} color="var(--badge-red-text)" />
+              <Chip n={summary.booked} label={t.cal.booked} color="var(--cal-booked-text)" />
               {summary.hold > 0 && <Chip n={summary.hold} label={t.cal.onHold} color="var(--badge-orange-text)" />}
               <Chip n={summary.openTrading} label={t.cal.openTrading} color="var(--text-secondary)" />
             </div>
@@ -225,7 +228,7 @@ export default function CalendarPage() {
                   textAlign: 'center', padding: '11px 0 12px',
                   color: trading ? 'var(--accent)' : 'var(--text-muted)',
                   opacity: trading ? 1 : 0.55,
-                  fontSize: 10,
+                  fontSize: 12,
                 }}>
                   {d}
                 </div>
@@ -281,7 +284,7 @@ export default function CalendarPage() {
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
                     <span style={{
                       fontFamily: "'Bebas Neue', sans-serif",
-                      fontSize: isTrading || tone ? 21 : 17,
+                      fontSize: isTrading || tone ? 23 : 19,
                       letterSpacing: '0.03em',
                       lineHeight: 1,
                       color: tone ? tone.fg : 'var(--text)',
@@ -289,18 +292,18 @@ export default function CalendarPage() {
                     }}>
                       {d}
                     </span>
-                    {isToday && <span className="cal-eyebrow" style={{ fontSize: 9, color: 'var(--accent)' }}>{t.common.today}</span>}
+                    {isToday && <span className="cal-eyebrow" style={{ fontSize: 11, color: 'var(--accent)' }}>{t.common.today}</span>}
                   </div>
 
                   {tone && (
-                    <span className="cal-eyebrow" style={{ fontSize: 9, color: tone.fg, opacity: .85 }}>
+                    <span className="cal-eyebrow" style={{ fontSize: 11, color: tone.fg, opacity: .9 }}>
                       {tone.word}
                     </span>
                   )}
 
                   {title && (
                     <span style={{
-                      fontSize: 11.5, fontWeight: 600, lineHeight: 1.3, color: 'var(--text)',
+                      fontSize: 13.5, fontWeight: 600, lineHeight: 1.35, color: 'var(--text)',
                       display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
                     }}>
                       {title}
@@ -309,7 +312,7 @@ export default function CalendarPage() {
 
                   {teaser && (
                     <span style={{
-                      fontSize: 10.5, lineHeight: 1.35, color: 'var(--text-muted)', fontStyle: 'italic',
+                      fontSize: 12.5, lineHeight: 1.4, color: 'var(--text-muted)', fontStyle: 'italic',
                       display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
                     }}>
                       {teaser}
@@ -317,13 +320,13 @@ export default function CalendarPage() {
                   )}
 
                   {ev && (
-                    <span className="cal-eyebrow" style={{ fontSize: 9, color: 'var(--accent)', marginTop: 'auto' }}>
+                    <span className="cal-eyebrow" style={{ fontSize: 11, color: 'var(--accent)', marginTop: 'auto' }}>
                       {t.cal.ticketedEvent}
                     </span>
                   )}
 
                   {!tone && isTrading && !isPast && (
-                    <span className="cal-eyebrow" style={{ fontSize: 9, color: 'var(--text-muted)', marginTop: 'auto', opacity: .6 }}>
+                    <span className="cal-eyebrow" style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 'auto', opacity: .7 }}>
                       {t.cal.statusOpen}
                     </span>
                   )}
