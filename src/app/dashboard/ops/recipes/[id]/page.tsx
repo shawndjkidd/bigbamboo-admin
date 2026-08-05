@@ -504,7 +504,19 @@ export default function RecipeDetailPage() {
           ? <Link href="/dashboard/ops/margins" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text-secondary)', textDecoration: 'none', border: '1px solid var(--border)', borderRadius: 8, padding: '6px 12px' }}>← Back to margins</Link>
           : <Link href="/dashboard/ops/recipes" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text-secondary)', textDecoration: 'none', border: '1px solid var(--border)', borderRadius: 8, padding: '6px 12px' }}>← Back to recipes</Link>}
         {viewOnly && (
-          <Link href={`/dashboard/ops/recipes/${recipeId}`} style={{ fontSize: 13, color: 'var(--accent, #e87830)', textDecoration: 'none' }}>Edit recipe →</Link>
+          /* This was a <Link> to the same route without ?from=margins. App
+             Router treats that as a same-route navigation, so the component
+             never remounts, the mount-only effect that reads
+             window.location.search never re-runs, and viewOnly stayed true —
+             the URL changed and the page did not. Nothing happened.
+
+             Flip the state directly and tidy the URL after, so a refresh also
+             lands in edit mode. */
+          <button
+            onClick={() => { setViewOnly(false); router.replace(`/dashboard/ops/recipes/${recipeId}`) }}
+            style={{ fontSize: 13, color: 'var(--accent, #e87830)', background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit' }}>
+            Edit recipe →
+          </button>
         )}
       </div>
       {canManage
