@@ -212,9 +212,34 @@ export default function RecipeDetailPage() {
     router.push('/dashboard/ops/recipes')
   }
 
+  /** The menu price is stored separately, as text, on public.menu_items —
+   *  "150k", not 150000 — while the recipe holds the real number that COGS is
+   *  calculated from. They were only reconciled when someone remembered to
+   *  press "Update menu", so changing the price here left the customer menu
+   *  quietly showing the old one.
+   *
+   *  Anything that writes sale_price now carries it through to the linked menu
+   *  row in the same breath. Only sale_price behaves this way; the other menu
+   *  fields still sync on the button, because a half-written description should
+   *  not go live on a keystroke. */
+  function menuPriceFor(n: number | null | undefined) {
+    return n ? `${Math.round(Number(n) / 1000)}k` : 'TBA'
+  }
+
   async function saveRecipe(changes: Partial<Recipe>) {
     await ops().from('recipes').update(changes).eq('id', recipeId)
     setRecipe(r => (r ? { ...r, ...changes } : r))
+
+    if ('sale_price' in changes && menuItem) {
+      const price = menuPriceFor(changes.sale_price as number | null)
+      if (price !== menuItem.price) {
+        const { error } = await supabase.from('menu_items').update({ price }).eq('id', menuItem.id)
+        if (error) { setMsg(`Saved the recipe, but the menu price didn’t update — ${error.message}`); return }
+        setMenuItem((m: any) => (m ? { ...m, price } : m))
+        setMsg(`Menu price updated to ${price}`)
+        setTimeout(() => setMsg(null), 2500)
+      }
+    }
   }
 
   async function saveMethod(v: string) {
@@ -544,7 +569,15 @@ export default function RecipeDetailPage() {
         <div style={{ display: 'grid', gridTemplateColumns: '160px 1fr 150px', gap: 10, margin: '4px 0 10px' }}>
           <div><label className="label">Category</label><select defaultValue={recipe.category} onChange={e => saveRecipe({ category: e.target.value })} style={inp}>{['cocktail','beer','wine','na_drink','food','snack','syrup','garnish','other'].map(c => <option key={c} value={c}>{c}</option>)}</select></div>
           <div><label className="label">Subtitle</label><input defaultValue={recipe.subtitle || ''} onBlur={e => saveRecipe({ subtitle: e.target.value })} style={inp} /></div>
-          <div><label className="label">Sale price (₫)</label><input defaultValue={recipe.sale_price ?? ''} inputMode="decimal" onBlur={e => { const v = e.target.value.replace(/[^0-9.]/g, ''); saveRecipe({ sale_price: v ? Number(v) : null }) }} style={inp} /></div>
+          <div>
+            <label className="label">Sale price (₫)</label>
+            <input defaultValue={recipe.sale_price ?? ''} inputMode="decimal" onBlur={e => { const v = e.target.value.replace(/[^0-9.]/g, ''); saveRecipe({ sale_price: v ? Number(v) : null }) }} style={inp} />
+            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4, lineHeight: 1.4 }}>
+              {menuItem
+                ? <>Drives COGS % and the menu price (now <strong>{menuItem.price}</strong>).</>
+                : <>Drives COGS %. Not on the customer menu yet.</>}
+            </div>
+          </div>
         </div>
         <div style={{ margin: '0 0 14px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
