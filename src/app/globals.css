@@ -285,6 +285,37 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); c
   width: min(460px, 100%); padding: 34px 24px; text-align: center; border-radius: 12px;
   border: 2px dashed var(--accent); background: var(--bg-card); box-shadow: var(--shadow-lg);
 }
+/* ── BrewAsia donation forms (admin panel + public brewery page) ── */
+.donate-panel { padding: 0; overflow: hidden; }
+.donate-panel__title {
+  display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; width: 100%; text-align: left;
+  padding: 14px 16px; background: none; border: none; font: inherit; color: var(--text); cursor: pointer;
+}
+.donate-panel__title > span:first-child { font-weight: 700; font-size: 14.5px; }
+.donate-panel__count { font-size: 13px; color: var(--text-secondary); }
+.donate-panel__count b { color: var(--text); }
+.donate-panel__invite { display: flex; gap: 8px; padding: 0 16px 14px; flex-wrap: wrap; }
+.donate-panel__invite .input { flex: 1; min-width: 180px; }
+.donate-panel__list { border-top: 1px solid var(--border-light); }
+.donate-row { display: flex; align-items: center; gap: 10px; padding: 10px 16px; border-bottom: 1px solid var(--border-light); flex-wrap: wrap; }
+.donate-row:last-child { border-bottom: none; }
+.donate-row__name { font-weight: 600; font-size: 14px; color: var(--text); }
+.donate-row__status { font-size: 13px; }
+.donate-row__actions { margin-left: auto; display: flex; gap: 14px; }
+.donate-wrap { max-width: 720px; margin: 0 auto; padding: 24px 16px 64px; }
+.donate-top { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 18px; }
+.donate-eyebrow { font-size: 12px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); }
+.donate-lang { height: 30px; padding: 0 12px; border-radius: 7px; border: 1px solid; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
+.donate-summary {
+  display: flex; align-items: baseline; gap: 10px; padding: 10px 12px; border-radius: 8px;
+  border: 1px solid var(--border-light); background: var(--bg-subtle); font-size: 14px; color: var(--text); flex-wrap: wrap;
+}
+.donate-check { display: flex; align-items: center; gap: 10px; margin: 16px 0 14px; font-size: 14px; color: var(--text); cursor: pointer; }
+@media (max-width: 760px) {
+  .donate-row__actions { margin-left: 18px; width: 100%; }
+  .donate-wrap .input { font-size: 16px; }
+}
+
 /* ── BrewAsia collabs / producers ─────────────────────────── */
 .collab-section-label { font-size: 11.5px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; color: var(--text-muted); margin: 18px 0 8px; }
 .collab-strip { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
