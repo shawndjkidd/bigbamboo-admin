@@ -214,7 +214,7 @@ export default function PurchasePage() {
           />
         </Field>
         <button type="submit" disabled={saving} style={{
-          padding: '12px 18px', background: 'var(--accent, #e87830)', color: '#fff',
+          padding: '12px 18px', background: 'var(--accent, #e87830)', color: 'var(--accent-contrast, #fff)',
           border: 'none', borderRadius: 6, fontSize: 15, fontWeight: 600, cursor: saving ? 'wait' : 'pointer',
           opacity: saving ? 0.6 : 1,
         }}>{saving ? 'Saving…' : 'Save purchase'}</button>
@@ -286,4 +286,4 @@ const td  = { padding: '8px 12px', color: 'var(--text, #333)' }
 const editInp = { width: '100%', padding: '6px 8px', fontSize: 13, border: '1px solid var(--border, #e5e5e5)', borderRadius: 5, background: 'var(--bg-card, #fff)', color: 'var(--text, #333)', boxSizing: 'border-box' as const }
 const iconBtn = { background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, padding: '2px 4px' }
 const miniBtn = { background: 'var(--bg-card, #fff)', border: '1px solid var(--border, #e5e5e5)', color: 'var(--text-secondary, #666)', cursor: 'pointer', fontSize: 13, padding: '5px 9px', borderRadius: 5, marginLeft: 4 }
-const miniPrimary = { background: 'var(--accent, #e87830)', border: '1px solid var(--accent, #e87830)', color: '#fff', cursor: 'pointer', fontSize: 13, padding: '5px 9px', borderRadius: 5 }
+const miniPrimary = { background: 'var(--accent, #e87830)', border: '1px solid var(--accent, #e87830)', color: 'var(--accent-contrast, #fff)', cursor: 'pointer', fontSize: 13, padding: '5px 9px', borderRadius: 5 }

@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '@/lib/supabase'
+import { Choice, Field, Modal, Pill, StatCard, fmtL, todayKey, type Tone } from '@/components/brewasia/ui'
 
 // BrewAsia keg tracker. Every keg we have: who it's from (donated or bought),
 // how many, where it's going (Conference, Ale Trail bars, Collab Fest, or sold)
@@ -68,8 +69,6 @@ type Draft = {
   lines: Line[]
 }
 
-type Tone = { fg: string; bg: string; bd: string }
-
 // Each destination has its own colour (tokens in globals.css) so a brewery's
 // kegs read at a glance: blue to Conference, teal to Ale Trail, violet to
 // Collab Fest, rose sold. Unassigned stays grey: not decided yet.
@@ -109,6 +108,46 @@ const destTone = (d: Destination): Tone => (DESTS.find(x => x.key === d) || DEST
 const COUPLERS = ['S', 'D', 'A', 'G', 'U']
 const isDone = (s: Status) => s === 'empty' || s === 'returned'
 
+// What the keg scanner (Gemini) sends back: kegs grouped by brewery.
+type ScanLine = {
+  beer_name: string | null; beer_style: string | null; abv: number | null; size_litres: number | null
+  coupler: string | null; qty: number; destination: Destination; destination_venue: string | null
+}
+type ScanGroup = {
+  brewery: string | null; contact_name: string | null; contact_phone: string | null; contact_email: string | null
+  source: Source | null; lines: ScanLine[]
+}
+
+const SCAN_TYPES = /^(image\/|application\/pdf$)/
+
+// Shrink big screenshots before upload (phones and retina screens make 5–10 MB images;
+// the server takes ~4 MB). Keeps text readable at 2000px on the long side.
+async function fileToPayload(file: File): Promise<{ data: string; mimeType: string }> {
+  const asDataUrl = (blob: Blob) => new Promise<string>((res, rej) => {
+    const fr = new FileReader(); fr.onload = () => res(String(fr.result)); fr.onerror = rej; fr.readAsDataURL(blob)
+  })
+  if (!file.type.startsWith('image/') || file.type === 'image/gif') return { data: await asDataUrl(file), mimeType: file.type }
+  try {
+    const url = URL.createObjectURL(file)
+    const img = await new Promise<HTMLImageElement>((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = url })
+    URL.revokeObjectURL(url)
+    const scale = Math.min(1, 2000 / Math.max(img.naturalWidth, img.naturalHeight))
+    if (scale === 1 && file.size < 1_500_000) return { data: await asDataUrl(file), mimeType: file.type }
+    const c = document.createElement('canvas')
+    c.width = Math.round(img.naturalWidth * scale); c.height = Math.round(img.naturalHeight * scale)
+    const ctx = c.getContext('2d')
+    if (!ctx) return { data: await asDataUrl(file), mimeType: file.type }
+    ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height)
+    ctx.drawImage(img, 0, 0, c.width, c.height)
+    return { data: c.toDataURL('image/jpeg', 0.88), mimeType: 'image/jpeg' }
+  } catch {
+    return { data: await asDataUrl(file), mimeType: file.type }
+  }
+}
+
+// "Heart of Darkness Brewery" and "heart of darkness" are the same brewery.
+const breweryKey = (v: string) => v.toLowerCase().replace(/\b(brewery|brewing|brewers?|beer|craft|company|co|ltd)\b/g, '').replace(/[^a-z0-9]/g, '')
+
 let lineSeq = 0
 // A new line copies size, coupler and destination from the one above: one
 // brewery's kegs are usually the same kind.
@@ -125,8 +164,6 @@ const blankDraft = (): Draft => ({
   lines: [blankLine()],
 })
 
-const todayKey = () => new Date().toLocaleDateString('en-CA')
-const fmtL = (n: number) => new Intl.NumberFormat('en-US', { maximumFractionDigits: 1 }).format(n)
 const litres = (k: Keg) => (Number(k.size_litres) || 0) * (k.qty || 0)
 const txt = (v: string | null | undefined) => (v ?? '').trim() || null
 
@@ -158,6 +195,12 @@ export default function KegsPage() {
   const [splitQty, setSplitQty] = useState('1')
   const [splitDest, setSplitDest] = useState<Destination>('unassigned')
   const [splitVenue, setSplitVenue] = useState('')
+
+  // Screenshot scanning
+  const [scanning, setScanning] = useState(false)
+  const [scanNote, setScanNote] = useState<{ tone: 'ok' | 'err'; text: string } | null>(null)
+  const [dragging, setDragging] = useState(false)
+  const [scanQueue, setScanQueue] = useState<ScanGroup[]>([])
 
   useEffect(() => { load() }, [])
 
@@ -269,8 +312,127 @@ export default function KegsPage() {
     patch(k.id, { destination, destination_venue: needsVenue(destination) && destination === k.destination ? k.destination_venue : null })
   }
 
+  function closeEditor() {
+    setEditing(null)
+    setScanQueue([])
+    setScanNote(null)
+  }
+
+  // Match a scanned brewery name to one we already have, so it doesn't get a second spelling.
+  function knownBrewery(name: string) {
+    const k = breweryKey(name)
+    if (!k) return null
+    return kegs.find(x => {
+      const xk = breweryKey(x.brewery)
+      return xk === k || (k.length >= 4 && xk.length >= 4 && (xk.includes(k) || k.includes(xk)))
+    }) || null
+  }
+
+  // Put one scanned brewery into the form: fills empty brewery-level fields, and replaces
+  // the blank starter line (or adds after lines the person already typed).
+  function applyGroup(base: Draft, g: ScanGroup): Draft {
+    const known = g.brewery ? knownBrewery(g.brewery) : null
+    const d: Draft = { ...base }
+    if (!d.brewery.trim()) d.brewery = known?.brewery || g.brewery || ''
+    d.contact_name = d.contact_name || g.contact_name || known?.contact_name || ''
+    d.contact_phone = d.contact_phone || g.contact_phone || known?.contact_phone || ''
+    d.contact_email = d.contact_email || g.contact_email || known?.contact_email || ''
+    if (g.source) d.source = g.source
+    else if (known?.source) d.source = known.source
+    if (known && !d.returnable) d.returnable = known.returnable
+    const scanned: Line[] = g.lines.map(l => ({
+      key: `l${++lineSeq}`,
+      beer_name: l.beer_name || '', beer_style: l.beer_style || '',
+      abv: l.abv == null ? '' : String(l.abv),
+      size_litres: l.size_litres == null ? '' : String(l.size_litres),
+      coupler: l.coupler || '', qty: String(l.qty || 1),
+      destination: l.destination || 'unassigned', destination_venue: l.destination_venue || '',
+    }))
+    const isBlank = (l: Line) => !l.beer_name.trim() && !l.beer_style.trim() && !l.abv.trim()
+    const kept = d.lines.filter(l => !isBlank(l))
+    d.lines = scanned.length ? [...kept, ...scanned] : d.lines
+    return d
+  }
+
+  async function scan(files: File[], text = '') {
+    const usable = files.filter(f => SCAN_TYPES.test(f.type)).slice(0, 6)
+    if (!usable.length && !text.trim()) {
+      setScanNote({ tone: 'err', text: 'That isn’t an image. Drop a screenshot, a photo or a PDF.' })
+      return
+    }
+    if (!editing) { setConfirmDelete(false); setEditing(blankDraft()) }
+    setScanning(true)
+    setScanNote(null)
+    try {
+      const images = await Promise.all(usable.map(fileToPayload))
+      const { data: { session } } = await supabase.auth.getSession()
+      const resp = await fetch('/api/admin/ops/keg-scan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token || ''}` },
+        body: JSON.stringify({ images, text }),
+      })
+      const j = await resp.json().catch(() => ({}))
+      if (!resp.ok || !j.ok) {
+        setScanNote({ tone: 'err', text: j.error || 'Couldn’t read that. Try a clearer screenshot.' })
+        return
+      }
+      const groups: ScanGroup[] = j.groups || []
+      if (!groups.length) {
+        setScanNote({ tone: 'err', text: 'No kegs found in that. Try a closer screenshot of the list.' })
+        return
+      }
+      const [first, ...rest] = groups
+      setEditing(f => applyGroup(f && !f.id ? f : blankDraft(), first))
+      setScanQueue(rest)
+      const n = first.lines.length
+      setScanNote({
+        tone: 'ok',
+        text: `Filled ${n} ${n === 1 ? 'line' : 'lines'}${first.brewery ? ` from ${knownBrewery(first.brewery)?.brewery || first.brewery}` : ''}. Check them, set where each is going, then add.`
+          + (rest.length ? ` ${rest.length} more ${rest.length === 1 ? 'brewery' : 'breweries'} will open next: ${rest.map(g => g.brewery || 'unknown').join(', ')}.` : ''),
+      })
+    } catch (e: any) {
+      setScanNote({ tone: 'err', text: 'Couldn’t read that: ' + (e?.message || e) })
+    } finally {
+      setScanning(false)
+    }
+  }
+
+  // Drag and drop: anywhere on the page or the Add kegs box.
+  function hasDropContent(e: React.DragEvent) {
+    const t = Array.from(e.dataTransfer?.types || [])
+    return t.includes('Files') || t.includes('text/plain')
+  }
+  const dropHandlers = {
+    onDragEnter: (e: React.DragEvent) => { if (!hasDropContent(e) || editing?.id || splitting) return; e.preventDefault(); setDragging(true) },
+    onDragOver: (e: React.DragEvent) => { if (!hasDropContent(e) || editing?.id || splitting) return; e.preventDefault(); e.dataTransfer.dropEffect = 'copy' },
+    onDragLeave: (e: React.DragEvent) => { if (e.relatedTarget && (e.currentTarget as Node).contains(e.relatedTarget as Node)) return; setDragging(false) },
+    onDrop: (e: React.DragEvent) => {
+      if (editing?.id || splitting) return
+      e.preventDefault()
+      setDragging(false)
+      const files = Array.from(e.dataTransfer.files || [])
+      const text = files.length ? '' : e.dataTransfer.getData('text/plain')
+      if (files.length || text.trim()) scan(files, text)
+    },
+  }
+
+  // Paste a screenshot (⌘V / Ctrl+V) while the Add kegs box is open.
+  useEffect(() => {
+    if (!editing || editing.id) return
+    const onPaste = (e: ClipboardEvent) => {
+      const files = Array.from(e.clipboardData?.files || []).filter(f => SCAN_TYPES.test(f.type))
+      if (!files.length) return
+      e.preventDefault()
+      scan(files)
+    }
+    window.addEventListener('paste', onPaste)
+    return () => window.removeEventListener('paste', onPaste)
+  })
+
   function openNew(from?: Keg) {
     setConfirmDelete(false)
+    setScanNote(null)
+    setScanQueue([])
     const d = blankDraft()
     if (from) {
       d.source = from.source || 'donated'
@@ -379,7 +541,7 @@ export default function KegsPage() {
       if (res.error || !res.data) return showToast('Could not save. Try again.')
       const row = res.data as Keg
       setKegs(p => p.map(k => (k.id === row.id ? row : k)))
-      setEditing(null)
+      closeEditor()
       return showToast('Saved')
     }
     const res = await supabase.from('brewasia_kegs').insert(rows).select()
@@ -387,8 +549,15 @@ export default function KegsPage() {
     if (res.error || !res.data) return showToast('Could not save. Try again.')
     const added = res.data as Keg[]
     setKegs(p => [...p, ...added])
-    setEditing(null)
     const n = added.reduce((t, k) => t + (k.qty || 0), 0)
+    if (scanQueue.length) {
+      const [next, ...rest] = scanQueue
+      setScanQueue(rest)
+      setEditing(applyGroup(blankDraft(), next))
+      setScanNote({ tone: 'ok', text: `Next from your screenshot: ${next.brewery || 'unknown brewery'}${rest.length ? ` (${rest.length} more after this)` : ''}. Check, then add.` })
+      return showToast(`${n} ${n === 1 ? 'keg' : 'kegs'} added`)
+    }
+    closeEditor()
     showToast(`${n} ${n === 1 ? 'keg' : 'kegs'} added`)
   }
 
@@ -399,7 +568,7 @@ export default function KegsPage() {
     setSaving(false)
     if (error) return showToast('Could not delete. Try again.')
     setKegs(p => p.filter(k => k.id !== editing.id))
-    setEditing(null)
+    closeEditor()
     showToast('Deleted')
   }
 
@@ -465,7 +634,15 @@ export default function KegsPage() {
   const tableMissing = /brewasia_kegs|does not exist|schema cache/i.test(loadError)
 
   return (
-    <div className="keg-wrap">
+    <div className="keg-wrap" {...(loadError ? {} : dropHandlers)}>
+      {dragging && (
+        <div className="keg-drop-overlay" aria-hidden>
+          <div className="keg-drop-box">
+            <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--text)' }}>Drop to fill in kegs</div>
+            <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 4 }}>Screenshot, photo, PDF or text</div>
+          </div>
+        </div>
+      )}
       {/* ── Header ── */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap' }}>
         <div>
@@ -579,8 +756,8 @@ export default function KegsPage() {
                       <th>Style / ABV</th>
                       <th style={{ textAlign: 'right' }}>Size</th>
                       <th style={{ textAlign: 'right' }}>Qty</th>
-                      <th>Destination</th>
                       <th>Status</th>
+                      <th>Destination</th>
                       <th aria-label="Actions" />
                     </tr>
                   </thead>
@@ -602,10 +779,10 @@ export default function KegsPage() {
                             </td>
                             <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: 600, whiteSpace: 'nowrap' }}>{k.qty}×</td>
                             <td onClick={e => e.stopPropagation()}>
-                              <DestCell k={k} venues={venuesBy[k.destination] || []} onDest={d => setDestination(k, d)} onVenue={v => patch(k.id, { destination_venue: v })} />
+                              <StatusPill value={k.status} onChange={s => setStatus(k, s)} />
                             </td>
                             <td onClick={e => e.stopPropagation()}>
-                              <StatusPill value={k.status} onChange={s => setStatus(k, s)} />
+                              <DestCell k={k} venues={venuesBy[k.destination] || []} onDest={d => setDestination(k, d)} onVenue={v => patch(k.id, { destination_venue: v })} />
                             </td>
                             <td onClick={e => e.stopPropagation()} style={{ textAlign: 'right' }}>
                               {k.qty > 1 && (
@@ -641,8 +818,8 @@ export default function KegsPage() {
                             <Flags k={k} />
                           </button>
                           <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap', alignItems: 'flex-start' }}>
-                            <DestCell k={k} venues={venuesBy[k.destination] || []} onDest={d => setDestination(k, d)} onVenue={v => patch(k.id, { destination_venue: v })} />
                             <StatusPill value={k.status} onChange={s => setStatus(k, s)} />
+                            <DestCell k={k} venues={venuesBy[k.destination] || []} onDest={d => setDestination(k, d)} onVenue={v => patch(k.id, { destination_venue: v })} />
                             {k.qty > 1 && (
                               <button className="btn-outline" onClick={() => openSplit(k)} style={{ height: 38, padding: '0 14px', fontSize: 13, marginLeft: 'auto' }}>
                                 Split
@@ -662,12 +839,16 @@ export default function KegsPage() {
 
       {/* ── Add / edit modal ── */}
       {editing && (
-        <Modal onClose={() => setEditing(null)} title={editing.id ? 'Edit kegs' : 'Add kegs'}>
+        <Modal onClose={closeEditor} title={editing.id ? 'Edit kegs' : 'Add kegs'}>
           <datalist id="keg-breweries">{breweries.map(b => <option key={b} value={b} />)}</datalist>
           <datalist id="keg-styles">{styles.map(st => <option key={st} value={st} />)}</datalist>
           <datalist id="keg-venues-ale_trail">{(venuesBy.ale_trail || []).map(v => <option key={v} value={v} />)}</datalist>
           <datalist id="keg-venues-sold">{(venuesBy.sold || []).map(v => <option key={v} value={v} />)}</datalist>
           <datalist id="keg-sizes">{['20', '30', '50'].map(sz => <option key={sz} value={sz} />)}</datalist>
+
+          {!editing.id && (
+            <ScanZone scanning={scanning} note={scanNote} onFiles={files => scan(files)} />
+          )}
 
           <div className="keg-grid-2">
             <Field label="Brewery">
@@ -689,6 +870,12 @@ export default function KegsPage() {
               <input className="input" type="email" value={editing.contact_email} onChange={e => setEditing(f => f && { ...f, contact_email: e.target.value })} />
             </Field>
           </div>
+
+          <Field label="Status">
+            <select className="input" value={editing.status} onChange={e => setEditing(f => f && withStatusDates(f, e.target.value as Status))}>
+              {STATUSES.map(st => <option key={st} value={st}>{STATUS_LABEL[st]}</option>)}
+            </select>
+          </Field>
 
           <div className="section-title" style={{ margin: '6px 0 10px' }}>
             {editing.id ? 'Keg' : 'Kegs'}
@@ -763,11 +950,6 @@ export default function KegsPage() {
           </div>
 
           <div className="keg-grid-2">
-            <Field label="Status">
-              <select className="input" value={editing.status} onChange={e => setEditing(f => f && withStatusDates(f, e.target.value as Status))}>
-                {STATUSES.map(st => <option key={st} value={st}>{STATUS_LABEL[st]}</option>)}
-              </select>
-            </Field>
             <Field label="After the event">
               <label style={{
                 display: 'flex', alignItems: 'center', gap: 10, minHeight: 40, padding: '6px 13px', borderRadius: 9, cursor: 'pointer',
@@ -916,30 +1098,6 @@ function Flags({ k }: { k: Keg }) {
   )
 }
 
-function Pill({ value, options, tone, onChange, label, dot }: {
-  value: string
-  options: { value: string; label: string }[]
-  tone: Tone
-  onChange: (v: string) => void
-  label: string
-  dot?: string
-}) {
-  return (
-    <span className="keg-pill-wrap" style={{ color: tone.fg }}>
-      {dot && <span className="keg-pill-dot" style={{ background: dot }} aria-hidden />}
-      <select
-        className={dot ? 'keg-pill keg-pill--dot' : 'keg-pill'}
-        aria-label={label}
-        value={value}
-        onChange={e => onChange(e.target.value)}
-        style={{ background: tone.bg, borderColor: tone.bd, color: tone.fg }}
-      >
-        {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-      </select>
-    </span>
-  )
-}
-
 function StatusPill({ value, onChange }: { value: Status; onChange: (s: Status) => void }) {
   return (
     <Pill
@@ -985,104 +1143,42 @@ function DestCell({ k, venues, onDest, onVenue }: { k: Keg; venues: string[]; on
   )
 }
 
-function Modal({ title, onClose, children, narrow }: { title: string; onClose: () => void; children: React.ReactNode; narrow?: boolean }) {
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [onClose])
+function ScanZone({ scanning, note, onFiles }: { scanning: boolean; note: { tone: 'ok' | 'err'; text: string } | null; onFiles: (files: File[]) => void }) {
+  const inputId = 'keg-scan-file'
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      className="keg-modal-backdrop"
-      onClick={e => e.target === e.currentTarget && onClose()}
-    >
-      <div className="card keg-modal" style={{ maxWidth: narrow ? 420 : 560 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, marginBottom: 20 }}>
-          <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 26, letterSpacing: '0.03em', color: 'var(--text)', lineHeight: 1.1 }}>
-            {title}
-          </div>
-          <button className="btn-outline" onClick={onClose} style={{ padding: '0 12px', fontSize: 13, height: 32 }}>Close</button>
-        </div>
-        {children}
+    <div style={{ marginBottom: 18 }}>
+      <div className={scanning ? 'keg-scan keg-scan--busy' : 'keg-scan'}>
+        {scanning ? (
+          <span style={{ fontWeight: 600, color: 'var(--text)' }}>Reading it…</span>
+        ) : (
+          <>
+            <span style={{ color: 'var(--text-secondary)' }}>
+              <b style={{ color: 'var(--text)' }}>Drop a screenshot</b> anywhere, or paste one (⌘V)
+            </span>
+            <label htmlFor={inputId} className="btn-outline" style={{ height: 34, padding: '0 12px', fontSize: 13, cursor: 'pointer' }}>
+              Choose file
+            </label>
+            <input
+              id={inputId}
+              type="file"
+              accept="image/*,application/pdf"
+              multiple
+              hidden
+              onChange={e => { const f = Array.from(e.target.files || []); e.target.value = ''; if (f.length) onFiles(f) }}
+            />
+          </>
+        )}
       </div>
+      {note && (
+        <div style={{ fontSize: 13, lineHeight: 1.5, marginTop: 8, color: note.tone === 'err' ? 'var(--badge-red-text)' : 'var(--text-secondary)' }}>
+          {note.text}
+        </div>
+      )}
     </div>
-  )
-}
-
-function StatCard({ label, tone, kegs, litres: l, sub, todo, active, loading, onClick }: {
-  label: string
-  tone?: Tone
-  kegs: number
-  litres: number
-  sub: string
-  todo?: boolean
-  active: boolean
-  loading: boolean
-  onClick: () => void
-}) {
-  const ring = tone ? tone.fg : 'var(--accent)'
-  return (
-    <button
-      className={['card', 'keg-stat', todo ? 'keg-stat--todo' : ''].filter(Boolean).join(' ')}
-      onClick={onClick}
-      aria-pressed={active}
-      style={{ boxShadow: active ? `0 0 0 2px ${ring}` : undefined, borderColor: active ? 'transparent' : undefined }}
-    >
-      {tone && <span className="keg-stat__stripe" style={{ background: tone.fg }} aria-hidden />}
-      <span className="kpi-label" style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 6, color: tone ? tone.fg : 'var(--text)' }}>
-        {label}
-      </span>
-      <span style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
-        <span className="kpi-value" style={{ fontSize: 36, color: 'var(--text)' }}>{loading ? '–' : kegs}</span>
-        <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>{kegs === 1 ? 'keg' : 'kegs'}</span>
-      </span>
-      <span className="kpi-sub" style={{ display: 'block' }}>
-        {fmtL(l)} L{sub ? ` · ${sub}` : ''}
-      </span>
-    </button>
   )
 }
 
 function addLabel(lines: Line[]) {
   const n = lines.reduce((t, l) => t + Math.max(1, Math.floor(Number(l.qty) || 0)), 0)
   return `Add ${n} ${n === 1 ? 'keg' : 'kegs'}`
-}
-
-function Choice<T extends string>({ options, value, onChange }: { options: { key: T; label: string }[]; value: T; onChange: (v: T) => void }) {
-  return (
-    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-      {options.map(o => {
-        const on = value === o.key
-        return (
-          <button
-            key={o.key}
-            onClick={() => onChange(o.key)}
-            aria-pressed={on}
-            style={{
-              minHeight: 40, padding: '0 16px', borderRadius: 9, fontSize: 14, cursor: 'pointer', border: '1px solid',
-              borderColor: on ? 'var(--accent)' : 'var(--border)',
-              background: on ? 'var(--accent-light)' : 'transparent',
-              color: on ? 'var(--accent)' : 'var(--text-secondary)',
-              fontWeight: on ? 600 : 400, transition: 'all .15s',
-            }}
-          >
-            {o.label}
-          </button>
-        )
-      })}
-    </div>
-  )
-}
-
-function Field({ label, children, last }: { label: string; children: React.ReactNode; last?: boolean }) {
-  return (
-    <div style={{ marginBottom: last ? 0 : 14, minWidth: 0 }}>
-      <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6, letterSpacing: '0.01em' }}>
-        {label}
-      </label>
-      {children}
-    </div>
-  )
 }

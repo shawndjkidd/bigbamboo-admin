@@ -276,7 +276,7 @@ export default function GameControlPage() {
                   </td>
                   <td style={tdStyle}>
                     <span style={{
-                      display: 'inline-block', padding: '2px 10px', borderRadius: 100, fontSize: 11,
+                      display: 'inline-block', padding: '2px 10px', borderRadius: 5, fontSize: 11,
                       fontWeight: 600, letterSpacing: '0.04em',
                       background: `${TIER_COLORS[p.tier]}18`,
                       color: TIER_COLORS[p.tier],
@@ -299,13 +299,13 @@ export default function GameControlPage() {
                     <button
                       onClick={() => togglePrize(p.id, p.active)}
                       style={{
-                        width: 40, height: 22, borderRadius: 11, border: 'none', cursor: 'pointer',
+                        width: 40, height: 22, borderRadius: 6, border: 'none', cursor: 'pointer',
                         background: p.active ? '#4aaa90' : 'var(--border)',
                         position: 'relative', transition: 'background 0.2s',
                       }}
                     >
                       <div style={{
-                        width: 16, height: 16, borderRadius: '50%', background: '#fff',
+                        width: 16, height: 16, borderRadius: 4, background: '#fff',
                         position: 'absolute', top: 3,
                         left: p.active ? 21 : 3,
                         transition: 'left 0.2s',
@@ -589,7 +589,7 @@ const labelStyle: React.CSSProperties = {
 }
 const btnStyle: React.CSSProperties = {
   padding: '8px 18px', borderRadius: 8, fontSize: 13, fontWeight: 600,
-  background: 'var(--accent)', color: '#fff', border: 'none',
+  background: 'var(--accent)', color: 'var(--accent-contrast, #fff)', border: 'none',
   cursor: 'pointer', fontFamily: 'DM Sans, sans-serif',
 }
 const btnGhostStyle: React.CSSProperties = {

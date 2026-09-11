@@ -209,7 +209,7 @@ export default function CashReconPage() {
           {flush.corrected
             ? <>✓ An offline batch of <b>{vnd(flush.total)}</b> on this day was already moved to its correct day.</>
             : <>⚠ <b>{flush.orders} orders ({vnd(flush.total)})</b> all uploaded together at {flush.time} — likely the previous night's sales arriving late after the POS reconnected.
-                <button onClick={redateFlush} style={{ marginLeft: 10, padding: '5px 12px', background: 'var(--accent, #e87830)', color: '#fff', border: 'none', borderRadius: 6, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Move to the day before</button></>}
+                <button onClick={redateFlush} style={{ marginLeft: 10, padding: '5px 12px', background: 'var(--accent, #e87830)', color: 'var(--accent-contrast, #fff)', border: 'none', borderRadius: 6, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Move to the day before</button></>}
         </div>
       )}
 
@@ -349,4 +349,4 @@ const Field = ({ label, children }: { label: string; children: React.ReactNode }
 const inp = { width: '100%', padding: '10px 12px', fontSize: 14, border: '1px solid var(--border, #e5e5e5)', borderRadius: 6, background: 'var(--bg-input, #fff)', color: 'var(--text, #333)', boxSizing: 'border-box' as const }
 const th  = { padding: '8px 12px', textAlign: 'left' as const, fontWeight: 600, fontSize: 11, textTransform: 'uppercase' as const, color: 'var(--text-muted, #999)', letterSpacing: '0.05em' }
 const td  = { padding: '8px 12px', color: 'var(--text, #333)' }
-const btnPrimary = { padding: '10px 18px', background: 'var(--accent, #e87830)', color: '#fff', border: 'none', borderRadius: 6, fontSize: 14, fontWeight: 600, cursor: 'pointer' }
+const btnPrimary = { padding: '10px 18px', background: 'var(--accent, #e87830)', color: 'var(--accent-contrast, #fff)', border: 'none', borderRadius: 6, fontSize: 14, fontWeight: 600, cursor: 'pointer' }

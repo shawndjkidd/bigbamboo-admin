@@ -125,8 +125,8 @@ export default function LoyaltyPage() {
               {membership ? (
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
-                    <div style={{ flex: 1, height: 8, background: 'var(--bg-input)', borderRadius: 100, overflow: 'hidden' }}>
-                      <div style={{ height: '100%', width: `${pct * 100}%`, background: 'var(--accent)', borderRadius: 100, transition: 'width 0.3s' }} />
+                    <div style={{ flex: 1, height: 8, background: 'var(--bg-input)', borderRadius: 3, overflow: 'hidden' }}>
+                      <div style={{ height: '100%', width: `${pct * 100}%`, background: 'var(--accent)', borderRadius: 3, transition: 'width 0.3s' }} />
                     </div>
                     <div style={{ fontFamily: 'DM Mono, monospace', fontSize: 14, color: 'var(--accent)', whiteSpace: 'nowrap', fontWeight: 600 }}>{stamps}/{goal}</div>
                   </div>

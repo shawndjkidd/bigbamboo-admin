@@ -57,7 +57,7 @@ export default function Login() {
         border: '1px solid #e5e5e5',
       }}>
         <div style={{ textAlign: 'center', marginBottom: 28 }}>
-          <div style={{ fontSize: 22, fontWeight: 700, color: '#e87830', marginBottom: 6 }}>
+          <div style={{ fontSize: 22, fontWeight: 700, color: '#a16207', marginBottom: 6 }}>
             BigBamBoo
           </div>
           <h1 style={{ fontSize: 16, fontWeight: 500, margin: 0, color: '#666' }}>Sign in</h1>
@@ -91,7 +91,7 @@ export default function Login() {
           <button type="submit" disabled={loading} style={{
             width: '100%', padding: '14px', borderRadius: 12, fontSize: 15,
             fontWeight: 700, border: 'none', cursor: 'pointer',
-            background: '#e87830', color: '#fff',
+            background: '#a16207', color: '#fff',
             opacity: loading ? 0.7 : 1, transition: 'opacity 0.12s',
           }}>
             {loading ? 'Signing in...' : 'Sign in'}

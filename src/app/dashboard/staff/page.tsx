@@ -311,7 +311,7 @@ function ScannerPins() {
             {staff.map(s => (
               <tr key={s.id} style={{ opacity: s.is_active ? 1 : 0.5 }}>
                 <td style={{ fontWeight: 600 }}>{s.name}</td>
-                <td><span className={`badge ${roleBadgeClass(s.role)}`} style={s.role === 'manager' ? { background: 'var(--accent)', color: '#fff' } : undefined}>{roleLabel(s.role)}</span></td>
+                <td><span className={`badge ${roleBadgeClass(s.role)}`} style={s.role === 'manager' ? { background: 'var(--accent)', color: 'var(--accent-contrast, #fff)' } : undefined}>{roleLabel(s.role)}</span></td>
                 <td><span style={{ fontFamily: 'DM Mono, monospace', fontSize: 13, letterSpacing: '0.15em' }}>{revealedPins.has(s.id) ? s.pin : '••••'}</span><button onClick={() => togglePinReveal(s.id)} style={{ marginLeft: 8, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: 12 }}>{revealedPins.has(s.id) ? 'Hide' : 'Show'}</button></td>
                 <td><span className={`badge ${s.is_active ? 'badge-green' : 'badge-red'}`}>{s.is_active ? 'Active' : 'Inactive'}</span></td>
                 <td style={{ textAlign: 'right' }}>

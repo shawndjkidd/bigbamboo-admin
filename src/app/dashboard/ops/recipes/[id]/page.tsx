@@ -694,7 +694,7 @@ export default function RecipeDetailPage() {
               <tr key={c.id} style={{ borderTop: '1px solid var(--border, #eee)' }}>
                 <td style={td}>
                   {c.ingredient?.name || c.sub_recipe?.name || '—'}
-                  {c.ingredient && c.ingredient.category === 'consumable' && <span style={{ marginLeft: 8, fontSize: 10, padding: '2px 8px', borderRadius: 100, background: 'var(--bg-hover, #eee)', color: 'var(--text-secondary, #666)' }}>packaging</span>}
+                  {c.ingredient && c.ingredient.category === 'consumable' && <span style={{ marginLeft: 8, fontSize: 10, padding: '2px 8px', borderRadius: 5, background: 'var(--bg-hover, #eee)', color: 'var(--text-secondary, #666)' }}>packaging</span>}
                   {(c.ingredient?.name_vi || c.sub_recipe?.name_vi) && <div style={{ fontSize: 11, color: 'var(--accent, #e87830)' }}>{c.ingredient?.name_vi || c.sub_recipe?.name_vi}</div>}
                 </td>
                 <td style={{ ...td, fontSize: 11, color: 'var(--text-muted, #999)' }}>{c.ingredient_id ? 'ingredient' : 'sub-recipe'}</td>
@@ -995,7 +995,7 @@ function StepsEditor({ value, onSave, placeholder }: { value: string; onSave: (v
     <div>
       {steps.map((s, i) => (
         <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 6 }}>
-          <span style={{ flexShrink: 0, width: 24, height: 24, borderRadius: 100, background: 'var(--accent, #e87830)', color: '#fff', fontSize: 12, fontWeight: 700, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>{i + 1}</span>
+          <span style={{ flexShrink: 0, width: 24, height: 24, borderRadius: 6, background: 'var(--accent, #e87830)', color: 'var(--accent-contrast, #fff)', fontSize: 12, fontWeight: 700, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>{i + 1}</span>
           <input
             ref={el => { refs.current[i] = el }}
             value={s}
@@ -1022,7 +1022,7 @@ const Stat = ({ label, value, accent, sub }: { label: string; value: string; acc
 const inp = { padding: '8px 10px', fontSize: 13, border: '1px solid var(--border, #e5e5e5)', borderRadius: 6, background: 'var(--bg-card, #fff)', color: 'var(--text, #333)', boxSizing: 'border-box' as const, width: '100%' }
 const th  = { padding: '8px 12px', textAlign: 'left' as const, fontWeight: 600, fontSize: 11, textTransform: 'uppercase' as const, color: 'var(--text-muted, #999)', letterSpacing: '0.05em' }
 const td  = { padding: '8px 12px', color: 'var(--text, #333)' }
-const btnPrimary = { padding: '8px 14px', background: 'var(--accent, #e87830)', color: '#fff', border: 'none', borderRadius: 6, fontSize: 13, fontWeight: 600, cursor: 'pointer' }
+const btnPrimary = { padding: '8px 14px', background: 'var(--accent, #e87830)', color: 'var(--accent-contrast, #fff)', border: 'none', borderRadius: 6, fontSize: 13, fontWeight: 600, cursor: 'pointer' }
 const btnLink = { padding: '4px 8px', background: 'transparent', color: 'var(--burgundy, #7b2d3a)', border: 'none', cursor: 'pointer', fontSize: 12 }
 const btnOutline = { padding: '8px 14px', background: 'transparent', color: 'var(--text-secondary, #666)', border: '1px solid var(--border, #e5e5e5)', borderRadius: 6, fontSize: 13, fontWeight: 500, cursor: 'pointer' }
 const btnDanger = { padding: '8px 14px', background: 'transparent', color: 'var(--burgundy, #7b2d3a)', border: '1px solid var(--burgundy, #7b2d3a)', borderRadius: 6, fontSize: 13, fontWeight: 600, cursor: 'pointer' }

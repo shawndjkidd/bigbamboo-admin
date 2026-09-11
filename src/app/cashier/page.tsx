@@ -246,14 +246,14 @@ export default function CashierPage() {
           {outstanding.length === 0 && <div style={{ fontSize: 14, color: '#999', padding: '4px 0' }}>No outstanding tabs.</div>}
           {outstanding.map(t => (
             <div key={t.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid var(--border, #eee)', fontSize: 14 }}>
-              <span>{t.person_name || 'Unnamed tab'}{t.contact && <span style={{ marginLeft: 8, fontSize: 12, color: '#999' }}>· {t.contact}</span>}{t.claimed && <span style={{ marginLeft: 8, fontSize: 11, color: '#b8631c', background: '#fdecdc', padding: '1px 8px', borderRadius: 100 }}>paid · {t.paid_method === 'cash' ? 'cash' : 'QR'} · awaiting confirm</span>}</span>
+              <span>{t.person_name || 'Unnamed tab'}{t.contact && <span style={{ marginLeft: 8, fontSize: 12, color: '#999' }}>· {t.contact}</span>}{t.claimed && <span style={{ marginLeft: 8, fontSize: 11, color: '#b8631c', background: '#fdecdc', padding: '1px 8px', borderRadius: 5 }}>paid · {t.paid_method === 'cash' ? 'cash' : 'QR'} · awaiting confirm</span>}</span>
               <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <span style={{ fontWeight: 600 }}>{vnd(t.amount)}</span>
                 {t.claimed ? (
                   <button onClick={() => claimTab(t.id, false)} style={{ fontSize: 12, padding: '5px 12px', borderRadius: 8, border: '1px solid #e5e5e5', background: 'transparent', color: '#999', cursor: 'pointer', fontWeight: 600 }}>Undo</button>
                 ) : (
                   <>
-                    <button onClick={() => claimTab(t.id, true, 'cash')} style={{ fontSize: 12, padding: '5px 12px', borderRadius: 8, border: '1px solid var(--accent, #e87830)', background: 'var(--accent, #e87830)', color: '#fff', cursor: 'pointer', fontWeight: 600 }}>Cash</button>
+                    <button onClick={() => claimTab(t.id, true, 'cash')} style={{ fontSize: 12, padding: '5px 12px', borderRadius: 8, border: '1px solid var(--accent, #e87830)', background: 'var(--accent, #e87830)', color: 'var(--accent-contrast, #fff)', cursor: 'pointer', fontWeight: 600 }}>Cash</button>
                     <button onClick={() => claimTab(t.id, true, 'transfer')} style={{ fontSize: 12, padding: '5px 12px', borderRadius: 8, border: '1px solid var(--accent, #e87830)', background: 'transparent', color: 'var(--accent, #e87830)', cursor: 'pointer', fontWeight: 600 }}>QR</button>
                   </>
                 )}
@@ -297,7 +297,7 @@ function Row({ label, value, bold }: { label: string; value: string; bold?: bool
   return <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', fontSize: 15, fontWeight: bold ? 700 : 400 }}><span style={{ color: bold ? 'inherit' : '#777' }}>{label}</span><span>{value}</span></div>
 }
 function Big({ onClick, disabled, children }: { onClick: () => void; disabled: boolean; children: React.ReactNode }) {
-  return <button onClick={onClick} disabled={disabled} style={{ width: '100%', marginTop: 16, padding: '15px', fontSize: 16, fontWeight: 700, color: '#fff', background: 'var(--accent, #e87830)', border: 'none', borderRadius: 12, cursor: disabled ? 'default' : 'pointer', opacity: disabled ? 0.5 : 1 }}>{children}</button>
+  return <button onClick={onClick} disabled={disabled} style={{ width: '100%', marginTop: 16, padding: '15px', fontSize: 16, fontWeight: 700, color: 'var(--accent-contrast, #fff)', background: 'var(--accent, #e87830)', border: 'none', borderRadius: 12, cursor: disabled ? 'default' : 'pointer', opacity: disabled ? 0.5 : 1 }}>{children}</button>
 }
 
 const inp: React.CSSProperties = { width: '100%', padding: '12px 14px', fontSize: 15, border: '1px solid var(--border, #e5e5e5)', borderRadius: 10, background: 'var(--bg-card, #fff)', color: 'var(--text, #333)', boxSizing: 'border-box' }

@@ -154,5 +154,5 @@ const Field = ({ label, children }: { label: string; children: React.ReactNode }
 )
 
 const inp = { width: '100%', padding: '10px 12px', fontSize: 14, border: '1px solid var(--border, #e5e5e5)', borderRadius: 6, background: 'var(--bg-card, #fff)', color: 'var(--text, #333)', boxSizing: 'border-box' as const }
-const btnPrimary = { padding: '10px 16px', background: 'var(--accent, #e87830)', color: '#fff', border: 'none', borderRadius: 6, fontSize: 14, fontWeight: 600, cursor: 'pointer' }
+const btnPrimary = { padding: '10px 16px', background: 'var(--accent, #e87830)', color: 'var(--accent-contrast, #fff)', border: 'none', borderRadius: 6, fontSize: 14, fontWeight: 600, cursor: 'pointer' }
 const btnSecondary = { padding: '10px 16px', background: 'transparent', color: 'var(--text-muted, #666)', border: '1px solid var(--border, #e5e5e5)', borderRadius: 6, fontSize: 14, cursor: 'pointer' }

@@ -325,7 +325,7 @@ export default function ScanPage() {
                     const s = statusBadge(claim)
                     return (
                       <span style={{
-                        display: 'inline-block', padding: '4px 16px', borderRadius: 50, fontSize: 12, fontWeight: 700,
+                        display: 'inline-block', padding: '4px 16px', borderRadius: 6, fontSize: 12, fontWeight: 700,
                         background: s.bg, color: s.color, letterSpacing: '0.06em', textTransform: 'uppercase',
                       }}>{s.label}</span>
                     )
@@ -496,7 +496,7 @@ export default function ScanPage() {
                             {c.claim_code} · {c.contact_type === 'anonymous' ? 'Anonymous' : c.contact_value}
                           </div>
                         </div>
-                        <span style={{ padding: '3px 10px', borderRadius: 50, fontSize: 10, fontWeight: 700, background: s.bg, color: s.color, flexShrink: 0 }}>
+                        <span style={{ padding: '3px 10px', borderRadius: 5, fontSize: 10, fontWeight: 700, background: s.bg, color: s.color, flexShrink: 0 }}>
                           {s.label}
                         </span>
                       </div>

@@ -179,7 +179,7 @@ export default function ClaimsPage() {
           <button onClick={exportOptIns} style={exportBtn}>
             Export Opt-Ins
           </button>
-          <button onClick={exportCSV} style={{ ...exportBtn, background: 'var(--accent)', color: '#fff', border: 'none' }}>
+          <button onClick={exportCSV} style={{ ...exportBtn, background: 'var(--accent)', color: 'var(--accent-contrast, #fff)', border: 'none' }}>
             Export All CSV
           </button>
         </div>
@@ -269,7 +269,7 @@ export default function ClaimsPage() {
                     </td>
                     <td style={tdStyle}>
                       <span style={{
-                        display: 'inline-block', padding: '2px 10px', borderRadius: 100, fontSize: 11,
+                        display: 'inline-block', padding: '2px 10px', borderRadius: 5, fontSize: 11,
                         fontWeight: 600, letterSpacing: '0.04em',
                         background: badge.bg, color: badge.color, border: `1px solid ${badge.border}`,
                       }}>

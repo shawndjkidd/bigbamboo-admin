@@ -138,7 +138,7 @@ export default function SquarePage() {
             {locs.length === 0 && <div style={{ fontSize: 13, color: 'var(--text-muted, #999)' }}>No locations found.</div>}
             {locs.map(l => (
               <div key={l.square_location_id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, padding: '6px 0' }}>
-                {l.is_default && <span style={{ fontSize: 10, padding: '2px 6px', background: 'var(--accent, #e87830)', color: '#fff', borderRadius: 3 }}>DEFAULT</span>}
+                {l.is_default && <span style={{ fontSize: 10, padding: '2px 6px', background: 'var(--accent, #e87830)', color: 'var(--accent-contrast, #fff)', borderRadius: 3 }}>DEFAULT</span>}
                 <span>{l.name || l.square_location_id}</span>
                 {!l.active && <span style={{ fontSize: 11, color: 'var(--text-muted, #999)' }}>(inactive)</span>}
               </div>
@@ -211,4 +211,4 @@ CRON_SECRET=&lt;random string for Vercel Cron auth&gt;
   )
 }
 
-const btnPrimary = { padding: '10px 16px', background: 'var(--accent, #e87830)', color: '#fff', border: 'none', borderRadius: 6, fontSize: 14, fontWeight: 600, cursor: 'pointer', textDecoration: 'none', display: 'inline-block' }
+const btnPrimary = { padding: '10px 16px', background: 'var(--accent, #e87830)', color: 'var(--accent-contrast, #fff)', border: 'none', borderRadius: 6, fontSize: 14, fontWeight: 600, cursor: 'pointer', textDecoration: 'none', display: 'inline-block' }

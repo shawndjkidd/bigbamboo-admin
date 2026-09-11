@@ -276,7 +276,7 @@ function EventCard({ event, isExpanded, orders, editingId, onToggleEdit, onLoadO
             {event.start_time && <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>{event.start_time}{event.end_time && ` – ${event.end_time}`}</span>}
             {event.is_free ? <span className="badge badge-green">{t.events.free}</span> : <span className="badge badge-orange">{event.ticket_price?.toLocaleString()}d</span>}
             {!event.is_published && <span className="badge badge-red">{t.events.draft}</span>}
-            {event.is_recurring && <span className="badge badge-blue" style={{ background: 'var(--accent)', color: '#fff' }}>{event.recurrence_pattern === 'monthly' ? t.events.monthlyBadge : event.recurrence_pattern === 'biweekly' ? t.events.biweeklyBadge : t.events.weeklyBadge}</span>}
+            {event.is_recurring && <span className="badge badge-blue" style={{ background: 'var(--accent)', color: 'var(--accent-contrast, #fff)' }}>{event.recurrence_pattern === 'monthly' ? t.events.monthlyBadge : event.recurrence_pattern === 'biweekly' ? t.events.biweeklyBadge : t.events.weeklyBadge}</span>}
           </div>
           {shownTeaser && !isEditing && (
             <div style={{ fontSize: 13, color: 'var(--text-secondary)', fontStyle: 'italic', marginTop: 8, maxWidth: 460, lineHeight: 1.5 }}>

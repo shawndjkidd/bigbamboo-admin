@@ -127,9 +127,9 @@ export default function CashOutsPage() {
             <div key={o.tab.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 14, padding: '6px 0', borderTop: '1px solid var(--border, #eee)' }}>
               <span>{o.tab.person_name || 'Unnamed tab'}{o.tab.contact && <span style={{ color: 'var(--text-muted, #999)', fontSize: 12 }}> · {o.tab.contact}</span>} <span style={{ color: 'var(--text-muted, #999)', fontSize: 12 }}>· {o.date}</span></span>
               <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                {o.tab.claimed && <span style={{ fontSize: 11, color: '#b8631c', background: 'var(--badge-orange-bg, #fdecdc)', padding: '1px 8px', borderRadius: 100 }}>paid · {o.tab.paid_method === 'cash' ? 'cash' : o.tab.paid_method === 'transfer' ? 'QR' : '?'} · awaiting confirm</span>}
+                {o.tab.claimed && <span style={{ fontSize: 11, color: '#b8631c', background: 'var(--badge-orange-bg, #fdecdc)', padding: '1px 8px', borderRadius: 5 }}>paid · {o.tab.paid_method === 'cash' ? 'cash' : o.tab.paid_method === 'transfer' ? 'QR' : '?'} · awaiting confirm</span>}
                 <span style={{ fontWeight: 600 }}>{vnd(o.tab.amount)}</span>
-                {isSuper && <button onClick={() => toggleTab(o.tab.id, true)} style={{ fontSize: 12, padding: '4px 12px', border: 'none', borderRadius: 6, background: 'var(--accent, #e87830)', color: '#fff', cursor: 'pointer' }}>Confirm paid</button>}
+                {isSuper && <button onClick={() => toggleTab(o.tab.id, true)} style={{ fontSize: 12, padding: '4px 12px', border: 'none', borderRadius: 6, background: 'var(--accent, #e87830)', color: 'var(--accent-contrast, #fff)', cursor: 'pointer' }}>Confirm paid</button>}
                 <button onClick={() => delTab(o.tab.id)} title="Remove" style={{ fontSize: 16, padding: '0 4px', border: 'none', background: 'transparent', cursor: 'pointer', color: '#a32d2d' }}>×</button>
               </span>
             </div>
@@ -152,7 +152,7 @@ export default function CashOutsPage() {
                 <span style={{ fontWeight: 600, fontSize: 15, flex: 1 }}>{s.business_date}</span>
                 <span style={{ fontSize: 12, color: 'var(--text-muted, #999)' }}>{s.cashier_name || s.cashier_email}</span>
                 {!closed
-                  ? <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 100, background: 'var(--badge-orange-bg, #fdecdc)', color: '#b8631c' }}>open</span>
+                  ? <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 5, background: 'var(--badge-orange-bg, #fdecdc)', color: '#b8631c' }}>open</span>
                   : (() => { const v = verdict(os); return <span style={{ fontSize: 13, fontWeight: 700, color: v.color }}>{Math.abs(os) < 1000 ? 'Balanced' : `${v.label} ${vnd(Math.abs(os))}`}</span> })()}
               </div>
               {isOpen && (
@@ -228,7 +228,7 @@ export default function CashOutsPage() {
                       <div key={t.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 13, padding: '3px 0' }}>
                         <span style={{ textDecoration: t.settled ? 'line-through' : 'none', color: t.settled ? 'var(--text-muted, #999)' : 'inherit' }}>{t.person_name || 'Unnamed tab'}{t.contact && <span style={{ color: 'var(--text-muted, #999)', fontSize: 12 }}> · {t.contact}</span>}</span>
                         <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          {t.claimed && !t.settled && <span style={{ fontSize: 10, color: '#b8631c', background: 'var(--badge-orange-bg, #fdecdc)', padding: '1px 6px', borderRadius: 100 }}>{t.paid_method === 'cash' ? 'paid cash · ' : t.paid_method === 'transfer' ? 'paid QR · ' : ''}awaiting confirm</span>}
+                          {t.claimed && !t.settled && <span style={{ fontSize: 10, color: '#b8631c', background: 'var(--badge-orange-bg, #fdecdc)', padding: '1px 6px', borderRadius: 5 }}>{t.paid_method === 'cash' ? 'paid cash · ' : t.paid_method === 'transfer' ? 'paid QR · ' : ''}awaiting confirm</span>}
                           <span style={{ color: 'var(--text-muted, #666)' }}>{vnd(t.amount)}</span>
                           {(isSuper || t.settled) && <button onClick={() => toggleTab(t.id, !t.settled)} style={{ fontSize: 11, padding: '2px 8px', border: '1px solid var(--border, #e5e5e5)', borderRadius: 6, background: 'transparent', cursor: 'pointer', color: t.settled ? '#1d7a46' : 'var(--text-secondary, #666)' }}>{t.settled ? 'Confirmed ✓' : 'Confirm paid'}</button>}
                           <button onClick={() => delTab(t.id)} title="Remove" style={{ fontSize: 14, padding: '0 4px', border: 'none', background: 'transparent', cursor: 'pointer', color: '#a32d2d' }}>×</button>

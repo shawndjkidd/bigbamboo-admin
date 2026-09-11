@@ -839,7 +839,7 @@ export default function PlayPage() {
             {t('rulesLink')}
           </span>
         </div>
-        <div style={{ position: "absolute", bottom: 38, display: "flex", gap: 0, borderRadius: 100,
+        <div style={{ position: "absolute", bottom: 38, display: "flex", gap: 0, borderRadius: 8,
           overflow: "hidden", border: "1px solid rgba(255,255,255,0.1)" }}>
           {(['en', 'vi'] as Lang[]).map(l => (
             <button key={l} onClick={() => setLang(l)} style={{
@@ -1123,7 +1123,7 @@ export default function PlayPage() {
 
             {/* Badge */}
             <div style={{
-              display: "inline-block", padding: "6px 20px", borderRadius: 100,
+              display: "inline-block", padding: "6px 20px", borderRadius: 7,
               background: "rgba(74,170,144,0.15)", color: B.tealBright,
               border: "1px solid rgba(74,170,144,0.2)",
               ...F.label, fontSize: 11, marginBottom: 12,
@@ -1285,7 +1285,7 @@ export default function PlayPage() {
 
           <div style={{
             ...F.body, fontSize: 14, fontWeight: 600, color: "rgba(255,255,255,0.5)",
-            padding: "14px 32px", borderRadius: 100,
+            padding: "14px 32px", borderRadius: 12,
             border: "1px solid rgba(255,255,255,0.15)",
             background: "rgba(255,255,255,0.05)",
           }}>

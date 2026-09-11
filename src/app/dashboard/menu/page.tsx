@@ -304,7 +304,7 @@ export default function MenuPage() {
             >◀</button>
             <button onClick={() => { setSection(s.key); setShowAddSection(false) }}
               className={section === s.key ? 'menu-pill-active' : 'menu-pill-inactive'}
-              style={{ padding: '10px 18px', borderRadius: 100, fontSize: 14, fontWeight: 500, cursor: 'pointer', transition: 'all 0.15s' }}
+              style={{ padding: '10px 18px', borderRadius: 9, fontSize: 14, fontWeight: 500, cursor: 'pointer', transition: 'all 0.15s' }}
             >
               {s.label}
             </button>
@@ -339,7 +339,7 @@ export default function MenuPage() {
           </div>
         ) : (
           <button onClick={() => setShowAddSection(true)} style={{
-            padding: '10px 16px', borderRadius: 100, fontSize: 13, fontWeight: 500, cursor: 'pointer',
+            padding: '10px 16px', borderRadius: 9, fontSize: 13, fontWeight: 500, cursor: 'pointer',
             background: 'transparent', color: 'rgba(255,248,231,0.55)', border: '1px dashed rgba(255,248,231,0.35)',
             transition: 'all 0.15s',
           }}>
@@ -460,7 +460,7 @@ export default function MenuPage() {
                     <a href={`/dashboard/ops/recipes/${rid}`} style={{ fontSize: 12, color: 'var(--accent)', textDecoration: 'none', display: 'inline-block', marginTop: 8 }}>Edit in recipe →</a>
                     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>
                       {tagPresets.map(p => { const on = item.tags?.includes(p.label); return (
-                        <span key={p.label} onClick={() => toggleTag(item, p.label)} style={{ ...tagStyle(p.color, on), padding: '4px 12px', borderRadius: 100, fontSize: 12, fontWeight: 500, cursor: 'pointer', userSelect: 'none' }}>{p.label}</span>
+                        <span key={p.label} onClick={() => toggleTag(item, p.label)} style={{ ...tagStyle(p.color, on), padding: '4px 12px', borderRadius: 7, fontSize: 12, fontWeight: 500, cursor: 'pointer', userSelect: 'none' }}>{p.label}</span>
                       )})}
                     </div>
                   </div>
@@ -555,7 +555,7 @@ export default function MenuPage() {
                   return (
                     <span key={p.label} onClick={() => toggleTag(item, p.label)} style={{
                       ...tagStyle(p.color, on),
-                      padding: '4px 12px', borderRadius: 100, fontSize: 12, fontWeight: 500,
+                      padding: '4px 12px', borderRadius: 7, fontSize: 12, fontWeight: 500,
                       cursor: 'pointer', userSelect: 'none', transition: 'all 0.15s',
                     }}>
                       {p.label}
@@ -584,7 +584,7 @@ const ctrlLabel = { display: 'flex', alignItems: 'center', gap: 6, fontSize: 13,
 function AvailToggle({ on, onClick }: { on: boolean, onClick: () => void }) {
   return (
     <button onClick={onClick} title={on ? 'Tap to mark Sold out' : 'Tap to mark Available'} style={{
-      display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 12px', borderRadius: 100,
+      display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 12px', borderRadius: 7,
       fontSize: 12, fontWeight: 600, cursor: 'pointer', userSelect: 'none', transition: 'all 0.15s',
       border: '1px solid ' + (on ? 'var(--badge-green-border, #2d6a3a)' : 'var(--badge-red-border, #7b2d3a)'),
       background: on ? 'var(--badge-green-bg, #14331f)' : 'var(--badge-red-bg, #3a1a1f)',

@@ -83,7 +83,7 @@ export default function StockCountsPage() {
                 <span style={{ color: 'var(--text-muted, #999)', fontSize: 13, width: 14 }}>{isOpen ? '▾' : '▸'}</span>
                 <span style={{ fontWeight: 600, fontSize: 15, flex: 1 }}>{c.business_date} · {c.station}</span>
                 <span style={{ fontSize: 12, color: 'var(--text-muted, #999)' }}>{c.counted_by_name || c.counted_by_email} · {its.length} items</span>
-                <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 100, background: c.status === 'applied' ? 'var(--badge-green-bg, #e7f5ec)' : 'var(--badge-orange-bg, #fdecdc)', color: c.status === 'applied' ? '#1d7a46' : '#b8631c' }}>{c.status}</span>
+                <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 5, background: c.status === 'applied' ? 'var(--badge-green-bg, #e7f5ec)' : 'var(--badge-orange-bg, #fdecdc)', color: c.status === 'applied' ? '#1d7a46' : '#b8631c' }}>{c.status}</span>
               </div>
               {isOpen && (
                 <div style={{ marginTop: 14 }}>
@@ -97,12 +97,12 @@ export default function StockCountsPage() {
                         const isNew = !it.ingredient_id
                         return (
                           <tr key={it.id} style={{ borderTop: '1px solid var(--border, #eee)' }}>
-                            <td style={td}>{isNew ? <>{it.new_item_name} <span style={{ fontSize: 10, color: '#b8631c', background: 'var(--badge-orange-bg, #fdecdc)', padding: '1px 6px', borderRadius: 100 }}>NEW</span></> : (ing.name || '—')}</td>
+                            <td style={td}>{isNew ? <>{it.new_item_name} <span style={{ fontSize: 10, color: '#b8631c', background: 'var(--badge-orange-bg, #fdecdc)', padding: '1px 6px', borderRadius: 5 }}>NEW</span></> : (ing.name || '—')}</td>
                             <td style={{ ...td, textAlign: 'right' }}>{Number(it.counted_units)} {it.purchase_unit_label || ''}{!isNew && <span style={{ color: 'var(--text-muted, #999)' }}> = {Number(it.counted_base)} {ing.base_unit || ''}</span>}</td>
                             <td style={{ ...td, textAlign: 'right', color: 'var(--text-muted, #999)' }}>{isNew ? '—' : (ing.on_hand_base != null ? `${Number(ing.on_hand_base)} ${ing.base_unit || ''}` : '—')}</td>
                             <td style={{ ...td, textAlign: 'right' }}>
                               {isNew
-                                ? <button onClick={() => createIngredient(c, it)} style={{ padding: '5px 10px', fontSize: 12, background: 'var(--accent, #e87830)', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer' }}>Create item</button>
+                                ? <button onClick={() => createIngredient(c, it)} style={{ padding: '5px 10px', fontSize: 12, background: 'var(--accent, #e87830)', color: 'var(--accent-contrast, #fff)', border: 'none', borderRadius: 6, cursor: 'pointer' }}>Create item</button>
                                 : <input defaultValue={ing.par_level_base ?? ''} onBlur={e => e.target.value !== String(ing.par_level_base ?? '') && setPar(it.ingredient_id, e.target.value)} placeholder="—" style={{ width: 80, padding: '5px 8px', fontSize: 13, textAlign: 'right', border: '1px solid var(--border, #e5e5e5)', borderRadius: 6, background: 'var(--bg-card, #fff)', color: 'var(--text, #333)' }} />}
                             </td>
                           </tr>
@@ -111,7 +111,7 @@ export default function StockCountsPage() {
                     </tbody>
                   </table>
                   {c.status !== 'applied'
-                    ? <button onClick={() => apply(c.id)} style={{ marginTop: 14, padding: '10px 18px', background: 'var(--accent, #e87830)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>Apply to stock</button>
+                    ? <button onClick={() => apply(c.id)} style={{ marginTop: 14, padding: '10px 18px', background: 'var(--accent, #e87830)', color: 'var(--accent-contrast, #fff)', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>Apply to stock</button>
                     : <div style={{ marginTop: 12, fontSize: 12, color: 'var(--text-muted, #999)' }}>Applied {c.applied_at ? new Date(c.applied_at).toLocaleString() : ''}{c.applied_by ? ' by ' + c.applied_by : ''}</div>}
                 </div>
               )}

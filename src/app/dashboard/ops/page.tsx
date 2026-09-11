@@ -207,7 +207,7 @@ export default function OpsDashboard() {
             <button key={p} onClick={() => setPeriod(p)} style={{
               padding: '7px 13px', fontSize: 13, borderRadius: 6, cursor: 'pointer',
               background: period === p ? 'var(--accent, #e87830)' : 'transparent',
-              color: period === p ? '#fff' : 'var(--text-muted, #999)',
+              color: period === p ? 'var(--accent-contrast, #fff)' : 'var(--text-muted, #999)',
               border: '1px solid var(--border, #e5e5e5)',
             }}>{p === 'mtd' ? 'This Month' : p === 'last_month' ? 'Last Month' : 'YTD'}</button>
           ))}
@@ -413,4 +413,4 @@ const Kpi = ({ label, value, sub, accent = '#666', small = false }: {
 const tbl = { width: '100%', borderCollapse: 'collapse' as const, fontSize: 13 }
 const th  = { padding: '8px 12px', textAlign: 'left' as const, fontWeight: 600, fontSize: 11, textTransform: 'uppercase' as const, color: 'var(--text-muted, #999)', letterSpacing: '0.05em' }
 const td  = { padding: '8px 12px', color: 'var(--text, #333)' }
-const btn = { display: 'inline-block', padding: '10px 16px', background: 'var(--accent, #e87830)', color: '#fff', borderRadius: 6, textDecoration: 'none', fontSize: 14 }
+const btn = { display: 'inline-block', padding: '10px 16px', background: 'var(--accent, #e87830)', color: 'var(--accent-contrast, #fff)', borderRadius: 6, textDecoration: 'none', fontSize: 14 }

@@ -321,5 +321,5 @@ const hdr = { fontSize: 11, fontWeight: 700, textTransform: 'uppercase' as const
 const row = { display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' as const }
 const inp = { padding: '9px 11px', fontSize: 14, border: '1px solid var(--border, #e5e5e5)', borderRadius: 8, background: 'var(--bg-input, #fff)', color: 'var(--text, #333)', boxSizing: 'border-box' as const }
 const td = { padding: '9px 10px', color: 'var(--text, #333)' }
-const btn = { padding: '9px 16px', background: 'var(--accent, #e87830)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' as const }
+const btn = { padding: '9px 16px', background: 'var(--accent, #e87830)', color: 'var(--accent-contrast, #fff)', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' as const }
 const btnLink = { padding: '2px 6px', background: 'transparent', color: 'var(--text-muted, #999)', border: 'none', cursor: 'pointer', fontSize: 14 }

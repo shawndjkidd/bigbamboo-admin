@@ -170,7 +170,7 @@ export default function StationView({ fixedStation }: { fixedStation: 'kitchen' 
       {detail && (
         <div onClick={() => setDetail(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', justifyContent: 'center', alignItems: 'flex-start', padding: '24px 16px', zIndex: 50, overflowY: 'auto' }}>
           <div onClick={e => e.stopPropagation()} style={{ background: '#fff', color: '#1a1a1a', borderRadius: 14, width: '100%', maxWidth: 820, padding: '24px 28px 40px', position: 'relative', boxShadow: '0 10px 40px rgba(0,0,0,0.25)' }}>
-            <button onClick={() => setDetail(null)} style={{ position: 'sticky', float: 'right', top: 0, fontSize: 26, lineHeight: 1, background: '#f0f0f0', border: 'none', borderRadius: '50%', width: 44, height: 44, cursor: 'pointer', color: '#555' }} aria-label="Close">✕</button>
+            <button onClick={() => setDetail(null)} style={{ position: 'sticky', float: 'right', top: 0, fontSize: 26, lineHeight: 1, background: '#f0f0f0', border: 'none', borderRadius: 10, width: 44, height: 44, cursor: 'pointer', color: '#555' }} aria-label="Close">✕</button>
             {detail.kind === 'sop'
               ? <div className="rbk" dangerouslySetInnerHTML={{ __html: sopHtml }} />
               : detailBusy || !recipeData
@@ -191,7 +191,7 @@ function Seg({ value, onChange, options }: { value: string; onChange: (v: string
           padding: '10px 18px', fontSize: 14, fontWeight: 600, cursor: 'pointer', border: 'none',
           borderRight: i < options.length - 1 ? '1px solid var(--border, #e5e5e5)' : 'none',
           background: value === v ? 'var(--accent, #e87830)' : 'var(--bg-card, #fff)',
-          color: value === v ? '#fff' : 'var(--text-muted, #777)',
+          color: value === v ? 'var(--accent-contrast, #fff)' : 'var(--text-muted, #777)',
         }}>{label}</button>
       ))}
     </div>
@@ -220,8 +220,8 @@ function RecipeDetail({ data, scale, setScale }: { data: KRecipeDetail; scale: n
         {presets.map(([label, v]) => (
           <button key={label} onClick={() => setScale(v)} style={{
             padding: '8px 16px', fontSize: 15, fontWeight: 700, borderRadius: 8, cursor: 'pointer',
-            border: '1px solid ' + (scale === v ? '#e87830' : '#e5e5e5'),
-            background: scale === v ? '#e87830' : '#fff', color: scale === v ? '#fff' : '#555',
+            border: '1px solid ' + (scale === v ? '#a16207' : '#e5e5e5'),
+            background: scale === v ? '#a16207' : '#fff', color: scale === v ? '#fff' : '#555',
           }}>{label}</button>
         ))}
         <input type="number" min="0" step="0.5" value={scale}
@@ -316,7 +316,7 @@ function StockSheet({ station }: { station: 'kitchen' | 'bar' }) {
     <div style={{ textAlign: 'center', padding: 40, maxWidth: 480, margin: '0 auto' }}>
       <div style={{ fontSize: 18, fontWeight: 600 }}>Count submitted</div>
       <div style={{ color: '#999', fontSize: 14, marginTop: 6 }}>Sent to the manager to review and apply. Stock isn't changed until they do.</div>
-      <button onClick={() => setDone(false)} style={{ marginTop: 18, padding: '12px 18px', background: 'var(--accent, #e87830)', color: '#fff', border: 'none', borderRadius: 10, fontSize: 15, fontWeight: 600, cursor: 'pointer' }}>New count</button>
+      <button onClick={() => setDone(false)} style={{ marginTop: 18, padding: '12px 18px', background: 'var(--accent, #e87830)', color: 'var(--accent-contrast, #fff)', border: 'none', borderRadius: 10, fontSize: 15, fontWeight: 600, cursor: 'pointer' }}>New count</button>
     </div>
   )
 
@@ -358,7 +358,7 @@ function StockSheet({ station }: { station: 'kitchen' | 'bar' }) {
         <button onClick={addNewItem} style={{ width: '100%', marginTop: 8, padding: '11px', fontSize: 14, fontWeight: 600, background: 'var(--bg-sidebar, #f3f3f3)', border: '1px solid var(--border, #e5e5e5)', borderRadius: 8, cursor: 'pointer', color: 'var(--text, #333)' }}>+ Add off-list item</button>
       </div>
 
-      {(items.length > 0 || newItems.length > 0) && <button onClick={submit} disabled={busy} style={{ width: '100%', marginTop: 18, padding: '15px', fontSize: 16, fontWeight: 700, color: '#fff', background: 'var(--accent, #e87830)', border: 'none', borderRadius: 12, cursor: busy ? 'default' : 'pointer', opacity: busy ? 0.6 : 1 }}>{busy ? 'Submitting…' : 'Submit count'}</button>}
+      {(items.length > 0 || newItems.length > 0) && <button onClick={submit} disabled={busy} style={{ width: '100%', marginTop: 18, padding: '15px', fontSize: 16, fontWeight: 700, color: 'var(--accent-contrast, #fff)', background: 'var(--accent, #e87830)', border: 'none', borderRadius: 12, cursor: busy ? 'default' : 'pointer', opacity: busy ? 0.6 : 1 }}>{busy ? 'Submitting…' : 'Submit count'}</button>}
     </div>
   )
 }
@@ -368,7 +368,7 @@ const card: React.CSSProperties = {
   borderRadius: 12, padding: '16px 16px', cursor: 'pointer', minHeight: 96, display: 'block',
 }
 const bigBtn: React.CSSProperties = {
-  padding: '11px 18px', background: 'var(--accent, #e87830)', color: '#fff', border: 'none',
+  padding: '11px 18px', background: 'var(--accent, #e87830)', color: 'var(--accent-contrast, #fff)', border: 'none',
   borderRadius: 10, fontSize: 15, fontWeight: 600, cursor: 'pointer',
 }
 const bigBtnOutline: React.CSSProperties = {

@@ -119,7 +119,7 @@ export default function DeliveryPage() {
             padding: '8px 16px', borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: 'pointer',
             border: '1px solid ' + (platform === p ? 'var(--accent, #e87830)' : 'var(--border, #e5e5e5)'),
             background: platform === p ? 'var(--accent, #e87830)' : 'transparent',
-            color: platform === p ? '#fff' : 'var(--text, #333)',
+            color: platform === p ? 'var(--accent-contrast, #fff)' : 'var(--text, #333)',
           }}>{p === 'grab' ? 'Grab' : 'Capichi'}</button>
         ))}
       </div>
@@ -145,7 +145,7 @@ export default function DeliveryPage() {
       )}
 
       <button onClick={save} disabled={saving || !g} style={{
-        marginTop: 16, padding: '12px 18px', background: 'var(--accent, #e87830)', color: '#fff', border: 'none',
+        marginTop: 16, padding: '12px 18px', background: 'var(--accent, #e87830)', color: 'var(--accent-contrast, #fff)', border: 'none',
         borderRadius: 8, fontSize: 15, fontWeight: 600, cursor: saving ? 'wait' : 'pointer', opacity: (saving || !g) ? 0.6 : 1,
       }}>{saving ? 'Saving…' : 'Save to P&L'}</button>
       {msg && <div style={{ fontSize: 13, marginTop: 10, color: msg.startsWith('✓') ? '#548235' : 'var(--burgundy, #7b2d3a)' }}>{msg}</div>}

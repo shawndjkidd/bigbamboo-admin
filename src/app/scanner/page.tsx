@@ -571,7 +571,7 @@ function ScannerInterface({ staff, onLogout }: { staff: StaffUser; onLogout: () 
                 {ticketOrder.event_title || 'Event'} · {ticketOrder.quantity || 1} ticket{(ticketOrder.quantity || 1) > 1 ? 's' : ''}
               </div>
               <div style={{ marginTop: 8 }}>
-                <span style={{ display: 'inline-block', padding: '4px 14px', borderRadius: 50, fontSize: 12, fontWeight: 700,
+                <span style={{ display: 'inline-block', padding: '4px 14px', borderRadius: 6, fontSize: 12, fontWeight: 700,
                   background: ticketOrder.checked_in ? 'rgba(0,177,79,0.12)' : 'rgba(250,131,46,0.12)',
                   color: ticketOrder.checked_in ? B.green : B.orange,
                   border: `1px solid ${ticketOrder.checked_in ? 'rgba(0,177,79,0.3)' : 'rgba(250,131,46,0.3)'}`,
@@ -633,7 +633,7 @@ function ScannerInterface({ staff, onLogout }: { staff: StaffUser; onLogout: () 
                 {claim.prize_label}
               </div>
               <div style={{ marginTop: 8 }}>
-                <span style={{ display: 'inline-block', padding: '4px 14px', borderRadius: 50, fontSize: 12, fontWeight: 700,
+                <span style={{ display: 'inline-block', padding: '4px 14px', borderRadius: 6, fontSize: 12, fontWeight: 700,
                   background: claimStatus?.bg, color: claimStatus?.color, border: `1px solid ${claimStatus?.border}`,
                   letterSpacing: '0.06em', textTransform: 'uppercase' }}>
                   {claimStatus?.label}
@@ -778,7 +778,7 @@ function ScannerInterface({ staff, onLogout }: { staff: StaffUser; onLogout: () 
                         {o.email || o.phone || ''}{(o.quantity || 1) > 1 ? ` · ${o.quantity} tickets` : ''}
                       </div>
                     </div>
-                    <div style={{ padding: '6px 14px', borderRadius: 50, fontSize: 12, fontWeight: 600,
+                    <div style={{ padding: '6px 14px', borderRadius: 7, fontSize: 12, fontWeight: 600,
                       background: o.checked_in ? 'rgba(0,177,79,0.15)' : B.orange,
                       color: o.checked_in ? B.green : '#fff' }}>
                       {o.checked_in ? 'Checked In' : 'Check In'}
@@ -829,7 +829,7 @@ function ScannerInterface({ staff, onLogout }: { staff: StaffUser; onLogout: () 
                             {c.claim_code} · {fmtDate(c.issued_at)}
                           </div>
                         </div>
-                        <span style={{ padding: '4px 12px', borderRadius: 50, fontSize: 11, fontWeight: 700,
+                        <span style={{ padding: '4px 12px', borderRadius: 6, fontSize: 11, fontWeight: 700,
                           background: s.bg, color: s.color, border: `1px solid ${s.border}` }}>
                           {s.label}
                         </span>

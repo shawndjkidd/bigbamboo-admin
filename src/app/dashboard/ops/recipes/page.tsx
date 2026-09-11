@@ -385,7 +385,7 @@ export default function RecipesPage() {
               padding: '8px 18px', fontSize: 13, fontWeight: 600, cursor: 'pointer', border: 'none',
               borderRight: val !== 'bar' ? '1px solid var(--border, #e5e5e5)' : 'none',
               background: station === val ? 'var(--accent, #e87830)' : 'var(--bg-card, #fff)',
-              color: station === val ? '#fff' : 'var(--text-muted, #777)',
+              color: station === val ? 'var(--accent-contrast, #fff)' : 'var(--text-muted, #777)',
             }}
           >{label}</button>
         ))}
@@ -556,5 +556,5 @@ const RECIPE_PDF_STYLE = `
 const inp = { padding: '10px 12px', fontSize: 14, border: '1px solid var(--border, #e5e5e5)', borderRadius: 6, background: 'var(--bg-card, #fff)', color: 'var(--text, #333)' }
 const th  = { padding: '8px 12px', textAlign: 'left' as const, fontWeight: 600, fontSize: 11, textTransform: 'uppercase' as const, color: 'var(--text-muted, #999)', letterSpacing: '0.05em' }
 const td  = { padding: '8px 12px', color: 'var(--text, #333)' }
-const btnPrimary = { padding: '8px 14px', background: 'var(--accent, #e87830)', color: '#fff', border: 'none', borderRadius: 6, fontSize: 13, fontWeight: 600, cursor: 'pointer', textDecoration: 'none', display: 'inline-block' }
+const btnPrimary = { padding: '8px 14px', background: 'var(--accent, #e87830)', color: 'var(--accent-contrast, #fff)', border: 'none', borderRadius: 6, fontSize: 13, fontWeight: 600, cursor: 'pointer', textDecoration: 'none', display: 'inline-block' }
 const btnOutline = { padding: '8px 14px', background: 'transparent', color: 'var(--text-secondary, #666)', border: '1px solid var(--border, #e5e5e5)', borderRadius: 6, fontSize: 13, fontWeight: 600 }

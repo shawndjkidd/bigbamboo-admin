@@ -111,7 +111,7 @@ export default function PitchesPage() {
   const mono = { fontFamily: 'DM Mono, monospace' }
   const label = { ...mono, fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase' as const, color: 'var(--text-muted)' }
   const inp = { width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 8, padding: '11px 13px', color: 'var(--text)', fontSize: 14, outline: 'none', fontFamily: 'inherit', resize: 'vertical' as const }
-  const chip = { padding: '7px 15px', borderRadius: 100, fontSize: 12.5, cursor: 'pointer', ...mono, border: '1px solid', transition: 'all 0.15s' }
+  const chip = { padding: '7px 15px', borderRadius: 8, fontSize: 12.5, cursor: 'pointer', ...mono, border: '1px solid', transition: 'all 0.15s' }
 
   function bool(v: boolean) {
     return v
@@ -127,7 +127,7 @@ export default function PitchesPage() {
           <div className="page-title">
             Event Pitches
             {newCount > 0 && (
-              <span style={{ background: 'var(--badge-orange-bg)', border: '1px solid var(--badge-orange-border)', color: 'var(--accent)', fontSize: 13, padding: '3px 10px', borderRadius: 100, marginLeft: 10, ...mono, letterSpacing: '0.06em', verticalAlign: 'middle' }}>
+              <span style={{ background: 'var(--badge-orange-bg)', border: '1px solid var(--badge-orange-border)', color: 'var(--accent)', fontSize: 13, padding: '3px 10px', borderRadius: 6, marginLeft: 10, ...mono, letterSpacing: '0.06em', verticalAlign: 'middle' }}>
                 {newCount} new
               </span>
             )}
@@ -182,7 +182,7 @@ export default function PitchesPage() {
                       {/* One badge, not two. This used to render the status pill
                           AND a separate hardcoded "NEW", so new pitches read
                           "New NEW". */}
-                      <span style={{ ...mono, fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase' as const, padding: '3px 9px', borderRadius: 100, background: t.bg, color: t.fg, border: `1px solid ${t.bd}` }}>{s.label}</span>
+                      <span style={{ ...mono, fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase' as const, padding: '3px 9px', borderRadius: 5, background: t.bg, color: t.fg, border: `1px solid ${t.bd}` }}>{s.label}</span>
                     </div>
                     <div style={{ fontSize: 14.5, color: 'var(--text-secondary)', marginBottom: 5 }}>{p.event_type} · {p.name}</div>
                     <div style={{ ...mono, fontSize: 12.5, color: 'var(--text-muted)' }}>
@@ -216,7 +216,7 @@ export default function PitchesPage() {
                   </div>
                 </div>
                 <button onClick={() => setSelected(null)} aria-label="Close"
-                  style={{ background: 'var(--bg-hover)', border: '1px solid var(--border-light)', color: 'var(--text-secondary)', width: 34, height: 34, borderRadius: '50%', cursor: 'pointer', fontSize: 16, flexShrink: 0 }}>✕</button>
+                  style={{ background: 'var(--bg-hover)', border: '1px solid var(--border-light)', color: 'var(--text-secondary)', width: 34, height: 34, borderRadius: 8, cursor: 'pointer', fontSize: 16, flexShrink: 0 }}>✕</button>
               </div>
 
               {/* Status pipeline */}

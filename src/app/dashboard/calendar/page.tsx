@@ -276,7 +276,7 @@ export default function CalendarPage() {
                     background: tone ? tone.bg : undefined,
                     borderColor: tone ? tone.bd : undefined,
                     opacity: isPast ? 0.3 : tone || isTrading ? 1 : 0.62,
-                    boxShadow: isToday ? '0 0 0 2px var(--accent), 0 6px 18px -10px rgba(234,88,12,.6)' : undefined,
+                    boxShadow: isToday ? '0 0 0 2px var(--accent), 0 6px 18px -10px rgba(244,185,66,.55)' : undefined,
                   }}
                 >
                   {tone && <span className="cal-cell__stripe" style={{ background: tone.fg }} />}
@@ -392,7 +392,7 @@ export default function CalendarPage() {
                         key={k}
                         onClick={() => setForm(f => ({ ...f, status: k }))}
                         style={{
-                          padding: '8px 16px', borderRadius: 100, fontSize: 13, cursor: 'pointer',
+                          padding: '8px 16px', borderRadius: 9, fontSize: 13, cursor: 'pointer',
                           border: '1px solid',
                           borderColor: form.status === k ? 'var(--accent)' : 'var(--border)',
                           background: form.status === k ? 'var(--accent-light)' : 'transparent',

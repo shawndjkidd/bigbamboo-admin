@@ -266,7 +266,7 @@ function IngredientsInner() {
 
       <div style={{ display: 'flex', gap: 8, marginBottom: 12, alignItems: 'center', flexWrap: 'wrap' }}>
         {(['list','stock','vendors'] as const).map(v => (
-          <button key={v} onClick={() => setView(v)} style={{ padding: '8px 16px', borderRadius: 100, fontSize: 14, fontWeight: 500, cursor: 'pointer', textTransform: 'capitalize', background: view === v ? 'var(--accent)' : 'transparent', color: view === v ? '#fff' : 'var(--text-secondary)', border: '1px solid ' + (view === v ? 'var(--accent)' : 'var(--border)') }}>{v === 'list' ? 'Items' : v}</button>
+          <button key={v} onClick={() => setView(v)} style={{ padding: '8px 16px', borderRadius: 9, fontSize: 14, fontWeight: 500, cursor: 'pointer', textTransform: 'capitalize', background: view === v ? 'var(--accent)' : 'transparent', color: view === v ? 'var(--accent-contrast, #fff)' : 'var(--text-secondary)', border: '1px solid ' + (view === v ? 'var(--accent)' : 'var(--border)') }}>{v === 'list' ? 'Items' : v}</button>
         ))}
         <div style={{ flex: 1 }} />
         {view !== 'vendors' && (
@@ -349,7 +349,7 @@ function IngredientsInner() {
                             <tr key={r.id} style={{ borderTop: '1px solid var(--border, #eee)' }}>
                               <td style={td}>
                                 <span style={{ fontWeight: 600 }}>{r.name}</span>
-                                {isLow(r) && <span style={{ marginLeft: 8, fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 100, background: 'var(--bg-hover, #f3e6e9)', color: 'var(--burgundy, #7b2d3a)' }}>low</span>}
+                                {isLow(r) && <span style={{ marginLeft: 8, fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 5, background: 'var(--bg-hover, #f3e6e9)', color: 'var(--burgundy, #7b2d3a)' }}>low</span>}
                                 {canManage && <button onClick={() => openEdit(r)} style={{ marginLeft: 8, background: 'transparent', border: 'none', color: 'var(--text-muted, #999)', cursor: 'pointer', fontSize: 12 }}>edit</button>}
                               </td>
                               <td style={{ ...td, color: 'var(--text-muted, #999)' }}>{buyAs(r)}</td>
@@ -438,7 +438,7 @@ function IngredientsInner() {
                 <td style={{ ...td, textAlign: 'right' }} onClick={e => e.stopPropagation()}>
                   {used.length
                     ? <button onClick={() => setUsageFor(r)} title="Show the recipes using this"
-                        style={{ background: 'var(--badge-orange-bg)', border: '1px solid var(--badge-orange-border)', color: 'var(--accent)', borderRadius: 100, padding: '3px 11px', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>
+                        style={{ background: 'var(--badge-orange-bg)', border: '1px solid var(--badge-orange-border)', color: 'var(--accent)', borderRadius: 7, padding: '3px 11px', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>
                         {used.length} {used.length === 1 ? 'recipe' : 'recipes'}
                       </button>
                     : <span style={{ color: 'var(--text-muted, #999)', fontSize: 13 }}>—</span>}
@@ -492,7 +492,7 @@ function UsageModal({ row, used, onClose }: { row: Row; used: Usage[]; onClose: 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, marginBottom: 6 }}>
           <div style={{ fontSize: 19, fontWeight: 700, color: 'var(--text)' }}>{row.name}</div>
           <button onClick={onClose} aria-label="Close"
-            style={{ background: 'var(--bg-hover)', border: '1px solid var(--border-light)', color: 'var(--text-secondary)', width: 30, height: 30, borderRadius: '50%', cursor: 'pointer', fontSize: 15, flexShrink: 0, fontFamily: 'inherit' }}>✕</button>
+            style={{ background: 'var(--bg-hover)', border: '1px solid var(--border-light)', color: 'var(--text-secondary)', width: 30, height: 30, borderRadius: 8, cursor: 'pointer', fontSize: 15, flexShrink: 0, fontFamily: 'inherit' }}>✕</button>
         </div>
 
         <p style={{ fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.6, margin: '0 0 18px' }}>
@@ -737,7 +737,7 @@ const Field = ({ label, children }: { label: string; children: React.ReactNode }
 const inp = { width: '100%', padding: '10px 12px', fontSize: 14, border: '1px solid var(--border, #e5e5e5)', borderRadius: 8, background: 'var(--bg-input, #fff)', color: 'var(--text, #333)', boxSizing: 'border-box' as const }
 const th = { padding: '10px 12px', textAlign: 'left' as const, fontWeight: 600, fontSize: 11, textTransform: 'uppercase' as const, color: 'var(--text-muted, #999)', letterSpacing: '0.05em' }
 const td = { padding: '12px', color: 'var(--text, #333)' }
-const btnPrimary = { padding: '9px 16px', background: 'var(--accent, #e87830)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: 'pointer' }
+const btnPrimary = { padding: '9px 16px', background: 'var(--accent, #e87830)', color: 'var(--accent-contrast, #fff)', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: 'pointer' }
 const btnSecondary = { padding: '9px 16px', background: 'transparent', color: 'var(--text-secondary, #666)', border: '1px solid var(--border, #e5e5e5)', borderRadius: 8, fontSize: 14, cursor: 'pointer' }
 const btnTrash = { padding: '4px 8px', background: 'transparent', color: 'var(--burgundy, #7b2d3a)', border: 'none', cursor: 'pointer', fontSize: 15 }
 const modalBg = { position: 'fixed' as const, inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: 16 }

@@ -81,7 +81,7 @@ const pausedBanner: React.CSSProperties = {
   position: 'fixed', bottom: 18, left: '50%', transform: 'translateX(-50%)',
   background: 'var(--theme-coral)', color: 'var(--theme-text)',
   border: '2px solid var(--bbb-wood)',
-  padding: '10px 26px', borderRadius: 100, fontSize: 16,
+  padding: '10px 26px', borderRadius: 10, fontSize: 16,
   fontFamily: 'var(--theme-display-font)', letterSpacing: '0.04em',
   boxShadow: '0 4px 0 var(--bbb-wood), 0 10px 22px rgba(0,0,0,0.45)',
   zIndex: 50,

@@ -265,7 +265,7 @@ export default function DoorPage() {
                         <div style={{ fontWeight: 600, fontSize: 15 }}>{o.name}</div>
                         <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', marginTop: 2 }}>{o.email || o.phone || ''}{o.quantity > 1 ? ' · ' + o.quantity + ' tickets' : ''}</div>
                       </div>
-                      <div style={{ padding: '6px 14px', borderRadius: 50, fontSize: 12, fontWeight: 600, background: o.checked_in ? 'rgba(34,197,94,0.2)' : '#e8772e', color: o.checked_in ? '#22c55e' : '#fff' }}>
+                      <div style={{ padding: '6px 14px', borderRadius: 7, fontSize: 12, fontWeight: 600, background: o.checked_in ? 'rgba(34,197,94,0.2)' : '#e8772e', color: o.checked_in ? '#22c55e' : '#fff' }}>
                         {o.checked_in ? 'Checked In' : 'Check In'}
                       </div>
                     </div>

@@ -127,7 +127,7 @@ function SopsInner() {
 
       <div style={{ display: 'flex', gap: 6, marginBottom: 20, flexWrap: 'wrap' }}>
         {cats.map(c => (
-          <button key={c} onClick={() => setCat(c)} className={cat === c ? 'menu-pill-active' : 'menu-pill-inactive'} style={{ padding: '8px 16px', borderRadius: 100, fontSize: 13, fontWeight: 500, cursor: 'pointer', textTransform: 'capitalize' }}>{c}</button>
+          <button key={c} onClick={() => setCat(c)} className={cat === c ? 'menu-pill-active' : 'menu-pill-inactive'} style={{ padding: '8px 16px', borderRadius: 9, fontSize: 13, fontWeight: 500, cursor: 'pointer', textTransform: 'capitalize' }}>{c}</button>
         ))}
       </div>
 
@@ -164,7 +164,7 @@ function SopsInner() {
                   <span style={{ fontWeight: 600, fontSize: 15, flex: 1 }}>{s.title || '(untitled)'}</span>
                   <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{s.category}</span>
                   {s.frequency && <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{s.frequency}</span>}
-                  {!s.is_published && <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 100, background: 'var(--badge-red-bg)', color: 'var(--badge-red-text)' }}>Draft</span>}
+                  {!s.is_published && <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 5, background: 'var(--badge-red-bg)', color: 'var(--badge-red-text)' }}>Draft</span>}
                 </div>
                 {open && (
                   <div style={{ marginTop: 16 }}>

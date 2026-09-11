@@ -109,8 +109,8 @@ export default function AskPage() {
 }
 
 const inp = { padding: '10px 12px', fontSize: 14, border: '1px solid var(--border, #e5e5e5)', borderRadius: 8, background: 'var(--bg-input, #fff)', color: 'var(--text, #333)', boxSizing: 'border-box' as const }
-const btnPrimary = { padding: '10px 18px', background: 'var(--accent, #e87830)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: 'pointer' }
+const btnPrimary = { padding: '10px 18px', background: 'var(--accent, #e87830)', color: 'var(--accent-contrast, #fff)', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: 'pointer' }
 const btnLink = { padding: '4px 0', background: 'transparent', border: 'none', cursor: 'pointer', fontSize: 12 }
-const chip = { padding: '6px 12px', fontSize: 12, borderRadius: 100, border: '1px solid var(--border, #e5e5e5)', background: 'var(--bg-input, #fff)', color: 'var(--text-secondary, #555)', cursor: 'pointer' }
+const chip = { padding: '6px 12px', fontSize: 12, borderRadius: 8, border: '1px solid var(--border, #e5e5e5)', background: 'var(--bg-input, #fff)', color: 'var(--text-secondary, #555)', cursor: 'pointer' }
 const dth = { padding: '6px 8px', textAlign: 'left' as const, fontWeight: 600, fontSize: 11, color: 'var(--text-muted, #999)', whiteSpace: 'nowrap' as const }
 const dtd = { padding: '6px 8px', color: 'var(--text, #333)', whiteSpace: 'nowrap' as const }
