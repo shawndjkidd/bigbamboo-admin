@@ -36,6 +36,19 @@
   --cal-booked-bg: rgba(22,163,74,0.12);
   --cal-booked-text: #15803d;
   --cal-booked-border: rgba(22,163,74,0.3);
+  /* Keg destinations (BrewAsia kegs page) */
+  --dest-conf: #1d4ed8;
+  --dest-conf-bg: rgba(37,99,235,0.1);
+  --dest-conf-bd: rgba(37,99,235,0.28);
+  --dest-trail: #0f766e;
+  --dest-trail-bg: rgba(13,148,136,0.12);
+  --dest-trail-bd: rgba(13,148,136,0.3);
+  --dest-collab: #7c3aed;
+  --dest-collab-bg: rgba(124,58,237,0.1);
+  --dest-collab-bd: rgba(124,58,237,0.28);
+  --dest-sold: #be185d;
+  --dest-sold-bg: rgba(219,39,119,0.1);
+  --dest-sold-bd: rgba(219,39,119,0.26);
   --badge-gray-bg: rgba(113,113,122,0.1);
   --badge-gray-text: #52525b;
   --badge-gray-border: rgba(113,113,122,0.2);
@@ -80,6 +93,18 @@
   --cal-booked-bg: rgba(34,197,94,0.16);
   --cal-booked-text: #4ade80;
   --cal-booked-border: rgba(34,197,94,0.34);
+  --dest-conf: #60a5fa;
+  --dest-conf-bg: rgba(59,130,246,0.16);
+  --dest-conf-bd: rgba(59,130,246,0.34);
+  --dest-trail: #2dd4bf;
+  --dest-trail-bg: rgba(45,212,191,0.13);
+  --dest-trail-bd: rgba(45,212,191,0.32);
+  --dest-collab: #a78bfa;
+  --dest-collab-bg: rgba(167,139,250,0.16);
+  --dest-collab-bd: rgba(167,139,250,0.34);
+  --dest-sold: #f472b6;
+  --dest-sold-bg: rgba(244,114,182,0.15);
+  --dest-sold-bd: rgba(244,114,182,0.32);
   --badge-gray-bg: rgba(161,161,170,0.15);
   --badge-gray-text: #a1a1aa;
   --badge-gray-border: rgba(161,161,170,0.25);
@@ -218,17 +243,36 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); c
 }
 
 /* ── BrewAsia kegs ──────────────────────────────────────────── */
-.keg-strip { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.keg-strip { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; }
 .keg-stat {
+  position: relative; overflow: hidden;
   display: block; width: 100%; text-align: left; font: inherit; color: inherit; cursor: pointer;
-  padding: 16px 18px; transition: border-color .15s, box-shadow .15s;
+  padding: 16px 16px 14px; transition: border-color .15s, box-shadow .15s;
 }
 .keg-stat:hover { border-color: var(--text-muted); }
+.keg-stat:focus { outline: none; }
+.keg-stat:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.keg-stat__stripe { position: absolute; left: 0; right: 0; top: 0; height: 3px; }
+.keg-dest-chip {
+  display: inline-flex; align-items: center; gap: 4px; height: 22px; padding: 0 9px; border-radius: 100px;
+  border: 1px solid; font-size: 11.5px; font-weight: 600; white-space: nowrap;
+}
+.keg-dest-chip b { font-weight: 700; font-variant-numeric: tabular-nums; }
+.keg-pill-dot { position: absolute; left: 11px; top: 50%; width: 7px; height: 7px; border-radius: 50%; transform: translateY(-50%); pointer-events: none; }
+.keg-pill.keg-pill--dot { padding-left: 25px; }
+.keg-line { border: 1px solid var(--border-light); border-radius: 11px; padding: 12px 12px 12px; background: var(--bg-subtle); }
+.keg-add-line {
+  height: 40px; border-radius: 10px; border: 1px dashed var(--border); background: transparent;
+  color: var(--accent); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer;
+}
+.keg-add-line:hover { border-color: var(--accent); background: var(--accent-light); }
+.keg-link { background: none; border: none; padding: 0; font: inherit; font-size: 12px; font-weight: 600; color: var(--text-muted); cursor: pointer; }
+.keg-link:hover { color: var(--accent); }
+.keg-line .input { background: var(--bg-card); }
 .keg-stat--todo {
   border-color: var(--badge-orange-border);
   background: linear-gradient(160deg, var(--accent-light) 0%, transparent 90%), var(--bg-card);
 }
-.keg-stat--active { box-shadow: 0 0 0 2px var(--accent); }
 .keg-filters { display: grid; grid-template-columns: minmax(0, 2fr) repeat(3, minmax(0, 1fr)); gap: 8px; }
 .keg-table td { padding: 11px 16px; }
 .keg-table tr.keg-group td {
@@ -259,6 +303,10 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); c
   backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px);
 }
 .keg-modal { width: 100%; padding: 24px; max-height: 90vh; overflow-y: auto; }
+
+@media (max-width: 1180px) and (min-width: 761px) {
+  .keg-strip { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
 
 @media (max-width: 760px) {
   .keg-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }

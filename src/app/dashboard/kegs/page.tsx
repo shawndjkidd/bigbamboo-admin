@@ -2,16 +2,20 @@
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 
-// BrewAsia keg tracker. Breweries donate kegs; they land at BigBamBoo and go out
-// to the Conference, the Ale Trail bars, or Collab Fest. One row = one donation
-// line (use qty). A line can be split so part of it goes somewhere else.
+// BrewAsia keg tracker. Every keg we have: who it's from (donated or bought),
+// how many, where it's going (Conference, Ale Trail bars, Collab Fest, or sold)
+// and where it is now. One row = one beer from one brewery (use qty). Adding
+// takes several beers from the same brewery at once. A row can be split so part
+// of it goes somewhere else.
 
-type Destination = 'unassigned' | 'conference' | 'ale_trail' | 'collab_fest'
+type Destination = 'unassigned' | 'conference' | 'ale_trail' | 'collab_fest' | 'sold'
+type Source = 'donated' | 'purchased'
 type Status = 'promised' | 'received' | 'allocated' | 'delivered' | 'tapped' | 'empty' | 'returned'
 
 type Keg = {
   id: string
   created_at?: string
+  source: Source
   brewery: string
   contact_name: string | null
   contact_phone: string | null
@@ -32,18 +36,57 @@ type Keg = {
   notes: string | null
 }
 
-type Draft = Omit<Keg, 'id' | 'abv' | 'size_litres' | 'qty'> & {
-  id?: string
+// One beer inside the add/edit form.
+type Line = {
+  key: string
+  beer_name: string
+  beer_style: string
   abv: string
   size_litres: string
+  coupler: string
   qty: string
+  destination: Destination
+  destination_venue: string
 }
 
-const DESTS: { key: Destination; label: string }[] = [
-  { key: 'unassigned', label: 'Unassigned' },
-  { key: 'conference', label: 'Conference' },
-  { key: 'ale_trail', label: 'Ale Trail' },
-  { key: 'collab_fest', label: 'Collab Fest' },
+// The form: brewery-level fields shared by every line, plus the lines. Each line
+// has its own destination, so two of the same beer can go to different places.
+// Editing an existing row is the same form with exactly one line.
+type Draft = {
+  id?: string
+  source: Source
+  brewery: string
+  contact_name: string
+  contact_phone: string
+  contact_email: string
+  status: Status
+  returnable: boolean
+  received_at: string | null
+  delivered_at: string | null
+  returned_at: string | null
+  notes: string
+  lines: Line[]
+}
+
+type Tone = { fg: string; bg: string; bd: string }
+
+// Each destination has its own colour (tokens in globals.css) so a brewery's
+// kegs read at a glance: blue to Conference, teal to Ale Trail, violet to
+// Collab Fest, rose sold. Unassigned stays grey: not decided yet.
+const DESTS: { key: Destination; label: string; tone: Tone }[] = [
+  { key: 'conference', label: 'Conference', tone: { fg: 'var(--dest-conf)', bg: 'var(--dest-conf-bg)', bd: 'var(--dest-conf-bd)' } },
+  { key: 'ale_trail', label: 'Ale Trail', tone: { fg: 'var(--dest-trail)', bg: 'var(--dest-trail-bg)', bd: 'var(--dest-trail-bd)' } },
+  { key: 'collab_fest', label: 'Collab Fest', tone: { fg: 'var(--dest-collab)', bg: 'var(--dest-collab-bg)', bd: 'var(--dest-collab-bd)' } },
+  { key: 'sold', label: 'Sold', tone: { fg: 'var(--dest-sold)', bg: 'var(--dest-sold-bg)', bd: 'var(--dest-sold-bd)' } },
+  { key: 'unassigned', label: 'Unassigned', tone: { fg: 'var(--badge-gray-text)', bg: 'var(--badge-gray-bg)', bd: 'var(--badge-gray-border)' } },
+]
+// Ale Trail kegs go to a named bar; sold kegs go to a named buyer.
+const needsVenue = (d: Destination) => d === 'ale_trail' || d === 'sold'
+const venueLabel = (d: Destination) => (d === 'sold' ? 'Buyer' : 'Ale Trail bar')
+const venueHint = (d: Destination) => (d === 'sold' ? 'Who bought them?' : 'Which bar?')
+const SOURCES: { key: Source; label: string }[] = [
+  { key: 'donated', label: 'Donated' },
+  { key: 'purchased', label: 'Purchased' },
 ]
 const DEST_LABEL = Object.fromEntries(DESTS.map(d => [d.key, d.label])) as Record<Destination, string>
 
@@ -53,28 +96,34 @@ const STATUS_LABEL: Record<Status, string> = {
   tapped: 'Tapped', empty: 'Empty', returned: 'Returned',
 }
 
-// Colour carries meaning: grey = not here yet / done with, orange = in our cold
-// room, green = out at the destination. --badge-green is grey in this theme, so
-// the real green comes from the calendar's --cal-booked tokens.
-function statusTone(s: Status) {
-  if (s === 'received' || s === 'allocated') return { bg: 'var(--badge-orange-bg)', bd: 'var(--badge-orange-border)', fg: 'var(--badge-orange-text)' }
-  if (s === 'delivered' || s === 'tapped') return { bg: 'var(--cal-booked-bg)', bd: 'var(--cal-booked-border)', fg: 'var(--cal-booked-text)' }
-  return { bg: 'var(--badge-gray-bg)', bd: 'var(--badge-gray-border)', fg: 'var(--badge-gray-text)' }
+// Status stays quiet so it doesn't fight the destination colour: a neutral pill
+// with a small dot. Grey = not here / done, orange = in our cold room,
+// green = out at the destination.
+function statusDot(s: Status) {
+  if (s === 'received' || s === 'allocated') return 'var(--accent)'
+  if (s === 'delivered' || s === 'tapped') return 'var(--cal-booked-text)'
+  return 'var(--text-muted)'
 }
-function destTone(d: Destination) {
-  if (d === 'unassigned') return { bg: 'var(--badge-orange-bg)', bd: 'var(--badge-orange-border)', fg: 'var(--badge-orange-text)' }
-  return { bg: 'transparent', bd: 'var(--border)', fg: 'var(--text-secondary)' }
-}
+const destTone = (d: Destination): Tone => (DESTS.find(x => x.key === d) || DESTS[DESTS.length - 1]).tone
 
 const COUPLERS = ['S', 'D', 'A', 'G', 'U']
 const isDone = (s: Status) => s === 'empty' || s === 'returned'
 
-const BLANK: Draft = {
-  brewery: '', contact_name: '', contact_phone: '', contact_email: '',
-  beer_name: '', beer_style: '', abv: '', size_litres: '', coupler: '', qty: '1',
-  destination: 'unassigned', destination_venue: '', status: 'promised', returnable: false,
+let lineSeq = 0
+// A new line copies size, coupler and destination from the one above: one
+// brewery's kegs are usually the same kind.
+const blankLine = (prev?: Line): Line => ({
+  key: `l${++lineSeq}`, beer_name: '', beer_style: '', abv: '',
+  size_litres: prev?.size_litres || '', coupler: prev?.coupler || '', qty: '1',
+  destination: prev?.destination || 'unassigned', destination_venue: prev?.destination_venue || '',
+})
+
+const blankDraft = (): Draft => ({
+  source: 'donated', brewery: '', contact_name: '', contact_phone: '', contact_email: '',
+  status: 'promised', returnable: false,
   received_at: null, delivered_at: null, returned_at: null, notes: '',
-}
+  lines: [blankLine()],
+})
 
 const todayKey = () => new Date().toLocaleDateString('en-CA')
 const fmtL = (n: number) => new Intl.NumberFormat('en-US', { maximumFractionDigits: 1 }).format(n)
@@ -132,10 +181,16 @@ export default function KegsPage() {
     () => Array.from(new Set(kegs.map(k => k.brewery.trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b)),
     [kegs],
   )
-  const venues = useMemo(
-    () => Array.from(new Set(kegs.map(k => (k.destination_venue || '').trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b)),
-    [kegs],
-  )
+  // Names already used, per destination: bars for Ale Trail, buyers for Sold.
+  const venuesBy = useMemo(() => {
+    const m: Record<string, Set<string>> = {}
+    for (const k of kegs) {
+      const v = (k.destination_venue || '').trim()
+      if (!v) continue
+      ;(m[k.destination] ||= new Set()).add(v)
+    }
+    return Object.fromEntries(Object.entries(m).map(([d, set]) => [d, Array.from(set).sort((a, b) => a.localeCompare(b))])) as Record<string, string[]>
+  }, [kegs])
   const styles = useMemo(
     () => Array.from(new Set(kegs.map(k => (k.beer_style || '').trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b)),
     [kegs],
@@ -152,6 +207,12 @@ export default function KegsPage() {
     return t
   }, [kegs])
 
+  const allTotals = useMemo(() => ({
+    kegs: kegs.reduce((n, k) => n + (k.qty || 0), 0),
+    litres: kegs.reduce((n, k) => n + litres(k), 0),
+    promised: kegs.filter(k => k.status === 'promised').reduce((n, k) => n + (k.qty || 0), 0),
+  }), [kegs])
+
   const returnsDue = useMemo(
     () => kegs.filter(k => k.returnable && k.status === 'empty').reduce((n, k) => n + (k.qty || 0), 0),
     [kegs],
@@ -164,7 +225,7 @@ export default function KegsPage() {
       if (fDest && k.destination !== fDest) return false
       if (fStatus && k.status !== fStatus) return false
       if (needle) {
-        const hay = [k.brewery, k.beer_name, k.beer_style, k.destination_venue, k.contact_name, k.notes].join(' ').toLowerCase()
+        const hay = [k.brewery, k.beer_name, k.beer_style, k.destination_venue, k.contact_name, k.notes, k.source].join(' ').toLowerCase()
         if (!hay.includes(needle)) return false
       }
       return true
@@ -175,6 +236,7 @@ export default function KegsPage() {
     const m = new Map<string, Keg[]>()
     const sorted = [...filtered].sort((a, b) =>
       a.brewery.trim().localeCompare(b.brewery.trim(), undefined, { sensitivity: 'base' })
+      || (a.beer_name || '').localeCompare(b.beer_name || '', undefined, { sensitivity: 'base' })
       || String(a.created_at || '').localeCompare(String(b.created_at || '')))
     for (const k of sorted) {
       const key = k.brewery.trim()
@@ -204,28 +266,47 @@ export default function KegsPage() {
   }
 
   function setDestination(k: Keg, destination: Destination) {
-    patch(k.id, { destination, destination_venue: destination === 'ale_trail' ? k.destination_venue : null })
+    patch(k.id, { destination, destination_venue: needsVenue(destination) && destination === k.destination ? k.destination_venue : null })
   }
 
-  function openNew() {
+  function openNew(from?: Keg) {
     setConfirmDelete(false)
-    setEditing({ ...BLANK, brewery: fBrewery || '' })
+    const d = blankDraft()
+    if (from) {
+      d.source = from.source || 'donated'
+      d.brewery = from.brewery
+      d.contact_name = from.contact_name || ''
+      d.contact_phone = from.contact_phone || ''
+      d.contact_email = from.contact_email || ''
+      d.returnable = from.returnable
+    } else if (fBrewery) {
+      d.brewery = fBrewery
+    }
+    setEditing(d)
   }
 
   function openEdit(k: Keg) {
     setConfirmDelete(false)
     setEditing({
-      ...k,
+      id: k.id,
+      source: k.source || 'donated',
+      brewery: k.brewery,
       contact_name: k.contact_name || '', contact_phone: k.contact_phone || '', contact_email: k.contact_email || '',
-      beer_name: k.beer_name || '', beer_style: k.beer_style || '', coupler: k.coupler || '',
-      destination_venue: k.destination_venue || '', notes: k.notes || '',
-      abv: k.abv == null ? '' : String(k.abv),
-      size_litres: k.size_litres == null ? '' : String(k.size_litres),
-      qty: String(k.qty ?? 1),
+      status: k.status, returnable: k.returnable,
+      received_at: k.received_at, delivered_at: k.delivered_at, returned_at: k.returned_at,
+      notes: k.notes || '',
+      lines: [{
+        key: `l${++lineSeq}`,
+        beer_name: k.beer_name || '', beer_style: k.beer_style || '', coupler: k.coupler || '',
+        abv: k.abv == null ? '' : String(k.abv),
+        size_litres: k.size_litres == null ? '' : String(k.size_litres),
+        qty: String(k.qty ?? 1),
+        destination: k.destination, destination_venue: k.destination_venue || '',
+      }],
     })
   }
 
-  // Picking an existing brewery fills in its contact if the fields are still empty.
+  // Picking a brewery we already have fills in its details if still empty.
   function setBrewery(name: string) {
     setEditing(f => {
       if (!f) return f
@@ -233,6 +314,7 @@ export default function KegsPage() {
       if (!known || f.id) return { ...f, brewery: name }
       return {
         ...f, brewery: name,
+        source: known.source || f.source,
         contact_name: f.contact_name || known.contact_name || '',
         contact_phone: f.contact_phone || known.contact_phone || '',
         contact_email: f.contact_email || known.contact_email || '',
@@ -241,25 +323,37 @@ export default function KegsPage() {
     })
   }
 
+  function updateLine(key: string, changes: Partial<Line>) {
+    setEditing(f => f && { ...f, lines: f.lines.map(l => (l.key === key ? { ...l, ...changes } : l)) })
+  }
+  function addLine() {
+    setEditing(f => f && { ...f, lines: [...f.lines, blankLine(f.lines[f.lines.length - 1])] })
+  }
+  // Same beer, different place: copy the line, then change where the copy goes.
+  function duplicateLine(key: string) {
+    setEditing(f => {
+      if (!f) return f
+      const i = f.lines.findIndex(l => l.key === key)
+      if (i < 0) return f
+      const copy = { ...f.lines[i], key: `l${++lineSeq}`, qty: '1', destination: 'unassigned' as Destination, destination_venue: '' }
+      return { ...f, lines: [...f.lines.slice(0, i + 1), copy, ...f.lines.slice(i + 1)] }
+    })
+  }
+  function removeLine(key: string) {
+    setEditing(f => (f && f.lines.length > 1 ? { ...f, lines: f.lines.filter(l => l.key !== key) } : f))
+  }
+
   async function saveDraft() {
     if (!editing) return
     const brewery = editing.brewery.trim()
-    const qty = Math.max(1, Math.floor(Number(editing.qty) || 0))
     if (!brewery) return showToast('Brewery is required.')
     const num = (v: string) => (v.trim() === '' || isNaN(Number(v)) ? null : Number(v))
-    const payload = {
+    const shared = {
+      source: editing.source,
       brewery,
       contact_name: txt(editing.contact_name),
       contact_phone: txt(editing.contact_phone),
       contact_email: txt(editing.contact_email),
-      beer_name: txt(editing.beer_name),
-      beer_style: txt(editing.beer_style),
-      abv: num(editing.abv),
-      size_litres: num(editing.size_litres),
-      coupler: txt(editing.coupler),
-      qty,
-      destination: editing.destination,
-      destination_venue: editing.destination === 'ale_trail' ? txt(editing.destination_venue) : null,
       status: editing.status,
       returnable: !!editing.returnable,
       received_at: editing.received_at || null,
@@ -267,16 +361,35 @@ export default function KegsPage() {
       returned_at: editing.returned_at || null,
       notes: txt(editing.notes),
     }
+    const rows = editing.lines.map(l => ({
+      ...shared,
+      beer_name: txt(l.beer_name),
+      beer_style: txt(l.beer_style),
+      abv: num(l.abv),
+      size_litres: num(l.size_litres),
+      coupler: txt(l.coupler),
+      qty: Math.max(1, Math.floor(Number(l.qty) || 0)),
+      destination: l.destination,
+      destination_venue: needsVenue(l.destination) ? txt(l.destination_venue) : null,
+    }))
     setSaving(true)
-    const res = editing.id
-      ? await supabase.from('brewasia_kegs').update(payload).eq('id', editing.id).select().single()
-      : await supabase.from('brewasia_kegs').insert(payload).select().single()
+    if (editing.id) {
+      const res = await supabase.from('brewasia_kegs').update(rows[0]).eq('id', editing.id).select().single()
+      setSaving(false)
+      if (res.error || !res.data) return showToast('Could not save. Try again.')
+      const row = res.data as Keg
+      setKegs(p => p.map(k => (k.id === row.id ? row : k)))
+      setEditing(null)
+      return showToast('Saved')
+    }
+    const res = await supabase.from('brewasia_kegs').insert(rows).select()
     setSaving(false)
     if (res.error || !res.data) return showToast('Could not save. Try again.')
-    const row = res.data as Keg
-    setKegs(p => (editing.id ? p.map(k => (k.id === row.id ? row : k)) : [...p, row]))
+    const added = res.data as Keg[]
+    setKegs(p => [...p, ...added])
     setEditing(null)
-    showToast(editing.id ? 'Saved' : 'Donation added')
+    const n = added.reduce((t, k) => t + (k.qty || 0), 0)
+    showToast(`${n} ${n === 1 ? 'keg' : 'kegs'} added`)
   }
 
   async function deleteDraft() {
@@ -308,7 +421,7 @@ export default function KegsPage() {
     const { id: _id, created_at: _c, ...rest } = k
     const { data, error } = await supabase
       .from('brewasia_kegs')
-      .insert({ ...rest, qty: n, destination: splitDest, destination_venue: splitDest === 'ale_trail' ? txt(splitVenue) : null })
+      .insert({ ...rest, qty: n, destination: splitDest, destination_venue: needsVenue(splitDest) ? txt(splitVenue) : null })
       .select()
       .single()
     if (error || !data) {
@@ -324,10 +437,10 @@ export default function KegsPage() {
 
   function exportCsv() {
     const cols: [string, (k: Keg) => unknown][] = [
-      ['Brewery', k => k.brewery], ['Contact', k => k.contact_name], ['Phone', k => k.contact_phone], ['Email', k => k.contact_email],
+      ['Brewery', k => k.brewery], ['Source', k => (k.source === 'purchased' ? 'Purchased' : 'Donated')], ['Contact', k => k.contact_name], ['Phone', k => k.contact_phone], ['Email', k => k.contact_email],
       ['Beer', k => k.beer_name], ['Style', k => k.beer_style], ['ABV %', k => k.abv], ['Size (L)', k => k.size_litres],
       ['Coupler', k => k.coupler], ['Qty', k => k.qty], ['Total litres', k => litres(k) || ''],
-      ['Destination', k => DEST_LABEL[k.destination]], ['Venue', k => k.destination_venue],
+      ['Destination', k => DEST_LABEL[k.destination]], ['Bar / buyer', k => k.destination_venue],
       ['Status', k => STATUS_LABEL[k.status]], ['Returns to brewery', k => (k.returnable ? 'Yes' : 'No')],
       ['Received', k => k.received_at], ['Delivered', k => k.delivered_at], ['Returned', k => k.returned_at], ['Notes', k => k.notes],
     ]
@@ -358,14 +471,14 @@ export default function KegsPage() {
         <div>
           <div className="page-title">BrewAsia kegs</div>
           <p style={{ ...muted, fontSize: 13, margin: '6px 0 0', maxWidth: 520, lineHeight: 1.55 }}>
-            Donated kegs: who promised what, where each one is going, and where it is now.
+            Every keg we have: who it’s from, how many, where it’s going, and where it is now.
           </p>
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <button className="btn-outline" onClick={exportCsv} disabled={!filtered.length} style={{ fontSize: 13 }}>
             Export CSV{anyFilter && filtered.length ? ` (${filtered.length})` : ''}
           </button>
-          <button className="btn-accent" onClick={openNew} disabled={!!loadError}>Add donation</button>
+          <button className="btn-accent" onClick={() => openNew()} disabled={!!loadError}>Add kegs</button>
         </div>
       </div>
 
@@ -381,32 +494,33 @@ export default function KegsPage() {
         </div>
       ) : (
         <>
-          {/* ── Summary strip ── */}
+          {/* ── Summary strip: All, then one card per destination ── */}
           <div className="keg-strip" style={{ margin: '24px 0 10px' }}>
+            <StatCard
+              label="All kegs"
+              kegs={allTotals.kegs}
+              litres={allTotals.litres}
+              sub={allTotals.promised > 0 ? `${allTotals.promised} still promised` : ''}
+              active={fDest === ''}
+              loading={loading}
+              onClick={() => setFDest('')}
+            />
             {DESTS.map(d => {
               const t = totals[d.key]
-              const todo = d.key === 'unassigned' && t.kegs > 0
               const active = fDest === d.key
               return (
-                <button
+                <StatCard
                   key={d.key}
-                  className={['card', 'keg-stat', todo ? 'keg-stat--todo' : '', active ? 'keg-stat--active' : ''].filter(Boolean).join(' ')}
+                  label={d.label}
+                  tone={d.tone}
+                  kegs={t.kegs}
+                  litres={t.litres}
+                  sub={t.promised > 0 ? `${t.promised} still promised` : ''}
+                  todo={d.key === 'unassigned' && t.kegs > 0}
+                  active={active}
+                  loading={loading}
                   onClick={() => setFDest(active ? '' : d.key)}
-                  aria-pressed={active}
-                >
-                  <span className="kpi-label" style={{ display: 'block', marginBottom: 6, color: todo ? 'var(--badge-orange-text)' : undefined }}>
-                    {d.label}
-                  </span>
-                  <span style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
-                    <span className="kpi-value" style={{ fontSize: 38, color: todo ? 'var(--badge-orange-text)' : 'var(--text)' }}>
-                      {loading ? '–' : t.kegs}
-                    </span>
-                    <span style={{ ...muted, fontSize: 12 }}>{t.kegs === 1 ? 'keg' : 'kegs'}</span>
-                  </span>
-                  <span className="kpi-sub" style={{ display: 'block' }}>
-                    {fmtL(t.litres)} L{t.promised > 0 ? ` · ${t.promised} still promised` : ''}
-                  </span>
-                </button>
+                />
               )
             })}
           </div>
@@ -424,7 +538,7 @@ export default function KegsPage() {
 
           {/* ── Filters ── */}
           <div className="keg-filters" style={{ margin: '14px 0 14px' }}>
-            <input className="input" placeholder="Search beer, brewery, venue…" value={q} onChange={e => setQ(e.target.value)} />
+            <input className="input" placeholder="Search beer, brewery, bar, buyer…" value={q} onChange={e => setQ(e.target.value)} />
             <select className="input" value={fBrewery} onChange={e => setFBrewery(e.target.value)} aria-label="Brewery">
               <option value="">All breweries</option>
               {breweries.map(b => <option key={b} value={b}>{b}</option>)}
@@ -443,9 +557,9 @@ export default function KegsPage() {
             <div className="card" style={{ padding: 28, ...muted, fontSize: 13 }}>Loading…</div>
           ) : !kegs.length ? (
             <div className="card" style={{ padding: 28, textAlign: 'center' }}>
-              <div style={{ fontWeight: 600, color: 'var(--text)', marginBottom: 6 }}>No donations yet</div>
-              <div style={{ ...muted, fontSize: 13, marginBottom: 16 }}>Add each brewery’s promised kegs as they come in.</div>
-              <button className="btn-accent" onClick={openNew}>Add donation</button>
+              <div style={{ fontWeight: 600, color: 'var(--text)', marginBottom: 6 }}>No kegs yet</div>
+              <div style={{ ...muted, fontSize: 13, marginBottom: 16 }}>Add kegs as breweries promise, sell or deliver them.</div>
+              <button className="btn-accent" onClick={() => openNew()}>Add kegs</button>
             </div>
           ) : !filtered.length ? (
             <div className="card" style={{ padding: 28, ...muted, fontSize: 13, textAlign: 'center' }}>
@@ -475,7 +589,7 @@ export default function KegsPage() {
                       <GroupRows key={brewery} brewery={brewery} list={list}>
                         {list.map(k => (
                           <tr key={k.id} onClick={() => openEdit(k)} style={{ cursor: 'pointer', opacity: isDone(k.status) ? 0.6 : 1 }}>
-                            <td>
+                            <td style={{ boxShadow: `inset 4px 0 0 ${destTone(k.destination).fg}` }}>
                               <div style={{ fontWeight: 500 }}>{k.beer_name || <span style={muted}>Unnamed beer</span>}</div>
                               <Flags k={k} />
                             </td>
@@ -488,7 +602,7 @@ export default function KegsPage() {
                             </td>
                             <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: 600, whiteSpace: 'nowrap' }}>{k.qty}×</td>
                             <td onClick={e => e.stopPropagation()}>
-                              <DestCell k={k} venues={venues} onDest={d => setDestination(k, d)} onVenue={v => patch(k.id, { destination_venue: v })} />
+                              <DestCell k={k} venues={venuesBy[k.destination] || []} onDest={d => setDestination(k, d)} onVenue={v => patch(k.id, { destination_venue: v })} />
                             </td>
                             <td onClick={e => e.stopPropagation()}>
                               <StatusPill value={k.status} onChange={s => setStatus(k, s)} />
@@ -515,7 +629,7 @@ export default function KegsPage() {
                     <GroupHead brewery={brewery} list={list} />
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                       {list.map(k => (
-                        <div key={k.id} className="card" style={{ padding: 14, opacity: isDone(k.status) ? 0.6 : 1 }}>
+                        <div key={k.id} className="card" style={{ padding: 14, opacity: isDone(k.status) ? 0.6 : 1, borderLeft: `4px solid ${destTone(k.destination).fg}` }}>
                           <button onClick={() => openEdit(k)} style={{ all: 'unset', display: 'block', width: '100%', cursor: 'pointer' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'baseline' }}>
                               <span style={{ fontWeight: 600, fontSize: 15, color: 'var(--text)' }}>{k.beer_name || 'Unnamed beer'}</span>
@@ -527,7 +641,7 @@ export default function KegsPage() {
                             <Flags k={k} />
                           </button>
                           <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap', alignItems: 'flex-start' }}>
-                            <DestCell k={k} venues={venues} onDest={d => setDestination(k, d)} onVenue={v => patch(k.id, { destination_venue: v })} />
+                            <DestCell k={k} venues={venuesBy[k.destination] || []} onDest={d => setDestination(k, d)} onVenue={v => patch(k.id, { destination_venue: v })} />
                             <StatusPill value={k.status} onChange={s => setStatus(k, s)} />
                             {k.qty > 1 && (
                               <button className="btn-outline" onClick={() => openSplit(k)} style={{ height: 38, padding: '0 14px', fontSize: 13, marginLeft: 'auto' }}>
@@ -548,88 +662,110 @@ export default function KegsPage() {
 
       {/* ── Add / edit modal ── */}
       {editing && (
-        <Modal onClose={() => setEditing(null)} title={editing.id ? 'Edit donation' : 'Add donation'}>
+        <Modal onClose={() => setEditing(null)} title={editing.id ? 'Edit kegs' : 'Add kegs'}>
           <datalist id="keg-breweries">{breweries.map(b => <option key={b} value={b} />)}</datalist>
-          <datalist id="keg-styles">{styles.map(s => <option key={s} value={s} />)}</datalist>
-          <datalist id="keg-venues">{venues.map(v => <option key={v} value={v} />)}</datalist>
-          <datalist id="keg-sizes">{['20', '30', '50'].map(s => <option key={s} value={s} />)}</datalist>
+          <datalist id="keg-styles">{styles.map(st => <option key={st} value={st} />)}</datalist>
+          <datalist id="keg-venues-ale_trail">{(venuesBy.ale_trail || []).map(v => <option key={v} value={v} />)}</datalist>
+          <datalist id="keg-venues-sold">{(venuesBy.sold || []).map(v => <option key={v} value={v} />)}</datalist>
+          <datalist id="keg-sizes">{['20', '30', '50'].map(sz => <option key={sz} value={sz} />)}</datalist>
 
-          <Field label="Brewery">
-            <input className="input" list="keg-breweries" value={editing.brewery} onChange={e => setBrewery(e.target.value)} placeholder="e.g. Heart of Darkness" autoFocus={!editing.id} />
-          </Field>
+          <div className="keg-grid-2">
+            <Field label="Brewery">
+              <input className="input" list="keg-breweries" value={editing.brewery} onChange={e => setBrewery(e.target.value)} placeholder="e.g. Heart of Darkness" autoFocus={!editing.id} />
+            </Field>
+            <Field label="How we got them">
+              <Choice options={SOURCES} value={editing.source} onChange={v => setEditing(f => f && { ...f, source: v })} />
+            </Field>
+          </div>
 
           <div className="keg-grid-3">
             <Field label="Contact">
-              <input className="input" value={editing.contact_name || ''} onChange={e => setEditing(f => f && { ...f, contact_name: e.target.value })} />
+              <input className="input" value={editing.contact_name} onChange={e => setEditing(f => f && { ...f, contact_name: e.target.value })} />
             </Field>
             <Field label="Phone / Zalo">
-              <input className="input" type="tel" value={editing.contact_phone || ''} onChange={e => setEditing(f => f && { ...f, contact_phone: e.target.value })} />
+              <input className="input" type="tel" value={editing.contact_phone} onChange={e => setEditing(f => f && { ...f, contact_phone: e.target.value })} />
             </Field>
             <Field label="Email">
-              <input className="input" type="email" value={editing.contact_email || ''} onChange={e => setEditing(f => f && { ...f, contact_email: e.target.value })} />
+              <input className="input" type="email" value={editing.contact_email} onChange={e => setEditing(f => f && { ...f, contact_email: e.target.value })} />
             </Field>
           </div>
 
-          <div className="keg-grid-2">
-            <Field label="Beer">
-              <input className="input" value={editing.beer_name || ''} onChange={e => setEditing(f => f && { ...f, beer_name: e.target.value })} placeholder="e.g. Kurtz’s Insane IPA" />
-            </Field>
-            <Field label="Style">
-              <input className="input" list="keg-styles" value={editing.beer_style || ''} onChange={e => setEditing(f => f && { ...f, beer_style: e.target.value })} placeholder="e.g. Hazy IPA" />
-            </Field>
+          <div className="section-title" style={{ margin: '6px 0 10px' }}>
+            {editing.id ? 'Keg' : 'Kegs'}
           </div>
-
-          <div className="keg-grid-4">
-            <Field label="ABV %">
-              <input className="input" inputMode="decimal" value={editing.abv} onChange={e => setEditing(f => f && { ...f, abv: e.target.value })} />
-            </Field>
-            <Field label="Size (L)">
-              <input className="input" inputMode="decimal" list="keg-sizes" value={editing.size_litres} onChange={e => setEditing(f => f && { ...f, size_litres: e.target.value })} />
-            </Field>
-            <Field label="Coupler">
-              <select className="input" value={editing.coupler || ''} onChange={e => setEditing(f => f && { ...f, coupler: e.target.value })}>
-                <option value="">—</option>
-                {COUPLERS.map(c => <option key={c} value={c}>{c}</option>)}
-              </select>
-            </Field>
-            <Field label="Qty">
-              <input className="input" inputMode="numeric" value={editing.qty} onChange={e => setEditing(f => f && { ...f, qty: e.target.value.replace(/[^0-9]/g, '') })} />
-            </Field>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 12 }}>
+            {editing.lines.map((l, i) => (
+              <div key={l.key} className="keg-line">
+                {!editing.id && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, marginBottom: 10 }}>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)' }}>
+                      {editing.lines.length > 1 ? `Line ${i + 1}` : 'Line'}
+                    </span>
+                    <span style={{ display: 'flex', gap: 14 }}>
+                      <button className="keg-link" onClick={() => duplicateLine(l.key)} title="Same beer going somewhere else">Same beer, other place</button>
+                      {editing.lines.length > 1 && (
+                        <button className="keg-link" onClick={() => removeLine(l.key)} aria-label={`Remove line ${i + 1}`}>Remove</button>
+                      )}
+                    </span>
+                  </div>
+                )}
+                <div className="keg-grid-2">
+                  <Field label="Beer">
+                    <input className="input" value={l.beer_name} onChange={e => updateLine(l.key, { beer_name: e.target.value })} placeholder="e.g. Kurtz’s Insane IPA" />
+                  </Field>
+                  <Field label="Style">
+                    <input className="input" list="keg-styles" value={l.beer_style} onChange={e => updateLine(l.key, { beer_style: e.target.value })} placeholder="e.g. Hazy IPA" />
+                  </Field>
+                </div>
+                <div className="keg-grid-4">
+                  <Field label="ABV %">
+                    <input className="input" inputMode="decimal" value={l.abv} onChange={e => updateLine(l.key, { abv: e.target.value })} />
+                  </Field>
+                  <Field label="Size (L)">
+                    <input className="input" inputMode="decimal" list="keg-sizes" value={l.size_litres} onChange={e => updateLine(l.key, { size_litres: e.target.value })} />
+                  </Field>
+                  <Field label="Coupler">
+                    <select className="input" value={l.coupler} onChange={e => updateLine(l.key, { coupler: e.target.value })}>
+                      <option value="">—</option>
+                      {COUPLERS.map(c => <option key={c} value={c}>{c}</option>)}
+                    </select>
+                  </Field>
+                  <Field label="Qty">
+                    <input className="input" inputMode="numeric" value={l.qty} onChange={e => updateLine(l.key, { qty: e.target.value.replace(/[^0-9]/g, '') })} />
+                  </Field>
+                </div>
+                <div className={needsVenue(l.destination) ? 'keg-grid-2' : undefined}>
+                  <Field label="Going to" last>
+                    <select
+                      className="input"
+                      value={l.destination}
+                      onChange={e => { const d = e.target.value as Destination; updateLine(l.key, { destination: d, destination_venue: needsVenue(d) ? l.destination_venue : '' }) }}
+                      style={{ borderLeft: `4px solid ${destTone(l.destination).fg}`, fontWeight: 600, color: l.destination === 'unassigned' ? 'var(--text-secondary)' : destTone(l.destination).fg }}
+                    >
+                      {DESTS.map(d => <option key={d.key} value={d.key}>{d.label}</option>)}
+                    </select>
+                  </Field>
+                  {needsVenue(l.destination) && (
+                    <Field label={venueLabel(l.destination)} last>
+                      <input className="input" list={`keg-venues-${l.destination}`} value={l.destination_venue} onChange={e => updateLine(l.key, { destination_venue: e.target.value })} placeholder={venueHint(l.destination)} />
+                    </Field>
+                  )}
+                </div>
+              </div>
+            ))}
+            {editing.id ? (
+              <button onClick={() => { const k = kegs.find(x => x.id === editing.id); if (k) openNew(k) }} className="keg-add-line">
+                + Add more kegs from {editing.brewery || 'this brewery'}
+              </button>
+            ) : (
+              <button onClick={addLine} className="keg-add-line">+ Add another line</button>
+            )}
           </div>
-
-          <Field label="Destination">
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-              {DESTS.map(d => {
-                const on = editing.destination === d.key
-                return (
-                  <button
-                    key={d.key}
-                    onClick={() => setEditing(f => f && { ...f, destination: d.key })}
-                    style={{
-                      padding: '8px 14px', borderRadius: 100, fontSize: 13, cursor: 'pointer', border: '1px solid',
-                      borderColor: on ? 'var(--accent)' : 'var(--border)',
-                      background: on ? 'var(--accent-light)' : 'transparent',
-                      color: on ? 'var(--accent)' : 'var(--text-secondary)',
-                      fontWeight: on ? 600 : 400, transition: 'all .15s',
-                    }}
-                  >
-                    {d.label}
-                  </button>
-                )
-              })}
-            </div>
-          </Field>
-
-          {editing.destination === 'ale_trail' && (
-            <Field label="Ale Trail bar">
-              <input className="input" list="keg-venues" value={editing.destination_venue || ''} onChange={e => setEditing(f => f && { ...f, destination_venue: e.target.value })} placeholder="Which bar is it going to?" />
-            </Field>
-          )}
 
           <div className="keg-grid-2">
             <Field label="Status">
               <select className="input" value={editing.status} onChange={e => setEditing(f => f && withStatusDates(f, e.target.value as Status))}>
-                {STATUSES.map(s => <option key={s} value={s}>{STATUS_LABEL[s]}</option>)}
+                {STATUSES.map(st => <option key={st} value={st}>{STATUS_LABEL[st]}</option>)}
               </select>
             </Field>
             <Field label="After the event">
@@ -644,25 +780,27 @@ export default function KegsPage() {
             </Field>
           </div>
 
-          <div className="keg-grid-3">
-            <Field label="Received">
-              <input className="input" type="date" value={editing.received_at || ''} onChange={e => setEditing(f => f && { ...f, received_at: e.target.value || null })} />
-            </Field>
-            <Field label="Delivered">
-              <input className="input" type="date" value={editing.delivered_at || ''} onChange={e => setEditing(f => f && { ...f, delivered_at: e.target.value || null })} />
-            </Field>
-            <Field label="Returned">
-              <input className="input" type="date" value={editing.returned_at || ''} onChange={e => setEditing(f => f && { ...f, returned_at: e.target.value || null })} />
-            </Field>
-          </div>
+          {editing.id && (
+            <div className="keg-grid-3">
+              <Field label="Received">
+                <input className="input" type="date" value={editing.received_at || ''} onChange={e => setEditing(f => f && { ...f, received_at: e.target.value || null })} />
+              </Field>
+              <Field label="Delivered">
+                <input className="input" type="date" value={editing.delivered_at || ''} onChange={e => setEditing(f => f && { ...f, delivered_at: e.target.value || null })} />
+              </Field>
+              <Field label="Returned">
+                <input className="input" type="date" value={editing.returned_at || ''} onChange={e => setEditing(f => f && { ...f, returned_at: e.target.value || null })} />
+              </Field>
+            </div>
+          )}
 
           <Field label="Notes">
-            <textarea className="input" rows={2} value={editing.notes || ''} onChange={e => setEditing(f => f && { ...f, notes: e.target.value })} />
+            <textarea className="input" rows={2} value={editing.notes} onChange={e => setEditing(f => f && { ...f, notes: e.target.value })} />
           </Field>
 
           <div style={{ display: 'flex', gap: 8, marginTop: 6, flexWrap: 'wrap' }}>
             <button className="btn-accent" onClick={saveDraft} disabled={saving} style={{ flex: 1 }}>
-              {saving ? 'Saving…' : editing.id ? 'Save' : 'Add donation'}
+              {saving ? 'Saving…' : editing.id ? 'Save' : addLabel(editing.lines)}
             </button>
             {editing.id && (
               confirmDelete
@@ -678,7 +816,7 @@ export default function KegsPage() {
         <Modal onClose={() => setSplitting(null)} title="Split this line" narrow>
           <p style={{ ...muted, fontSize: 13, lineHeight: 1.6, margin: '0 0 18px' }}>
             {splitting.brewery} · {splitting.beer_name || 'Unnamed beer'} · <b style={{ color: 'var(--text)' }}>{splitting.qty}×</b> to {DEST_LABEL[splitting.destination]}.
-            Move some of these to a different destination.
+            Send some of them somewhere else. They become their own line with their own colour.
           </p>
           <div className="keg-grid-2">
             <Field label={`Kegs to move (1–${splitting.qty - 1})`}>
@@ -690,10 +828,10 @@ export default function KegsPage() {
               </select>
             </Field>
           </div>
-          {splitDest === 'ale_trail' && (
-            <Field label="Ale Trail bar">
-              <input className="input" list="keg-venues-split" value={splitVenue} onChange={e => setSplitVenue(e.target.value)} placeholder="Which bar?" />
-              <datalist id="keg-venues-split">{venues.map(v => <option key={v} value={v} />)}</datalist>
+          {needsVenue(splitDest) && (
+            <Field label={venueLabel(splitDest)}>
+              <input className="input" list="keg-venues-split" value={splitVenue} onChange={e => setSplitVenue(e.target.value)} placeholder={venueHint(splitDest)} />
+              <datalist id="keg-venues-split">{(venuesBy[splitDest] || []).map(v => <option key={v} value={v} />)}</datalist>
             </Field>
           )}
           <button className="btn-accent" onClick={doSplit} disabled={saving} style={{ width: '100%', marginTop: 4 }}>
@@ -713,7 +851,23 @@ function groupSummary(list: Keg[]) {
   const n = list.reduce((s, k) => s + (k.qty || 0), 0)
   const l = list.reduce((s, k) => s + litres(k), 0)
   const c = list.find(k => k.contact_name || k.contact_phone)
-  return { n, l, contact: c ? [c.contact_name, c.contact_phone].filter(Boolean).join(' · ') : '' }
+  const byDest = DESTS
+    .map(d => ({ ...d, n: list.filter(k => k.destination === d.key).reduce((s, k) => s + (k.qty || 0), 0) }))
+    .filter(d => d.n > 0)
+  return { n, l, byDest, contact: c ? [c.contact_name, c.contact_phone].filter(Boolean).join(' · ') : '' }
+}
+
+// "2 Conference · 1 Collab Fest", each with its colour dot.
+function DestBreakdown({ items }: { items: { key: string; label: string; tone: Tone; n: number }[] }) {
+  return (
+    <span style={{ display: 'inline-flex', gap: 6, flexWrap: 'wrap', verticalAlign: 'middle' }}>
+      {items.map(d => (
+        <span key={d.key} className="keg-dest-chip" style={{ color: d.tone.fg, background: d.tone.bg, borderColor: d.tone.bd }}>
+          <b>{d.n}</b> {d.label}
+        </span>
+      ))}
+    </span>
+  )
 }
 
 function GroupRows({ brewery, list, children }: { brewery: string; list: Keg[]; children: React.ReactNode }) {
@@ -722,10 +876,13 @@ function GroupRows({ brewery, list, children }: { brewery: string; list: Keg[]; 
     <>
       <tr className="keg-group">
         <td colSpan={7}>
-          <span style={{ fontWeight: 700, color: 'var(--text)' }}>{brewery}</span>
-          <span style={{ color: 'var(--text-muted)', fontSize: 12, marginLeft: 10 }}>
-            {s.n} {s.n === 1 ? 'keg' : 'kegs'}{s.l ? ` · ${fmtL(s.l)} L` : ''}{s.contact ? ` · ${s.contact}` : ''}
-          </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+            <span style={{ fontWeight: 700, color: 'var(--text)' }}>{brewery}</span>
+            <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>
+              {s.n} {s.n === 1 ? 'keg' : 'kegs'}{s.l ? ` · ${fmtL(s.l)} L` : ''}{s.contact ? ` · ${s.contact}` : ''}
+            </span>
+            <span style={{ marginLeft: 'auto' }}><DestBreakdown items={s.byDest} /></span>
+          </div>
         </td>
       </tr>
       {children}
@@ -741,34 +898,37 @@ function GroupHead({ brewery, list }: { brewery: string; list: Keg[] }) {
       <div style={{ color: 'var(--text-muted)', fontSize: 12, marginTop: 2 }}>
         {s.n} {s.n === 1 ? 'keg' : 'kegs'}{s.l ? ` · ${fmtL(s.l)} L` : ''}{s.contact ? ` · ${s.contact}` : ''}
       </div>
+      <div style={{ marginTop: 6 }}><DestBreakdown items={s.byDest} /></div>
     </div>
   )
 }
 
 function Flags({ k }: { k: Keg }) {
-  if (!k.returnable) return null
-  const due = k.status === 'empty'
+  const bought = k.source === 'purchased'
+  if (!bought && !k.returnable) return null
+  const due = k.returnable && k.status === 'empty'
+  const ret = !k.returnable ? null : due ? 'Return to brewery' : k.status === 'returned' ? 'Returned to brewery' : 'Goes back to brewery'
   return (
-    <span style={{
-      display: 'inline-block', marginTop: 4, fontSize: 11, fontWeight: 600, letterSpacing: '.03em',
-      color: due ? 'var(--badge-orange-text)' : 'var(--text-muted)',
-    }}>
-      {due ? 'Return to brewery' : k.status === 'returned' ? 'Returned to brewery' : 'Goes back to brewery'}
+    <span style={{ display: 'inline-flex', gap: 8, marginTop: 4, fontSize: 11, fontWeight: 600, letterSpacing: '.03em', flexWrap: 'wrap' }}>
+      {bought && <span style={{ color: 'var(--text-secondary)' }}>Purchased</span>}
+      {ret && <span style={{ color: due ? 'var(--badge-orange-text)' : 'var(--text-muted)' }}>{ret}</span>}
     </span>
   )
 }
 
-function Pill({ value, options, tone, onChange, label }: {
+function Pill({ value, options, tone, onChange, label, dot }: {
   value: string
   options: { value: string; label: string }[]
-  tone: { bg: string; bd: string; fg: string }
+  tone: Tone
   onChange: (v: string) => void
   label: string
+  dot?: string
 }) {
   return (
     <span className="keg-pill-wrap" style={{ color: tone.fg }}>
+      {dot && <span className="keg-pill-dot" style={{ background: dot }} aria-hidden />}
       <select
-        className="keg-pill"
+        className={dot ? 'keg-pill keg-pill--dot' : 'keg-pill'}
         aria-label={label}
         value={value}
         onChange={e => onChange(e.target.value)}
@@ -785,7 +945,8 @@ function StatusPill({ value, onChange }: { value: Status; onChange: (s: Status) 
     <Pill
       label="Status"
       value={value}
-      tone={statusTone(value)}
+      tone={{ fg: 'var(--text-secondary)', bg: 'transparent', bd: 'var(--border)' }}
+      dot={statusDot(value)}
       options={STATUSES.map(s => ({ value: s, label: STATUS_LABEL[s] }))}
       onChange={v => onChange(v as Status)}
     />
@@ -805,13 +966,14 @@ function DestCell({ k, venues, onDest, onVenue }: { k: Keg; venues: string[]; on
         options={DESTS.map(d => ({ value: d.key, label: d.label }))}
         onChange={v => onDest(v as Destination)}
       />
-      {k.destination === 'ale_trail' && (
+      {needsVenue(k.destination) && (
         <>
           <input
             className="input keg-venue"
             list={listId}
             value={venue}
-            placeholder="Which bar?"
+            aria-label={venueLabel(k.destination)}
+            placeholder={venueHint(k.destination)}
             onChange={e => setVenue(e.target.value)}
             onBlur={() => { const v = venue.trim() || null; if (v !== (k.destination_venue || null)) onVenue(v) }}
             onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
@@ -849,9 +1011,74 @@ function Modal({ title, onClose, children, narrow }: { title: string; onClose: (
   )
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function StatCard({ label, tone, kegs, litres: l, sub, todo, active, loading, onClick }: {
+  label: string
+  tone?: Tone
+  kegs: number
+  litres: number
+  sub: string
+  todo?: boolean
+  active: boolean
+  loading: boolean
+  onClick: () => void
+}) {
+  const ring = tone ? tone.fg : 'var(--accent)'
   return (
-    <div style={{ marginBottom: 14, minWidth: 0 }}>
+    <button
+      className={['card', 'keg-stat', todo ? 'keg-stat--todo' : ''].filter(Boolean).join(' ')}
+      onClick={onClick}
+      aria-pressed={active}
+      style={{ boxShadow: active ? `0 0 0 2px ${ring}` : undefined, borderColor: active ? 'transparent' : undefined }}
+    >
+      {tone && <span className="keg-stat__stripe" style={{ background: tone.fg }} aria-hidden />}
+      <span className="kpi-label" style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 6, color: tone ? tone.fg : 'var(--text)' }}>
+        {label}
+      </span>
+      <span style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+        <span className="kpi-value" style={{ fontSize: 36, color: 'var(--text)' }}>{loading ? '–' : kegs}</span>
+        <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>{kegs === 1 ? 'keg' : 'kegs'}</span>
+      </span>
+      <span className="kpi-sub" style={{ display: 'block' }}>
+        {fmtL(l)} L{sub ? ` · ${sub}` : ''}
+      </span>
+    </button>
+  )
+}
+
+function addLabel(lines: Line[]) {
+  const n = lines.reduce((t, l) => t + Math.max(1, Math.floor(Number(l.qty) || 0)), 0)
+  return `Add ${n} ${n === 1 ? 'keg' : 'kegs'}`
+}
+
+function Choice<T extends string>({ options, value, onChange }: { options: { key: T; label: string }[]; value: T; onChange: (v: T) => void }) {
+  return (
+    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+      {options.map(o => {
+        const on = value === o.key
+        return (
+          <button
+            key={o.key}
+            onClick={() => onChange(o.key)}
+            aria-pressed={on}
+            style={{
+              minHeight: 40, padding: '0 14px', borderRadius: 100, fontSize: 13, cursor: 'pointer', border: '1px solid',
+              borderColor: on ? 'var(--accent)' : 'var(--border)',
+              background: on ? 'var(--accent-light)' : 'transparent',
+              color: on ? 'var(--accent)' : 'var(--text-secondary)',
+              fontWeight: on ? 600 : 400, transition: 'all .15s',
+            }}
+          >
+            {o.label}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+function Field({ label, children, last }: { label: string; children: React.ReactNode; last?: boolean }) {
+  return (
+    <div style={{ marginBottom: last ? 0 : 14, minWidth: 0 }}>
       <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6, letterSpacing: '0.01em' }}>
         {label}
       </label>
