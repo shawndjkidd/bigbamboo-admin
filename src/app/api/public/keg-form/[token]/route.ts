@@ -11,7 +11,7 @@ export const dynamic = 'force-dynamic'
 
 const TOKEN_RE = /^[A-Za-z0-9_-]{20,64}$/
 const COUPLERS = ['S', 'D', 'A', 'G', 'U']
-const KEG_FIELDS = 'id, beer_name, beer_style, abv, size_litres, coupler, qty, status, returnable, notes'
+const KEG_FIELDS = 'id, beer_name, beer_style, abv, ibu, size_litres, coupler, qty, status, returnable, notes'
 
 const str = (v: unknown, max: number) => {
   const s = typeof v === 'string' ? v.trim() : ''
@@ -66,7 +66,8 @@ export async function POST(req: NextRequest, { params }: { params: { token: stri
   const contact_name = str(body?.contact_name, 120)
   const contact_phone = str(body?.contact_phone, 60)
   const contact_email = str(body?.contact_email, 160)
-  const returnable = !!body?.returnable
+  // Donated kegs always go back to the brewery after the event (Shawn, 2026-09-11).
+  const returnable = true
   const notes = str(body?.notes, 1000)
   if (!contact_name || (!contact_phone && !contact_email)) {
     return NextResponse.json({ error: 'contact' }, { status: 422 })
@@ -79,6 +80,7 @@ export async function POST(req: NextRequest, { params }: { params: { token: stri
       beer_name: str(l?.beer_name, 160),
       beer_style: str(l?.beer_style, 80),
       abv: num(l?.abv, 0, 30),
+      ibu: (() => { const n = Math.round(Number(String(l?.ibu ?? '').replace(',', '.'))); return String(l?.ibu ?? '').trim() !== '' && Number.isFinite(n) && n >= 0 && n <= 200 ? n : null })(),
       size_litres: num(l?.size_litres, 1, 200),
       coupler: coupler && COUPLERS.includes(coupler) ? coupler : null,
       qty: Math.max(1, Math.min(100, Math.round(Number(l?.qty) || 1))),

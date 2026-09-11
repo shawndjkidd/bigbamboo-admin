@@ -18,13 +18,14 @@ Extract every keg mentioned. Group them by brewery.
 
 Return ONLY valid JSON of this shape:
 {"groups":[{"brewery":string|null,"contact_name":string|null,"contact_phone":string|null,"contact_email":string|null,"source":"donated"|"purchased"|null,
-  "lines":[{"beer_name":string|null,"beer_style":string|null,"abv":number|null,"size_litres":number|null,"coupler":"S"|"D"|"A"|"G"|"U"|null,"qty":number,"destination":"conference"|"ale_trail"|"collab_fest"|"sold"|"unassigned","destination_venue":string|null}]}]}
+  "lines":[{"beer_name":string|null,"beer_style":string|null,"abv":number|null,"ibu":number|null,"size_litres":number|null,"coupler":"S"|"D"|"A"|"G"|"U"|null,"qty":number,"destination":"conference"|"ale_trail"|"collab_fest"|"sold"|"unassigned","destination_venue":string|null}]}]}
 
 Rules:
 - One line per distinct beer AND size AND destination. "2x 30L Hazy IPA" = one line with qty 2. The same beer in two sizes = two lines.
 - brewery: the brewery that makes or gives the beer, written as they write it. Leave out words like "Co., Ltd". The sender's company is usually the brewery.
 - contact_*: only if clearly shown for that brewery (email signature, phone, name of the person writing).
 - abv: plain number, e.g. 6.5 for "6.5%".
+- ibu: bitterness (IBU) as a whole number if shown, e.g. 45.
 - size_litres: litres as a number. Convert: 1/6 bbl = 19.5, 1/4 bbl = 29.3, 1/2 bbl = 58.7, 5 gal = 18.9. "lít" = litres. "thùng"/"bom"/"keg" = keg.
 - coupler: S for Sankey S / European / KeyKeg-with-S; D for US Sankey D; A for flat/A-type; G for G-type; U for U-type. Otherwise null.
 - qty: whole number of kegs, at least 1.
@@ -112,6 +113,7 @@ export async function POST(req: NextRequest) {
         beer_name: str(l?.beer_name, 160),
         beer_style: str(l?.beer_style, 80),
         abv: numOrNull(l?.abv, 0, 30),
+        ibu: (() => { const n = numOrNull(l?.ibu, 0, 200); return n == null ? null : Math.round(n) })(),
         size_litres: numOrNull(l?.size_litres, 1, 200),
         coupler: coupler && COUPLERS.includes(coupler) ? coupler : null,
         qty: Math.max(1, Math.min(500, Math.round(Number(l?.qty) || 1))),

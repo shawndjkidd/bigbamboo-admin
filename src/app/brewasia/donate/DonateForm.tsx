@@ -9,11 +9,17 @@ import { useEffect, useState } from 'react'
 //   what they sent before.
 
 type Lang = 'en' | 'vi'
+
+// Shipping + visitor-pass details shown to breweries. Edit here if anything changes.
+const SHIP = {
+  mapsUrl: 'https://www.google.com/maps/search/BigBamBoo+An+Ph%C3%BA+Th%E1%BB%A7+%C4%90%E1%BB%A9c',
+  kegsPerPass: 2,
+}
 type Keg = {
-  id: string; beer_name: string | null; beer_style: string | null; abv: number | null; size_litres: number | null
+  id: string; beer_name: string | null; beer_style: string | null; abv: number | null; ibu: number | null; size_litres: number | null
   coupler: string | null; qty: number; status: string; returnable: boolean; notes: string | null
 }
-type Line = { key: string; id?: string; beer_name: string; beer_style: string; abv: string; size_litres: string; coupler: string; qty: string }
+type Line = { key: string; id?: string; beer_name: string; beer_style: string; abv: string; ibu: string; size_litres: string; coupler: string; qty: string }
 
 const T = {
   en: {
@@ -36,13 +42,13 @@ const T = {
     beer: 'Beer name',
     style: 'Style',
     abv: 'ABV %',
+    ibu: 'IBU (bitterness)',
     size: 'Keg size (L)',
     coupler: 'Coupler',
     qty: 'How many kegs',
     addBeer: '+ Add another beer',
     remove: 'Remove',
     line: 'Beer',
-    returnable: 'We need the empty kegs back after the event',
     notes: 'Anything else? (delivery date, pick-up, keg type)',
     submit: 'Send',
     update: 'Save changes',
@@ -59,6 +65,16 @@ const T = {
     unsure: 'Not sure',
     total: (n: number, l: number) => `${n} ${n === 1 ? 'keg' : 'kegs'}${l ? ` · ${l} L` : ''}`,
     lastSaved: 'Last saved',
+    shipTitle: 'Where and when to send your kegs',
+    shipTo: 'Send to',
+    shipAddress: 'BigBamBoo · 10 An Phú, An Khánh, Thủ Đức (District 2), Ho Chi Minh City',
+    shipMap: 'Open in Google Maps',
+    shipWhen: 'Delivery window',
+    shipDates: 'Thursday 15 October – Friday 23 October 2026',
+    shipLast: 'Last day to deliver: Friday 23 October.',
+    passTitle: 'Visitor passes',
+    passRule: 'Every 2 kegs you donate = 1 visitor pass to the BrewAsia conference.',
+    passCount: (n: number) => n ? `That’s ${n} visitor ${n === 1 ? 'pass' : 'passes'} for your team.` : 'Donate 2 kegs to get a visitor pass.',
   },
   vi: {
     eyebrow: 'BrewAsia 2026 · Hội nghị',
@@ -80,13 +96,13 @@ const T = {
     beer: 'Tên bia',
     style: 'Dòng bia',
     abv: 'Độ cồn %',
+    ibu: 'IBU (độ đắng)',
     size: 'Dung tích keg (L)',
     coupler: 'Loại đầu keg',
     qty: 'Số lượng keg',
     addBeer: '+ Thêm loại bia khác',
     remove: 'Xoá',
     line: 'Bia',
-    returnable: 'Chúng tôi cần lấy lại keg rỗng sau sự kiện',
     notes: 'Ghi chú thêm? (ngày giao, lấy hàng, loại keg)',
     submit: 'Gửi',
     update: 'Lưu thay đổi',
@@ -103,14 +119,24 @@ const T = {
     unsure: 'Không rõ',
     total: (n: number, l: number) => `${n} keg${l ? ` · ${l} L` : ''}`,
     lastSaved: 'Lưu lần cuối',
+    shipTitle: 'Gửi keg ở đâu và khi nào',
+    shipTo: 'Địa chỉ nhận',
+    shipAddress: 'BigBamBoo · 10 An Phú, An Khánh, Thủ Đức (Quận 2 cũ), TP. Hồ Chí Minh',
+    shipMap: 'Mở Google Maps',
+    shipWhen: 'Thời gian giao',
+    shipDates: 'Thứ Năm 15/10 – Thứ Sáu 23/10/2026',
+    shipLast: 'Hạn cuối giao keg: Thứ Sáu 23/10.',
+    passTitle: 'Vé khách tham quan',
+    passRule: 'Cứ 2 keg tài trợ = 1 vé khách tham quan hội nghị BrewAsia.',
+    passCount: (n: number) => n ? `Bạn nhận được ${n} vé khách tham quan.` : 'Tài trợ 2 keg để nhận 1 vé khách tham quan.',
   },
 }
 
 let seq = 0
-const blankLine = (prev?: Line): Line => ({ key: `l${++seq}`, beer_name: '', beer_style: '', abv: '', size_litres: prev?.size_litres || '', coupler: prev?.coupler || '', qty: '1' })
+const blankLine = (prev?: Line): Line => ({ key: `l${++seq}`, beer_name: '', beer_style: '', abv: '', ibu: '', size_litres: prev?.size_litres || '', coupler: prev?.coupler || '', qty: '1' })
 const toLine = (k: Keg): Line => ({
   key: `l${++seq}`, id: k.id, beer_name: k.beer_name || '', beer_style: k.beer_style || '',
-  abv: k.abv == null ? '' : String(k.abv), size_litres: k.size_litres == null ? '' : String(k.size_litres),
+  abv: k.abv == null ? '' : String(k.abv), ibu: k.ibu == null ? '' : String(k.ibu), size_litres: k.size_litres == null ? '' : String(k.size_litres),
   coupler: k.coupler || '', qty: String(k.qty || 1),
 })
 const stripPrefix = (n: string | null) => (n || '').replace(/^From brewery form:\s*/, '')
@@ -131,7 +157,6 @@ export default function DonateForm({ token: initialToken }: { token?: string }) 
   const [contact, setContact] = useState({ name: '', phone: '', email: '' })
   const [lines, setLines] = useState<Line[]>([blankLine()])
   const [locked, setLocked] = useState<Keg[]>([])
-  const [returnable, setReturnable] = useState(false)
   const [notes, setNotes] = useState('')
   const [submittedAt, setSubmittedAt] = useState<string | null>(null)
   const [done, setDone] = useState(false)
@@ -151,7 +176,6 @@ export default function DonateForm({ token: initialToken }: { token?: string }) 
     setLocked(kegs.filter(k => k.status !== 'promised'))
     setLines(editable.length ? editable.map(toLine) : [blankLine()])
     if (kegs.length) {
-      setReturnable(kegs.some(k => k.returnable))
       setNotes(stripPrefix(kegs.find(k => k.notes)?.notes || null))
     }
   }
@@ -186,8 +210,8 @@ export default function DonateForm({ token: initialToken }: { token?: string }) 
         body: JSON.stringify({
           ...(shared ? { brewery: breweryInput, website } : {}),
           contact_name: contact.name, contact_phone: contact.phone, contact_email: contact.email,
-          returnable, notes,
-          lines: filled.map(l => ({ id: l.id, beer_name: l.beer_name, beer_style: l.beer_style, abv: l.abv, size_litres: l.size_litres, coupler: l.coupler, qty: l.qty })),
+          notes,
+          lines: filled.map(l => ({ id: l.id, beer_name: l.beer_name, beer_style: l.beer_style, abv: l.abv, ibu: l.ibu, size_litres: l.size_litres, coupler: l.coupler, qty: l.qty })),
         }),
       })
       const j = await r.json().catch(() => ({}))
@@ -211,7 +235,7 @@ export default function DonateForm({ token: initialToken }: { token?: string }) 
     } catch { setError(t.saveError) } finally { setSaving(false) }
   }
 
-  const allKegs = [...locked, ...lines.filter(l => l.beer_name.trim()).map(l => ({ qty: Number(l.qty) || 1, size_litres: Number(l.size_litres) || 0, beer_name: l.beer_name, beer_style: l.beer_style, coupler: l.coupler }))]
+  const allKegs = [...locked, ...lines.filter(l => l.beer_name.trim()).map(l => ({ qty: Number(l.qty) || 1, size_litres: Number(l.size_litres) || 0, beer_name: l.beer_name, beer_style: l.beer_style, abv: l.abv, ibu: l.ibu, coupler: l.coupler }))]
   const totalKegs = allKegs.reduce((n, k) => n + (Number(k.qty) || 0), 0)
   const totalL = Math.round(allKegs.reduce((n, k) => n + (Number(k.qty) || 0) * (Number(k.size_litres) || 0), 0))
 
@@ -249,11 +273,12 @@ export default function DonateForm({ token: initialToken }: { token?: string }) 
                 {allKegs.map((k, i) => (
                   <div key={i} className="donate-summary">
                     <b>{k.qty}×</b>
-                    <span>{k.beer_name}{k.beer_style ? ` · ${k.beer_style}` : ''}</span>
+                    <span>{[k.beer_name, k.beer_style, k.abv ? `${k.abv}%` : null, k.ibu ? `${k.ibu} IBU` : null].filter(Boolean).join(' · ')}</span>
                     <span style={{ marginLeft: 'auto', color: 'var(--text-muted)' }}>{k.size_litres ? `${k.size_litres} L` : ''}{k.coupler ? ` · ${k.coupler}` : ''}</span>
                   </div>
                 ))}
               </div>
+              <ShipInfo t={t} passes={Math.floor(totalKegs / SHIP.kegsPerPass)} showCount />
               {editLink && (
                 <div className="donate-editlink">
                   <div style={{ fontWeight: 600, color: 'var(--text)', fontSize: 14 }}>{t.editLinkTitle}</div>
@@ -272,7 +297,9 @@ export default function DonateForm({ token: initialToken }: { token?: string }) 
             </div>
           ) : (
             <>
-              <p style={{ color: 'var(--text-secondary)', lineHeight: 1.6, margin: '0 0 22px', maxWidth: 600 }}>{shared ? t.introShared : t.intro}</p>
+              <p style={{ color: 'var(--text-secondary)', lineHeight: 1.6, margin: '0 0 18px', maxWidth: 600 }}>{shared ? t.introShared : t.intro}</p>
+
+              <ShipInfo t={t} passes={Math.floor(totalKegs / SHIP.kegsPerPass)} showCount={totalKegs > 0} />
 
               <div className="card" style={{ padding: 20, marginBottom: 14 }}>
                 {shared && (
@@ -325,6 +352,7 @@ export default function DonateForm({ token: initialToken }: { token?: string }) 
                       </div>
                       <div className="keg-grid-4">
                         <Field label={t.abv}><input className="input" inputMode="decimal" value={l.abv} onChange={e => updateLine(l.key, { abv: e.target.value })} /></Field>
+                        <Field label={t.ibu}><input className="input" inputMode="numeric" value={l.ibu} onChange={e => updateLine(l.key, { ibu: e.target.value.replace(/[^0-9]/g, '') })} /></Field>
                         <Field label={t.size}><input className="input" inputMode="decimal" list="donate-sizes" value={l.size_litres} onChange={e => updateLine(l.key, { size_litres: e.target.value })} /></Field>
                         <Field label={t.coupler}>
                           <select className="input" value={l.coupler} onChange={e => updateLine(l.key, { coupler: e.target.value })}>
@@ -332,21 +360,20 @@ export default function DonateForm({ token: initialToken }: { token?: string }) 
                             {['S', 'D', 'A', 'G', 'U'].map(c => <option key={c} value={c}>{c}</option>)}
                           </select>
                         </Field>
-                        <Field label={t.qty}><input className="input" inputMode="numeric" value={l.qty} onChange={e => updateLine(l.key, { qty: e.target.value.replace(/[^0-9]/g, '') })} /></Field>
+                      </div>
+                      <div className="keg-grid-4">
+                        <Field label={t.qty} last><input className="input" inputMode="numeric" value={l.qty} onChange={e => updateLine(l.key, { qty: e.target.value.replace(/[^0-9]/g, '') })} /></Field>
                       </div>
                     </div>
                   ))}
                   <button className="keg-add-line" onClick={() => setLines(ls => [...ls, blankLine(ls[ls.length - 1])])}>{t.addBeer}</button>
                 </div>
 
-                <label className="donate-check">
-                  <input type="checkbox" checked={returnable} onChange={e => setReturnable(e.target.checked)} />
-                  {t.returnable}
-                </label>
-
-                <Field label={t.notes} last>
-                  <textarea className="input" rows={3} value={notes} onChange={e => setNotes(e.target.value)} />
-                </Field>
+                <div style={{ marginTop: 18 }}>
+                  <Field label={t.notes} last>
+                    <textarea className="input" rows={3} value={notes} onChange={e => setNotes(e.target.value)} />
+                  </Field>
+                </div>
               </div>
 
               {error && <div style={{ color: 'var(--badge-red-text)', fontSize: 14, marginBottom: 10 }}>{error}</div>}
@@ -357,6 +384,31 @@ export default function DonateForm({ token: initialToken }: { token?: string }) 
           )}
         </>
       )}
+    </div>
+  )
+}
+
+function ShipInfo({ t, passes, showCount }: { t: (typeof T)['en']; passes: number; showCount: boolean }) {
+  return (
+    <div className="donate-info">
+      <div className="donate-info__title">{t.shipTitle}</div>
+      <div className="donate-info__grid">
+        <div>
+          <div className="donate-info__label">{t.shipTo}</div>
+          <div className="donate-info__value">{t.shipAddress}</div>
+          <a href={SHIP.mapsUrl} target="_blank" rel="noreferrer" className="keg-link" style={{ color: 'var(--accent)', textDecoration: 'none', display: 'inline-block', marginTop: 4 }}>{t.shipMap} ↗</a>
+        </div>
+        <div>
+          <div className="donate-info__label">{t.shipWhen}</div>
+          <div className="donate-info__value">{t.shipDates}</div>
+          <div style={{ fontSize: 13, color: 'var(--accent)', fontWeight: 600, marginTop: 4 }}>{t.shipLast}</div>
+        </div>
+      </div>
+      <div className="donate-info__pass">
+        <div className="donate-info__label">{t.passTitle}</div>
+        <div className="donate-info__value">{t.passRule}</div>
+        {showCount && <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', marginTop: 4 }}>{t.passCount(passes)}</div>}
+      </div>
     </div>
   )
 }

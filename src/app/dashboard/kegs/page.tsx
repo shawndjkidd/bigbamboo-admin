@@ -24,6 +24,7 @@ type Keg = {
   beer_name: string | null
   beer_style: string | null
   abv: number | null
+  ibu?: number | null
   size_litres: number | null
   coupler: string | null
   qty: number
@@ -55,6 +56,7 @@ type Line = {
   beer_name: string
   beer_style: string
   abv: string
+  ibu: string
   size_litres: string
   coupler: string
   qty: string
@@ -122,7 +124,7 @@ const isDone = (s: Status) => s === 'empty' || s === 'returned'
 
 // What the keg scanner (Gemini) sends back: kegs grouped by brewery.
 type ScanLine = {
-  beer_name: string | null; beer_style: string | null; abv: number | null; size_litres: number | null
+  beer_name: string | null; beer_style: string | null; abv: number | null; ibu?: number | null; size_litres: number | null
   coupler: string | null; qty: number; destination: Destination; destination_venue: string | null
 }
 type ScanGroup = {
@@ -164,7 +166,7 @@ let lineSeq = 0
 // A new line copies size, coupler and destination from the one above: one
 // brewery's kegs are usually the same kind.
 const blankLine = (prev?: Line): Line => ({
-  key: `l${++lineSeq}`, beer_name: '', beer_style: '', abv: '',
+  key: `l${++lineSeq}`, beer_name: '', beer_style: '', abv: '', ibu: '',
   size_litres: prev?.size_litres || '', coupler: prev?.coupler || '', qty: '1',
   destination: prev?.destination || 'unassigned', destination_venue: prev?.destination_venue || '',
 })
@@ -359,6 +361,7 @@ export default function KegsPage() {
       key: `l${++lineSeq}`,
       beer_name: l.beer_name || '', beer_style: l.beer_style || '',
       abv: l.abv == null ? '' : String(l.abv),
+      ibu: l.ibu == null ? '' : String(l.ibu),
       size_litres: l.size_litres == null ? '' : String(l.size_litres),
       coupler: l.coupler || '', qty: String(l.qty || 1),
       destination: l.destination || 'unassigned', destination_venue: l.destination_venue || '',
@@ -476,6 +479,7 @@ export default function KegsPage() {
         key: `l${++lineSeq}`,
         beer_name: k.beer_name || '', beer_style: k.beer_style || '', coupler: k.coupler || '',
         abv: k.abv == null ? '' : String(k.abv),
+        ibu: k.ibu == null ? '' : String(k.ibu),
         size_litres: k.size_litres == null ? '' : String(k.size_litres),
         qty: String(k.qty ?? 1),
         destination: k.destination, destination_venue: k.destination_venue || '',
@@ -543,6 +547,7 @@ export default function KegsPage() {
       beer_name: txt(l.beer_name),
       beer_style: txt(l.beer_style),
       abv: num(l.abv),
+      ibu: l.ibu.trim() === '' || isNaN(Number(l.ibu)) ? null : Math.round(Number(l.ibu)),
       size_litres: num(l.size_litres),
       coupler: txt(l.coupler),
       qty: Math.max(1, Math.floor(Number(l.qty) || 0)),
@@ -622,7 +627,7 @@ export default function KegsPage() {
   function exportCsv() {
     const cols: [string, (k: Keg) => unknown][] = [
       ['Brewery', k => k.brewery], ['Source', k => (k.source === 'purchased' ? 'Purchased' : 'Donated')], ['Contact', k => k.contact_name], ['Phone', k => k.contact_phone], ['Email', k => k.contact_email],
-      ['Beer', k => k.beer_name], ['Style', k => k.beer_style], ['ABV %', k => k.abv], ['Size (L)', k => k.size_litres],
+      ['Beer', k => k.beer_name], ['Style', k => k.beer_style], ['ABV %', k => k.abv], ['IBU', k => k.ibu], ['Size (L)', k => k.size_litres],
       ['Coupler', k => k.coupler], ['Qty', k => k.qty], ['Total litres', k => litres(k) || ''],
       ['Destination', k => DEST_LABEL[k.destination]], ['Bar / buyer', k => k.destination_venue],
       ['Status', k => STATUS_LABEL[k.status]], ['Returns to brewery', k => (k.returnable ? 'Yes' : 'No')],
@@ -788,7 +793,7 @@ export default function KegsPage() {
                               <Flags k={k} />
                             </td>
                             <td style={{ color: 'var(--text-secondary)' }}>
-                              {[k.beer_style, k.abv != null ? `${k.abv}%` : null].filter(Boolean).join(' · ') || <span style={muted}>—</span>}
+                              {[k.beer_style, k.abv != null ? `${k.abv}%` : null, k.ibu != null ? `${k.ibu} IBU` : null].filter(Boolean).join(' · ') || <span style={muted}>—</span>}
                             </td>
                             <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
                               {k.size_litres != null ? `${fmtL(Number(k.size_litres))} L` : '—'}
@@ -830,7 +835,7 @@ export default function KegsPage() {
                               <span style={{ fontWeight: 700, fontSize: 15, color: 'var(--text)', fontVariantNumeric: 'tabular-nums' }}>{k.qty}×</span>
                             </div>
                             <div style={{ ...muted, fontSize: 13, marginTop: 3 }}>
-                              {[k.beer_style, k.abv != null ? `${k.abv}%` : null, k.size_litres != null ? `${fmtL(Number(k.size_litres))} L` : null, k.coupler].filter(Boolean).join(' · ') || 'No details yet'}
+                              {[k.beer_style, k.abv != null ? `${k.abv}%` : null, k.ibu != null ? `${k.ibu} IBU` : null, k.size_litres != null ? `${fmtL(Number(k.size_litres))} L` : null, k.coupler].filter(Boolean).join(' · ') || 'No details yet'}
                             </div>
                             <Flags k={k} />
                           </button>
@@ -925,6 +930,9 @@ export default function KegsPage() {
                   <Field label="ABV %">
                     <input className="input" inputMode="decimal" value={l.abv} onChange={e => updateLine(l.key, { abv: e.target.value })} />
                   </Field>
+                  <Field label="IBU">
+                    <input className="input" inputMode="numeric" value={l.ibu} onChange={e => updateLine(l.key, { ibu: e.target.value.replace(/[^0-9]/g, '') })} />
+                  </Field>
                   <Field label="Size (L)">
                     <input className="input" inputMode="decimal" list="keg-sizes" value={l.size_litres} onChange={e => updateLine(l.key, { size_litres: e.target.value })} />
                   </Field>
@@ -934,6 +942,8 @@ export default function KegsPage() {
                       {COUPLERS.map(c => <option key={c} value={c}>{c}</option>)}
                     </select>
                   </Field>
+                </div>
+                <div className="keg-grid-4">
                   <Field label="Qty">
                     <input className="input" inputMode="numeric" value={l.qty} onChange={e => updateLine(l.key, { qty: e.target.value.replace(/[^0-9]/g, '') })} />
                   </Field>
