@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '@/lib/supabase'
+import { SignupLink } from '@/components/brewasia/SignupLink'
 import { Choice, Field, Modal, Pill, StatCard, fmtL, todayKey, type Tone } from '@/components/brewasia/ui'
 
 // BrewAsia keg tracker. Every keg we have: who it's from (donated or bought),
@@ -1133,8 +1134,31 @@ function Flags({ k }: { k: Keg }) {
 // Each brewery also gets a private edit link (/brewasia/donate/<token>) for changes.
 const signupUrl = () => `${typeof window !== 'undefined' ? window.location.origin : ''}/brewasia/donate`
 const editUrl = (token: string) => `${typeof window !== 'undefined' ? window.location.origin : ''}/brewasia/donate/${token}`
-const signupMessage = () =>
-  `Thanks for donating kegs to the BrewAsia conference! Please tell us what you're sending here:\n${signupUrl()}\n\nCảm ơn bạn đã tài trợ keg bia cho hội nghị BrewAsia! Vui lòng điền thông tin keg tại đây:\n${signupUrl()}`
+const signupMessage = () => `Hi,
+
+Thank you for donating kegs to the BrewAsia conference on Tuesday 27 October!
+
+Please tell us what you're sending here (it takes 2 minutes):
+${signupUrl()}
+
+The form has our delivery address and dates: Monday 5 – Friday 23 October, weekdays only. Donate at least 2 kegs for a free visitor pass (every 2 kegs = 1 pass). Feel free to send more if you'd like more of your styles on draft at the conference.
+
+Cheers,
+BigBamBoo
+
+---
+
+Xin chào,
+
+Cảm ơn bạn đã tài trợ keg bia cho hội nghị BrewAsia vào Thứ Ba 27/10!
+
+Vui lòng điền thông tin keg tại đây (chỉ mất 2 phút):
+${signupUrl()}
+
+Trong form có địa chỉ và thời gian giao keg: Thứ Hai 5/10 – Thứ Sáu 23/10, chỉ ngày thường. Tài trợ tối thiểu 2 keg để nhận 1 vé khách tham quan miễn phí (cứ 2 keg = 1 vé). Bạn cứ thoải mái gửi thêm nếu muốn có nhiều dòng bia hơn tại hội nghị.
+
+Trân trọng,
+BigBamBoo`
 const shortDate = (d: string) => new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
 
 function DonationForms({ producers, kegs, onRefresh }: {
@@ -1177,13 +1201,7 @@ function DonationForms({ producers, kegs, onRefresh }: {
 
       {open && (
         <>
-          <div className="donate-panel__invite">
-            <input className="input" readOnly value={signupUrl()} onFocus={e => e.currentTarget.select()} aria-label="Sign-up link" style={{ fontSize: 13 }} />
-            <button className="btn-accent" onClick={() => copy(signupUrl(), 'link')} style={{ whiteSpace: 'nowrap' }}>{copied === 'link' ? 'Copied' : 'Copy link'}</button>
-            <button className="btn-outline" onClick={() => copy(signupMessage(), 'msg')} style={{ whiteSpace: 'nowrap', fontSize: 13 }}>{copied === 'msg' ? 'Copied' : 'Copy message'}</button>
-            <a className="btn-outline" href={signupUrl()} target="_blank" rel="noreferrer" style={{ fontSize: 13, textDecoration: 'none' }}>Open</a>
-            <button className="btn-outline" onClick={onRefresh} style={{ fontSize: 13 }}>Refresh</button>
-          </div>
+          <SignupLink url={signupUrl()} emailText={signupMessage()} onRefresh={onRefresh} />
 
           {groups.length > 0 && (
             <div className="donate-panel__list">

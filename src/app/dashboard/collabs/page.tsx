@@ -2,6 +2,7 @@
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '@/lib/supabase'
+import { SignupLink } from '@/components/brewasia/SignupLink'
 import { Field, Modal, Pill, StatCard, fmtL, todayKey, type Tone } from '@/components/brewasia/ui'
 
 // BrewAsia Collab Hub: who's brewing with who, how far along it is, and how many kegs
@@ -26,6 +27,11 @@ type Collab = {
   ready_by: string | null
   kegs: KegLine[]
   notes: string | null
+  from_form?: boolean
+  submitted_by?: string | null
+  contact_name?: string | null
+  contact_phone?: string | null
+  contact_email?: string | null
 }
 
 type Producer = { id: string; name: string; kind: 'brewery' | 'supplier'; country: string | null; city: string | null }
@@ -34,6 +40,7 @@ type LineDraft = { key: string; use: Use; qty: string; size_litres: string; venu
 type Draft = {
   id?: string
   code?: string
+  from?: { by: string | null; name: string | null; phone: string | null; email: string | null; at: string | null }
   vn_partner: string
   partners: { key: string; name: string }[]
   beer_name: string
@@ -202,6 +209,7 @@ export default function CollabsPage() {
     setConfirmDelete(false)
     setEditing({
       id: c.id, code: c.code,
+      from: c.from_form ? { by: c.submitted_by || null, name: c.contact_name || null, phone: c.contact_phone || null, email: c.contact_email || null, at: c.created_at || null } : undefined,
       vn_partner: c.vn_partner || '',
       partners: (c.partners.length ? c.partners : ['']).map(name => ({ key: nk(), name })),
       beer_name: c.beer_name || '', beer_style: c.beer_style || '', abv: c.abv == null ? '' : String(c.abv),
@@ -304,6 +312,8 @@ export default function CollabsPage() {
           <button className="btn-accent" onClick={openNew} disabled={!!loadError}>Add collab</button>
         </div>
       </div>
+
+      {!loadError && <CollabSignup collabs={collabs} onRefresh={load} />}
 
       {loadError ? (
         <div className="card" style={{ padding: 22, marginTop: 24 }}>
@@ -415,7 +425,7 @@ export default function CollabsPage() {
                         <tr key={c.id} onClick={() => openEdit(c)} style={{ cursor: 'pointer', opacity: faded(c.status) ? 0.55 : 1 }}>
                           <td style={{ ...muted, fontSize: 12.5, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>{c.code}</td>
                           <td>
-                            <div style={{ fontWeight: 600 }}>{pairingOf(c)}</div>
+                            <div style={{ fontWeight: 600 }}>{pairingOf(c)}{c.from_form && <FormTag />}</div>
                             <div style={{ ...muted, fontSize: 12.5, marginTop: 2 }}>
                               {[c.beer_name, c.beer_style, c.abv != null ? `${c.abv}%` : null, c.ready_by ? `ready by ${fmtDate(c.ready_by)}` : null].filter(Boolean).join(' · ') || 'Beer not decided'}
                             </div>
@@ -443,7 +453,7 @@ export default function CollabsPage() {
                       <button onClick={() => openEdit(c)} style={{ all: 'unset', display: 'block', width: '100%', cursor: 'pointer' }}>
                         <div style={{ ...muted, fontSize: 11.5, fontVariantNumeric: 'tabular-nums' }}>{c.code}{cs.length ? ` · ${cs.join(', ')}` : ''}</div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'baseline', marginTop: 2 }}>
-                          <span style={{ fontWeight: 600, fontSize: 15, color: 'var(--text)' }}>{pairingOf(c)}</span>
+                          <span style={{ fontWeight: 600, fontSize: 15, color: 'var(--text)' }}>{pairingOf(c)}{c.from_form && <FormTag />}</span>
                           <span style={{ fontWeight: 700, fontSize: 15, color: 'var(--text)', fontVariantNumeric: 'tabular-nums' }}>{kegsOf(c)}×</span>
                         </div>
                         <div style={{ ...muted, fontSize: 13, marginTop: 3 }}>
@@ -470,6 +480,12 @@ export default function CollabsPage() {
           <datalist id="collab-venues">{venues.map(v => <option key={v} value={v} />)}</datalist>
           <datalist id="collab-sizes">{['20', '30', '50'].map(sz => <option key={sz} value={sz} />)}</datalist>
 
+          {editing.from && (
+            <div className="keg-line" style={{ marginBottom: 14, fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.55 }}>
+              <b style={{ color: 'var(--text)' }}>Sent through the collab form</b>{editing.from.by ? ` by ${editing.from.by}` : ''}{editing.from.at ? ` · ${fmtDate(editing.from.at.slice(0, 10))}` : ''}
+              <div>{[editing.from.name, editing.from.phone, editing.from.email].filter(Boolean).join(' · ')}</div>
+            </div>
+          )}
           <div className="keg-grid-2">
             <Field label="Vietnam partner">
               <input className="input" list="collab-local" value={editing.vn_partner} onChange={e => setDraft({ vn_partner: e.target.value })} placeholder="e.g. Deme Brewing" autoFocus={!editing.id} />
@@ -592,5 +608,50 @@ function KegChips({ kegs }: { kegs: KegLine[] }) {
         )
       })}
     </span>
+  )
+}
+
+function FormTag() {
+  return <span title="Sent by the brewery through the collab form" style={{ marginLeft: 8, fontSize: 11, fontWeight: 600, color: 'var(--accent)', border: '1px solid var(--accent)', borderRadius: 5, padding: '1px 6px', verticalAlign: 2, whiteSpace: 'nowrap' }}>Form</span>
+}
+
+const collabUrl = () => `${typeof window !== 'undefined' ? window.location.origin : ''}/brewasia/collab`
+const collabMessage = () => `Hi,
+
+We're lining up collab beers for BrewAsia 2026: the Friday Ale Trail and the Halloween Collab Fest.
+
+If you're brewing a collab (or want us to match you with a partner), please send us the details here. It takes 2 minutes:
+${collabUrl()}
+
+Cheers,
+BigBamBoo
+
+---
+
+Xin chào,
+
+Chúng tôi đang tổng hợp các loại bia collab cho BrewAsia 2026: Friday Ale Trail và Halloween Collab Fest.
+
+Nếu bạn đang nấu bia collab (hoặc muốn chúng tôi kết nối đối tác), vui lòng gửi thông tin tại đây (chỉ mất 2 phút):
+${collabUrl()}
+
+Trân trọng,
+BigBamBoo`
+
+function CollabSignup({ collabs, onRefresh }: { collabs: Collab[]; onRefresh: () => void }) {
+  const [open, setOpen] = useState(true)
+  const sent = collabs.filter(c => c.from_form)
+  const breweries = new Set(sent.map(c => c.submitted_by || c.code)).size
+  return (
+    <div className="card donate-panel" style={{ margin: '18px 0 0' }}>
+      <button onClick={() => setOpen(!open)} className="donate-panel__title" aria-expanded={open}>
+        <span>Collab sign-up</span>
+        <span className="donate-panel__count">
+          {sent.length ? <><b>{sent.length}</b> {sent.length === 1 ? 'collab' : 'collabs'} sent by <b>{breweries}</b> {breweries === 1 ? 'brewery' : 'breweries'}. Marked “Form” below.</> : 'One link for every brewery. They send their collab, it lands here.'}
+        </span>
+        <span aria-hidden style={{ marginLeft: 'auto', color: 'var(--text-muted)', fontSize: 12 }}>{open ? 'Hide' : 'Show'}</span>
+      </button>
+      {open && <SignupLink url={collabUrl()} emailText={collabMessage()} onRefresh={onRefresh} />}
+    </div>
   )
 }
