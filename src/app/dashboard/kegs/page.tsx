@@ -529,7 +529,7 @@ export default function KegsPage() {
             <button
               className="cal-chip"
               onClick={() => { setFStatus(fStatus === 'empty' ? '' : 'empty'); setFDest('') }}
-              style={{ cursor: 'pointer', marginBottom: 4 }}
+              style={{ cursor: 'pointer', marginBottom: 4, borderRadius: 8 }}
             >
               <span className="cal-dot" style={{ background: 'var(--badge-orange-text)' }} />
               <b style={{ color: 'var(--badge-orange-text)' }}>{returnsDue}</b> empty {returnsDue === 1 ? 'keg' : 'kegs'} to return to breweries
@@ -1061,7 +1061,7 @@ function Choice<T extends string>({ options, value, onChange }: { options: { key
             onClick={() => onChange(o.key)}
             aria-pressed={on}
             style={{
-              minHeight: 40, padding: '0 14px', borderRadius: 100, fontSize: 13, cursor: 'pointer', border: '1px solid',
+              minHeight: 40, padding: '0 16px', borderRadius: 9, fontSize: 14, cursor: 'pointer', border: '1px solid',
               borderColor: on ? 'var(--accent)' : 'var(--border)',
               background: on ? 'var(--accent-light)' : 'transparent',
               color: on ? 'var(--accent)' : 'var(--text-secondary)',
