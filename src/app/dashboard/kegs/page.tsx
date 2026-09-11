@@ -717,13 +717,7 @@ export default function KegsPage() {
             })}
           </div>
 
-          <DonationForms
-            producers={producers}
-            kegs={kegs}
-            onChanged={(p) => setProducers(list => (list.some(x => x.id === p.id) ? list.map(x => (x.id === p.id ? p : x)) : [...list, p].sort((a, b) => a.name.localeCompare(b.name))))}
-            onRefresh={load}
-            toast={showToast}
-          />
+          <DonationForms producers={producers} kegs={kegs} onRefresh={load} />
 
           {returnsDue > 0 && (
             <button
@@ -1122,38 +1116,24 @@ function Flags({ k }: { k: Keg }) {
   )
 }
 
-// ── Brewery donation forms ───────────────────────────────────
-// Each brewery gets its own secret link to /brewasia/donate/<token>. What they send lands
-// straight in the list above (Donated · Promised · Conference). This panel shows who has
-// filled it in and who hasn't.
-function newToken() {
-  const b = new Uint8Array(18)
-  crypto.getRandomValues(b)
-  return btoa(String.fromCharCode(...Array.from(b))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
-}
-const formUrl = (token: string) => `${typeof window !== 'undefined' ? window.location.origin : ''}/brewasia/donate/${token}`
-const formMessage = (name: string, token: string) =>
-  `Hi ${name}! Thanks for donating kegs to the BrewAsia conference. Please fill in what you're sending here (you can come back to change it):\n${formUrl(token)}\n\nXin chào ${name}! Cảm ơn bạn đã tài trợ keg bia cho hội nghị BrewAsia. Vui lòng điền thông tin keg tại đây:\n${formUrl(token)}`
+// ── Brewery keg sign-up ───────────────────────────────────────
+// One shared public link (/brewasia/donate) goes out in every email. Breweries type their
+// name and kegs; they land straight in the list above (Donated · Promised · Conference,
+// tagged "From brewery form"). This panel holds the link and shows who has signed up.
+// Each brewery also gets a private edit link (/brewasia/donate/<token>) for changes.
+const signupUrl = () => `${typeof window !== 'undefined' ? window.location.origin : ''}/brewasia/donate`
+const editUrl = (token: string) => `${typeof window !== 'undefined' ? window.location.origin : ''}/brewasia/donate/${token}`
+const signupMessage = () =>
+  `Thanks for donating kegs to the BrewAsia conference! Please tell us what you're sending here:\n${signupUrl()}\n\nCảm ơn bạn đã tài trợ keg bia cho hội nghị BrewAsia! Vui lòng điền thông tin keg tại đây:\n${signupUrl()}`
 const shortDate = (d: string) => new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
 
-function DonationForms({ producers, kegs, onChanged, onRefresh, toast }: {
+function DonationForms({ producers, kegs, onRefresh }: {
   producers: FormProducer[]
   kegs: Keg[]
-  onChanged: (p: FormProducer) => void
   onRefresh: () => void
-  toast: (m: string) => void
 }) {
-  const invited = producers.filter(p => p.form_token)
-  const [open, setOpen] = useState<boolean | null>(null)
-  const [name, setName] = useState('')
-  const [busy, setBusy] = useState(false)
+  const [open, setOpen] = useState(true)
   const [copied, setCopied] = useState<string | null>(null)
-  const isOpen = open ?? true
-
-  const kegsFrom = (id: string) => kegs.filter(k => k.from_form && k.producer_id === id).reduce((n, k) => n + (k.qty || 0), 0)
-  const filled = invited.filter(p => p.form_submitted_at)
-  const waiting = invited.filter(p => !p.form_submitted_at)
-  const notInvited = producers.filter(p => !p.form_token && p.kind !== 'supplier')
 
   async function copy(text: string, key: string) {
     try { await navigator.clipboard.writeText(text) } catch { /* clipboard blocked */ }
@@ -1161,90 +1141,59 @@ function DonationForms({ producers, kegs, onChanged, onRefresh, toast }: {
     setTimeout(() => setCopied(c => (c === key ? null : c)), 1800)
   }
 
-  async function invite() {
-    const typed = name.trim()
-    if (!typed) return
-    setBusy(true)
-    let p = producers.find(x => x.name.trim().toLowerCase() === typed.toLowerCase()) || null
-    if (!p) {
-      const { data, error } = await supabase.from('brewasia_producers')
-        .insert({ name: typed, kind: 'brewery', interest: 'interested' })
-        .select('id, name, kind, form_token, form_sent_at, form_submitted_at').single()
-      if (error || !data) { setBusy(false); return toast('Could not add that brewery.') }
-      p = data as FormProducer
-    }
-    if (!p.form_token) {
-      const token = newToken()
-      const { data, error } = await supabase.from('brewasia_producers')
-        .update({ form_token: token, form_sent_at: new Date().toISOString() })
-        .eq('id', p.id).select('id, name, kind, form_token, form_sent_at, form_submitted_at').single()
-      if (error || !data) { setBusy(false); return toast('Could not make the link. Try again.') }
-      p = data as FormProducer
-    }
-    setBusy(false)
-    onChanged(p)
-    setName('')
-    await copy(formMessage(p.name, p.form_token!), `msg-${p.id}`)
-    toast(`Link for ${p.name} copied with a message. Paste it into Zalo, WhatsApp or email.`)
-  }
-
-  const rows = [...waiting, ...filled]
+  // Breweries that have sent kegs through the form, newest first.
+  const fromForm = kegs.filter(k => k.from_form)
+  const groups = Array.from(
+    fromForm.reduce((m, k) => {
+      const id = k.producer_id || `name:${k.brewery}`
+      const g = m.get(id) || { id, name: k.brewery, kegs: 0, beers: 0, producer: producers.find(p => p.id === k.producer_id) || null }
+      g.kegs += k.qty || 0
+      g.beers += 1
+      m.set(id, g)
+      return m
+    }, new Map<string, { id: string; name: string; kegs: number; beers: number; producer: FormProducer | null }>()).values(),
+  ).sort((a, b) => String(b.producer?.form_submitted_at || '').localeCompare(String(a.producer?.form_submitted_at || '')))
+  const totalKegs = groups.reduce((n, g) => n + g.kegs, 0)
 
   return (
     <div className="card donate-panel" style={{ margin: '14px 0 4px' }}>
-      <div className="donate-panel__head">
-        <button onClick={() => setOpen(!isOpen)} className="donate-panel__title" aria-expanded={isOpen}>
-          <span>Brewery donation forms</span>
-          <span className="donate-panel__count">
-            {invited.length ? <><b>{filled.length}</b> of {invited.length} filled in</> : 'Send breweries a link to fill in their own kegs'}
-          </span>
-          <span aria-hidden style={{ marginLeft: 'auto', color: 'var(--text-muted)', fontSize: 12 }}>{isOpen ? 'Hide' : 'Show'}</span>
-        </button>
-      </div>
+      <button onClick={() => setOpen(!open)} className="donate-panel__title" aria-expanded={open}>
+        <span>Brewery keg sign-up</span>
+        <span className="donate-panel__count">
+          {groups.length ? <><b>{groups.length}</b> {groups.length === 1 ? 'brewery has' : 'breweries have'} signed up · <b>{totalKegs}</b> {totalKegs === 1 ? 'keg' : 'kegs'}</> : 'One link for every brewery. Put it in your emails.'}
+        </span>
+        <span aria-hidden style={{ marginLeft: 'auto', color: 'var(--text-muted)', fontSize: 12 }}>{open ? 'Hide' : 'Show'}</span>
+      </button>
 
-      {isOpen && (
+      {open && (
         <>
           <div className="donate-panel__invite">
-            <datalist id="donate-breweries">{notInvited.map(p => <option key={p.id} value={p.name} />)}</datalist>
-            <input
-              className="input"
-              list="donate-breweries"
-              placeholder="Brewery name"
-              value={name}
-              onChange={e => setName(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter') invite() }}
-              aria-label="Brewery to send a form link to"
-            />
-            <button className="btn-accent" onClick={invite} disabled={busy || !name.trim()} style={{ whiteSpace: 'nowrap' }}>
-              {busy ? 'Making link…' : 'Make link'}
-            </button>
-            {invited.length > 0 && <button className="btn-outline" onClick={onRefresh} style={{ fontSize: 13 }}>Refresh</button>}
+            <input className="input" readOnly value={signupUrl()} onFocus={e => e.currentTarget.select()} aria-label="Sign-up link" style={{ fontSize: 13 }} />
+            <button className="btn-accent" onClick={() => copy(signupUrl(), 'link')} style={{ whiteSpace: 'nowrap' }}>{copied === 'link' ? 'Copied' : 'Copy link'}</button>
+            <button className="btn-outline" onClick={() => copy(signupMessage(), 'msg')} style={{ whiteSpace: 'nowrap', fontSize: 13 }}>{copied === 'msg' ? 'Copied' : 'Copy message'}</button>
+            <a className="btn-outline" href={signupUrl()} target="_blank" rel="noreferrer" style={{ fontSize: 13, textDecoration: 'none' }}>Open</a>
+            <button className="btn-outline" onClick={onRefresh} style={{ fontSize: 13 }}>Refresh</button>
           </div>
 
-          {rows.length > 0 && (
+          {groups.length > 0 && (
             <div className="donate-panel__list">
-              {rows.map(p => {
-                const done = !!p.form_submitted_at
-                const n = kegsFrom(p.id)
-                return (
-                  <div key={p.id} className="donate-row">
-                    <span className="collab-step-dot" style={{ background: done ? 'var(--cal-booked-text)' : 'var(--accent)' }} />
-                    <span className="donate-row__name">{p.name}</span>
-                    <span className="donate-row__status" style={{ color: done ? 'var(--cal-booked-text)' : 'var(--text-muted)' }}>
-                      {done ? `Filled in ${shortDate(p.form_submitted_at!)} · ${n} ${n === 1 ? 'keg' : 'kegs'}` : `Waiting · link made ${p.form_sent_at ? shortDate(p.form_sent_at) : ''}`}
-                    </span>
+              {groups.map(g => (
+                <div key={g.id} className="donate-row">
+                  <span className="collab-step-dot" style={{ background: 'var(--cal-booked-text)' }} />
+                  <span className="donate-row__name">{g.name}</span>
+                  <span className="donate-row__status" style={{ color: 'var(--text-secondary)' }}>
+                    {g.kegs} {g.kegs === 1 ? 'keg' : 'kegs'} · {g.beers} {g.beers === 1 ? 'beer' : 'beers'}
+                    {g.producer?.form_submitted_at ? ` · last sent ${shortDate(g.producer.form_submitted_at)}` : ''}
+                  </span>
+                  {g.producer?.form_token && (
                     <span className="donate-row__actions">
-                      <button className="keg-link" onClick={() => copy(formMessage(p.name, p.form_token!), `msg-${p.id}`)}>
-                        {copied === `msg-${p.id}` ? 'Copied' : 'Copy message'}
+                      <button className="keg-link" onClick={() => copy(editUrl(g.producer!.form_token!), `edit-${g.id}`)} title="Their private link to change what they sent">
+                        {copied === `edit-${g.id}` ? 'Copied' : 'Copy their edit link'}
                       </button>
-                      <button className="keg-link" onClick={() => copy(formUrl(p.form_token!), `url-${p.id}`)}>
-                        {copied === `url-${p.id}` ? 'Copied' : 'Copy link'}
-                      </button>
-                      <a className="keg-link" href={formUrl(p.form_token!)} target="_blank" rel="noreferrer" style={{ textDecoration: 'none' }}>Open</a>
                     </span>
-                  </div>
-                )
-              })}
+                  )}
+                </div>
+              ))}
             </div>
           )}
         </>

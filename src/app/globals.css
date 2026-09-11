@@ -310,6 +310,7 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); c
   display: flex; align-items: baseline; gap: 10px; padding: 10px 12px; border-radius: 8px;
   border: 1px solid var(--border-light); background: var(--bg-subtle); font-size: 14px; color: var(--text); flex-wrap: wrap;
 }
+.donate-editlink { border: 1px solid var(--badge-orange-border); background: var(--accent-light); border-radius: 10px; padding: 12px; margin: 0 0 14px; }
 .donate-check { display: flex; align-items: center; gap: 10px; margin: 16px 0 14px; font-size: 14px; color: var(--text); cursor: pointer; }
 @media (max-width: 760px) {
   .donate-row__actions { margin-left: 18px; width: 100%; }
