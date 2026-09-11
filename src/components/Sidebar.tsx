@@ -1,5 +1,5 @@
 'use client'
-import { Suspense, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useSearchParams, useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
@@ -36,6 +36,7 @@ const NAV: NavItem[] = [
   { href: '/dashboard/tickets', label: 'Tickets' },
   { href: '/dashboard/pitches', label: 'Event Pitches' },
   { href: '/dashboard/calendar', label: 'Venue Calendar' },
+  { href: '/dashboard/kegs', label: 'BrewAsia kegs' },
 
   { href: '#recipes', label: 'Recipes', section: true },
   { href: '/dashboard/ops/recipes', label: 'Recipes' },
@@ -79,6 +80,9 @@ function SidebarInner({ role, venueName }: { role: string; venueName: string }) 
   const bestMatch = navHrefs.filter(h => h !== '/dashboard' && (pathname === h || pathname.startsWith(h + '/'))).sort((a, b) => b.length - a.length)[0] || null
   const router = useRouter()
   const [copied, setCopied] = useState<string | null>(null)
+  // Phone only: the sidebar is a slide-in drawer opened from the top bar.
+  const [open, setOpen] = useState(false)
+  useEffect(() => { setOpen(false) }, [pathname, sp.toString()])
   const { t, lang } = useT()
   const label = (k: string) => t.nav[k] || k
 
@@ -102,7 +106,17 @@ function SidebarInner({ role, venueName }: { role: string; venueName: string }) 
   }
 
   return (
-    <aside style={{
+    <>
+    <div className="dash-topbar">
+      <button onClick={() => setOpen(true)} aria-label="Open menu" aria-expanded={open} style={{
+        width: 40, height: 40, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+        background: 'transparent', border: '1px solid var(--border)', borderRadius: 9,
+        color: 'var(--text)', fontSize: 18, cursor: 'pointer', lineHeight: 1,
+      }}>☰</button>
+      <span style={{ fontSize: 16, fontWeight: 700, letterSpacing: '0.02em', color: 'var(--accent, #e87830)' }}>BigBamBoo</span>
+    </div>
+    <div className={open ? 'dash-backdrop is-open' : 'dash-backdrop'} onClick={() => setOpen(false)} aria-hidden />
+    <aside className={open ? 'dash-sidebar is-open' : 'dash-sidebar'} style={{
       width: 220, flexShrink: 0,
       background: 'var(--bg-sidebar, #fafafa)',
       borderRight: '1px solid var(--border, #e5e5e5)',
@@ -208,6 +222,7 @@ function SidebarInner({ role, venueName }: { role: string; venueName: string }) 
         }}>Sign out</button>
       </div>
     </aside>
+    </>
   )
 }
 
