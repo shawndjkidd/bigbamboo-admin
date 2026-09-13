@@ -121,9 +121,9 @@ const K = (lang: Lang, name: string) => `fest_${name}_${lang}`
 // band the tear belongs to.
 function Tear({ fill, flip }: { fill: string; flip?: boolean }) {
   return (
-    <svg className="fest-tear" viewBox="0 0 1200 42" preserveAspectRatio="none" aria-hidden="true"
+    <svg className="fest-tear" viewBox="0 0 1200 40" preserveAspectRatio="none" aria-hidden="true"
       style={flip ? { transform: 'scaleY(-1)' } : undefined}>
-      <path fill={fill} d="M0 42V14l38 6 41-11 36 13 45-9 39 12 47-14 36 9 42-7 44 13 38-12 46 10 40-13 43 8 39-6 45 12 37-11 44 9 41-13 38 11 45-8 39 10 42-12 36 9 43-6 40 11 38-9 44 8V42Z" />
+      <path fill={fill} d="M0 40V20c34-7 62-2 92 4s58 9 88 2 56-14 86-11 54 13 84 15 58-6 88-10 58-3 88 3 58 13 88 11 56-11 86-14 56 4 86 10 60 8 92 1v9Z" />
     </svg>
   )
 }
@@ -170,6 +170,13 @@ export default function FestPage({ beers, settings }: { beers: FestBeer[]; setti
   const h = left == null ? null : Math.floor((left % 86400000) / 3600000)
   const m = left == null ? null : Math.floor((left % 3600000) / 60000)
   const breweryCount = new Set(beers.flatMap(b => b.breweries)).size
+  // Socials come from the same settings the homepage uses, so they're set in one place.
+  const socials = [
+    { label: 'Instagram', href: settings.home_instagram_url || '' },
+    { label: 'Facebook', href: settings.home_facebook_url || '' },
+    { label: 'Zalo', href: settings.fest_zalo_url || '' },
+    { label: 'WhatsApp', href: settings.fest_contact_url || CONTACT_FALLBACK },
+  ].filter(l => l.href)
 
   return (
     <div className="fest">
@@ -262,7 +269,7 @@ export default function FestPage({ beers, settings }: { beers: FestBeer[]; setti
       </section>
 
       {/* Cream band: the beer */}
-      <div className="fest-seam"><Palms side="left" /><Palms side="right" /><Tear fill="#f3e3c3" /></div>
+      <div className="fest-seam"><Tear fill="#f3e3c3" /></div>
       <section className="fest-band fest-band--cream">
         <div className="fest-inner">
           <div className="fest-head">
@@ -272,7 +279,16 @@ export default function FestPage({ beers, settings }: { beers: FestBeer[]; setti
           <p className="fest-sub">{s('lineupSub')}</p>
 
           {beers.length === 0 ? (
-            <div className="fest-empty">{s('empty')}</div>
+            <div className="fest-grid fest-grid--ghost" aria-label={s('empty')}>
+              {[0, 1, 2].map(i => (
+                <article key={i} className="fest-card fest-card--ghost" style={{ transform: `rotate(${i - 1}deg)` }}>
+                  <div className="fest-card__breweries">? × ?</div>
+                  <h3 className="fest-card__beer">{s('tbd')}</h3>
+                  <div className="fest-card__meta">{s('empty')}</div>
+                  <div className="fest-card__foot"><span className="fest-tag">{s('coming')}</span></div>
+                </article>
+              ))}
+            </div>
           ) : (
             <div className="fest-grid">
               {beers.map((b, i) => (
@@ -320,10 +336,21 @@ export default function FestPage({ beers, settings }: { beers: FestBeer[]; setti
         <div className="fest-inner">
           <div className="fest-partners__label">{s('partnersLabel')}</div>
           <div className="fest-partners__names">{s('partners')}</div>
+
+          {socials.length > 0 && (
+            <div className="fest-socials">
+              {socials.map(l => <a key={l.label} className="fest-social" href={l.href} target="_blank" rel="noreferrer">{l.label}</a>)}
+            </div>
+          )}
+
           <div className="fest-foot">
-            {s('venue')} · {s('address')}
-            <a className="fest-link" href={MAPS} target="_blank" rel="noreferrer">{s('map')} ↗</a>
+            <div className="fest-foot__addr"><b>{s('venue')}</b><br />{s('address')}</div>
+            <a className="fest-mapbtn fest-mapbtn--dark" href={MAPS} target="_blank" rel="noreferrer">
+              <svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true"><path fill="currentColor" d="M12 2a7 7 0 0 0-7 7c0 5.25 7 13 7 13s7-7.75 7-13a7 7 0 0 0-7-7Zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5Z" /></svg>
+              {s('map')}
+            </a>
           </div>
+          <div className="fest-copy">BigBamBoo · bigbamboo.app</div>
         </div>
       </footer>
     </div>
