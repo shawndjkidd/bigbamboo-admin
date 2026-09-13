@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useRef, useState, Fragment } from 'react'
+import { useCallback, useEffect, useRef, useState, Children, Fragment, type ReactNode } from 'react'
 
 // Public Halloween Collab Fest page. EN / VI.
 // Built like the poster: screenprinted bands of rust, cream and deep green stacked down
@@ -76,6 +76,8 @@ const T = {
     draw2: 'The BZZD collab cocktail bar',
     draw3: 'Live music & DJs',
     lineup: 'On the taps',
+    tapsPrev: 'Previous beers',
+    tapsNext: 'Next beers',
     lineupSub: 'Announced one by one as they’re locked in. Keep checking back.',
     confirmed: 'Confirmed',
     coming: 'Brewing',
@@ -143,6 +145,8 @@ const T = {
     draw2: 'Quầy cocktail collab BZZD',
     draw3: 'Nhạc sống & DJ',
     lineup: 'Trên vòi',
+    tapsPrev: 'Bia trước',
+    tapsNext: 'Bia tiếp theo',
     lineupSub: 'Công bố dần khi từng mẻ được chốt. Hãy ghé lại nhé.',
     confirmed: 'Đã xác nhận',
     coming: 'Đang nấu',
@@ -211,6 +215,102 @@ function Shadows({ bats = false }: { bats?: boolean }) {
 
 
 
+
+const pad2 = (n: number) => String(n).padStart(2, '0')
+
+/* The tap list: one continuous carousel. Phones get native scroll-snap with the next
+   card peeking in; desktop shows three with arrows either side. Progress is a count,
+   "03 / 25" — the last card fully in view — never dots. Arrow keys, Home and End move
+   focus card to card and scroll it into view; only the current card is in the tab order. */
+function TapCarousel({ label, prev, next, children }: { label: string; prev: string; next: string; children: ReactNode }) {
+  const slides = Children.toArray(children)
+  const total = slides.length
+  const track = useRef<HTMLDivElement | null>(null)
+  const [active, setActive] = useState(0)
+  const [seen, setSeen] = useState(Math.min(1, total))
+  const [atStart, setAtStart] = useState(true)
+  const [atEnd, setAtEnd] = useState(false)
+
+  const measure = useCallback(() => {
+    const el = track.current
+    if (!el) return
+    const edge = el.getBoundingClientRect().right - (parseFloat(getComputedStyle(el).paddingRight) || 0)
+    let last = 0
+    Array.from(el.children).forEach((c, i) => { if (c.getBoundingClientRect().right <= edge + 2) last = i + 1 })
+    setSeen(Math.max(Math.min(1, total), last))
+    setAtStart(el.scrollLeft <= 2)
+    setAtEnd(el.scrollLeft + el.clientWidth >= el.scrollWidth - 2)
+  }, [total])
+
+  useEffect(() => {
+    const el = track.current
+    if (!el) return
+    let raf = 0
+    const onChange = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(measure) }
+    measure()
+    el.addEventListener('scroll', onChange, { passive: true })
+    window.addEventListener('resize', onChange)
+    return () => { cancelAnimationFrame(raf); el.removeEventListener('scroll', onChange); window.removeEventListener('resize', onChange) }
+  }, [measure])
+
+  const behavior = (): ScrollBehavior =>
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth'
+
+  // Arrow buttons: one card along.
+  function step(dir: 1 | -1) {
+    const el = track.current
+    const first = el?.firstElementChild as HTMLElement | null
+    if (!el || !first) return
+    const gap = parseFloat(getComputedStyle(el).columnGap) || 0
+    el.scrollBy({ left: dir * (first.offsetWidth + gap), behavior: behavior() })
+  }
+
+  // Focus a card and scroll the track just far enough to show it. Scrolls the track
+  // itself: scrollIntoView would also shove the page sideways, since .fest clips overflow.
+  function go(i: number) {
+    const el = track.current
+    const n = Math.max(0, Math.min(total - 1, i))
+    const slide = el?.children[n] as HTMLElement | undefined
+    if (!el || !slide) return
+    setActive(n)
+    slide.focus({ preventScroll: true })
+    const cs = getComputedStyle(el)
+    const padL = parseFloat(cs.paddingLeft) || 0
+    const padR = parseFloat(cs.paddingRight) || 0
+    const start = slide.offsetLeft - padL
+    const end = slide.offsetLeft + slide.offsetWidth + padR - el.clientWidth
+    const left = start < el.scrollLeft ? start : end > el.scrollLeft ? end : null
+    if (left != null) el.scrollTo({ left, behavior: behavior() })
+  }
+
+  function onKey(e: React.KeyboardEvent) {
+    const to = e.key === 'ArrowRight' ? active + 1 : e.key === 'ArrowLeft' ? active - 1
+      : e.key === 'Home' ? 0 : e.key === 'End' ? total - 1 : null
+    if (to == null) return
+    e.preventDefault()
+    go(to)
+  }
+
+  return (
+    <div className="fest-taps" role="region" aria-roledescription="carousel" aria-label={label}>
+      <button type="button" className="fest-taps__arrow" data-dir="prev" aria-label={prev} disabled={atStart} onClick={() => step(-1)}>
+        <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M15.5 4 7.5 12l8 8 2-2-6-6 6-6Z" /></svg>
+      </button>
+      <div className="fest-track" ref={track} onKeyDown={onKey}>
+        {slides.map((slide, i) => (
+          <div key={i} className="fest-slide" role="group" aria-roledescription="slide" aria-label={`${pad2(i + 1)} / ${pad2(total)}`}
+            tabIndex={i === active ? 0 : -1} onFocus={() => setActive(i)}>
+            {slide}
+          </div>
+        ))}
+      </div>
+      <button type="button" className="fest-taps__arrow" data-dir="next" aria-label={next} disabled={atEnd} onClick={() => step(1)}>
+        <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M8.5 4 6.5 6l6 6-6 6 2 2 8-8Z" /></svg>
+      </button>
+      <div className="fest-taps__count" aria-hidden="true">{pad2(seen)} / {pad2(total)}</div>
+    </div>
+  )
+}
 
 const BAT = 'M20 30c6-10 10-4 14-10 3 6 6 2 10 10-6-2-8 4-10 6-2-2-4-8-14-6Z'
 
@@ -430,8 +530,8 @@ export default function FestPage({ beers, settings, live }: { beers: FestBeer[];
           </div>
           <p className="fest-sub">{s('lineupSub')}</p>
 
-          <div className="fest-grid">
-            {beers.map((b, i) => {
+          <TapCarousel label={s('lineup')} prev={s('tapsPrev')} next={s('tapsNext')}>
+            {[...beers.map((b, i) => {
               const state = b.kicked ? 'kicked' : b.just_added ? 'just_added' : 'announced'
               return (
                 <article key={b.code} className="fest-card" data-state={state} data-tone={TONES[i % 3]} style={{ transform: `rotate(${(i % 3) - 1}deg)` }}>
@@ -466,9 +566,9 @@ export default function FestPage({ beers, settings, live }: { beers: FestBeer[];
                   </div>
                 </article>
               )
-            })}
-            {/* Coming soon: filler, not a database row. Tops the list up to a full row of three. */}
-            {Array.from({ length: fillers }, (_, k) => {
+            }),
+            // Coming soon: filler, not a database row. Tops the list up to a full row of three.
+            ...Array.from({ length: fillers }, (_, k) => {
               const i = beers.length + k
               return (
                 <article key={`soon-${k}`} className="fest-card fest-card--ghost" data-state="coming_soon" data-tone={TONES[i % 3]} style={{ transform: `rotate(${(i % 3) - 1}deg)` }}>
@@ -488,8 +588,8 @@ export default function FestPage({ beers, settings, live }: { beers: FestBeer[];
                   </div>
                 </article>
               )
-            })}
-          </div>
+            })]}
+          </TapCarousel>
         </div>
       </section>
 

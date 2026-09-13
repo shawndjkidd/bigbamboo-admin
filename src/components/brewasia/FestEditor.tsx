@@ -27,6 +27,8 @@ const TEXT_FIELDS: { name: string; label: string; hint?: string; area?: boolean 
   { name: 'draw2', label: 'Headline draw 2' },
   { name: 'draw3', label: 'Headline draw 3' },
   { name: 'lineupSub', label: 'Line under “What’s pouring”' },
+  { name: 'tapsPrev', label: 'Tap carousel: previous arrow (read out by screen readers)' },
+  { name: 'tapsNext', label: 'Tap carousel: next arrow (read out by screen readers)' },
   { name: 'justAdded', label: 'Tap card: badge for a beer announced in the last 7 days' },
   { name: 'kicked', label: 'Tap card: stamp once the keg has blown' },
   { name: 'comingSoon', label: 'Tap card: placeholder line (e.g. Next collab dropping soon)' },

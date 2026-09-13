@@ -858,10 +858,42 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); c
 .fest-price__text { font-size: clamp(16.5px, 2.1vw, 20px); font-weight: 700; margin-top: 18px; line-height: 1.35; opacity: .95; }
 .fest-note { font-size: clamp(15px, 1.9vw, 17px); font-weight: 500; margin: 20px auto 0; opacity: .8; max-width: 64ch; }
 
-.fest-grid {
-  display: grid; grid-template-columns: repeat(auto-fill, minmax(clamp(240px, 30vw, 320px), 1fr));
-  gap: clamp(18px, 2.6vw, 28px); align-items: start;
+/* On the taps: one carousel. Phones: the track bleeds to the screen edge and snaps
+   card by card with the next one peeking in. Desktop: three across, arrows either side. */
+.fest-taps {
+  --taps-gap: clamp(16px, 2.4vw, 28px); --taps-gutter: clamp(18px, 4vw, 40px);
+  display: grid; grid-template-columns: minmax(0, 1fr); align-items: center;
 }
+.fest-taps__arrow { display: none; }
+.fest-track {
+  position: relative; display: flex; gap: var(--taps-gap); align-items: flex-start;
+  overflow-x: auto; overscroll-behavior-x: contain; -webkit-overflow-scrolling: touch;
+  scroll-snap-type: x mandatory; scrollbar-width: none;
+  /* Room above and below for the tilt, the hard shadow and the hover lift. */
+  margin-inline: calc(-1 * var(--taps-gutter)); padding: 16px var(--taps-gutter) 28px;
+  scroll-padding-inline: var(--taps-gutter);
+}
+.fest-track::-webkit-scrollbar { display: none; }
+.fest-slide { flex: 0 0 82%; max-width: 380px; scroll-snap-align: start; text-align: center; outline: none; }
+.fest-slide:focus-visible .fest-card { outline: 3px solid var(--pine); outline-offset: 5px; }
+.fest-taps__count {
+  grid-column: 1 / -1; margin-top: -6px; font-family: var(--fest-body); font-variant-numeric: tabular-nums;
+  font-size: clamp(14px, 1.6vw, 17px); font-weight: 700; letter-spacing: .2em; color: var(--pine);
+}
+@media (min-width: 900px) {
+  .fest-taps { grid-template-columns: auto minmax(0, 1fr) auto; column-gap: clamp(8px, 1.2vw, 16px); }
+  .fest-track { margin-inline: 0; padding-inline: 8px; scroll-padding-inline: 8px; }
+  .fest-slide { flex-basis: calc((100% - 2 * var(--taps-gap)) / 3); max-width: none; }
+  .fest-taps__arrow {
+    display: grid; place-items: center; width: 48px; height: 48px; padding: 0; cursor: pointer;
+    background: var(--amber); color: var(--pine); border: 2px solid var(--ink); border-radius: 4px;
+    box-shadow: 3px 3px 0 var(--ink); transition: transform .12s ease, box-shadow .12s ease;
+  }
+  .fest-taps__arrow:hover:not(:disabled) { transform: translate(-1px, -1px); box-shadow: 4px 4px 0 var(--ink); }
+  .fest-taps__arrow:focus-visible { outline: 3px solid var(--pine); outline-offset: 3px; }
+  .fest-taps__arrow:disabled { opacity: .3; cursor: default; box-shadow: none; }
+}
+@media (prefers-reduced-motion: reduce) { .fest-taps__arrow { transition: none; } }
 /* Tap cards, done as a fight bill: the two breweries are the billing, the beer
    is the main event in a red band across the middle, stats along the bottom. */
 .fest-card {
