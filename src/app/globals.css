@@ -764,9 +764,10 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); c
   border-radius: 4px; box-shadow: 5px 5px 0 rgba(0,0,0,.35);
 }
 @media (min-width: 800px) {
-  .fest-feature[data-art="true"] { grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); }
+  .fest-feature[data-art="true"] { grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); }
+  .fest-feature[data-art="true"] .fest-feature__title { font-size: clamp(26px, 3.4vw, 44px); }
 }
-.fest-feature__art { display: block; width: 100%; height: auto; max-height: 460px; object-fit: contain; }
+.fest-feature__art { display: block; width: 100%; height: auto; max-height: clamp(260px, 34vw, 400px); object-fit: contain; }
 .fest-feature__type { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: clamp(14px, 2.4vw, 30px); align-items: baseline; }
 .fest-feature__n {
   grid-row: span 2; font-family: var(--fest-display, 'Alfa Slab One'), Georgia, serif; font-weight: 400;
