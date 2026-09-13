@@ -60,7 +60,7 @@ const T = {
     statHours: '8',
     statHoursLabel: 'hours',
     countriesTitle: 'Collabs from across Asia and beyond',
-    plus: 'Plus…',
+    plus: '+…',
     oneNight: 'One night only · 31 Oct',
     versus: 'versus',
     abv: 'ABV',
@@ -122,7 +122,7 @@ const T = {
     statHours: '8',
     statHoursLabel: 'giờ',
     countriesTitle: 'Bia collab từ khắp châu Á và xa hơn',
-    plus: 'Và còn…',
+    plus: '+…',
     oneNight: 'Chỉ một đêm · 31/10',
     versus: 'đối đầu',
     abv: 'Nồng độ',
@@ -313,9 +313,9 @@ export default function FestPage({ beers, settings, live }: { beers: FestBeer[];
             ))}
           </div>
 
-          <h2 className="fest-claim">{s('countriesTitle')}</h2>
-
-          <div className="fest-plus" aria-hidden="true"><span>{s('plus')}</span></div>
+          <h2 className="fest-claim">
+            {s('countriesTitle')} <span className="fest-claim__plus">{s('plus')}</span>
+          </h2>
 
           <ul className="fest-draws">
             {[s('draw1'), s('draw2'), s('draw3')].map((d, i) => {

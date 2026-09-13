@@ -544,7 +544,7 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); c
 .fest-lang[data-on="true"] { background: var(--amber); border-color: var(--amber); color: var(--ink); }
 
 /* Bands ----------------------------------------------------------------- */
-.fest-band { position: relative; padding-block: clamp(44px, 7vw, 84px); background-image: var(--paper); isolation: isolate; }
+.fest-band { position: relative; padding-block: clamp(36px, 5.2vw, 64px); background-image: var(--paper); isolation: isolate; }
 .fest::after {
   content: ''; position: fixed; inset: 0; z-index: 5; pointer-events: none; opacity: .22;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='.5'/%3E%3C/svg%3E");
@@ -679,7 +679,7 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); c
 /* The claim: how big this thing is, in numbers you can read across a room */
 .fest-stats {
   display: grid; grid-template-columns: repeat(3, 1fr); gap: clamp(10px, 2vw, 26px);
-  margin-top: clamp(34px, 5vw, 52px);
+  margin-top: clamp(24px, 3.4vw, 38px);
 }
 .fest-stat { display: flex; flex-direction: column; align-items: center; }
 .fest-stat__n {
@@ -689,33 +689,20 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); c
   animation: fest-flicker 13s infinite steps(1, end);
 }
 .fest-stat__l { font-size: clamp(12px, 1.8vw, 16px); font-weight: 800; letter-spacing: .22em; text-transform: uppercase; margin-top: 10px; color: #ffcdc2; text-shadow: 0 0 6px rgba(255,59,31,.55); }
+.fest-claim__plus { color: var(--cream); opacity: .85; white-space: nowrap; }
 .fest-claim {
   font-family: var(--fest-display, 'Alfa Slab One'), Georgia, serif; font-weight: 400;
   font-size: clamp(30px, 5.6vw, 58px); line-height: 1; text-transform: uppercase;
-  margin: clamp(34px, 5vw, 54px) auto 0; max-width: 20ch; color: var(--amber);
+  margin: clamp(24px, 3.2vw, 38px) auto 0; max-width: 22ch; color: var(--amber);
   text-shadow: 4px 4px 0 rgba(20,16,12,.35);
 }
-/* "Plus..." - the lead-in to the three draws. Sits well clear of the claim
-   above it, so it reads as the start of the next thing, not a subtitle. */
-.fest-plus {
-  display: flex; align-items: center; gap: clamp(16px, 3vw, 32px);
-  margin: clamp(46px, 6vw, 82px) auto clamp(4px, 1vw, 10px); max-width: 30ch;
-}
-.fest-plus::before, .fest-plus::after { content: ''; flex: 1; height: 1px; background: rgba(243,227,195,.26); }
-.fest-plus span {
-  font-family: var(--fest-display, 'Alfa Slab One'), Georgia, serif; font-weight: 400;
-  font-size: clamp(28px, 4.8vw, 54px); line-height: 1; letter-spacing: .03em;
-  text-transform: uppercase; color: var(--amber);
-  text-shadow: 0 2px 0 rgba(0,0,0,.45);
-}
-
 /* The three draws, side by side. Each column stands on its own with the type
    alone; a graphic sits above the words when there's art for it, and nothing
    is left behind when there isn't. */
 .fest-draws {
   list-style: none; display: grid; gap: clamp(22px, 3vw, 44px);
   grid-template-columns: 1fr;
-  margin: clamp(26px, 3.4vw, 44px) auto 0; padding: 0;
+  margin: clamp(16px, 2.2vw, 26px) auto 0; padding: 0;
 }
 @media (min-width: 800px) {
   .fest-draws { grid-template-columns: repeat(3, 1fr); }
