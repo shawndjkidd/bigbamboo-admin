@@ -36,6 +36,8 @@ const PLAIN_FIELDS: { key: string; label: string; hint?: string }[] = [
   { key: 'fest_starts_at', label: 'Countdown start', hint: '2026-10-31T16:00:00+07:00' },
 ]
 
+const FONT_CHOICES = ['Alfa Slab One', 'Creepster', 'Eater', 'Nosifer', 'Metal Mania', 'Rye', 'Bowlby One', 'Ultra', 'Bungee']
+
 export function FestEditor({ url }: { url: string }) {
   const [vals, setVals] = useState<Record<string, string>>({})
   const [lang, setLang] = useState<'en' | 'vi'>('en')
@@ -101,6 +103,17 @@ export function FestEditor({ url }: { url: string }) {
             {f.hint && <span style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>{f.hint}</span>}
           </label>
         ))}
+
+        <label style={{ display: 'block' }}>
+          <span style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 5 }}>
+            Title font {saved === 'fest_title_font' && <span style={{ color: 'var(--accent)' }}>· saved</span>}
+          </span>
+          <select className="input" style={{ maxWidth: 280 }} value={vals.fest_title_font || 'Alfa Slab One'}
+            onChange={e => { set('fest_title_font', e.target.value); save('fest_title_font', e.target.value) }}>
+            {FONT_CHOICES.map(f => <option key={f} value={f}>{f}</option>)}
+          </select>
+          <span style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>The big headings on the event page. Changes the page straight away.</span>
+        </label>
 
         {PLAIN_FIELDS.map(f => (
           <label key={f.key} style={{ display: 'block' }}>

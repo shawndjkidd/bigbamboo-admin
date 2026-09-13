@@ -505,6 +505,15 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); c
   .fest-cta { padding: 24px; }
 }
 
+
+/* The Fest display face: variable set on a wrapper by the page, chosen in the admin. */
+.fest .fest-title, .fest .fest-h2, .fest .fest-cta__title, .fest .fest-card__beer,
+.fest .fest-price__amount, .fest .fest-count__row b {
+  font-family: var(--fest-display, 'Alfa Slab One'), Georgia, 'Times New Roman', serif;
+  font-weight: 400;
+}
+.fest .fest-title { letter-spacing: -.02em; }
+
 /* ── Public BigBamBoo homepage (bigbamboo.app) ─────────────── */
 .bb {
   --ink: #101014; --ink-2: #1a1a20; --line: rgba(255,255,255,.10);

@@ -20,6 +20,20 @@ export const metadata: Metadata = {
 // status is Event ready (or Done). Matched and Brewing stay private.
 const SHOW = ['event_ready', 'done']
 
+// The display face for the big headings. Chosen in the admin (fest_title_font); the
+// stylesheet comes from Google Fonts for whichever one is picked.
+const FONTS: Record<string, string> = {
+  'Alfa Slab One': 'Alfa+Slab+One',
+  'Creepster': 'Creepster',
+  'Eater': 'Eater',
+  'Nosifer': 'Nosifer',
+  'Metal Mania': 'Metal+Mania',
+  'Rye': 'Rye',
+  'Bowlby One': 'Bowlby+One',
+  'Ultra': 'Ultra',
+  'Bungee': 'Bungee',
+}
+
 export default async function CollabFestPage() {
   let beers: FestBeer[] = []
   let settings: FestSettings = {}
@@ -43,5 +57,15 @@ export default async function CollabFestPage() {
       }))
   } catch { /* show the page with whatever we have */ }
 
-  return <FestPage beers={beers} settings={settings} />
+  const fontName = FONTS[settings.fest_title_font || ''] ? settings.fest_title_font : 'Alfa Slab One'
+  const fontHref = `https://fonts.googleapis.com/css2?family=${FONTS[fontName]}&display=swap`
+
+  return (
+    <>
+      <link rel="stylesheet" href={fontHref} />
+      <div style={{ '--fest-display': `'${fontName}'` } as React.CSSProperties}>
+        <FestPage beers={beers} settings={settings} />
+      </div>
+    </>
+  )
 }
