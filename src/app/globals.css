@@ -868,6 +868,14 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); c
   color: var(--cream);
 }
 .fest-money--one { grid-template-columns: minmax(0, 420px); justify-content: center; }
+/* Brewing tank beside the prices from 900px; on phones it stands small under them. */
+.fest-tickets { display: grid; grid-template-columns: minmax(0, 1fr); justify-items: center; }
+.fest-tickets__prices { width: 100%; }
+.fest-tickets__tank { display: block; width: clamp(96px, 28vw, 150px); max-width: none; height: auto; margin-top: clamp(18px, 3vw, 28px); }
+@media (min-width: 900px) {
+  .fest-tickets { grid-template-columns: minmax(0, 1fr) auto; align-items: end; column-gap: clamp(20px, 3vw, 44px); }
+  .fest-tickets__tank { width: clamp(150px, 15vw, 230px); margin-top: 0; }
+}
 @media (min-width: 700px) { .fest-money--two { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .fest-money {
   display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: clamp(14px, 2vw, 22px);
@@ -1063,7 +1071,10 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); c
   background: var(--rust); color: var(--cream); border: 2px solid var(--ink); border-radius: 4px;
   box-shadow: 5px 5px 0 rgba(20,16,12,.45);
 }
-.fest-brewcta__copy { flex: 1 1 300px; }
+.fest-brewcta__copy { flex: 1 1 180px; }
+/* The kettle leads the banner and pokes above and below it on wide screens. */
+.fest-brewcta__art { flex: 0 0 auto; display: block; width: clamp(72px, 18vw, 150px); max-width: none; height: auto; }
+@media (min-width: 760px) { .fest-brewcta__art { margin-block: -34px -26px; } }
 .fest-brewcta__title {
   margin: 0; font-family: var(--fest-display, 'Alfa Slab One'), Georgia, serif; font-weight: 400;
   font-size: clamp(20px, 2.8vw, 30px); line-height: 1.05; text-transform: uppercase;

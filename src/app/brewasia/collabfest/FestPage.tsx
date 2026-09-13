@@ -40,6 +40,9 @@ const HAND = '/images/hand-beer.png'
 const GROUND = '/images/collabfest-ground.png'
 // Printed icons for the four stats: beer, breweries, DJs, costumes.
 const STAT_ICONS = ['/images/fest-icon-beer.png', '/images/fest-icon-globe.png', '/images/fest-icon-disc.png', '/images/fest-icon-mask.png']
+// Brewhouse props: the tank beside the ticket prices, the kettle in the brewery call-out.
+const TANK_BREWING = '/images/fest-tank-brewing.png'
+const TANK_KETTLE = '/images/fest-tank-kettle.png'
 // Chunks of earth thrown up as it breaks through.
 const DEBRIS = ['/images/debris1.png', '/images/debris2.png', '/images/debris3.png', '/images/debris4.png']
 
@@ -531,7 +534,10 @@ export default function FestPage({ beers, settings, live }: { beers: FestBeer[];
             <a className="fest-btn" href={ticketUrl} target="_blank" rel="noreferrer">{s('tickets')}</a>
           )}
           {/* Two steps, not three choices: everyone pays to get in, then buys
-              tokens to drink. Laid out so that reads at a glance. */}
+              tokens to drink. Laid out so that reads at a glance. The brewing tank
+              stands beside the prices on wide screens. */}
+          <div className="fest-tickets">
+          <div className="fest-tickets__prices">
           <div className="fest-step">
             <span className="fest-step__n">1</span>
             <h3 className="fest-step__title">{s('step1')}</h3>
@@ -560,6 +566,9 @@ export default function FestPage({ beers, settings, live }: { beers: FestBeer[];
           <p className="fest-note">{s('packNote')}</p>
           {/* Beneath both steps, never inside the entry card. */}
           <p className="fest-passnote">{s('passNote')}</p>
+          </div>
+          <img className="fest-tickets__tank" src={TANK_BREWING} alt="" width={400} height={700} loading="lazy" />
+          </div>
         </div>
       </section>
 
@@ -637,6 +646,7 @@ export default function FestPage({ beers, settings, live }: { beers: FestBeer[];
 
           {/* Brewery call-out: one compact banner, straight after the taps. */}
           <div className="fest-brewcta">
+            <img className="fest-brewcta__art" src={TANK_KETTLE} alt="" width={480} height={480} loading="lazy" />
             <div className="fest-brewcta__copy">
               <h3 className="fest-brewcta__title">{s('ctaTitle')}</h3>
               <p className="fest-brewcta__text">{s('ctaText')}</p>
