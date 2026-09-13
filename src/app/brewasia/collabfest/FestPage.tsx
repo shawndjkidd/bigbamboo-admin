@@ -58,7 +58,6 @@ const T = {
     statHoursLabel: 'hours',
     countriesTitle: 'Collabs from across Asia and beyond',
     plus: 'Plus…',
-    toast: 'Một, hai, ba, dô!',
     oneNight: 'One night only · 31 Oct',
     versus: 'versus',
     abv: 'ABV',
@@ -121,7 +120,6 @@ const T = {
     statHoursLabel: 'giờ',
     countriesTitle: 'Bia collab từ khắp châu Á và xa hơn',
     plus: 'Và còn…',
-    toast: 'Một, hai, ba, dô!',
     oneNight: 'Chỉ một đêm · 31/10',
     versus: 'đối đầu',
     abv: 'Nồng độ',
@@ -288,7 +286,6 @@ export default function FestPage({ beers, settings, live }: { beers: FestBeer[];
               </g>
             </svg>
             <img className="fest-rise__hand" src={HAND} alt="" />
-            <span className="fest-rise__toast">{s('toast')}</span>
           </div>
         )}
         <h1 className="fest-sr">{s('title')}</h1>
