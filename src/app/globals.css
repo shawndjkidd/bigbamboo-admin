@@ -437,6 +437,48 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); c
 /* The poster is the headline — never crop it. Whole image, always, at any width. */
 .fest-banner { display: block; width: 100%; height: auto; }
 
+/* Poster atmosphere. No small objects - slow fog, a firelight breath from
+   below and an occasional light sweep, so the cover moves without anything
+   crawling across it. The poster itself is never moved or cropped. */
+.fest-haze { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 1; }
+.fest-haze__fog {
+  position: absolute; left: -40%; width: 90%; height: 64%; bottom: -10%;
+  background: radial-gradient(closest-side, rgba(243,227,195,.13), transparent 72%);
+  filter: blur(26px);
+  animation: fest-fog 46s linear infinite;
+}
+.fest-haze__fog[data-i="1"] { top: -14%; bottom: auto; height: 52%; opacity: .7; animation-duration: 72s; animation-delay: -30s; }
+@keyframes fest-fog {
+  from { transform: translateX(0) scaleX(1); }
+  50%  { transform: translateX(90vw) scaleX(1.25); }
+  to   { transform: translateX(180vw) scaleX(1); }
+}
+/* Firelight from below the poster, breathing like coals. */
+.fest-haze__fire {
+  position: absolute; left: 50%; bottom: -22%; width: min(1100px, 120%); height: 55%;
+  transform: translateX(-50%);
+  background: radial-gradient(closest-side, rgba(242,140,40,.26), rgba(200,64,27,.12) 55%, transparent 78%);
+  filter: blur(14px); mix-blend-mode: screen;
+  animation: fest-embers 5.2s ease-in-out infinite alternate;
+}
+@keyframes fest-embers {
+  from { opacity: .55; transform: translateX(-50%) scaleY(1); }
+  to   { opacity: .95; transform: translateX(-50%) scaleY(1.1); }
+}
+/* A torch passing: one slow pale sweep, with a long gap between passes. */
+.fest-haze__sweep {
+  position: absolute; top: -30%; left: -35%; width: 26%; height: 160%;
+  background: linear-gradient(100deg, transparent, rgba(255,246,224,.11) 45%, transparent);
+  transform: rotate(9deg);
+  animation: fest-sweep 19s ease-in-out infinite;
+}
+@keyframes fest-sweep {
+  0%, 62% { transform: translateX(0) rotate(9deg); opacity: 0; }
+  70% { opacity: 1; }
+  100% { transform: translateX(460%) rotate(9deg); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) { .fest-haze { display: none; } }
+
 .fest-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .fest-topbar {
   position: absolute; inset: 0 0 auto 0; z-index: 2;
@@ -580,24 +622,65 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); c
   margin: clamp(34px, 5vw, 54px) auto 0; max-width: 20ch; color: var(--amber);
   text-shadow: 4px 4px 0 rgba(20,16,12,.35);
 }
-/* The three draws. No tape, no paper, no box - the type is the object. Big
-   display caps, a hairline between each, and they fill the band. */
+/* "Plus..." and the three extras, pinned up as Polaroids. Each one is a real
+   print: thick white border, fat chin under the photo, taped to the wall at a
+   slight angle. With no photo loaded the emulsion is still developing rather
+   than broken. */
+.fest-plus {
+  display: flex; align-items: center; gap: clamp(14px, 2.5vw, 28px);
+  margin: clamp(40px, 5vw, 64px) auto clamp(6px, 1.4vw, 14px); max-width: 34ch;
+}
+.fest-plus::before, .fest-plus::after { content: ''; flex: 1; height: 1px; background: rgba(243,227,195,.28); }
+.fest-plus span {
+  font-family: var(--fest-display, 'Alfa Slab One'), Georgia, serif; font-weight: 400;
+  font-size: clamp(26px, 4.4vw, 50px); line-height: 1; text-transform: uppercase;
+  color: var(--amber); letter-spacing: .03em;
+}
 .fest-draws {
-  list-style: none; display: flex; flex-direction: column; align-items: stretch;
-  margin: clamp(44px, 5.5vw, 74px) auto 0; padding: 0; max-width: 100%;
+  list-style: none; display: flex; flex-wrap: wrap; justify-content: center; align-items: flex-start;
+  gap: clamp(22px, 3.6vw, 48px);
+  margin: clamp(26px, 3.4vw, 44px) auto 0; padding: clamp(14px, 2vw, 24px) 0 0;
 }
 .fest-draw {
-  position: relative;
-  font-family: var(--fest-display, 'Alfa Slab One'), Georgia, serif; font-weight: 400;
-  font-size: clamp(26px, 6.4vw, 74px); line-height: 1.06; letter-spacing: .015em;
-  text-transform: uppercase; text-align: center; text-wrap: balance;
-  padding-block: clamp(16px, 2.4vw, 30px);
-  color: var(--cream);
-  text-shadow: 0 2px 0 rgba(0,0,0,.5), 0 0 34px rgba(242,177,52,.16);
+  position: relative; flex: 0 1 clamp(210px, 26vw, 300px);
+  background: linear-gradient(180deg, #fdfcf7, #efeadd);
+  padding: clamp(12px, 1.5vw, 16px) clamp(12px, 1.5vw, 16px) clamp(52px, 6vw, 74px);
+  box-shadow: 0 18px 30px rgba(0,0,0,.55), 0 2px 0 rgba(255,255,255,.5) inset;
+  transition: transform .25s ease;
 }
-.fest-draw + .fest-draw { border-top: 1px solid rgba(243,227,195,.2); }
-.fest-draw:nth-child(2) { color: var(--amber); }
-.fest-draw:nth-child(3) { color: #e8785a; }
+.fest-draw[data-i="0"] { transform: rotate(-2.4deg); }
+.fest-draw[data-i="1"] { transform: rotate(1.6deg) translateY(clamp(10px, 1.6vw, 22px)); }
+.fest-draw[data-i="2"] { transform: rotate(-1.1deg); }
+.fest-draw:hover { transform: rotate(0deg) translateY(-6px); }
+/* A strip of tape over the top edge. */
+.fest-draw__tape {
+  position: absolute; top: clamp(-13px, -1.4vw, -9px); left: 50%; width: clamp(72px, 9vw, 108px); height: clamp(22px, 2.6vw, 30px);
+  transform: translateX(-50%) rotate(-1.6deg);
+  background: linear-gradient(180deg, rgba(243,227,195,.62), rgba(216,198,160,.5));
+  box-shadow: 0 2px 5px rgba(0,0,0,.35); opacity: .92;
+  clip-path: polygon(4% 8%, 96% 0, 100% 92%, 0 100%);
+}
+.fest-draw[data-i="1"] .fest-draw__tape { transform: translateX(-50%) rotate(2.4deg); }
+.fest-draw__photo {
+  display: block; aspect-ratio: 1; background: #171512; overflow: hidden; position: relative;
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,.35);
+}
+.fest-draw__photo img { width: 100%; height: 100%; object-fit: cover; display: block; filter: saturate(.92) contrast(1.06); }
+/* Still developing: the print is there, the picture has not come up yet. */
+.fest-draw__empty {
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(120% 90% at 50% 40%, rgba(243,227,195,.10), transparent 70%),
+    linear-gradient(160deg, #241f19, #14110d);
+}
+.fest-draw__cap {
+  position: absolute; left: clamp(12px, 1.5vw, 16px); right: clamp(12px, 1.5vw, 16px);
+  bottom: clamp(14px, 1.8vw, 20px);
+  font-family: var(--fest-body); font-weight: 400;
+  font-size: clamp(13px, 1.45vw, 17px); line-height: 1.25; letter-spacing: .04em;
+  text-transform: uppercase; text-align: center; color: #1d1712; text-wrap: balance;
+}
+@media (prefers-reduced-motion: reduce) { .fest-draw, .fest-draw:hover { transition: none; } }
 
 .fest-blurb { font-size: clamp(17px, 2.1vw, 20.5px); font-weight: 400; line-height: 1.68; margin: clamp(26px, 3.5vw, 38px) auto 0; max-width: 56ch; }
 .fest-entry {

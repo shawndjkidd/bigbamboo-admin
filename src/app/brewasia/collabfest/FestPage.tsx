@@ -49,6 +49,7 @@ const T = {
     statHours: '8',
     statHoursLabel: 'hours',
     countriesTitle: 'Collabs from across Asia and beyond',
+    plus: 'Plus…',
     countries: 'Vietnam · Japan · China · Singapore · Korea · India · Philippines · Australia · UK',
     draw1: 'Full roasted pig BBQ collab',
     draw2: 'The BZZD collab cocktail bar',
@@ -68,7 +69,7 @@ const T = {
     pack1: '200k',
     pack1Text: '4 tokens',
     pack2: '500k',
-    pack2Text: 'Buy 12, 2 free',
+    pack2Text: 'Buy 10, get 2 free',
     packNote: 'One token = one pour of any collab beer, whatever the strength. Your first token purchase comes with a free festival glass. Out of tokens? Top up at the same price all night.',
     howTitle: 'How the night works',
     how1Title: 'Collab taps',
@@ -105,6 +106,7 @@ const T = {
     statHours: '8',
     statHoursLabel: 'giờ',
     countriesTitle: 'Bia collab từ khắp châu Á và xa hơn',
+    plus: 'Và còn…',
     countries: 'Việt Nam · Nhật Bản · Trung Quốc · Singapore · Hàn Quốc · Ấn Độ · Philippines · Úc · Anh',
     draw1: 'Collab heo quay nguyên con',
     draw2: 'Quầy cocktail collab BZZD',
@@ -124,7 +126,7 @@ const T = {
     pack1: '200k',
     pack1Text: '4 token',
     pack2: '500k',
-    pack2Text: 'Mua 12, tặng 2',
+    pack2Text: 'Mua 10, tặng 2',
     packNote: '1 token = 1 ly bia collab bất kỳ, không phân biệt nồng độ. Lần mua token đầu tiên được tặng ly lưu niệm. Hết token? Mua thêm với giá như cũ suốt đêm.',
     howTitle: 'Đêm hội diễn ra thế nào',
     how1Title: 'Vòi collab',
@@ -232,7 +234,12 @@ export default function FestPage({ beers, settings, live }: { beers: FestBeer[];
     <div className="fest" data-lang={lang}>
       {/* Poster, full bleed, doing the job it was drawn for */}
       <header className="fest-hero">
-        <Bats />
+        <div className="fest-haze" aria-hidden="true">
+          <span className="fest-haze__fog" data-i="0" />
+          <span className="fest-haze__fog" data-i="1" />
+          <span className="fest-haze__fire" />
+          <span className="fest-haze__sweep" />
+        </div>
         <div className="fest-topbar">
           <span className="fest-mark">BigBamBoo</span>
           <div role="group" aria-label="Language" style={{ display: 'flex', gap: 4 }}>
@@ -277,10 +284,23 @@ export default function FestPage({ beers, settings, live }: { beers: FestBeer[];
 
           <h2 className="fest-claim">{s('countriesTitle')}</h2>
 
+          <div className="fest-plus" aria-hidden="true"><span>{s('plus')}</span></div>
+
           <ul className="fest-draws">
-            {[s('draw1'), s('draw2'), s('draw3')].map(d => (
-              <li key={d} className="fest-draw">{d}</li>
-            ))}
+            {[s('draw1'), s('draw2'), s('draw3')].map((d, i) => {
+              const img = settings[`fest_extra${i + 1}_img`] || ''
+              return (
+                <li key={d} className="fest-draw" data-i={i}>
+                  <span className="fest-draw__tape" aria-hidden />
+                  <span className="fest-draw__photo">
+                    {img
+                      ? <img src={img} alt="" loading="lazy" />
+                      : <span className="fest-draw__empty" aria-hidden />}
+                  </span>
+                  <span className="fest-draw__cap">{d}</span>
+                </li>
+              )
+            })}
           </ul>
 
           <p className="fest-blurb">{s('blurb')}</p>
