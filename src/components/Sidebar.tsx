@@ -37,6 +37,7 @@ const NAV: NavItem[] = [
 
   { href: '#website', label: 'Website', section: true },
   { href: '/dashboard/site', label: 'Homepage' },
+  { href: '/dashboard/club', label: 'Drinks Club' },
 
   { href: '#menu-events', label: 'Menu & Events', section: true },
   { href: '/dashboard/menu', label: 'Menu' },

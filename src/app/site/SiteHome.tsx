@@ -12,19 +12,21 @@ import type { SiteEvent, SiteMenuItem } from './types'
 // purpose: four languages became two, the pill shapes are squared off, the weekly hours
 // table is gone (hours are event-based now), and the fonts are self-hosted.
 //
-// Still to come in a later phase: the ticket modal and event detail popup, and the
-// Drinks Club sign-up box (it needs its table first — a dead email box on a live page is
-// worse than no box).
+// Still to come in a later phase: the ticket modal and event detail popup.
 
 const STAMP_COUNT = 10
 const FILLED_STAMPS = 3
+type ClubState = 'idle' | 'sending' | 'done' | 'error'
 
 export default function SiteHome({
-  settings, events, menu,
-}: { settings: Settings; events: SiteEvent[]; menu: SiteMenuItem[] }) {
+  settings, events, menu, clubReady = false,
+}: { settings: Settings; events: SiteEvent[]; menu: SiteMenuItem[]; clubReady?: boolean }) {
   const [lang, setLang] = useState<Lang>('en')
   const [cat, setCat] = useState('all')
   const [active, setActive] = useState('menu')
+  const [clubEmail, setClubEmail] = useState('')
+  const [clubTrap, setClubTrap] = useState('')
+  const [club, setClub] = useState<ClubState>('idle')
 
   const t = (name: string) => resolve(settings, lang, name)
 
@@ -86,6 +88,22 @@ export default function SiteHome({
   const next = events[0]
   const todayISO = new Date().toISOString().slice(0, 10)
   const openToday = !!next && next.date === todayISO
+
+  async function joinClub(e: React.FormEvent) {
+    e.preventDefault()
+    if (club === 'sending' || !clubEmail.trim()) return
+    setClub('sending')
+    try {
+      const r = await fetch('/api/public/club-signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: clubEmail, lang, source: 'homepage', website: clubTrap }),
+      })
+      if (!r.ok) throw new Error('failed')
+      setClub('done')
+      setClubEmail('')
+    } catch { setClub('error') }
+  }
 
   const navItems = [
     { id: 'menu', label: t('navMenu') },
@@ -265,7 +283,27 @@ export default function SiteHome({
                 <span className="bb-ct2">{t('clubFree')}</span>
               </h2>
             </div>
+            {!clubReady ? null : club === 'done' ? (
+              <p className="bb-club-said" role="status">{t('clubThanks')}</p>
+            ) : (
+              <form className="bb-club-signup" onSubmit={joinClub}>
+                <label className="bb-hide" htmlFor="bb-club-website">Leave this empty</label>
+                <input
+                  id="bb-club-website" className="bb-hide" type="text" tabIndex={-1} autoComplete="off"
+                  value={clubTrap} onChange={e => setClubTrap(e.target.value)}
+                />
+                <input
+                  type="email" required className="bb-club-email" aria-label={t('clubNotify')}
+                  placeholder={t('clubEmailPlaceholder')}
+                  value={clubEmail} onChange={e => setClubEmail(e.target.value)}
+                />
+                <button type="submit" className="bb-club-btn" disabled={club === 'sending'}>
+                  {t('clubNotify')}
+                </button>
+              </form>
+            )}
           </div>
+          {club === 'error' && <p className="bb-club-said" role="status">{t('clubError')}</p>}
           <div className="bb-club-stamps">
             {Array.from({ length: STAMP_COUNT }).map((_, i) =>
               i === STAMP_COUNT - 1

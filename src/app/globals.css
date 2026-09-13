@@ -915,7 +915,9 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); c
 .bb-club-btn:hover { background: var(--yellow-lt); }
 .bb-club-btn:disabled { opacity: 0.55; cursor: not-allowed; }
 .bb-club-fine { font-family: var(--mono-font); font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--yellow); opacity: 0.85; }
-.bb-club-said { font-family: var(--mono-font); font-size: 12px; letter-spacing: 0.08em; color: var(--t1); }
+.bb-club-said { font-family: var(--mono-font); font-size: 12px; letter-spacing: 0.08em; color: var(--t1); margin-top: 8px; }
+/* Honeypot: off-screen rather than display:none, which some bots skip. */
+.bb-hide { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
 
 /* VISIT */
 #visit { background: var(--red); padding: 28px 28px 32px; position: relative; overflow: hidden; }

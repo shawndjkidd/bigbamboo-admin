@@ -33,6 +33,10 @@ export default async function PublicHome() {
   let settings: Settings = {}
   let events: SiteEvent[] = []
   let menu: SiteMenuItem[] = []
+  // The Drinks Club box only appears once there is somewhere to put the addresses.
+  // Probing beats a hard-coded flag: the box turns itself on the moment the migration
+  // is applied, with no second deploy, and can never be a form that quietly 500s.
+  let clubReady = false
 
   // Built here rather than at module scope so a missing service-role key degrades this
   // page to its built-in copy instead of taking the whole homepage down with a 500.
@@ -104,5 +108,11 @@ export default async function PublicHome() {
     }))
   } catch { /* events section shows its empty state */ }
 
-  return <SiteHome settings={settings} events={events} menu={menu} />
+  try {
+    if (!svc) throw new Error('no client')
+    const { error } = await svc.from('club_signups').select('id', { head: true, count: 'exact' }).limit(1)
+    clubReady = !error
+  } catch { /* table not there yet — the sign-up box stays hidden */ }
+
+  return <SiteHome settings={settings} events={events} menu={menu} clubReady={clubReady} />
 }
