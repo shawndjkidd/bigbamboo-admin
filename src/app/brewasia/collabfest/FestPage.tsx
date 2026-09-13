@@ -55,10 +55,12 @@ const T = {
     days: 'days', hours: 'hours', mins: 'min',
     statCollabs: '20+',
     statCollabsLabel: 'collab beers',
-    statCountries: '10',
-    statCountriesLabel: 'countries',
-    statHours: '8',
-    statHoursLabel: 'hours',
+    statBreweries: '10+',
+    statBreweriesLabel: 'breweries',
+    statDjs: 'DJs',
+    statDjsLabel: 'all night',
+    statCostumes: 'Costumes',
+    statCostumesLabel: 'welcome',
     countriesTitle: 'Collabs from across Asia and beyond',
     plus: '+…',
     oneNight: 'One night only · 31 Oct',
@@ -117,10 +119,12 @@ const T = {
     days: 'ngày', hours: 'giờ', mins: 'phút',
     statCollabs: '20+',
     statCollabsLabel: 'bia collab',
-    statCountries: '10',
-    statCountriesLabel: 'quốc gia',
-    statHours: '8',
-    statHoursLabel: 'giờ',
+    statBreweries: '10+',
+    statBreweriesLabel: 'nhà máy bia',
+    statDjs: 'DJ',
+    statDjsLabel: 'suốt đêm',
+    statCostumes: 'Hoá trang',
+    statCostumesLabel: 'hoan nghênh',
     countriesTitle: 'Bia collab từ khắp châu Á và xa hơn',
     plus: '+…',
     oneNight: 'Chỉ một đêm · 31/10',
@@ -254,9 +258,10 @@ export default function FestPage({ beers, settings, live }: { beers: FestBeer[];
   const m = left == null ? null : Math.floor((left % 3600000) / 60000)
   const breweryCount = new Set(beers.flatMap(b => b.breweries)).size
 
-  // Admin wording wins; then the live count from Collabs; then the default above.
-  const statCollabs = settings[K(lang, 'statCollabs')] || (live && live.collabs > 1 ? `${live.collabs}` : base.statCollabs)
-  const statCountries = settings[K(lang, 'statCountries')] || (live && live.countries > 1 ? `${live.countries}` : base.statCountries)
+  // The typed figure ("20+") is a floor: once the live count from Collabs passes it,
+  // the real number shows instead.
+  const collabFloor = s('statCollabs')
+  const statCollabs = live && live.collabs > (parseInt(collabFloor, 10) || Infinity) ? `${live.collabs}` : collabFloor
   // Socials come from the same settings the homepage uses, so they're set in one place.
   const socials = [
     { label: 'Instagram', href: settings.home_instagram_url || '' },
@@ -319,13 +324,22 @@ export default function FestPage({ beers, settings, live }: { beers: FestBeer[];
             </div>
           )}
 
-          <div className="fest-stats">
-            {[[statCollabs, s('statCollabsLabel')], [statCountries, s('statCountriesLabel')], [s('statHours'), s('statHoursLabel')]].map(([n, l]) => (
-              <div key={l} className="fest-stat">
-                <span className="fest-stat__n">{n}</span>
-                <span className="fest-stat__l">{l}</span>
-              </div>
-            ))}
+          <div className="fest-strip">
+            <Tear fill="#f3e3c3" />
+            <ul className="fest-stats">
+              {[
+                [statCollabs, s('statCollabsLabel')],
+                [s('statBreweries'), s('statBreweriesLabel')],
+                [s('statDjs'), s('statDjsLabel')],
+                [s('statCostumes'), s('statCostumesLabel')],
+              ].map(([n, l], i) => (
+                <li key={i} className="fest-stat">
+                  <span className="fest-stat__n" data-long={n.length > 4}>{n}</span>
+                  <span className="fest-stat__l">{l}</span>
+                </li>
+              ))}
+            </ul>
+            <Tear fill="#f3e3c3" flip />
           </div>
 
           <h2 className="fest-claim">

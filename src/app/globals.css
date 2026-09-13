@@ -676,19 +676,31 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); c
   box-shadow: 4px 4px 0 rgba(20,16,12,.35); transition: transform .12s ease;
 }
 .fest-mapbtn:hover { transform: translate(-1px, -1px); }
-/* The claim: how big this thing is, in numbers you can read across a room */
+/* The stats strip: one strip of cream paper torn top and bottom, four equal
+   columns at every width. Printed ink, no glow — the countdown is the neon. */
+.fest-strip { margin-top: clamp(24px, 3.4vw, 38px); line-height: 0; }
+.fest-strip .fest-tear { height: clamp(10px, 1.6vw, 18px); }
 .fest-stats {
-  display: grid; grid-template-columns: repeat(3, 1fr); gap: clamp(10px, 2vw, 26px);
-  margin-top: clamp(24px, 3.4vw, 38px);
+  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
+  list-style: none; margin: -1px 0; padding: clamp(10px, 1.6vw, 20px) 0;
+  background-color: var(--cream); background-image: var(--paper);
+  color: var(--ink); line-height: normal;
 }
-.fest-stat { display: flex; flex-direction: column; align-items: center; }
+.fest-stat {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  min-width: 0; padding: 2px clamp(2px, 1vw, 16px); text-align: center;
+}
+.fest-stat + .fest-stat { border-left: 2px solid rgba(20,16,12,.55); }
 .fest-stat__n {
-  font-family: var(--fest-display, 'Alfa Slab One'), Georgia, serif;
-  font-size: clamp(52px, 11vw, 118px); line-height: .9; color: #fff0ec;
-  text-shadow: 0 0 8px rgba(255,59,31,.95), 0 0 26px rgba(255,59,31,.7), 0 0 66px rgba(214,32,10,.5);
-  animation: fest-flicker 13s infinite steps(1, end);
+  font-family: var(--fest-display, 'Alfa Slab One'), Georgia, serif; font-weight: 400;
+  font-size: clamp(22px, 6vw, 72px); line-height: 1; text-transform: uppercase;
 }
-.fest-stat__l { font-size: clamp(12px, 1.8vw, 16px); font-weight: 800; letter-spacing: .22em; text-transform: uppercase; margin-top: 10px; color: #ffcdc2; text-shadow: 0 0 6px rgba(255,59,31,.55); }
+/* Words (COSTUMES) run smaller than figures (20+) so all four fit a phone unbroken. */
+.fest-stat__n[data-long="true"] { font-size: clamp(11px, 3vw, 42px); line-height: 1.1; }
+.fest-stat__l {
+  font-size: clamp(8.5px, 1.5vw, 15px); font-weight: 700; letter-spacing: clamp(.04em, .2vw, .16em);
+  text-transform: uppercase; margin-top: clamp(3px, .6vw, 8px); line-height: 1.15; opacity: .8;
+}
 .fest-claim__plus { color: var(--cream); opacity: .85; white-space: nowrap; }
 .fest-claim {
   font-family: var(--fest-display, 'Alfa Slab One'), Georgia, serif; font-weight: 400;
