@@ -38,6 +38,8 @@ const HAND = '/images/hand-beer.png'
 // The ground, cut from the plate itself so the torn edge matches exactly. It sits
 // above the hand, so the arm comes up from behind it.
 const GROUND = '/images/collabfest-ground.png'
+// Printed icons for the four stats: beer, breweries, DJs, costumes.
+const STAT_ICONS = ['/images/fest-icon-beer.png', '/images/fest-icon-globe.png', '/images/fest-icon-disc.png', '/images/fest-icon-mask.png']
 // Chunks of earth thrown up as it breaks through.
 const DEBRIS = ['/images/debris1.png', '/images/debris2.png', '/images/debris3.png', '/images/debris4.png']
 
@@ -481,6 +483,7 @@ export default function FestPage({ beers, settings, live }: { beers: FestBeer[];
                 [s('statCostumes'), s('statCostumesLabel')],
               ].map(([n, l], i) => (
                 <li key={i} className="fest-stat">
+                  <img className="fest-stat__icon" src={STAT_ICONS[i]} alt="" width={200} height={200} loading="lazy" />
                   <span className="fest-stat__n" data-long={n.length > 4}>{n}</span>
                   <span className="fest-stat__l">{l}</span>
                 </li>
