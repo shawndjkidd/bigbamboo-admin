@@ -229,21 +229,19 @@ export default function FestPage({ beers, settings, live }: { beers: FestBeer[];
       <section className="fest-band fest-band--pine">
         <Bats />
         <div className="fest-inner">
-          <div className="fest-strip">
-            <span className="fest-strip__date">{s('date')}</span>
-            <span className="fest-strip__time">{s('time')}</span>
-          </div>
-
-          <div className="fest-where">
-            <address className="fest-venue">
-              <b>{s('venue')}</b>
-              <span>{s('address')}</span>
-            </address>
-            <a className="fest-mapbtn" href={MAPS} target="_blank" rel="noreferrer">
-              <svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true"><path fill="currentColor" d="M12 2a7 7 0 0 0-7 7c0 5.25 7 13 7 13s7-7.75 7-13a7 7 0 0 0-7-7Zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5Z" /></svg>
-              {s('map')}
-            </a>
-          </div>
+          {d != null && (
+            <div className="fest-countdown fest-countdown--top" aria-label={s('countdown')}>
+              <div className="fest-count__label">{s('countdown')}</div>
+              <div className="fest-count__row">
+                {[[d, s('days')], [h, s('hours')], [m, s('mins')]].map(([n, l]) => (
+                  <span key={String(l)} className="fest-count__cell">
+                    <b className="fest-neon" data-text={String(n).padStart(2, '0')}>{String(n).padStart(2, '0')}</b>
+                    <i>{l}</i>
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
 
           <div className="fest-stats">
             {[[statCollabs, s('statCollabsLabel')], [statCountries, s('statCountriesLabel')], [s('statHours'), s('statHoursLabel')]].map(([n, l]) => (
@@ -281,19 +279,6 @@ export default function FestPage({ beers, settings, live }: { beers: FestBeer[];
       <div className="fest-seam"><Tear fill="#14100c" /></div>
       <section className="fest-band fest-band--dark">
         <div className="fest-inner">
-          {d != null && (
-            <div className="fest-countdown" aria-label={s('countdown')}>
-              <div className="fest-count__label">{s('countdown')}</div>
-              <div className="fest-count__row">
-                {[[d, s('days')], [h, s('hours')], [m, s('mins')]].map(([n, l]) => (
-                  <span key={String(l)} className="fest-count__cell">
-                    <b className="fest-neon" data-text={String(n).padStart(2, '0')}>{String(n).padStart(2, '0')}</b>
-                    <i>{l}</i>
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
 
           <h2 className="fest-h2 fest-h2--glow">{s('priceTitle')}</h2>
           <div className="fest-door">
