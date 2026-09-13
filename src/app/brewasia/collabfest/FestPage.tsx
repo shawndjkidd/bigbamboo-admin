@@ -73,8 +73,11 @@ const T = {
     pourLabel: 'ml / token',
     countries: 'Vietnam · Japan · China · Singapore · Korea · India · Philippines · Australia · UK',
     draw1: 'Full roasted pig BBQ collab',
+    draw1Sub: 'Việt Thích Barbecue × Guest Pitmaster from India',
     draw2: 'The BZZD collab cocktail bar',
+    draw2Sub: 'BZZD × BigBamBoo',
     draw3: 'Live music & DJs',
+    draw3Sub: '',
     lineup: 'On the taps',
     navGetTickets: 'Get tickets',
     navMenu: 'Menu',
@@ -144,8 +147,11 @@ const T = {
     pourLabel: 'ml / token',
     countries: 'Việt Nam · Nhật Bản · Trung Quốc · Singapore · Hàn Quốc · Ấn Độ · Philippines · Úc · Anh',
     draw1: 'Collab heo quay nguyên con',
+    draw1Sub: 'Việt Thích Barbecue × đầu bếp khách mời từ Ấn Độ',
     draw2: 'Quầy cocktail collab BZZD',
+    draw2Sub: 'BZZD × BigBamBoo',
     draw3: 'Nhạc sống & DJ',
+    draw3Sub: '',
     lineup: 'Trên vòi',
     navGetTickets: 'Mua vé',
     navMenu: 'Menu',
@@ -484,13 +490,20 @@ export default function FestPage({ beers, settings, live }: { beers: FestBeer[];
             {s('countriesTitle')} <span className="fest-claim__plus">{s('plus')}</span>
           </h2>
 
-          <ul className="fest-draws">
-            {[s('draw1'), s('draw2'), s('draw3')].map((d, i) => {
-              const img = settings[`fest_draw${i + 1}_img`] || ''
+          {/* Feature cards: full-width banners, stacked at every width. Artwork comes from
+              fest_feature1_img etc.; until it is set, each banner is type only. */}
+          <ul className="fest-features">
+            {([1, 2, 3] as const).map(n => {
+              const img = settings[`fest_feature${n}_img`] || ''
+              const sub = s(`draw${n}Sub`)
               return (
-                <li key={d} className="fest-draw" data-i={i}>
-                  {img && <img className="fest-draw__art" src={img} alt="" loading="lazy" />}
-                  <span className="fest-draw__text">{d}</span>
+                <li key={n} className="fest-feature" data-art={Boolean(img)}>
+                  {img && <img className="fest-feature__art" src={img} alt="" loading="lazy" />}
+                  <div className="fest-feature__type">
+                    <span className="fest-feature__n" aria-hidden="true">{pad2(n)}</span>
+                    <h3 className="fest-feature__title">{s(`draw${n}`)}</h3>
+                    {sub && <p className="fest-feature__sub">{sub}</p>}
+                  </div>
                 </li>
               )
             })}
