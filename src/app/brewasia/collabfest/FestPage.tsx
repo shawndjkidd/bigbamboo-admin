@@ -95,7 +95,8 @@ const T = {
     step1: 'Get in the door',
     step2: 'Then buy tokens to drink',
     priceDoor: '100k',
-    priceDoorText: 'Everyone pays this once. Free with a BrewAsia conference pass. Beer is bought separately, below.',
+    priceDoorText: 'Beer is bought separately, below.',
+    passNote: 'BrewAsia conference pass holders: entry included.',
     priceDoorKicker: 'Entry',
     packTitle: 'Tasting pack',
     pack1: '200k',
@@ -169,7 +170,8 @@ const T = {
     step1: 'Vào cửa',
     step2: 'Rồi mua token để uống',
     priceDoor: '100k',
-    priceDoorText: 'Ai cũng trả một lần. Miễn phí với vé hội nghị BrewAsia. Bia mua riêng, xem bên dưới.',
+    priceDoorText: 'Bia mua riêng, xem bên dưới.',
+    passNote: 'Người có vé hội nghị BrewAsia: vào cửa miễn phí.',
     priceDoorKicker: 'Vào cửa',
     packTitle: 'Gói nếm thử collab',
     pack1: '200k',
@@ -553,6 +555,8 @@ export default function FestPage({ beers, settings, live }: { beers: FestBeer[];
             ))}
           </div>
           <p className="fest-note">{s('packNote')}</p>
+          {/* Beneath both steps, never inside the entry card. */}
+          <p className="fest-passnote">{s('passNote')}</p>
         </div>
       </section>
 
