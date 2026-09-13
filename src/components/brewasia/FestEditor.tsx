@@ -25,6 +25,8 @@ const TEXT_FIELDS: { name: string; label: string; hint?: string; area?: boolean 
   { name: 'draw2', label: 'Headline draw 2' },
   { name: 'draw3', label: 'Headline draw 3' },
   { name: 'lineupSub', label: 'Line under “What’s pouring”' },
+  { name: 'step1', label: 'Step 1 heading (getting in)' },
+  { name: 'step2', label: 'Step 2 heading (buying tokens)' },
   { name: 'priceTitle', label: 'Ticket section: title' },
   { name: 'ticketsOnline', label: 'Ticket line, when there IS a ticket link' },
   { name: 'priceDoor', label: 'Door price' },

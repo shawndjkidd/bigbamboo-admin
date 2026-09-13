@@ -77,10 +77,12 @@ const T = {
     empty: 'The tap list drops soon. Collabs are in the tank right now.',
     beers: 'beers', breweries: 'breweries',
     priceTitle: 'Tickets',
+    step1: 'Get in the door',
+    step2: 'Then buy tokens to drink',
     priceDoor: '100k',
-    priceDoorText: 'Free with a BrewAsia conference pass',
+    priceDoorText: 'Everyone pays this once. Free with a BrewAsia conference pass. Beer is bought separately, below.',
     priceDoorKicker: 'Entry',
-    packTitle: 'Collab tasting packs',
+    packTitle: 'Tasting pack',
     pack1: '200k',
     pack1Text: '4 tokens',
     pack2: '500k',
@@ -137,8 +139,10 @@ const T = {
     empty: 'Danh sách vòi sẽ sớm công bố. Các mẻ collab đang trong tank.',
     beers: 'loại bia', breweries: 'nhà máy bia',
     priceTitle: 'Vé',
+    step1: 'Vào cửa',
+    step2: 'Rồi mua token để uống',
     priceDoor: '100k',
-    priceDoorText: 'Miễn phí với vé hội nghị BrewAsia',
+    priceDoorText: 'Ai cũng trả một lần. Miễn phí với vé hội nghị BrewAsia. Bia mua riêng, xem bên dưới.',
     priceDoorKicker: 'Vào cửa',
     packTitle: 'Gói nếm thử collab',
     pack1: '200k',
@@ -340,12 +344,25 @@ export default function FestPage({ beers, settings, live }: { beers: FestBeer[];
           {ticketUrl && (
             <a className="fest-btn" href={ticketUrl} target="_blank" rel="noreferrer">{s('tickets')}</a>
           )}
-          <div className="fest-money">
+          {/* Two steps, not three choices: everyone pays to get in, then buys
+              tokens to drink. Laid out so that reads at a glance. */}
+          <div className="fest-step">
+            <span className="fest-step__n">1</span>
+            <h3 className="fest-step__title">{s('step1')}</h3>
+          </div>
+          <div className="fest-money fest-money--one">
             <div className="fest-price" data-door="true">
               <div className="fest-price__kicker">{s('priceDoorKicker')}</div>
               <div className="fest-price__amount">{s('priceDoor')}</div>
               <div className="fest-price__text">{s('priceDoorText')}</div>
             </div>
+          </div>
+
+          <div className="fest-step">
+            <span className="fest-step__n">2</span>
+            <h3 className="fest-step__title">{s('step2')}</h3>
+          </div>
+          <div className="fest-money fest-money--two">
             {[[s('pack1'), s('pack1Text')], [s('pack2'), s('pack2Text')]].map(([amt, txt]) => (
               <div key={amt} className="fest-price">
                 <div className="fest-price__kicker">{s('packTitle')}</div>
