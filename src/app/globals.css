@@ -530,12 +530,43 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); c
 @media (prefers-reduced-motion: reduce) { .fest-haze { display: none; } }
 
 .fest-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-.fest-topbar {
-  position: absolute; inset: 0 0 auto 0; z-index: 2;
-  display: flex; justify-content: space-between; align-items: center;
-  padding: 14px clamp(16px, 3vw, 28px);
+/* Nav: a flat printed strip above the poster. Ink ground, one mustard rule, no blur,
+   no shadow, no rounded bar. Links drop into a plain panel under a menu button on phones. */
+.fest-nav {
+  position: relative; z-index: 3; display: flex; flex-wrap: wrap; align-items: center;
+  gap: 8px clamp(14px, 2.4vw, 30px); padding: 10px clamp(16px, 3vw, 28px);
+  background: var(--ink); border-bottom: 3px solid var(--amber);
 }
-.fest-mark { font-size: 12px; font-weight: 800; letter-spacing: .24em; text-transform: uppercase; color: rgba(243,227,195,.85); text-shadow: 0 1px 6px rgba(0,0,0,.7); }
+.fest-nav__mark {
+  font-family: var(--fest-display, 'Alfa Slab One'), Georgia, serif; font-weight: 400;
+  font-size: clamp(16px, 1.8vw, 20px); letter-spacing: .04em; text-transform: uppercase; color: var(--amber);
+}
+.fest-nav__links { list-style: none; margin: 0 0 0 auto; padding: 0; display: flex; align-items: center; gap: clamp(16px, 2.4vw, 30px); }
+.fest-nav__links a:not(.fest-nav__cta) {
+  display: block; padding: 6px 0; color: var(--cream); text-decoration: none; border-bottom: 2px solid transparent;
+  font-family: var(--fest-body); font-size: 14px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase;
+}
+.fest-nav__links a:not(.fest-nav__cta):hover, .fest-nav__links a:not(.fest-nav__cta):focus-visible { color: var(--amber); border-bottom-color: var(--amber); outline: none; }
+.fest-nav__cta {
+  display: inline-block; padding: 8px 14px; border: 2px solid var(--amber); border-radius: 4px;
+  background: var(--amber); color: var(--pine); text-decoration: none;
+  font-family: var(--fest-body); font-size: 14px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase;
+}
+.fest-nav__cta:hover, .fest-nav__cta:focus-visible { background: var(--ink); color: var(--amber); }
+.fest-nav__tools { display: flex; align-items: center; gap: 8px; }
+.fest-nav__burger { display: none; }
+@media (max-width: 719px) {
+  .fest-nav__tools { margin-left: auto; }
+  .fest-nav__burger {
+    display: grid; place-items: center; width: 40px; height: 32px; padding: 0; cursor: pointer;
+    color: var(--cream); background: transparent; border: 1.5px solid rgba(243,227,195,.55); border-radius: 4px;
+  }
+  .fest-nav__burger[aria-expanded="true"] { background: var(--amber); border-color: var(--amber); color: var(--ink); }
+  .fest-nav__links { order: 3; flex-basis: 100%; margin: 0; flex-direction: column; align-items: stretch; gap: 0; }
+  .fest-nav__links:not([data-open="true"]) { display: none; }
+  .fest-nav__links a:not(.fest-nav__cta) { padding: 13px 2px; border-bottom: 1px solid rgba(243,227,195,.14); }
+  .fest-nav__cta { display: block; margin: 12px 0 4px; text-align: center; }
+}
 .fest-lang {
   height: 30px; padding: 0 12px; border-radius: 7px; font: inherit; font-size: 12px; font-weight: 800;
   letter-spacing: .1em; cursor: pointer; color: var(--cream); border: 1.5px solid rgba(243,227,195,.55);

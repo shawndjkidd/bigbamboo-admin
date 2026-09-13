@@ -76,6 +76,8 @@ const T = {
     draw2: 'The BZZD collab cocktail bar',
     draw3: 'Live music & DJs',
     lineup: 'On the taps',
+    navGetTickets: 'Get tickets',
+    navMenu: 'Menu',
     tapsPrev: 'Previous beers',
     tapsNext: 'Next beers',
     lineupSub: 'Announced one by one as they’re locked in. Keep checking back.',
@@ -145,6 +147,8 @@ const T = {
     draw2: 'Quầy cocktail collab BZZD',
     draw3: 'Nhạc sống & DJ',
     lineup: 'Trên vòi',
+    navGetTickets: 'Mua vé',
+    navMenu: 'Menu',
     tapsPrev: 'Bia trước',
     tapsNext: 'Bia tiếp theo',
     lineupSub: 'Công bố dần khi từng mẻ được chốt. Hãy ghé lại nhé.',
@@ -335,6 +339,8 @@ export default function FestPage({ beers, settings, live }: { beers: FestBeer[];
   // back to the top of the page shows it again rather than a settled hand.
   const heroRef = useRef<HTMLElement | null>(null)
   const [riseKey, setRiseKey] = useState(0)
+  const [menuOpen, setMenuOpen] = useState(false)
+  const burgerRef = useRef<HTMLButtonElement | null>(null)
   const base = T[lang]
   const s = (name: keyof (typeof T)['en']) => (settings[K(lang, String(name))] || settings[`fest_${String(name)}`] || base[name]) as string
 
@@ -386,15 +392,17 @@ export default function FestPage({ beers, settings, live }: { beers: FestBeer[];
 
   return (
     <div className="fest" data-lang={lang}>
-      {/* Poster, full bleed, doing the job it was drawn for */}
-      <header className="fest-hero" ref={heroRef}>
-        <div className="fest-haze" aria-hidden="true">
-          <span className="fest-haze__fog" data-i="0" />
-          <span className="fest-haze__fog" data-i="1" />
-          <span className="fest-haze__fire" />
-        </div>
-        <div className="fest-topbar">
-          <span className="fest-mark">BigBamBoo</span>
+      {/* Flat nav above the poster. Links only to sections on this page. */}
+      <nav className="fest-nav" onKeyDown={e => { if (e.key === 'Escape' && menuOpen) { setMenuOpen(false); burgerRef.current?.focus() } }}>
+        <span className="fest-nav__mark">BigBamBoo</span>
+        <ul id="fest-nav-links" className="fest-nav__links" data-open={menuOpen}>
+          <li><a href="#taps" onClick={() => setMenuOpen(false)}>{s('lineup')}</a></li>
+          <li><a href="#tickets" onClick={() => setMenuOpen(false)}>{s('priceTitle')}</a></li>
+          {ticketUrl && (
+            <li><a className="fest-nav__cta" href={ticketUrl} target="_blank" rel="noreferrer">{s('navGetTickets')}</a></li>
+          )}
+        </ul>
+        <div className="fest-nav__tools">
           <div role="group" aria-label="Language" style={{ display: 'flex', gap: 4 }}>
             {(['en', 'vi'] as Lang[]).map(l => (
               <button key={l} className="fest-lang" data-on={lang === l} aria-pressed={lang === l} onClick={() => pickLang(l)}>
@@ -402,6 +410,21 @@ export default function FestPage({ beers, settings, live }: { beers: FestBeer[];
               </button>
             ))}
           </div>
+          <button type="button" ref={burgerRef} className="fest-nav__burger" aria-label={s('navMenu')}
+            aria-expanded={menuOpen} aria-controls="fest-nav-links" onClick={() => setMenuOpen(o => !o)}>
+            <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+              <path fill="currentColor" d={menuOpen ? 'm6.4 5 5.6 5.6L17.6 5 19 6.4 13.4 12l5.6 5.6-1.4 1.4-5.6-5.6L6.4 19 5 17.6l5.6-5.6L5 6.4Z' : 'M3 6h18v2.2H3Zm0 4.9h18v2.2H3Zm0 4.9h18V18H3Z'} />
+            </svg>
+          </button>
+        </div>
+      </nav>
+
+      {/* Poster, full bleed, doing the job it was drawn for */}
+      <header className="fest-hero" ref={heroRef}>
+        <div className="fest-haze" aria-hidden="true">
+          <span className="fest-haze__fog" data-i="0" />
+          <span className="fest-haze__fog" data-i="1" />
+          <span className="fest-haze__fire" />
         </div>
         <img className="fest-banner" src={poster} alt={`${s('title')} — ${s('date')}`} />
         {!customPoster && (
@@ -480,7 +503,7 @@ export default function FestPage({ beers, settings, live }: { beers: FestBeer[];
 
       {/* Dark band: the only place neon belongs */}
       <div className="fest-seam"><Tear fill="#14100c" /></div>
-      <section className="fest-band fest-band--dark">
+      <section id="tickets" className="fest-band fest-band--dark">
         <div className="fest-inner">
 
           <h2 className="fest-h2 fest-h2--glow">{s('priceTitle')}</h2>
@@ -521,7 +544,7 @@ export default function FestPage({ beers, settings, live }: { beers: FestBeer[];
 
       {/* Cream band: the beer */}
       <div className="fest-seam"><Tear fill="#f3e3c3" /></div>
-      <section className="fest-band fest-band--cream">
+      <section id="taps" className="fest-band fest-band--cream">
         <Shadows />
         <div className="fest-inner">
           <div className="fest-head">
