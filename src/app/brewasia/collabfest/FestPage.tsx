@@ -50,7 +50,7 @@ const T = {
     statHoursLabel: 'hours',
     countriesTitle: 'Collabs from across Asia and beyond',
     countries: 'Vietnam · Japan · China · Singapore · Korea · India · Philippines · Australia · UK',
-    draw1: 'Full roasted pig BBQ',
+    draw1: 'Full roasted pig BBQ collab',
     draw2: 'The BZZD collab cocktail bar',
     draw3: 'Live music & DJs',
     lineup: 'On the taps',
@@ -105,7 +105,7 @@ const T = {
     statHoursLabel: 'giờ',
     countriesTitle: 'Bia collab từ khắp châu Á và xa hơn',
     countries: 'Việt Nam · Nhật Bản · Trung Quốc · Singapore · Hàn Quốc · Ấn Độ · Philippines · Úc · Anh',
-    draw1: 'Heo quay nguyên con',
+    draw1: 'Collab heo quay nguyên con',
     draw2: 'Quầy cocktail collab BZZD',
     draw3: 'Nhạc sống & DJ',
     lineup: 'Trên vòi',
@@ -162,6 +162,21 @@ function Palms({ side }: { side: 'left' | 'right' }) {
   )
 }
 
+function Moon() {
+  return <div className="fest-moon" aria-hidden="true" />
+}
+
+function Web({ side }: { side: 'left' | 'right' }) {
+  return (
+    <svg className={`fest-web fest-web--${side}`} viewBox="0 0 120 120" aria-hidden="true">
+      <g fill="none" stroke="currentColor" strokeWidth="1.6">
+        <path d="M0 0 120 120M0 0 0 120M0 0 120 0M0 0 60 120M0 0 120 60M0 0 30 120M0 0 120 30" />
+        <path d="M22 0a22 22 0 0 1-22 22M44 0a44 44 0 0 1-44 44M70 0a70 70 0 0 1-70 70M98 0a98 98 0 0 1-98 98" />
+      </g>
+    </svg>
+  )
+}
+
 function Bats() {
   return (
     <svg className="fest-bats" viewBox="0 0 220 60" aria-hidden="true">
@@ -198,7 +213,6 @@ export default function FestPage({ beers, settings, live }: { beers: FestBeer[];
   // Admin wording wins; then the live count from Collabs; then the default above.
   const statCollabs = settings[K(lang, 'statCollabs')] || (live && live.collabs > 1 ? `${live.collabs}` : base.statCollabs)
   const statCountries = settings[K(lang, 'statCountries')] || (live && live.countries > 1 ? `${live.countries}` : base.statCountries)
-  const countryList = settings[K(lang, 'countries')] || (live && live.countries > 1 ? live.countryList : base.countries)
   // Socials come from the same settings the homepage uses, so they're set in one place.
   const socials = [
     { label: 'Instagram', href: settings.home_instagram_url || '' },
@@ -227,6 +241,7 @@ export default function FestPage({ beers, settings, live }: { beers: FestBeer[];
 
       {/* Rust band: when, where, how you get in */}
       <section className="fest-band fest-band--pine">
+        <Moon />
         <Bats />
         <div className="fest-inner">
           {d != null && (
@@ -253,7 +268,6 @@ export default function FestPage({ beers, settings, live }: { beers: FestBeer[];
           </div>
 
           <h2 className="fest-claim">{s('countriesTitle')}</h2>
-          <div className="fest-countries">{countryList}</div>
 
           <ul className="fest-draws">
             {[s('draw1'), s('draw2'), s('draw3')].map(d => <li key={d} className="fest-draw">{d}</li>)}
@@ -281,11 +295,12 @@ export default function FestPage({ beers, settings, live }: { beers: FestBeer[];
         <div className="fest-inner">
 
           <h2 className="fest-h2 fest-h2--glow">{s('priceTitle')}</h2>
-          <div className="fest-door">
-            <span className="fest-door__amount">{s('priceDoor')}</span>
-            <span className="fest-door__text">{s('priceDoorText')}</span>
-          </div>
-          <div className="fest-packs">
+          <div className="fest-money">
+            <div className="fest-price" data-door="true">
+              <div className="fest-price__kicker">{s('priceTitle')}</div>
+              <div className="fest-price__amount">{s('priceDoor')}</div>
+              <div className="fest-price__text">{s('priceDoorText')}</div>
+            </div>
             {[[s('pack1'), s('pack1Text')], [s('pack2'), s('pack2Text')]].map(([amt, txt]) => (
               <div key={amt} className="fest-price">
                 <div className="fest-price__kicker">{s('packTitle')}</div>
@@ -301,6 +316,8 @@ export default function FestPage({ beers, settings, live }: { beers: FestBeer[];
       {/* Cream band: the beer */}
       <div className="fest-seam"><Tear fill="#f3e3c3" /></div>
       <section className="fest-band fest-band--cream">
+        <Web side="left" />
+        <Web side="right" />
         <div className="fest-inner">
           <div className="fest-head">
             <h2 className="fest-h2">{s('lineup')}</h2>
