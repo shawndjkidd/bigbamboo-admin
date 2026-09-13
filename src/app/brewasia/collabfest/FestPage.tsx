@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Fragment } from 'react'
 
 // Public Halloween Collab Fest page. EN / VI.
 // Built like the poster: screenprinted bands of rust, cream and deep green stacked down
@@ -14,6 +14,9 @@ export type FestBeer = {
   beer_name: string | null
   beer_style: string | null
   abv: number | null
+  kegs: number | null
+  ibu?: number | null
+  logos?: string[]
   confirmed: boolean
   own_setup: boolean
 }
@@ -50,6 +53,10 @@ const T = {
     statHoursLabel: 'hours',
     countriesTitle: 'Collabs from across Asia and beyond',
     plus: 'Plus…',
+    oneNight: 'One night only · 31 Oct',
+    versus: 'versus',
+    abv: 'ABV',
+    kegs: 'Kegs',
     countries: 'Vietnam · Japan · China · Singapore · Korea · India · Philippines · Australia · UK',
     draw1: 'Full roasted pig BBQ collab',
     draw2: 'The BZZD collab cocktail bar',
@@ -107,6 +114,10 @@ const T = {
     statHoursLabel: 'giờ',
     countriesTitle: 'Bia collab từ khắp châu Á và xa hơn',
     plus: 'Và còn…',
+    oneNight: 'Chỉ một đêm · 31/10',
+    versus: 'đối đầu',
+    abv: 'Nồng độ',
+    kegs: 'Keg',
     countries: 'Việt Nam · Nhật Bản · Trung Quốc · Singapore · Hàn Quốc · Ấn Độ · Philippines · Úc · Anh',
     draw1: 'Collab heo quay nguyên con',
     draw2: 'Quầy cocktail collab BZZD',
@@ -358,10 +369,20 @@ export default function FestPage({ beers, settings, live }: { beers: FestBeer[];
             <div className="fest-grid fest-grid--ghost" aria-label={s('empty')}>
               {[0, 1, 2].map(i => (
                 <article key={i} className="fest-card fest-card--ghost" style={{ transform: `rotate(${i - 1}deg)` }}>
-                  <div className="fest-card__breweries">? × ?</div>
-                  <h3 className="fest-card__beer">{s('tbd')}</h3>
-                  <div className="fest-card__meta">{s('empty')}</div>
-                  <div className="fest-card__foot"><span className="fest-tag">{s('coming')}</span></div>
+                  <div className="fest-card__top">{s('oneNight')}</div>
+                  <div className="fest-card__bill">
+                    <div className="fest-card__brewery">BigBamBoo</div>
+                    <div className="fest-card__vs">{s('versus')}</div>
+                    <div className="fest-card__brewery">? ? ?</div>
+                  </div>
+                  <div className="fest-card__band">
+                    <div className="fest-card__beer">{s('tbd')}</div>
+                    <div className="fest-card__style">{s('empty')}</div>
+                  </div>
+                  <div className="fest-card__stats">
+                    <div><b>?</b><span>{s('abv')}</span></div>
+                    <div><b>?</b><span>{s('kegs')}</span></div>
+                  </div>
                 </article>
               ))}
             </div>
@@ -369,11 +390,25 @@ export default function FestPage({ beers, settings, live }: { beers: FestBeer[];
             <div className="fest-grid">
               {beers.map((b, i) => (
                 <article key={b.code} className="fest-card" data-confirmed={b.confirmed} style={{ transform: `rotate(${(i % 3) - 1}deg)` }}>
-                  <div className="fest-card__breweries">{b.breweries.join(' × ') || '—'}</div>
-                  <h3 className="fest-card__beer">{b.beer_name || s('tbd')}</h3>
-                  <div className="fest-card__meta">{[b.beer_style, b.abv != null ? `${b.abv}%` : null].filter(Boolean).join(' · ')}</div>
-                  <div className="fest-card__foot">
-                    <span className="fest-tag" data-confirmed={b.confirmed}>{b.confirmed ? s('confirmed') : s('coming')}</span>
+                  <div className="fest-card__top">{s('oneNight')}</div>
+                  <div className="fest-card__bill">
+                    {b.breweries.length
+                      ? b.breweries.map((n, j) => (
+                        <Fragment key={n + j}>
+                          {j > 0 && <div className="fest-card__vs">{s('versus')}</div>}
+                          <div className="fest-card__brewery">{n}</div>
+                        </Fragment>
+                      ))
+                      : <div className="fest-card__brewery">—</div>}
+                  </div>
+                  <div className="fest-card__band">
+                    <div className="fest-card__beer">{b.beer_name || s('tbd')}</div>
+                    {b.beer_style && <div className="fest-card__style">{b.beer_style}</div>}
+                  </div>
+                  <div className="fest-card__stats">
+                    <div><b>{b.abv != null ? b.abv : '—'}</b><span>{s('abv')}</span></div>
+                    {b.ibu != null && <div><b>{b.ibu}</b><span>IBU</span></div>}
+                    <div><b>{b.kegs != null ? b.kegs : '—'}</b><span>{s('kegs')}</span></div>
                   </div>
                 </article>
               ))}

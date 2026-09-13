@@ -781,30 +781,69 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); c
 .fest-price__text { font-size: clamp(16.5px, 2.1vw, 20px); font-weight: 700; margin-top: 18px; line-height: 1.35; opacity: .95; }
 .fest-note { font-size: clamp(15px, 1.9vw, 17px); font-weight: 500; margin: 20px auto 0; opacity: .8; max-width: 64ch; }
 
-/* Beer list (cream band) -------------------------------------------------- */
-.fest-card { text-align: left; }
-.fest-grid--ghost .fest-card--ghost {
-  background: repeating-linear-gradient(135deg, #f7eddb 0 14px, #f2e4cb 14px 28px);
-  color: rgba(20,16,12,.55);
+.fest-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(clamp(240px, 30vw, 320px), 1fr));
+  gap: clamp(18px, 2.6vw, 28px); align-items: start;
 }
-.fest-grid--ghost .fest-card__beer { color: rgba(20,16,12,.42); }
-.fest-grid--ghost .fest-card__meta { font-size: 14px; }
-.fest-grid--ghost .fest-tag { border-style: dashed; color: rgba(20,16,12,.6); }
-.fest-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(clamp(240px, 30vw, 320px), 1fr)); gap: clamp(16px, 2.4vw, 24px); }
+/* Tap cards, done as a fight bill: the two breweries are the billing, the beer
+   is the main event in a red band across the middle, stats along the bottom. */
 .fest-card {
-  background: #fbf3e2; color: var(--ink); padding: 24px; border: 2px solid var(--ink);
-  box-shadow: 7px 7px 0 rgba(20,16,12,.35); transition: transform .16s ease, box-shadow .16s ease;
+  position: relative; background: var(--cream); color: var(--ink);
+  border: 2px solid var(--ink); padding: 0; overflow: hidden;
+  box-shadow: 6px 7px 0 rgba(0,0,0,.45);
+  transition: transform .2s ease;
 }
-.fest-card:hover { transform: translate(-2px, -3px) rotate(0deg) !important; box-shadow: 10px 12px 0 rgba(20,16,12,.4); }
-.fest-card__breweries { font-size: 12.5px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: var(--rust); line-height: 1.45; }
+.fest-card:hover { transform: rotate(0deg) translateY(-4px) !important; }
+.fest-card__top {
+  background: var(--ink); color: var(--cream); text-align: center; padding: 8px 10px;
+  font-family: var(--fest-body); font-size: clamp(9.5px, 1.05vw, 11.5px);
+  letter-spacing: .24em; text-transform: uppercase;
+}
+.fest-card__bill { padding: clamp(18px, 2.2vw, 26px) clamp(14px, 1.8vw, 20px) clamp(14px, 1.8vw, 18px); text-align: center; }
+.fest-card__brewery {
+  font-family: var(--fest-display, 'Alfa Slab One'), Georgia, serif; font-weight: 400;
+  font-size: clamp(21px, 2.9vw, 31px); line-height: 1.05; letter-spacing: .02em;
+  text-transform: uppercase; text-wrap: balance;
+}
+.fest-card__vs {
+  display: flex; align-items: center; gap: 10px; justify-content: center;
+  font-family: var(--fest-body); font-size: clamp(10px, 1.1vw, 12px);
+  letter-spacing: .3em; text-transform: uppercase; color: var(--ember);
+  margin: clamp(5px, .8vw, 8px) 0;
+}
+.fest-card__vs::before, .fest-card__vs::after { content: ''; height: 1px; flex: 1; background: rgba(27,20,16,.3); }
+.fest-card__band {
+  background: var(--ember); color: var(--cream);
+  padding: clamp(11px, 1.5vw, 15px) clamp(12px, 1.6vw, 18px); text-align: center;
+}
 .fest-card__beer {
   font-family: var(--fest-display, 'Alfa Slab One'), Georgia, serif; font-weight: 400;
-  font-size: clamp(26px, 3vw, 34px); margin: 12px 0 0; line-height: 1.02; text-transform: uppercase; color: var(--ink);
+  font-size: clamp(25px, 3.4vw, 36px); line-height: 1.04; letter-spacing: .02em;
+  text-transform: uppercase; margin: 0; text-wrap: balance;
 }
-.fest-card__meta { font-size: clamp(15px, 1.9vw, 17px); font-weight: 600; margin-top: 8px; color: rgba(20,16,12,.72); }
-.fest-card__foot { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 18px; }
-.fest-tag { font-size: 11px; font-weight: 800; letter-spacing: .18em; text-transform: uppercase; padding: 5px 10px; border: 2px solid var(--ink); color: var(--ink); }
-.fest-tag[data-confirmed="true"] { background: var(--amber); }
+.fest-card__style {
+  font-family: var(--fest-body); font-size: clamp(10px, 1.1vw, 12px);
+  letter-spacing: .2em; text-transform: uppercase; opacity: .9; margin-top: 4px;
+}
+.fest-card__stats {
+  display: flex; padding: clamp(13px, 1.7vw, 18px) clamp(10px, 1.4vw, 16px) clamp(15px, 1.9vw, 20px);
+  text-align: center;
+}
+.fest-card__stats > div { flex: 1; }
+.fest-card__stats b {
+  display: block; font-family: var(--fest-display, 'Alfa Slab One'), Georgia, serif; font-weight: 400;
+  font-size: clamp(21px, 2.7vw, 29px); line-height: 1.1; letter-spacing: .03em;
+}
+.fest-card__stats span {
+  font-family: var(--fest-body); font-size: clamp(9.5px, 1vw, 11px);
+  letter-spacing: .2em; text-transform: uppercase; opacity: .55;
+}
+/* Not announced yet: the bill is printed, the names are not filled in. */
+.fest-card--ghost .fest-card__brewery:last-of-type,
+.fest-card--ghost .fest-card__beer { color: rgba(27,20,16,.3); }
+.fest-card--ghost .fest-card__band { background: rgba(27,20,16,.12); color: rgba(27,20,16,.42); }
+.fest-card--ghost .fest-card__stats { opacity: .34; }
+@media (prefers-reduced-motion: reduce) { .fest-card, .fest-card:hover { transition: none; } }
 
 /* How the night works (teal band) ----------------------------------------- */
 .fest-how { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: clamp(20px, 3vw, 30px); margin-top: 28px; }

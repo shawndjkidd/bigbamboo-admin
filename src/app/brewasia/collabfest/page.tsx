@@ -73,6 +73,10 @@ export default async function CollabFestPage() {
         beer_name: c.beer_name,
         beer_style: c.beer_style,
         abv: c.abv == null ? null : Number(c.abv),
+        // Fest kegs only - the card says how many are coming to Halloween.
+        kegs: (Array.isArray(c.kegs) ? c.kegs : [])
+          .filter((l: any) => l?.use === 'halloween')
+          .reduce((n: number, l: any) => n + (Number(l?.qty) || 0), 0) || null,
         confirmed: c.status === 'event_ready' || c.status === 'done',
         own_setup: c.fest_pour === 'own_setup',
       }))
