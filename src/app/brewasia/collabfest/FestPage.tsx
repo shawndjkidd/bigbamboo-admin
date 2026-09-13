@@ -329,6 +329,22 @@ function TapCarousel({ label, prev, next, children }: { label: string; prev: str
   )
 }
 
+/* Foliage behind the dark sections: the wide panel as one fade-edge image at section
+   width along the bottom (never tiled, never stretched), and on the tallest bands the
+   two margin columns at their own page edges. Decoration only; the lift and warmth
+   are filters on these layers, never on the copy above them. */
+function Foliage({ edges = false }: { edges?: boolean }) {
+  return (
+    <div className="fest-foliage" aria-hidden="true">
+      <span className="fest-foliage__panel" />
+      {edges && <>
+        <span className="fest-foliage__edge" data-side="left" />
+        <span className="fest-foliage__edge" data-side="right" />
+      </>}
+    </div>
+  )
+}
+
 const BAT = 'M20 30c6-10 10-4 14-10 3 6 6 2 10 10-6-2-8 4-10 6-2-2-4-8-14-6Z'
 
 /* Shadow bats. Six of them, each on its own path and its own clock, so they
@@ -458,6 +474,7 @@ export default function FestPage({ beers, settings, live }: { beers: FestBeer[];
 
       {/* Rust band: when, where, how you get in */}
       <section className="fest-band fest-band--pine">
+        <Foliage edges />
         <Shadows bats />
         <span className="fest-storm" aria-hidden="true" />
         <Bats />
@@ -526,6 +543,7 @@ export default function FestPage({ beers, settings, live }: { beers: FestBeer[];
       {/* Dark band: the only place neon belongs */}
       <div className="fest-seam"><Tear fill="#14100c" /></div>
       <section id="tickets" className="fest-band fest-band--dark">
+        <Foliage />
         <div className="fest-inner">
 
           <h2 className="fest-h2 fest-h2--glow">{s('priceTitle')}</h2>
@@ -678,6 +696,7 @@ export default function FestPage({ beers, settings, live }: { beers: FestBeer[];
 
       <div className="fest-seam"><Tear fill="#14100c" /></div>
       <footer className="fest-band fest-band--dark fest-footband">
+        <Foliage edges />
         <div className="fest-inner">
           <div className="fest-partners__label">{s('partnersLabel')}</div>
           <div className="fest-partners__names">{s('partners')}</div>

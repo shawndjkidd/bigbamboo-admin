@@ -659,6 +659,38 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); c
    flattened to ink and sunk into the background of each band. They sit under
    everything and stay faint: shadows on a wall, not illustrations. */
 .fest-shadows { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 0; }
+/* Foliage layers. The delivered art is near-black ink on transparent, so brightness
+   alone only lifts it to grey-green. The chain lifts it (1.6), turns it warm (sepia,
+   saturate, a nudge toward rust) and brings it back up so the two inks still read as
+   leaf detail. Masks keep it strong in the margins and quiet behind centred copy. */
+.fest {
+  --foliage-filter: brightness(1.6) sepia(1) saturate(3) hue-rotate(-24deg) brightness(1.6);
+}
+.fest-foliage { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 0; }
+.fest-foliage__panel {
+  position: absolute; left: 50%; bottom: 0; width: max(100%, 900px); aspect-ratio: 2400 / 1000;
+  transform: translateX(-50%); filter: var(--foliage-filter);
+  background: url(/images/fest-foliage-panel.png) center / 100% 100% no-repeat;
+  -webkit-mask-image: linear-gradient(to right, #000 0%, rgba(0,0,0,.2) 30%, rgba(0,0,0,.2) 70%, #000 100%);
+  mask-image: linear-gradient(to right, #000 0%, rgba(0,0,0,.2) 30%, rgba(0,0,0,.2) 70%, #000 100%);
+}
+.fest-foliage__edge {
+  position: absolute; top: 0; width: 600px; height: 1600px; filter: var(--foliage-filter);
+  background: center / 100% 100% no-repeat;
+}
+.fest-foliage__edge[data-side="left"] {
+  left: 0; background-image: url(/images/fest-foliage-left.png);
+  -webkit-mask-image: linear-gradient(to right, #000 15%, transparent 95%); mask-image: linear-gradient(to right, #000 15%, transparent 95%);
+}
+.fest-foliage__edge[data-side="right"] {
+  right: 0; background-image: url(/images/fest-foliage-right.png);
+  -webkit-mask-image: linear-gradient(to left, #000 15%, transparent 95%); mask-image: linear-gradient(to left, #000 15%, transparent 95%);
+}
+.fest-footband .fest-foliage__edge { top: auto; bottom: 0; }
+/* Phones: narrower, softer columns so they stay in the margins, not across the copy. */
+@media (max-width: 700px) {
+  .fest-foliage__edge { width: 150px; height: 400px; opacity: .6; }
+}
 .fest-shadow { position: absolute; height: auto; opacity: .14; }
 .fest-shadow--left  { left: clamp(-40px, -3vw, -10px); bottom: 0; width: clamp(150px, 20vw, 320px); }
 .fest-shadow--right { right: clamp(-40px, -3vw, -10px); bottom: 0; width: clamp(150px, 20vw, 320px); transform: scaleX(-1); }
