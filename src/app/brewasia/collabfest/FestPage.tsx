@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState, Fragment } from 'react'
+import { useEffect, useRef, useState, Fragment } from 'react'
 
 // Public Halloween Collab Fest page. EN / VI.
 // Built like the poster: screenprinted bands of rust, cream and deep green stacked down
@@ -216,8 +216,23 @@ function Bats() {
 export default function FestPage({ beers, settings, live }: { beers: FestBeer[]; settings: FestSettings; live?: FestLive }) {
   const [lang, setLang] = useState<Lang>('en')
   const [now, setNow] = useState<number | null>(null)
+  // The rise replays every time the poster scrolls back into view, so coming
+  // back to the top of the page shows it again rather than a settled hand.
+  const heroRef = useRef<HTMLElement | null>(null)
+  const [riseKey, setRiseKey] = useState(0)
   const base = T[lang]
   const s = (name: keyof (typeof T)['en']) => (settings[K(lang, String(name))] || settings[`fest_${String(name)}`] || base[name]) as string
+
+  useEffect(() => {
+    const el = heroRef.current
+    if (!el || typeof IntersectionObserver === 'undefined') return
+    const io = new IntersectionObserver(
+      ([e]) => { if (e.isIntersecting) setRiseKey(k => k + 1) },
+      { threshold: 0.45 },
+    )
+    io.observe(el)
+    return () => io.disconnect()
+  }, [])
 
   useEffect(() => {
     try { const v = localStorage.getItem('brewasia_form_lang'); if (v === 'vi' || v === 'en') setLang(v) } catch { /* ignore */ }
@@ -252,7 +267,7 @@ export default function FestPage({ beers, settings, live }: { beers: FestBeer[];
   return (
     <div className="fest" data-lang={lang}>
       {/* Poster, full bleed, doing the job it was drawn for */}
-      <header className="fest-hero">
+      <header className="fest-hero" ref={heroRef}>
         <div className="fest-haze" aria-hidden="true">
           <span className="fest-haze__fog" data-i="0" />
           <span className="fest-haze__fog" data-i="1" />
@@ -270,7 +285,7 @@ export default function FestPage({ beers, settings, live }: { beers: FestBeer[];
         </div>
         <img className="fest-banner" src={poster} alt={`${s('title')} — ${s('date')}`} />
         {!customPoster && (
-          <div className="fest-rise" aria-hidden="true">
+          <div className="fest-rise" key={riseKey} aria-hidden="true">
             <span className="fest-rise__dust" />
             <span className="fest-rise__debris" aria-hidden="true">
               {DEBRIS.map((d, i) => (
