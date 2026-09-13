@@ -39,7 +39,7 @@ const FONTS: Record<string, string> = {
 export default async function CollabFestPage() {
   let beers: FestBeer[] = []
   let settings: FestSettings = {}
-  let live: FestLive = { collabs: 0, countries: 0, countryList: '' }
+  let live: FestLive = { collabs: 0, breweries: 0, countries: 0, countryList: '' }
   try {
     const svc = getServiceClient()
     const [{ data: collabs }, { data: rows }, { data: producers }] = await Promise.all([
@@ -63,12 +63,15 @@ export default async function CollabFestPage() {
     }
     const festCollabs = ((collabs || []) as any[]).filter(c =>
       COUNTED.includes(String(c.status)) && (Array.isArray(c.kegs) ? c.kegs : []).some((l: any) => l?.use === 'halloween'))
-    const countryNames = Array.from(new Set(
+    const breweryKeys = Array.from(new Set(
       festCollabs.flatMap(c => [c.vn_partner, ...(c.partners || [])])
-        .map((n: any) => countryOf.get(String(n || '').trim().toLowerCase()))
-        .filter(Boolean) as string[],
+        .map((n: any) => String(n || '').trim().toLowerCase())
+        .filter(Boolean),
+    ))
+    const countryNames = Array.from(new Set(
+      breweryKeys.map(k => countryOf.get(k)).filter(Boolean) as string[],
     )).sort((a, b) => (a === 'Vietnam' ? -1 : b === 'Vietnam' ? 1 : a.localeCompare(b)))
-    live = { collabs: festCollabs.length, countries: countryNames.length, countryList: countryNames.join(' · ') }
+    live = { collabs: festCollabs.length, breweries: breweryKeys.length, countries: countryNames.length, countryList: countryNames.join(' · ') }
     beers = ((collabs || []) as any[])
       .filter(c => SHOW.includes(String(c.status)) && (Array.isArray(c.kegs) ? c.kegs : []).some((l: any) => l?.use === 'halloween'))
       .map(c => ({

@@ -22,7 +22,7 @@ export type FestBeer = {
 }
 export type FestSettings = Record<string, string>
 // Counted live from the Collabs page.
-export type FestLive = { collabs: number; countries: number; countryList: string }
+export type FestLive = { collabs: number; breweries: number; countries: number; countryList: string }
 type Lang = 'en' | 'vi'
 
 const MAPS = 'https://www.google.com/maps/search/BigBamBoo+10+An+Ph%C3%BA%2C+An+Kh%C3%A1nh%2C+Ho+Chi+Minh+City'
@@ -258,10 +258,11 @@ export default function FestPage({ beers, settings, live }: { beers: FestBeer[];
   const m = left == null ? null : Math.floor((left % 3600000) / 60000)
   const breweryCount = new Set(beers.flatMap(b => b.breweries)).size
 
-  // The typed figure ("20+") is a floor: once the live count from Collabs passes it,
-  // the real number shows instead.
-  const collabFloor = s('statCollabs')
-  const statCollabs = live && live.collabs > (parseInt(collabFloor, 10) || Infinity) ? `${live.collabs}` : collabFloor
+  // The typed figures ("20+", "10+") are floors: once the live count from Collabs
+  // passes one, the real number shows instead.
+  const floor = (typed: string, count = 0) => (count > (parseInt(typed, 10) || Infinity) ? `${count}` : typed)
+  const statCollabs = floor(s('statCollabs'), live?.collabs)
+  const statBreweries = floor(s('statBreweries'), live?.breweries)
   // Socials come from the same settings the homepage uses, so they're set in one place.
   const socials = [
     { label: 'Instagram', href: settings.home_instagram_url || '' },
@@ -329,7 +330,7 @@ export default function FestPage({ beers, settings, live }: { beers: FestBeer[];
             <ul className="fest-stats">
               {[
                 [statCollabs, s('statCollabsLabel')],
-                [s('statBreweries'), s('statBreweriesLabel')],
+                [statBreweries, s('statBreweriesLabel')],
                 [s('statDjs'), s('statDjsLabel')],
                 [s('statCostumes'), s('statCostumesLabel')],
               ].map(([n, l], i) => (

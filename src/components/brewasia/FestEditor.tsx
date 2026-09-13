@@ -14,7 +14,7 @@ const TEXT_FIELDS: { name: string; label: string; hint?: string; area?: boolean 
   { name: 'tickets', label: 'Ticket button text' },
   { name: 'statCollabs', label: 'Stats strip 1: collabs', hint: 'A floor, e.g. 20+. Once more collabs than this are live on the page, the real count shows.' },
   { name: 'statCollabsLabel', label: 'Stats strip 1: label' },
-  { name: 'statBreweries', label: 'Stats strip 2: breweries' },
+  { name: 'statBreweries', label: 'Stats strip 2: breweries', hint: 'A floor, e.g. 10+. Once more breweries than this are on Fest collabs, the real count shows.' },
   { name: 'statBreweriesLabel', label: 'Stats strip 2: label' },
   { name: 'statDjs', label: 'Stats strip 3: big word' },
   { name: 'statDjsLabel', label: 'Stats strip 3: label' },
