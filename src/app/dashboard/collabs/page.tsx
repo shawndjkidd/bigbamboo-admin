@@ -24,6 +24,7 @@ type Collab = {
   beer_name: string | null
   beer_style: string | null
   abv: number | null
+  ibu: number | null
   status: Status
   ready_by: string | null
   kegs: KegLine[]
@@ -49,6 +50,7 @@ type Draft = {
   beer_name: string
   beer_style: string
   abv: string
+  ibu: string
   status: Status
   ready_by: string
   notes: string
@@ -83,7 +85,7 @@ let seq = 0
 const nk = () => `c${++seq}`
 const blankLine = (prev?: LineDraft): LineDraft => ({ key: nk(), use: prev?.use || 'unassigned', qty: '', size_litres: prev?.size_litres || '', venue: '' })
 const blankDraft = (): Draft => ({
-  vn_partner: '', partners: [{ key: nk(), name: '' }], beer_name: '', beer_style: '', abv: '',
+  vn_partner: '', partners: [{ key: nk(), name: '' }], beer_name: '', beer_style: '', abv: '', ibu: '',
   status: 'lead', ready_by: '', notes: '', kegs: [],
 })
 
@@ -216,7 +218,7 @@ export default function CollabsPage() {
       from: c.from_form ? { by: c.submitted_by || null, name: c.contact_name || null, phone: c.contact_phone || null, email: c.contact_email || null, at: c.created_at || null } : undefined,
       vn_partner: c.vn_partner || '',
       partners: (c.partners.length ? c.partners : ['']).map(name => ({ key: nk(), name })),
-      beer_name: c.beer_name || '', beer_style: c.beer_style || '', abv: c.abv == null ? '' : String(c.abv),
+      beer_name: c.beer_name || '', beer_style: c.beer_style || '', abv: c.abv == null ? '' : String(c.abv), ibu: c.ibu == null ? '' : String(c.ibu),
       status: c.status, ready_by: c.ready_by || '', notes: c.notes || '',
       kegs: c.kegs.map(l => ({ key: nk(), use: l.use || 'unassigned', qty: l.qty == null ? '' : String(l.qty), size_litres: l.size_litres == null ? '' : String(l.size_litres), venue: l.venue || '' })),
     })
@@ -241,6 +243,7 @@ export default function CollabsPage() {
       beer_name: txt(editing.beer_name),
       beer_style: txt(editing.beer_style),
       abv: num(editing.abv),
+      ibu: num(editing.ibu),
       status: editing.status,
       ready_by: editing.ready_by || null,
       notes: txt(editing.notes),
@@ -281,9 +284,9 @@ export default function CollabsPage() {
 
   function exportCsv() {
     const esc = (v: unknown) => { const s = v == null ? '' : String(v); return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s }
-    const head = ['Collab ID', 'Vietnam partner', 'Collab partners', 'Country', 'Status', 'Beer', 'Style', 'ABV %', 'Ready by', 'Friday Ale Trail kegs', 'Halloween Collab Fest kegs', 'Unassigned kegs', 'Total kegs', 'Keg detail', 'Halloween pour', 'Notes']
+    const head = ['Collab ID', 'Vietnam partner', 'Collab partners', 'Country', 'Status', 'Beer', 'Style', 'ABV %', 'IBU', 'Ready by', 'Friday Ale Trail kegs', 'Halloween Collab Fest kegs', 'Unassigned kegs', 'Total kegs', 'Keg detail', 'Halloween pour', 'Notes']
     const rows = filtered.map(c => [
-      c.code, c.vn_partner, c.partners.join(' × '), countriesOf(c).join(', '), STATUS_LABEL[c.status], c.beer_name, c.beer_style, c.abv, c.ready_by,
+      c.code, c.vn_partner, c.partners.join(' × '), countriesOf(c).join(', '), STATUS_LABEL[c.status], c.beer_name, c.beer_style, c.abv, c.ibu, c.ready_by,
       kegsOf(c, 'friday_ale_trail'), kegsOf(c, 'halloween'), kegsOf(c, 'unassigned'), kegsOf(c),
       c.kegs.map(l => `${l.qty ?? 'TBD'}×${l.size_litres != null ? ` ${l.size_litres}L` : ''} ${USE_LABEL[l.use]}${l.venue ? ` (${l.venue})` : ''}`).join('; '),
       c.fest_pour ? POUR_LABEL[c.fest_pour] || c.fest_pour : '',
@@ -433,7 +436,7 @@ export default function CollabsPage() {
                           <td>
                             <div style={{ fontWeight: 600 }}>{pairingOf(c)}{c.from_form && <FormTag />}</div>
                             <div style={{ ...muted, fontSize: 12.5, marginTop: 2 }}>
-                              {[c.beer_name, c.beer_style, c.abv != null ? `${c.abv}%` : null, c.ready_by ? `ready by ${fmtDate(c.ready_by)}` : null, c.fest_pour && c.fest_pour !== 'unsure' ? `Fest: ${POUR_LABEL[c.fest_pour] || c.fest_pour}` : null].filter(Boolean).join(' · ') || 'Beer not decided'}
+                              {[c.beer_name, c.beer_style, c.abv != null ? `${c.abv}%` : null, c.ibu != null ? `${c.ibu} IBU` : null, c.ready_by ? `ready by ${fmtDate(c.ready_by)}` : null, c.fest_pour && c.fest_pour !== 'unsure' ? `Fest: ${POUR_LABEL[c.fest_pour] || c.fest_pour}` : null].filter(Boolean).join(' · ') || 'Beer not decided'}
                             </div>
                           </td>
                           <td style={{ color: cs.length ? 'var(--text-secondary)' : 'var(--text-muted)', whiteSpace: 'nowrap' }}>{cs.join(', ') || '—'}</td>
@@ -463,7 +466,7 @@ export default function CollabsPage() {
                           <span style={{ fontWeight: 700, fontSize: 15, color: 'var(--text)', fontVariantNumeric: 'tabular-nums' }}>{kegsOf(c)}×</span>
                         </div>
                         <div style={{ ...muted, fontSize: 13, marginTop: 3 }}>
-                          {[c.beer_name, c.beer_style, c.abv != null ? `${c.abv}%` : null].filter(Boolean).join(' · ') || 'Beer not decided'}
+                          {[c.beer_name, c.beer_style, c.abv != null ? `${c.abv}%` : null, c.ibu != null ? `${c.ibu} IBU` : null].filter(Boolean).join(' · ') || 'Beer not decided'}
                         </div>
                         {c.kegs.length > 0 && <div style={{ marginTop: 8 }}><KegChips kegs={c.kegs} /></div>}
                       </button>
@@ -529,6 +532,9 @@ export default function CollabsPage() {
             </Field>
             <Field label="ABV %">
               <input className="input" inputMode="decimal" value={editing.abv} onChange={e => setDraft({ abv: e.target.value })} />
+            </Field>
+            <Field label="IBU">
+              <input className="input" inputMode="numeric" value={editing.ibu} onChange={e => setDraft({ ibu: e.target.value })} />
             </Field>
           </div>
 

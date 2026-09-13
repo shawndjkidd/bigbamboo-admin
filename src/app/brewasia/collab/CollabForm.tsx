@@ -21,7 +21,13 @@ const T = {
     partnersHint: 'The other brewery or breweries. Leave empty if you don’t have a partner yet and want us to match you.',
     partner: 'Partner brewery', addPartner: '+ Add another partner', remove: 'Remove',
     beerTitle: 'The beer',
-    beer: 'Beer name', beerPh: 'If named yet', style: 'Style', abv: 'ABV %',
+    beer: 'Beer name', beerPh: 'If named yet', style: 'Style', abv: 'ABV %', ibu: 'IBU',
+    logosTitle: 'Brewery logos',
+    logosHint: 'Optional. Used on the tap cards at the Fest. PNG, JPG, WEBP or SVG, up to 2 MB. Without one we just set the brewery name in type.',
+    logoFor: 'Logo for', logoClear: 'Remove',
+    logoTooBig: 'That file is over 2 MB. Please use a smaller one.',
+    logoNotImage: 'That does not look like an image file.',
+    needIbu: 'Please add the IBU. Put 0 if it has none.',
     readyBy: 'Ready by',
     kegs: 'Kegs',
     kegsHint: 'Which event are the kegs for?',
@@ -61,7 +67,13 @@ const T = {
     partnersHint: 'Nhà máy bia hợp tác cùng bạn. Để trống nếu chưa có đối tác và muốn chúng tôi kết nối.',
     partner: 'Nhà máy đối tác', addPartner: '+ Thêm đối tác', remove: 'Xoá',
     beerTitle: 'Loại bia',
-    beer: 'Tên bia', beerPh: 'Nếu đã đặt tên', style: 'Dòng bia', abv: 'Độ cồn %',
+    beer: 'Tên bia', beerPh: 'Nếu đã đặt tên', style: 'Dòng bia', abv: 'Độ cồn %', ibu: 'IBU',
+    logosTitle: 'Logo nhà máy bia',
+    logosHint: 'Không bắt buộc. Dùng trên thẻ bia tại Fest. PNG, JPG, WEBP hoặc SVG, tối đa 2 MB. Nếu không có, chúng tôi chỉ dùng tên nhà máy bia.',
+    logoFor: 'Logo cho', logoClear: 'Xoá',
+    logoTooBig: 'Tệp lớn hơn 2 MB. Vui lòng chọn tệp nhỏ hơn.',
+    logoNotImage: 'Tệp này có vẻ không phải hình ảnh.',
+    needIbu: 'Vui lòng nhập IBU. Nhập 0 nếu không có.',
     readyBy: 'Sẵn sàng trước ngày',
     kegs: 'Keg bia',
     kegsHint: 'Keg dành cho sự kiện nào?',
@@ -102,7 +114,9 @@ export default function CollabForm() {
   const [inVietnam, setInVietnam] = useState(false)
   const [contact, setContact] = useState({ name: '', phone: '', email: '' })
   const [partners, setPartners] = useState<{ key: string; name: string }[]>([{ key: nk(), name: '' }])
-  const [beer, setBeer] = useState({ name: '', style: '', abv: '', ready_by: '' })
+  const [beer, setBeer] = useState({ name: '', style: '', abv: '', ibu: '', ready_by: '' })
+  // One logo per brewery named on this form, keyed by the name as typed.
+  const [logos, setLogos] = useState<Record<string, File>>({})
   const [kegs, setKegs] = useState<KegLine[]>([blankKeg()])
   const [notes, setNotes] = useState('')
   const [pour, setPour] = useState('unsure')
@@ -118,32 +132,46 @@ export default function CollabForm() {
 
   const updateKeg = (key: string, patch: Partial<KegLine>) => setKegs(ks => ks.map(k => (k.key === key ? { ...k, ...patch } : k)))
 
+  // Every brewery named on the form, in order, deduped — one logo picker each.
+  const namedBreweries = [brewery, ...partners.map(p => p.name)]
+    .map(n => n.trim())
+    .filter(Boolean)
+    .filter((n, i, a) => a.findIndex(x => x.toLowerCase() === n.toLowerCase()) === i)
+
   async function submit() {
     setError('')
     if (!brewery.trim()) return setError(t.needBrewery)
     if (!contact.name.trim() || (!contact.phone.trim() && !contact.email.trim())) return setError(t.needContact)
+    if (!String(beer.ibu).trim() || !Number.isFinite(Number(beer.ibu))) return setError(t.needIbu)
     setSaving(true)
     try {
-      const r = await fetch('/api/public/collab-form', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          brewery, in_vietnam: inVietnam, website,
-          contact_name: contact.name, contact_phone: contact.phone, contact_email: contact.email,
-          partners: partners.map(p => p.name),
-          beer_name: beer.name, beer_style: beer.style, abv: beer.abv, ready_by: beer.ready_by,
-          kegs: kegs.map(k => ({ use: k.use, qty: k.qty, size_litres: k.size_litres })),
-          notes, fest_pour: kegs.some(k => k.use === 'halloween') ? pour : null,
-        }),
-      })
+      const payload = {
+        brewery, in_vietnam: inVietnam, website,
+        contact_name: contact.name, contact_phone: contact.phone, contact_email: contact.email,
+        partners: partners.map(p => p.name),
+        beer_name: beer.name, beer_style: beer.style, abv: beer.abv, ibu: beer.ibu, ready_by: beer.ready_by,
+        kegs: kegs.map(k => ({ use: k.use, qty: k.qty, size_litres: k.size_litres })),
+        notes, fest_pour: kegs.some(k => k.use === 'halloween') ? pour : null,
+      }
+      // Multipart, so the logo files travel with the answers rather than needing a second
+      // request that could half-succeed.
+      const fd = new FormData()
+      fd.append('payload', JSON.stringify(payload))
+      for (const [name, file] of Object.entries(logos)) if (file) fd.append(`logo[${name}]`, file, file.name)
+      const r = await fetch('/api/public/collab-form', { method: 'POST', body: fd })
       const j = await r.json().catch(() => ({}))
-      if (!r.ok || !j.ok) { setError(j.error === 'contact' ? t.needContact : j.error === 'brewery' ? t.needBrewery : t.saveError); return }
+      if (!r.ok || !j.ok) {
+        setError(j.error === 'contact' ? t.needContact : j.error === 'brewery' ? t.needBrewery : j.error === 'ibu' ? t.needIbu : t.saveError)
+        return
+      }
       setDone({ code: j.code, brewery: j.brewery || brewery.trim(), partners: j.partners || [] })
       window.scrollTo({ top: 0, behavior: 'smooth' })
     } catch { setError(t.saveError) } finally { setSaving(false) }
   }
 
   function reset() {
-    setPartners([{ key: nk(), name: '' }]); setBeer({ name: '', style: '', abv: '', ready_by: '' })
+    setPartners([{ key: nk(), name: '' }]); setBeer({ name: '', style: '', abv: '', ibu: '', ready_by: '' })
+    setLogos({})
     setKegs([blankKeg()]); setNotes(''); setDone(null)
   }
 
@@ -236,10 +264,30 @@ export default function CollabForm() {
               <Field label={t.beer}><input className="input" value={beer.name} placeholder={t.beerPh} onChange={e => setBeer(b => ({ ...b, name: e.target.value }))} /></Field>
               <Field label={t.style}><input className="input" value={beer.style} placeholder="IPA, Lager…" onChange={e => setBeer(b => ({ ...b, style: e.target.value }))} /></Field>
             </div>
-            <div className="keg-grid-2">
+            <div className="keg-grid-3">
               <Field label={t.abv} last><input className="input" inputMode="decimal" value={beer.abv} onChange={e => setBeer(b => ({ ...b, abv: e.target.value }))} /></Field>
+              <Field label={t.ibu} last><input className="input" inputMode="numeric" value={beer.ibu} onChange={e => setBeer(b => ({ ...b, ibu: e.target.value }))} /></Field>
               <Field label={t.readyBy} last><input className="input" type="date" value={beer.ready_by} onChange={e => setBeer(b => ({ ...b, ready_by: e.target.value }))} /></Field>
             </div>
+
+            <div className="section-title" style={{ margin: '22px 0 4px' }}>{t.logosTitle}</div>
+            <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: '0 0 12px', lineHeight: 1.5 }}>{t.logosHint}</p>
+            {namedBreweries.map(name => (
+              <LogoPicker
+                key={name}
+                name={name}
+                file={logos[name] || null}
+                labels={{ forLabel: t.logoFor, clear: t.logoClear }}
+                onPick={(f, why) => {
+                  if (why) { setError(why === 'too-big' ? t.logoTooBig : t.logoNotImage); return }
+                  setLogos(prev => {
+                    const next = { ...prev }
+                    if (f) next[name] = f; else delete next[name]
+                    return next
+                  })
+                }}
+              />
+            ))}
           </div>
 
           <div className="card" style={{ padding: 20, marginBottom: 14 }}>
@@ -294,6 +342,46 @@ function Field({ label, children, last }: { label: string; children: React.React
     <div style={{ marginBottom: last ? 0 : 14, minWidth: 0 }}>
       <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>{label}</label>
       {children}
+    </div>
+  )
+}
+
+// One logo, for one brewery. Checks size and the declared type before the file leaves the
+// browser. The server checks the actual bytes again — nothing from a public form is
+// trusted — but catching it here saves the visitor a pointless upload.
+function LogoPicker({
+  name, file, labels, onPick,
+}: {
+  name: string
+  file: File | null
+  labels: { forLabel: string; clear: string }
+  onPick: (file: File | null, why?: 'too-big' | 'not-an-image') => void
+}) {
+  const MAX = 2 * 1024 * 1024
+  const OK = ['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml']
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 10 }}>
+      <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', minWidth: 150 }}>
+        {labels.forLabel} {name}
+      </span>
+      <input
+        type="file"
+        accept="image/png,image/jpeg,image/webp,image/svg+xml"
+        aria-label={`${labels.forLabel} ${name}`}
+        onChange={e => {
+          const f = e.target.files?.[0] || null
+          if (!f) { onPick(null); return }
+          if (f.size > MAX) { e.target.value = ''; onPick(null, 'too-big'); return }
+          if (f.type && !OK.includes(f.type)) { e.target.value = ''; onPick(null, 'not-an-image'); return }
+          onPick(f)
+        }}
+        style={{ fontSize: 13 }}
+      />
+      {file && (
+        <button type="button" className="keg-add-line" onClick={() => onPick(null)} style={{ fontSize: 12 }}>
+          {labels.clear}
+        </button>
+      )}
     </div>
   )
 }

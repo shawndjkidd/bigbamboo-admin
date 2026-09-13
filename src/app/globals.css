@@ -764,6 +764,9 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); c
   font-size: clamp(21px, 2.9vw, 31px); line-height: 1.05; letter-spacing: .02em;
   text-transform: uppercase; text-wrap: balance;
 }
+/* Brewery logo on the bill: sits above the name, and gives way to it entirely when a
+   brewery hasn't sent one. Capped so a tall logo can't push the card out of shape. */
+.fest-card__logo { display: block; max-width: 100%; max-height: 46px; width: auto; margin: 0 auto 6px; object-fit: contain; }
 .fest-card__vs {
   display: flex; align-items: center; gap: 10px; justify-content: center;
   font-family: var(--fest-body); font-size: clamp(10px, 1.1vw, 12px);

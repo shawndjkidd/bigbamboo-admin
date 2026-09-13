@@ -383,7 +383,12 @@ export default function FestPage({ beers, settings, live }: { beers: FestBeer[];
                       ? b.breweries.map((n, j) => (
                         <Fragment key={n + j}>
                           {j > 0 && <div className="fest-card__vs">{s('versus')}</div>}
-                          <div className="fest-card__brewery">{n}</div>
+                          <div className="fest-card__brewery">
+                            {/* Served in an <img>, never inlined — an uploaded SVG can
+                                carry script, and this is what makes that inert. */}
+                            {b.logos?.[j] ? <img className="fest-card__logo" src={b.logos[j]} alt="" loading="lazy" /> : null}
+                            <span>{n}</span>
+                          </div>
                         </Fragment>
                       ))
                       : <div className="fest-card__brewery">—</div>}

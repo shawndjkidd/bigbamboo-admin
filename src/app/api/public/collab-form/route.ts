@@ -5,6 +5,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServiceClient } from '@/lib/supabase'
 import { addInboxItem } from '@/lib/inbox'
+import { prepareLogo, storeLogo, logoRejected } from '@/lib/logoUpload'
 
 export const dynamic = 'force-dynamic'
 
@@ -24,7 +25,23 @@ const breweryKey = (v: string) =>
 
 export async function POST(req: NextRequest) {
   let body: any
-  try { body = await req.json() } catch { return NextResponse.json({ error: 'bad request' }, { status: 400 }) }
+  // Logos arrive as files, so the form posts multipart with the rest of the answers in a
+  // `payload` field. Plain JSON still works exactly as before — the logo half is the only
+  // thing that needs the other encoding.
+  let logoFiles: { brewery: string; file: File }[] = []
+  const ctype = req.headers.get('content-type') || ''
+  if (ctype.includes('multipart/form-data')) {
+    let form: FormData
+    try { form = await req.formData() } catch { return NextResponse.json({ error: 'bad request' }, { status: 400 }) }
+    try { body = JSON.parse(String(form.get('payload') ?? '')) } catch { return NextResponse.json({ error: 'bad request' }, { status: 400 }) }
+    for (const [key, value] of form.entries()) {
+      const m = /^logo\[(.+)\]$/.exec(key)
+      if (m && value instanceof File && value.size > 0) logoFiles.push({ brewery: m[1], file: value })
+    }
+    logoFiles = logoFiles.slice(0, 8)
+  } else {
+    try { body = await req.json() } catch { return NextResponse.json({ error: 'bad request' }, { status: 400 }) }
+  }
   if (typeof body?.website === 'string' && body.website.trim()) return NextResponse.json({ ok: true, code: null })
 
   const brewery = str(body?.brewery, 120)
@@ -33,6 +50,11 @@ export async function POST(req: NextRequest) {
   const contact_phone = str(body?.contact_phone, 60)
   const contact_email = str(body?.contact_email, 160)
   if (!contact_name || (!contact_phone && !contact_email)) return NextResponse.json({ error: 'contact' }, { status: 422 })
+
+  // Required on the public form. 0 is a real answer — plenty of sours — so the test is
+  // "did they answer", not "is it truthy".
+  const ibu = num(body?.ibu, 0, 200)
+  if (ibu == null) return NextResponse.json({ error: 'ibu' }, { status: 422 })
 
   const partnerNames = (Array.isArray(body?.partners) ? body.partners : []).slice(0, 8)
     .map((p: unknown) => str(p, 120)).filter((p: string | null): p is string => !!p && !!breweryKey(p))
@@ -86,8 +108,8 @@ export async function POST(req: NextRequest) {
   const ready_by = readyRaw && /^\d{4}-\d{2}-\d{2}$/.test(readyRaw) ? readyRaw : null
   const notes = str(body?.notes, 1000)
 
-  const { data, error } = await svc.from('brewasia_collabs').insert({
-    vn_partner, partners,
+  const collabRow = {
+    vn_partner, partners, ibu,
     beer_name: str(body?.beer_name, 160),
     beer_style: str(body?.beer_style, 80),
     abv: num(body?.abv, 0, 30),
@@ -96,8 +118,20 @@ export async function POST(req: NextRequest) {
     notes: notes ? `From collab form: ${notes}` : null,
     fest_pour: ['own_setup', 'main_taps', 'unsure'].includes(body?.fest_pour) ? body.fest_pour : null,
     from_form: true, submitted_by: sender.name, contact_name, contact_phone, contact_email,
-  }).select('id, code').single()
+  }
+
+  let { data, error } = await svc.from('brewasia_collabs').insert(collabRow).select('id, code').single()
+  // 42703 is "column does not exist": the ibu migration hasn't been applied yet. Saving
+  // the collab without it beats turning a working public form into a 500. Remove this
+  // fallback once the migration is in — the sign-up matters more than the field.
+  if (error && (error as any).code === '42703') {
+    console.warn('[collab-form] brewasia_collabs.ibu missing — saving without it')
+    const { ibu: _drop, ...withoutIbu } = collabRow
+    ;({ data, error } = await svc.from('brewasia_collabs').insert(withoutIbu).select('id, code').single())
+  }
   if (error || !data) return NextResponse.json({ error: 'save' }, { status: 500 })
+
+  const logosSaved = await attachLogos(svc, logoFiles, names.map(n => n.name))
 
   await addInboxItem(svc, {
     kind: 'collab_signup',
@@ -107,10 +141,43 @@ export async function POST(req: NextRequest) {
       str(body?.beer_name, 160),
       kegs.length ? `${kegs.length} keg line${kegs.length === 1 ? '' : 's'}` : null,
       contact_name,
+      logosSaved ? `${logosSaved} logo${logosSaved === 1 ? '' : 's'}` : null,
     ].filter(Boolean).join(' · '),
     ref_table: 'brewasia_collabs',
     ref_id: data.id ?? data.code,
   })
 
   return NextResponse.json({ ok: true, code: data.code, brewery: sender.name, partners: names.slice(1).map(n => n.name) })
+}
+
+// Stores each uploaded logo against the brewery it was labelled with, and writes the URL
+// onto that producer row. Returns how many stuck.
+//
+// Everything here is best-effort by design. The collab is already saved by the time this
+// runs, so a rejected file, a missing bucket or a name that matches nothing costs the
+// brewery a logo and nothing else. Staff can fix a logo from the Producers page.
+async function attachLogos(
+  svc: any,
+  files: { brewery: string; file: File }[],
+  knownNames: string[],
+): Promise<number> {
+  if (!files.length) return 0
+  let saved = 0
+  for (const { brewery, file } of files) {
+    // Match against the names this submission actually resolved to, using the same
+    // fuzzy key as the rest of the route — no second matching path.
+    const target = knownNames.find(n => breweryKey(n) === breweryKey(brewery))
+    if (!target) continue
+
+    const prepared = await prepareLogo(file, target)
+    if (logoRejected(prepared)) { console.warn('[logo] %s rejected: %s', brewery, prepared.reason); continue }
+
+    const url = await storeLogo(svc, prepared)
+    if (!url) continue
+
+    const { error } = await svc.from('brewasia_producers').update({ logo_url: url }).eq('name', target)
+    if (error) { console.warn('[logo] could not set logo_url for %s: %s', target, error.message); continue }
+    saved++
+  }
+  return saved
 }

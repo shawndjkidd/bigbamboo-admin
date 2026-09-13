@@ -23,9 +23,12 @@ type Producer = {
   contact_email: string | null
   interest: Interest
   notes: string | null
+  logo_url: string | null
 }
 type CollabRef = { id: string; code: string; vn_partner: string | null; partners: string[]; status: string }
-type Draft = Omit<Producer, 'id' | 'created_at' | 'country' | 'city' | 'contact_name' | 'contact_phone' | 'contact_email' | 'notes'> & {
+// logo_url is deliberately outside the Draft: it is set by uploading a file, not by
+// typing in the edit form, so it must not be round-tripped through a save.
+type Draft = Omit<Producer, 'id' | 'created_at' | 'country' | 'city' | 'contact_name' | 'contact_phone' | 'contact_email' | 'notes' | 'logo_url'> & {
   id?: string; country: string; city: string; contact_name: string; contact_phone: string; contact_email: string; notes: string
 }
 
@@ -78,6 +81,16 @@ export default function ProducersPage() {
   }
 
   function showToast(m: string) { setToast(m); setTimeout(() => setToast(''), 2600) }
+
+  // Replace or clear a brewery's logo. The upload reuses the same route the public form
+  // posts to, so staff and breweries go through one validator and one bucket rather than
+  // a second staff-only path that could drift from it.
+  async function setLogo(p: Producer, logo_url: string | null) {
+    const { error } = await supabase.from('brewasia_producers').update({ logo_url }).eq('id', p.id)
+    if (error) { showToast(error.message); return }
+    setProducers(prev => prev.map(x => (x.id === p.id ? { ...x, logo_url } : x)))
+    showToast(logo_url ? 'Logo updated' : 'Logo removed')
+  }
 
   const collabsFor = (name: string) => {
     const k = norm(name)
@@ -266,6 +279,7 @@ export default function ProducersPage() {
                       <th>Country</th>
                       <th>City</th>
                       <th>Contact</th>
+                      <th>Logo</th>
                       <th>Interest</th>
                       <th>Collabs</th>
                     </tr>
@@ -282,6 +296,7 @@ export default function ProducersPage() {
                           <td style={{ color: p.country ? 'var(--text-secondary)' : 'var(--text-muted)' }}>{p.country || '—'}</td>
                           <td style={{ color: 'var(--text-secondary)' }}>{p.city || <span style={muted}>—</span>}</td>
                           <td style={{ color: 'var(--text-secondary)' }}>{[p.contact_name, p.contact_phone].filter(Boolean).join(' · ') || <span style={muted}>—</span>}</td>
+                          <td onClick={e => e.stopPropagation()}><LogoCell producer={p} onChange={url => setLogo(p, url)} /></td>
                           <td onClick={e => e.stopPropagation()}><InterestSelect value={p.interest} onChange={i => setInterest(p, i)} /></td>
                           <td style={{ whiteSpace: 'nowrap', color: 'var(--text-secondary)', fontSize: 13 }}>{cs.length ? cs.map(c => c.code.replace('BA-COL-', '#')).join(' ') : <span style={muted}>—</span>}</td>
                         </tr>
@@ -302,7 +317,10 @@ export default function ProducersPage() {
                           {[p.city, p.country, p.contact_name, cs.length ? cs.map(c => c.code.replace('BA-COL-', '#')).join(' ') : null].filter(Boolean).join(' · ') || 'No details yet'}
                         </div>
                       </button>
-                      <div style={{ marginTop: 10 }}><InterestSelect value={p.interest} onChange={i => setInterest(p, i)} /></div>
+                      <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                        <InterestSelect value={p.interest} onChange={i => setInterest(p, i)} />
+                        <LogoCell producer={p} onChange={url => setLogo(p, url)} />
+                      </div>
                     </div>
                   )
                 })}
@@ -377,5 +395,53 @@ function InterestSelect({ value, onChange }: { value: Interest; onChange: (i: In
   return (
     <Pill label="Interest" value={value} tone={{ fg: 'var(--text-secondary)', bg: 'transparent', bd: 'var(--border)' }} dot={interestDot(value)}
       options={INTERESTS.map(i => ({ value: i.key, label: i.label }))} onChange={v => onChange(v as Interest)} />
+  )
+}
+
+// A brewery's logo, with replace and remove. A fix-it control for when somebody uploads
+// the wrong file, not a gallery.
+function LogoCell({ producer, onChange }: { producer: Producer; onChange: (url: string | null) => void }) {
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState('')
+
+  async function upload(file: File) {
+    setErr(''); setBusy(true)
+    try {
+      const fd = new FormData()
+      fd.append('brewery', producer.name)
+      fd.append('logo', file, file.name)
+      const r = await fetch('/api/public/producer-logo', { method: 'POST', body: fd })
+      const j = await r.json().catch(() => ({}))
+      if (!r.ok || !j.ok || !j.url) {
+        setErr(j.error === 'too-big' ? 'Over 2 MB' : j.error === 'not-an-image' ? 'Not an image' : 'Upload failed')
+        return
+      }
+      onChange(j.url)
+    } catch { setErr('Upload failed') } finally { setBusy(false) }
+  }
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+      {producer.logo_url
+        ? <img src={producer.logo_url} alt="" style={{ height: 26, maxWidth: 90, objectFit: 'contain', background: 'var(--bg-subtle)', borderRadius: 4, padding: 2 }} />
+        : <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>—</span>}
+      <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--accent)', cursor: busy ? 'default' : 'pointer' }}>
+        {busy ? 'Uploading…' : producer.logo_url ? 'Replace' : 'Add'}
+        <input
+          type="file" hidden disabled={busy}
+          accept="image/png,image/jpeg,image/webp,image/svg+xml"
+          onChange={e => { const f = e.target.files?.[0]; e.currentTarget.value = ''; if (f) upload(f) }}
+        />
+      </label>
+      {producer.logo_url && (
+        <button
+          onClick={() => onChange(null)} disabled={busy}
+          style={{ all: 'unset', fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', cursor: 'pointer' }}
+        >
+          Remove
+        </button>
+      )}
+      {err && <span style={{ fontSize: 12, color: 'var(--red)' }}>{err}</span>}
+    </div>
   )
 }
