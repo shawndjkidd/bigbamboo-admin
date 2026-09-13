@@ -62,12 +62,13 @@ const T = {
     beers: 'beers', breweries: 'breweries',
     priceTitle: 'At the door',
     priceDoor: '100k',
-    priceDoorText: 'Entry on the night · Free with a BrewAsia conference pass',
+    priceDoorText: 'Free with a BrewAsia conference pass',
+    priceDoorKicker: 'Entry',
     packTitle: 'Collab tasting packs',
     pack1: '200k',
-    pack1Text: '4 tokens + a festival glass',
+    pack1Text: '4 tokens + festival glass',
     pack2: '500k',
-    pack2Text: '10 tokens + 2 free + a festival glass',
+    pack2Text: '10 + 2 tokens + festival glass',
     packNote: 'One token = one pour of any collab beer, whatever the strength. Out of tokens? Top up at the same price all night.',
     howTitle: 'How the night works',
     how1Title: 'Collab taps',
@@ -117,12 +118,13 @@ const T = {
     beers: 'loại bia', breweries: 'nhà máy bia',
     priceTitle: 'Tại cửa',
     priceDoor: '100k',
-    priceDoorText: 'Vé vào cửa trong đêm hội · Miễn phí với vé hội nghị BrewAsia',
+    priceDoorText: 'Miễn phí với vé hội nghị BrewAsia',
+    priceDoorKicker: 'Vào cửa',
     packTitle: 'Gói nếm thử collab',
     pack1: '200k',
-    pack1Text: '4 token + 1 ly lưu niệm',
+    pack1Text: '4 token + ly lưu niệm',
     pack2: '500k',
-    pack2Text: '10 token + tặng 2 token + 1 ly lưu niệm',
+    pack2Text: '10 + 2 token + ly lưu niệm',
     packNote: '1 token = 1 ly bia collab bất kỳ, không phân biệt nồng độ. Hết token? Mua thêm với giá như cũ suốt đêm.',
     howTitle: 'Đêm hội diễn ra thế nào',
     how1Title: 'Vòi collab',
@@ -158,6 +160,36 @@ function Palms({ side }: { side: 'left' | 'right' }) {
     <svg className={`fest-palms fest-palms--${side}`} viewBox="0 0 120 150" aria-hidden="true">
       <path fill="currentColor" d="M57 150c1-38 3-63 6-84l6 1c-4 21-6 46-7 83Z" />
       <path fill="currentColor" d="M63 62c-11-11-25-16-40-14 12-7 29-5 41 4-7-13-20-21-35-23 15-5 32 2 41 15-1-15-9-28-22-36 17 2 29 16 30 33 7-13 21-21 37-21-13 6-23 17-26 31 12-8 27-10 41-4-16-1-31 6-40 18Z" />
+    </svg>
+  )
+}
+
+// Three marks for the three draws, cut like the poster's engravings.
+function DrawMark({ i }: { i: number }) {
+  if (i === 0) {
+    return (
+      <svg className="fest-draw__mark" viewBox="0 0 100 100" aria-hidden="true">
+        <g stroke="currentColor" strokeWidth="4.5" strokeLinecap="round" fill="none">
+          <path d="M50 10v80M18 40h64" />
+        </g>
+        <path fill="currentColor" d="M50 22c7 0 12 5 13 11 1 5-1 9-4 12 7 3 12 8 16 15l17-7c3-1 5 2 2 5l-15 11c3 8 4 17 3 26-1 11-4 22-9 31l13 9c2 2 0 5-2 4l-17-6c-4 5-9 9-14 11l2 15c0 3-4 4-5 1l-5-14-5 14c-1 3-5 2-5-1l2-15c-5-2-10-6-14-11l-17 6c-2 1-4-2-2-4l13-9c-5-9-8-20-9-31-1-9 0-18 3-26L9 58c-3-3-1-6 2-5l17 7c4-7 9-12 16-15-3-3-5-7-4-12 1-6 6-11 13-11Z" />
+      </svg>
+    )
+  }
+  if (i === 1) {
+    return (
+      <svg className="fest-draw__mark" viewBox="0 0 100 100" aria-hidden="true">
+        <path fill="currentColor" d="M14 18h72L54 56v26h16v6H30v-6h16V56L14 18Zm14 8 12 14h20l12-14H28Z" />
+        <path fill="currentColor" d="M74 12c4-6 7-3 10-7 2 4 5 1 7 7-4-1-6 3-7 5-2-2-3-6-10-5Z" />
+      </svg>
+    )
+  }
+  return (
+    <svg className="fest-draw__mark" viewBox="0 0 100 100" aria-hidden="true">
+      <circle cx="46" cy="54" r="34" fill="none" stroke="currentColor" strokeWidth="5" />
+      <circle cx="46" cy="54" r="12" fill="none" stroke="currentColor" strokeWidth="5" />
+      <circle cx="46" cy="54" r="4" fill="currentColor" />
+      <path fill="currentColor" d="M74 10h6v40a10 10 0 1 1-6-9V10Z" />
     </svg>
   )
 }
@@ -270,7 +302,12 @@ export default function FestPage({ beers, settings, live }: { beers: FestBeer[];
           <h2 className="fest-claim">{s('countriesTitle')}</h2>
 
           <ul className="fest-draws">
-            {[s('draw1'), s('draw2'), s('draw3')].map(d => <li key={d} className="fest-draw">{d}</li>)}
+            {[s('draw1'), s('draw2'), s('draw3')].map((d, i) => (
+              <li key={d} className="fest-draw">
+                <DrawMark i={i} />
+                <span className="fest-draw__text">{d}</span>
+              </li>
+            ))}
           </ul>
 
           <p className="fest-blurb">{s('blurb')}</p>
@@ -297,7 +334,7 @@ export default function FestPage({ beers, settings, live }: { beers: FestBeer[];
           <h2 className="fest-h2 fest-h2--glow">{s('priceTitle')}</h2>
           <div className="fest-money">
             <div className="fest-price" data-door="true">
-              <div className="fest-price__kicker">{s('priceTitle')}</div>
+              <div className="fest-price__kicker">{s('priceDoorKicker')}</div>
               <div className="fest-price__amount">{s('priceDoor')}</div>
               <div className="fest-price__text">{s('priceDoorText')}</div>
             </div>
