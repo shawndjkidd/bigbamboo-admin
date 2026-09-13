@@ -58,7 +58,8 @@ export default async function CollabFestPage() {
   } catch { /* show the page with whatever we have */ }
 
   const fontName = FONTS[settings.fest_title_font || ''] ? settings.fest_title_font : 'Alfa Slab One'
-  const fontHref = `https://fonts.googleapis.com/css2?family=${FONTS[fontName]}&display=swap`
+  // The display face (picked in the admin) plus Archivo, the page's body face.
+  const fontHref = `https://fonts.googleapis.com/css2?family=${FONTS[fontName]}&family=Archivo:wght@500;600;700;800&display=swap`
 
   return (
     <>

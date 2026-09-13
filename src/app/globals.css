@@ -410,93 +410,131 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); c
   .keg-wrap .input, .keg-modal .input { font-size: 16px; }
 }
 
-/* ── BrewAsia public event page ───────────────────────────────
-   Two faces only: the display face (--fest-display, picked in the admin) for
-   every heading and number, and the app's body face for everything else.
-   One measure: the hero, the poster and every section share --fest-w, so the
-   left and right edges line up all the way down the page.            */
+/* ── BrewAsia public event page (Halloween Collab Fest) ───────
+   Built like the poster: screenprint bands — rust, dark, cream, BigBamBoo teal —
+   stacked with torn edges between them. Two faces: the display face picked in the
+   admin for headings, Archivo for everything else. Neon only on the dark band,
+   which is the only ground it glows against.                        */
 .fest {
-  --ink: #150705; --ink-2: #2c1109; --line: rgba(255,222,180,.16);
-  --gold: #f2b134; --ember: #e0521c; --neon: #6cf3d6;
-  --fg: #fdf0dd; --fg-2: rgba(253,240,221,.80); --fg-3: rgba(253,240,221,.56);
-  --fest-w: min(1100px, 100%);
-  background:
-    radial-gradient(1200px 700px at 8% -18%, rgba(242,177,52,.28), transparent 60%),
-    radial-gradient(1100px 680px at 98% -6%, rgba(200,64,27,.52), transparent 62%),
-    radial-gradient(900px 800px at 50% 112%, rgba(224,82,28,.22), transparent 60%),
-    var(--ink);
-  color: var(--fg); min-height: 100vh;
+  --rust: #b8391a; --rust-2: #8f2a12;
+  --cream: #f3e3c3; --cream-2: #e6d0a8;
+  --ink: #14100c; --ink-2: #241a12;
+  --teal: #0f3d38; --teal-2: #16544c;
+  --amber: #f0b429; --ember: #e0521c; --neon: #6cf3d6;
+  --fest-w: min(1120px, 100%);
+  --fest-body: 'Archivo', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --paper: repeating-linear-gradient(0deg, rgba(0,0,0,.035) 0 1px, transparent 1px 3px),
+           repeating-linear-gradient(90deg, rgba(0,0,0,.03) 0 1px, transparent 1px 4px);
+  background: var(--ink); color: var(--cream);
+  font-family: var(--fest-body); font-weight: 500;
+  overflow-x: hidden;
 }
-.fest-shell { width: var(--fest-w); margin: 0 auto; padding-block: 18px 90px; padding-left: 18px; padding-right: 18px; }
-.fest-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 26px; }
-.fest-mark { font-size: 12.5px; font-weight: 800; letter-spacing: .24em; text-transform: uppercase; color: var(--fg-3); }
-.fest-lang { height: 32px; padding: 0 13px; border-radius: 8px; font: inherit; font-size: 12px; font-weight: 800; cursor: pointer; background: transparent; color: var(--fg-3); border: 1px solid var(--line); letter-spacing: .1em; }
-.fest-lang[data-on="true"] { color: #1a0b02; background: var(--gold); border-color: var(--gold); }
 
-/* Hero ---------------------------------------------------------------- */
-.fest-eyebrow { font-size: clamp(10.5px, 1.5vw, 13px); font-weight: 800; letter-spacing: .2em; text-transform: uppercase; color: var(--ember); }
-.fest-title {
-  font-size: clamp(46px, 15.5vw, 168px); line-height: .88; margin: 12px 0 18px;
-  text-transform: uppercase; text-wrap: balance; max-width: 100%;
-  background: linear-gradient(180deg, #fff6de 2%, var(--gold) 48%, #cf5518 100%);
-  -webkit-background-clip: text; background-clip: text; color: transparent;
-  filter: drop-shadow(0 5px 0 rgba(0,0,0,.5));
+/* Hero ------------------------------------------------------------------ */
+.fest-hero { position: relative; background: var(--ink); }
+.fest-banner { display: block; width: 100%; height: auto; }
+.fest-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.fest-topbar {
+  position: absolute; inset: 0 0 auto 0; z-index: 2;
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 14px clamp(16px, 3vw, 28px);
 }
-.fest-datebar { display: flex; flex-direction: column; gap: 2px; }
-.fest-date, .fest-time {
-  font-family: var(--fest-display, 'Alfa Slab One'), Georgia, serif;
-  font-size: clamp(22px, 5.4vw, 44px); line-height: 1.04; text-transform: uppercase; letter-spacing: -.01em;
+.fest-mark { font-size: 12px; font-weight: 800; letter-spacing: .24em; text-transform: uppercase; color: rgba(243,227,195,.85); text-shadow: 0 1px 6px rgba(0,0,0,.7); }
+.fest-lang {
+  height: 30px; padding: 0 12px; border-radius: 7px; font: inherit; font-size: 12px; font-weight: 800;
+  letter-spacing: .1em; cursor: pointer; color: var(--cream); border: 1.5px solid rgba(243,227,195,.55);
+  background: rgba(20,16,12,.55);
 }
-.fest-date { color: var(--fg); }
-.fest-time { color: var(--gold); }
-.fest-venue { font-style: normal; font-size: clamp(15px, 2.2vw, 18px); color: var(--fg-2); margin-top: 18px; line-height: 1.55; display: flex; flex-direction: column; gap: 2px; }
-.fest-venue b { color: var(--fg); font-weight: 700; }
-.fest-link { display: inline-block; margin-top: 6px; font-size: 14px; font-weight: 600; color: var(--gold); text-decoration: none; border-bottom: 1px solid rgba(242,177,52,.45); }
+.fest-lang[data-on="true"] { background: var(--amber); border-color: var(--amber); color: var(--ink); }
+
+/* Bands ----------------------------------------------------------------- */
+.fest-band { position: relative; padding-block: clamp(44px, 7vw, 84px); background-image: var(--paper); }
+.fest-inner { width: var(--fest-w); margin: 0 auto; padding-inline: clamp(16px, 3vw, 28px); position: relative; z-index: 1; }
+.fest-band--rust { background-color: var(--rust); color: var(--cream); }
+.fest-band--dark { background-color: var(--ink); color: var(--cream); }
+.fest-band--cream { background-color: var(--cream); color: var(--ink); }
+.fest-band--teal { background-color: var(--teal); color: var(--cream); }
+.fest-seam { line-height: 0; margin-top: -1px; }
+.fest-tear { display: block; width: 100%; height: clamp(22px, 3.4vw, 42px); }
+.fest-bats { position: absolute; top: clamp(10px, 2vw, 22px); right: clamp(10px, 3vw, 40px); width: clamp(120px, 18vw, 220px); color: rgba(20,16,12,.55); pointer-events: none; }
+
+/* Headings -------------------------------------------------------------- */
+.fest-h2 {
+  font-family: var(--fest-display, 'Alfa Slab One'), Georgia, serif; font-weight: 400;
+  font-size: clamp(36px, 8vw, 76px); line-height: .95; margin: 0; text-transform: uppercase;
+}
+.fest-band--cream .fest-h2 { color: var(--rust-2); }
+.fest-band--teal .fest-h2 { color: var(--amber); }
+.fest-h2--glow { color: #fff4e2; text-shadow: 0 0 12px rgba(242,177,52,.5), 0 0 44px rgba(224,82,28,.45); margin-top: clamp(48px, 7vw, 78px); }
+.fest-head { display: flex; align-items: baseline; justify-content: space-between; gap: 14px; flex-wrap: wrap; }
+.fest-tally { font-size: 13px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: var(--rust); }
+.fest-sub { font-size: clamp(15px, 1.9vw, 17px); font-weight: 600; margin: 12px 0 26px; opacity: .72; }
+
+/* Rust band content ----------------------------------------------------- */
+.fest-strip {
+  display: inline-flex; flex-direction: column; gap: 2px; background: var(--cream); color: var(--ink);
+  padding: clamp(12px, 2vw, 18px) clamp(18px, 3vw, 28px); transform: rotate(-.8deg);
+  box-shadow: 6px 6px 0 rgba(20,16,12,.45);
+}
+.fest-strip__date, .fest-strip__time {
+  font-weight: 800; text-transform: uppercase; letter-spacing: -.01em; line-height: 1.06;
+  font-size: clamp(22px, 4.6vw, 40px); font-variant-numeric: tabular-nums;
+}
+.fest-strip__time { color: var(--rust-2); }
+.fest-where { display: flex; align-items: flex-end; justify-content: space-between; gap: 18px; flex-wrap: wrap; margin-top: clamp(26px, 4vw, 40px); }
+.fest-venue { font-style: normal; display: flex; flex-direction: column; gap: 3px; font-size: clamp(16px, 2.2vw, 19px); font-weight: 600; line-height: 1.45; }
+.fest-venue b { font-size: clamp(20px, 2.8vw, 26px); font-weight: 800; letter-spacing: -.01em; }
 .fest-mapbtn {
-  display: inline-flex; align-items: center; gap: 8px; margin-top: 14px;
-  padding: 11px 18px; border-radius: 10px; border: 2px solid rgba(242,177,52,.55);
-  background: rgba(242,177,52,.10); color: var(--gold); text-decoration: none;
-  font-size: 14px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
-  transition: background .14s ease, transform .14s ease;
+  display: inline-flex; align-items: center; gap: 8px; padding: 12px 20px; border-radius: 8px;
+  background: var(--ink); color: var(--amber); text-decoration: none; border: 2px solid var(--ink);
+  font-size: 14px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase;
+  box-shadow: 4px 4px 0 rgba(20,16,12,.35); transition: transform .12s ease;
 }
-.fest-mapbtn:hover { background: rgba(242,177,52,.2); transform: translateY(-1px); }
-.fest-mapbtn svg { flex-shrink: 0; }
-.fest-poster { display: block; width: 100%; margin: 34px 0 0; border-radius: 16px; border: 1px solid var(--line); box-shadow: 0 30px 70px rgba(0,0,0,.6); }
-.fest-blurb { font-size: clamp(16.5px, 2.1vw, 20px); line-height: 1.58; color: var(--fg-2); margin: 30px 0 0; max-width: 60ch; }
+.fest-mapbtn:hover { transform: translate(-1px, -1px); }
+.fest-blurb { font-size: clamp(17px, 2.1vw, 20px); font-weight: 500; line-height: 1.5; margin: clamp(24px, 3.5vw, 36px) 0 0; max-width: 58ch; }
 .fest-entry {
-  margin-top: 22px; padding: 16px 20px; border-radius: 12px; display: block;
-  font-family: var(--fest-display, 'Alfa Slab One'), Georgia, serif;
-  font-size: clamp(16px, 2.6vw, 24px); line-height: 1.3; text-transform: uppercase;
-  border: 2px solid var(--gold); background: rgba(242,177,52,.12); color: var(--gold);
+  display: block; margin-top: clamp(24px, 3.5vw, 34px); padding: 20px 24px;
+  background: var(--amber); color: var(--ink); font-weight: 800;
+  font-size: clamp(17px, 2.3vw, 23px); line-height: 1.35; letter-spacing: -.01em;
+  box-shadow: 7px 7px 0 rgba(20,16,12,.4); transform: rotate(.4deg);
 }
 
-/* Ticket button with the COMING SOON stamp across it -------------------- */
+/* Tickets --------------------------------------------------------------- */
 .fest-ticket {
-  position: relative; margin-top: 20px; display: flex; align-items: center; justify-content: center;
-  padding: 26px 20px; border-radius: 14px; border: 3px solid var(--fg-3); overflow: hidden;
-  background: rgba(253,240,221,.04);
+  position: relative; margin-top: clamp(26px, 4vw, 38px); display: flex; flex-direction: column;
+  align-items: center; gap: 10px; padding: clamp(30px, 4.5vw, 46px) 20px 24px;
+  border: 3px dashed rgba(243,227,195,.6); background: rgba(20,16,12,.22);
 }
 .fest-ticket__label {
   font-family: var(--fest-display, 'Alfa Slab One'), Georgia, serif;
-  font-size: clamp(26px, 6vw, 52px); text-transform: uppercase; color: var(--fg-3); opacity: .45; letter-spacing: .02em;
+  font-size: clamp(36px, 8vw, 74px); line-height: 1; text-transform: uppercase; color: var(--cream);
 }
 .fest-ticket__stamp {
-  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%) rotate(-7deg);
+  position: absolute; right: clamp(-6px, 1vw, 22px); top: clamp(-18px, -1vw, -12px); transform: rotate(-9deg);
   font-family: var(--fest-display, 'Alfa Slab One'), Georgia, serif;
-  font-size: clamp(22px, 5.4vw, 46px); text-transform: uppercase; white-space: nowrap;
-  color: var(--ember); border: 4px solid var(--ember); border-radius: 10px; padding: 4px 18px;
-  background: rgba(21,7,5,.72); text-shadow: 0 0 24px rgba(224,82,28,.6);
+  font-size: clamp(20px, 4.2vw, 36px); text-transform: uppercase; white-space: nowrap;
+  color: var(--ink); background: var(--amber); border: 4px solid var(--ink); border-radius: 8px; padding: 3px 16px;
+  box-shadow: 4px 4px 0 rgba(20,16,12,.4);
 }
+.fest-ticket__note { font-size: clamp(14px, 1.8vw, 16px); font-weight: 600; text-align: center; max-width: 46ch; line-height: 1.45; opacity: .85; }
+.fest-btn {
+  display: inline-block; margin-top: 18px; padding: 16px 30px; border-radius: 8px; text-decoration: none;
+  background: var(--amber); color: var(--ink); font-weight: 800; font-size: 16px; border: 2px solid var(--ink);
+  text-transform: uppercase; letter-spacing: .08em; box-shadow: 5px 5px 0 rgba(20,16,12,.45);
+  transition: transform .12s ease;
+}
+.fest-btn:hover { transform: translate(-2px, -2px); }
+.fest-btn--ember { background: var(--ember); color: var(--cream); border-color: var(--ink); }
 
-/* Countdown: broken neon ----------------------------------------------- */
-.fest-countdown { margin-top: clamp(48px, 7vw, 76px); padding-top: 26px; border-top: 1px solid var(--line); }
+/* Countdown + money (dark band) ------------------------------------------ */
+.fest-countdown { }
 .fest-count__label {
   font-family: var(--fest-display, 'Alfa Slab One'), Georgia, serif;
-  font-size: clamp(22px, 4.4vw, 40px); line-height: 1; text-transform: uppercase; text-align: center;
-  color: #eafff9; text-shadow: 0 0 8px rgba(108,243,214,.9), 0 0 26px rgba(108,243,214,.55), 0 0 60px rgba(108,243,214,.35);
+  font-size: clamp(24px, 4.6vw, 44px); line-height: 1; text-transform: uppercase; text-align: center;
+  color: #eafff9; text-shadow: 0 0 8px rgba(108,243,214,.9), 0 0 26px rgba(108,243,214,.55), 0 0 62px rgba(108,243,214,.32);
   animation: fest-flicker 9s infinite steps(1, end);
 }
-.fest-count__row { display: grid; grid-template-columns: repeat(3, 1fr); gap: clamp(8px, 2vw, 24px); margin-top: clamp(14px, 2.5vw, 26px); width: 100%; }
+.fest-count__row { display: grid; grid-template-columns: repeat(3, 1fr); gap: clamp(8px, 2vw, 24px); margin-top: clamp(14px, 2.5vw, 26px); }
 .fest-count__cell { display: flex; flex-direction: column; align-items: center; text-align: center; }
 .fest-count__cell i {
   font-style: normal; font-size: clamp(12px, 1.9vw, 17px); font-weight: 800; letter-spacing: .3em;
@@ -504,9 +542,8 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); c
   text-shadow: 0 0 6px rgba(108,243,214,.8), 0 0 20px rgba(108,243,214,.45);
 }
 .fest-neon {
-  position: relative; display: inline-block;
-  font-size: clamp(64px, 19vw, 190px); line-height: .86; font-variant-numeric: tabular-nums;
-  color: #eafff9;
+  position: relative; display: inline-block; font-weight: 800; letter-spacing: -.04em;
+  font-size: clamp(64px, 19vw, 190px); line-height: .86; font-variant-numeric: tabular-nums; color: #eafff9;
   text-shadow: 0 0 8px rgba(108,243,214,.95), 0 0 28px rgba(108,243,214,.7), 0 0 70px rgba(108,243,214,.45);
   animation: fest-flicker 7s infinite steps(1, end);
 }
@@ -517,10 +554,7 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); c
 }
 @keyframes fest-flicker {
   0%, 41%, 43%, 46%, 100% { opacity: 1; }
-  42% { opacity: .35; }
-  44% { opacity: .7; }
-  70% { opacity: .55; }
-  71% { opacity: 1; }
+  42% { opacity: .35; } 44% { opacity: .7; } 70% { opacity: .55; } 71% { opacity: 1; }
 }
 @keyframes fest-glitch {
   0%, 41%, 45%, 69%, 72%, 100% { opacity: 0; transform: none; }
@@ -529,107 +563,79 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); c
   70% { opacity: .7; transform: translate(2px, 1px); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .fest-neon, .fest-neon::after { animation: none; }
+  .fest-neon, .fest-neon::after, .fest-count__label { animation: none; }
   .fest-neon::after { opacity: 0; }
 }
-
-/* Sections -------------------------------------------------------------- */
-.fest-section { margin-top: clamp(56px, 9vw, 92px); }
-.fest-head { display: flex; align-items: baseline; justify-content: space-between; gap: 14px; flex-wrap: wrap; }
-.fest-h2 {
-  font-size: clamp(34px, 8vw, 72px); line-height: .95; margin: 0; text-transform: uppercase; letter-spacing: -.01em;
-  color: #fff4e2; text-shadow: 0 0 10px rgba(242,177,52,.45), 0 0 38px rgba(224,82,28,.42);
-}
-.fest-tally { font-size: 13px; font-weight: 800; color: var(--gold); letter-spacing: .14em; text-transform: uppercase; }
-.fest-sub { font-size: 15.5px; color: var(--fg-3); margin: 12px 0 26px; }
-.fest-empty { border: 2px dashed rgba(224,82,28,.55); border-radius: 14px; padding: 34px 28px; color: var(--fg-2); font-size: 17px; line-height: 1.6; }
-.fest-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(clamp(240px, 30vw, 320px), 1fr)); gap: 16px; }
-.fest-card {
-  border: 1px solid var(--line); border-radius: 16px; padding: 26px;
-  background: linear-gradient(180deg, var(--ink-2), rgba(21,7,5,.7));
-  transition: transform .16s ease, border-color .16s ease, box-shadow .16s ease;
-}
-.fest-card:hover { transform: translateY(-3px) rotate(-.6deg); border-color: var(--gold); box-shadow: 0 20px 44px rgba(0,0,0,.55); }
-.fest-card[data-confirmed="true"] { border-color: rgba(242,177,52,.45); }
-.fest-card__breweries { font-size: 12.5px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: var(--ember); line-height: 1.45; }
-.fest-card__beer { font-size: clamp(26px, 3vw, 34px); margin: 12px 0 0; line-height: 1.02; text-transform: uppercase; }
-.fest-card__meta { font-size: 15px; color: var(--fg-2); margin-top: 8px; }
-.fest-card__foot { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 18px; }
-.fest-tag { font-size: 11px; font-weight: 800; letter-spacing: .18em; text-transform: uppercase; padding: 5px 10px; border-radius: 6px; border: 1px solid var(--line); color: var(--fg-3); }
-.fest-tag[data-confirmed="true"] { color: #1a0b02; border-color: var(--gold); background: var(--gold); }
-
-/* Money ----------------------------------------------------------------- */
 .fest-door {
   display: flex; align-items: baseline; justify-content: space-between; gap: 18px; flex-wrap: wrap;
-  width: 100%; margin-top: 24px; padding: clamp(22px, 4vw, 34px);
-  border-radius: 16px; border: 3px solid var(--gold); background: rgba(242,177,52,.12);
+  margin-top: 24px; padding: clamp(22px, 4vw, 34px); border: 3px solid var(--amber); background: rgba(242,177,52,.10);
 }
 .fest-door__amount {
-  font-family: var(--fest-display, 'Alfa Slab One'), Georgia, serif;
-  font-size: clamp(56px, 14vw, 128px); line-height: .84; color: var(--gold);
-  text-shadow: 0 0 30px rgba(242,177,52,.35);
+  font-size: clamp(58px, 14vw, 132px); line-height: .84; font-weight: 800; letter-spacing: -.04em;
+  font-variant-numeric: tabular-nums; color: #fff3d2;
+  text-shadow: 0 0 8px rgba(242,177,52,.95), 0 0 30px rgba(242,177,52,.6), 0 0 72px rgba(242,177,52,.38);
+  animation: fest-flicker 11s infinite steps(1, end);
 }
-.fest-door__text { font-size: clamp(15px, 2vw, 19px); color: var(--fg-2); font-weight: 600; line-height: 1.4; }
+.fest-door__text { font-size: clamp(16px, 2.1vw, 20px); font-weight: 700; line-height: 1.35; }
 .fest-packs { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin-top: 16px; }
-.fest-price { border: 1px solid var(--line); border-radius: 16px; padding: 26px; background: linear-gradient(180deg, var(--ink-2), rgba(21,7,5,.6)); }
-.fest-price[data-pack="true"] { border-color: rgba(242,177,52,.4); }
+.fest-price { border: 2px solid rgba(243,227,195,.28); padding: 26px; background: var(--ink-2); }
 .fest-price__kicker { font-size: 11.5px; font-weight: 800; letter-spacing: .2em; text-transform: uppercase; color: var(--ember); margin-bottom: 10px; }
-.fest-price__amount { font-size: clamp(48px, 8vw, 76px); line-height: .9; color: var(--fg); }
-.fest-price__text { font-size: 16px; color: var(--fg-2); margin-top: 12px; line-height: 1.5; }
-.fest-soon { margin-top: 18px; font-size: 14.5px; color: var(--fg-2); border: 1px dashed var(--line); border-radius: 10px; padding: 13px 17px; display: inline-block; }
-
-/* How the night works ---------------------------------------------------- */
-.fest-how { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: clamp(18px, 3vw, 28px); margin-top: 26px; }
-.fest-how__item { border-top: 4px solid var(--ember); padding-top: 18px; }
-.fest-how__n {
-  display: block; font-family: var(--fest-display, 'Alfa Slab One'), Georgia, serif;
-  font-size: clamp(34px, 4vw, 46px); line-height: 1; color: var(--gold); opacity: .65; margin-bottom: 8px;
+.fest-price__amount {
+  font-size: clamp(50px, 8.4vw, 82px); line-height: .9; font-weight: 800; letter-spacing: -.04em;
+  font-variant-numeric: tabular-nums; color: #eafff9;
+  text-shadow: 0 0 7px rgba(108,243,214,.9), 0 0 26px rgba(108,243,214,.55), 0 0 60px rgba(108,243,214,.34);
 }
-.fest-how__title { font-family: var(--fest-display, 'Alfa Slab One'), Georgia, serif; font-size: clamp(20px, 2.4vw, 26px); text-transform: uppercase; line-height: 1.1; }
-.fest-how__text { font-size: 16px; color: var(--fg-2); line-height: 1.6; margin: 10px 0 0; }
+.fest-price__text { font-size: clamp(15.5px, 1.9vw, 17.5px); font-weight: 600; margin-top: 14px; line-height: 1.45; opacity: .88; }
+.fest-note { font-size: clamp(15px, 1.9vw, 17px); font-weight: 500; margin: 18px 0 0; opacity: .78; max-width: 70ch; }
 
-/* Call to action + footer ------------------------------------------------ */
+/* Beer list (cream band) -------------------------------------------------- */
+.fest-empty { border: 3px dashed rgba(184,57,26,.5); padding: 34px 28px; font-size: clamp(16.5px, 2vw, 18.5px); font-weight: 600; line-height: 1.55; color: rgba(20,16,12,.75); }
+.fest-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(clamp(240px, 30vw, 320px), 1fr)); gap: clamp(16px, 2.4vw, 24px); }
+.fest-card {
+  background: #fbf3e2; color: var(--ink); padding: 24px; border: 2px solid var(--ink);
+  box-shadow: 7px 7px 0 rgba(20,16,12,.35); transition: transform .16s ease, box-shadow .16s ease;
+}
+.fest-card:hover { transform: translate(-2px, -3px) rotate(0deg) !important; box-shadow: 10px 12px 0 rgba(20,16,12,.4); }
+.fest-card__breweries { font-size: 12.5px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: var(--rust); line-height: 1.45; }
+.fest-card__beer {
+  font-family: var(--fest-display, 'Alfa Slab One'), Georgia, serif; font-weight: 400;
+  font-size: clamp(26px, 3vw, 34px); margin: 12px 0 0; line-height: 1.02; text-transform: uppercase; color: var(--ink);
+}
+.fest-card__meta { font-size: clamp(15px, 1.9vw, 17px); font-weight: 600; margin-top: 8px; color: rgba(20,16,12,.72); }
+.fest-card__foot { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 18px; }
+.fest-tag { font-size: 11px; font-weight: 800; letter-spacing: .18em; text-transform: uppercase; padding: 5px 10px; border: 2px solid var(--ink); color: var(--ink); }
+.fest-tag[data-confirmed="true"] { background: var(--amber); }
+
+/* How the night works (teal band) ----------------------------------------- */
+.fest-how { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: clamp(20px, 3vw, 30px); margin-top: 28px; }
+.fest-how__item { border-top: 5px solid var(--amber); padding-top: 18px; }
+.fest-how__n { display: block; font-size: clamp(30px, 3.6vw, 42px); font-weight: 800; line-height: 1; color: rgba(240,180,41,.7); font-variant-numeric: tabular-nums; margin-bottom: 8px; }
+.fest-how__title { font-family: var(--fest-display, 'Alfa Slab One'), Georgia, serif; font-weight: 400; font-size: clamp(22px, 2.6vw, 28px); text-transform: uppercase; line-height: 1.08; }
+.fest-how__text { font-size: clamp(15.5px, 1.9vw, 17.5px); font-weight: 500; line-height: 1.55; margin: 10px 0 0; opacity: .9; }
 .fest-cta {
-  margin-top: clamp(56px, 9vw, 92px); border: 3px solid var(--ember); border-radius: 18px; padding: clamp(24px, 4vw, 38px);
-  background: linear-gradient(120deg, rgba(242,177,52,.14), rgba(224,82,28,.2));
-  display: flex; align-items: center; justify-content: space-between; gap: 24px; flex-wrap: wrap;
+  margin-top: clamp(40px, 6vw, 66px); padding: clamp(24px, 4vw, 36px); background: var(--teal-2);
+  border: 3px solid var(--amber); display: flex; align-items: center; justify-content: space-between;
+  gap: 24px; flex-wrap: wrap;
 }
-.fest-cta__title { font-size: clamp(28px, 4.4vw, 44px); text-transform: uppercase; line-height: 1; }
-.fest-cta__text { font-size: 16.5px; color: var(--fg-2); line-height: 1.55; margin: 10px 0 0; max-width: 44ch; }
-.fest-cta .fest-btn { margin-top: 0; }
-.fest-btn {
-  display: inline-block; margin-top: 18px; padding: 17px 30px; border-radius: 12px; text-decoration: none;
-  background: var(--gold); color: #1a0b02; font-weight: 800; font-size: 16px; border: 2px solid var(--gold);
-  text-transform: uppercase; letter-spacing: .08em;
-  transition: transform .12s ease, box-shadow .12s ease;
-}
-.fest-btn:hover { transform: translateY(-2px) rotate(-.8deg); box-shadow: 0 16px 36px rgba(242,177,52,.32); }
-.fest-foot { margin-top: clamp(56px, 8vw, 80px); padding-top: 24px; border-top: 1px solid var(--line); font-size: 14px; color: var(--fg-3); line-height: 1.7; }
+.fest-cta__title { font-family: var(--fest-display, 'Alfa Slab One'), Georgia, serif; font-weight: 400; font-size: clamp(28px, 4.2vw, 42px); text-transform: uppercase; line-height: 1; color: var(--amber); }
+.fest-cta__text { font-size: clamp(16px, 2vw, 18px); font-weight: 500; line-height: 1.5; margin: 10px 0 0; max-width: 44ch; }
 
-/* Partners -------------------------------------------------------------- */
-.fest-partners { margin-top: clamp(48px, 7vw, 76px); padding-top: 26px; border-top: 1px solid var(--line); text-align: center; }
-.fest-partners__label { font-size: 11.5px; font-weight: 800; letter-spacing: .26em; text-transform: uppercase; color: var(--fg-3); }
+/* Footer band -------------------------------------------------------------- */
+.fest-footband { padding-block: clamp(36px, 5vw, 60px); text-align: center; }
+.fest-partners__label { font-size: 11.5px; font-weight: 800; letter-spacing: .26em; text-transform: uppercase; opacity: .6; }
 .fest-partners__names {
-  font-family: var(--fest-display, 'Alfa Slab One'), Georgia, serif;
-  font-size: clamp(20px, 4.4vw, 40px); line-height: 1.15; margin-top: 12px; text-transform: uppercase;
-  color: var(--gold); text-shadow: 0 0 26px rgba(242,177,52,.35);
+  font-family: var(--fest-display, 'Alfa Slab One'), Georgia, serif; font-weight: 400;
+  font-size: clamp(22px, 4.6vw, 44px); line-height: 1.12; margin-top: 12px; text-transform: uppercase;
+  color: var(--amber); text-shadow: 0 0 26px rgba(242,177,52,.3);
 }
+.fest-foot { margin-top: 26px; padding-top: 20px; border-top: 1px solid rgba(243,227,195,.2); font-size: 14px; font-weight: 500; opacity: .72; line-height: 1.7; }
+.fest-link { display: inline-block; margin-left: 10px; color: var(--amber); text-decoration: none; font-weight: 700; border-bottom: 1px solid rgba(242,177,52,.5); }
 
-/* The display face: set on a wrapper by the page, chosen in the admin. */
-.fest .fest-title, .fest .fest-h2, .fest .fest-cta__title, .fest .fest-card__beer,
-.fest .fest-how__title, .fest .fest-partners__names, .fest .fest-ticket__label, .fest .fest-ticket__stamp {
-  font-family: var(--fest-display, 'Alfa Slab One'), Georgia, 'Times New Roman', serif;
-  font-weight: 400;
-}
-/* Money and the clock stay in the solid face — drippy numbers don't read. */
-.fest .fest-door__amount, .fest .fest-price__amount, .fest .fest-neon, .fest .fest-how__n,
-.fest .fest-date, .fest .fest-time {
-  font-family: inherit; font-weight: 800; letter-spacing: -.02em; font-variant-numeric: tabular-nums;
-}
-@media (max-width: 560px) {
-  .fest-shell { padding-left: 16px; padding-right: 16px; padding-bottom: 70px; }
-  .fest-poster { width: calc(100% + 32px); margin-left: -16px; border-radius: 0; border-left: none; border-right: none; }
-  .fest-door { flex-direction: column; align-items: flex-start; gap: 6px; }
+.fest .fest-title { font-family: var(--fest-display, 'Alfa Slab One'), Georgia, serif; }
+@media (max-width: 640px) {
+  .fest-where { align-items: flex-start; }
+  .fest-door { flex-direction: column; align-items: flex-start; gap: 4px; }
+  .fest-cta { flex-direction: column; align-items: flex-start; }
 }
 
 /* ── Public BigBamBoo homepage (bigbamboo.app) ───────────────────────────────
