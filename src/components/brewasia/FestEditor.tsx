@@ -12,7 +12,6 @@ const TEXT_FIELDS: { name: string; label: string; hint?: string; area?: boolean 
   { name: 'date', label: 'Date line' },
   { name: 'time', label: 'Time line' },
   { name: 'blurb', label: 'Description', area: true },
-  { name: 'entry', label: 'Entry line', hint: 'Who gets in free, who buys a ticket.' },
   { name: 'tickets', label: 'Ticket button text' },
   { name: 'statCollabs', label: 'Big number: collabs' },
   { name: 'statCollabsLabel', label: 'Big number: collabs — label' },

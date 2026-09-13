@@ -712,12 +712,7 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); c
 .fest-draw:nth-child(3) { color: #e8785a; }
 
 .fest-blurb { font-size: clamp(17px, 2.1vw, 20.5px); font-weight: 400; line-height: 1.68; margin: clamp(26px, 3.5vw, 38px) auto 0; max-width: 56ch; }
-.fest-entry {
-  display: inline-block; margin-top: clamp(26px, 3.5vw, 36px); padding: 20px 28px; max-width: 58ch;
-  background: var(--amber); color: var(--ink); font-weight: 800;
-  font-size: clamp(17px, 2.3vw, 23px); line-height: 1.35; letter-spacing: -.01em;
-  box-shadow: 7px 7px 0 rgba(20,16,12,.4); transform: rotate(.4deg);
-}
+
 
 /* Tickets --------------------------------------------------------------- */
 

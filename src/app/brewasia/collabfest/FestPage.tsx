@@ -43,7 +43,6 @@ const T = {
     address: '10 An Phú, An Khánh, Ho Chi Minh City',
     map: 'Open in Maps',
     blurb: 'One night, one bar, and a wall of collaboration beers brewed for BrewAsia 2026. Breweries from Vietnam, Korea, India, China and the Philippines pour side by side: collab kegs on the BigBamBoo taps, the BZZD collab bar, a BBQ collab with Việt Thích Barbecue and a guest pitmaster from India, DJs until close. Come in costume.',
-    entry: 'BrewAsia conference pass = free entry, free tasting glass, free tokens.',
     tickets: 'Tickets at the door',
     soonStamp: 'Coming soon',
     soon: 'Pay at the door on the night. Online sales coming soon — this page will carry them.',
@@ -105,7 +104,6 @@ const T = {
     address: '10 An Phú, An Khánh, TP. Hồ Chí Minh',
     map: 'Mở bản đồ',
     blurb: 'Một đêm, một quán bar, và cả một dàn bia collab nấu riêng cho BrewAsia 2026. Các nhà máy bia từ Việt Nam, Hàn Quốc, Ấn Độ, Trung Quốc và Philippines cùng góp mặt: keg collab trên dàn vòi BigBamBoo, quầy collab BZZD, BBQ collab cùng Việt Thích Barbecue và đầu bếp BBQ khách mời từ Ấn Độ, DJ tới giờ đóng cửa. Hãy tới trong trang phục hoá trang.',
-    entry: 'Vé hội nghị BrewAsia = vào cửa miễn phí, ly nếm thử miễn phí, token miễn phí.',
     tickets: 'Mua vé tại cửa',
     soonStamp: 'Sắp mở bán',
     soon: 'Thanh toán tại cửa trong đêm diễn. Vé online sẽ sớm mở bán ngay trên trang này.',
@@ -331,7 +329,6 @@ export default function FestPage({ beers, settings, live }: { beers: FestBeer[];
 
           <p className="fest-blurb">{s('blurb')}</p>
 
-          <div className="fest-entry">{s('entry')}</div>
 
         </div>
       </section>
