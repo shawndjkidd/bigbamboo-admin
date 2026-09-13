@@ -38,8 +38,8 @@ const HAND = '/images/hand-beer.png'
 // The ground, cut from the plate itself so the torn edge matches exactly. It sits
 // above the hand, so the arm comes up from behind it.
 const GROUND = '/images/collabfest-ground.png'
-// Printed icons for the four stats: beer, breweries, DJs, costumes.
-const STAT_ICONS = ['/images/fest-icon-beer.png', '/images/fest-icon-globe.png', '/images/fest-icon-disc.png', '/images/fest-icon-mask.png']
+// Printed icons for the three stats: beer, breweries, costumes.
+const STAT_ICONS = ['/images/fest-icon-beer.png', '/images/fest-icon-globe.png', '/images/fest-icon-mask.png']
 // Brewhouse props: the tank beside the ticket prices, the kettle in the brewery call-out.
 const TANK_BREWING = '/images/fest-tank-brewing.png'
 const TANK_KETTLE = '/images/fest-tank-kettle.png'
@@ -65,8 +65,6 @@ const T = {
     statCollabsLabel: 'collab beers',
     statBreweries: '10+',
     statBreweriesLabel: 'breweries',
-    statDjs: 'DJs',
-    statDjsLabel: 'all night',
     statCostumes: 'Costumes',
     statCostumesLabel: 'welcome',
     countriesTitle: 'Collabs from across Asia and beyond',
@@ -140,8 +138,6 @@ const T = {
     statCollabsLabel: 'bia collab',
     statBreweries: '10+',
     statBreweriesLabel: 'nhà máy bia',
-    statDjs: 'DJ',
-    statDjsLabel: 'suốt đêm',
     statCostumes: 'Hóa trang',
     statCostumesLabel: 'khuyến khích',
     countriesTitle: 'Bia collab từ khắp châu Á và xa hơn',
@@ -499,7 +495,6 @@ export default function FestPage({ beers, settings, live }: { beers: FestBeer[];
               {[
                 [statCollabs, s('statCollabsLabel')],
                 [statBreweries, s('statBreweriesLabel')],
-                [s('statDjs'), s('statDjsLabel')],
                 [s('statCostumes'), s('statCostumesLabel')],
               ].map(([n, l], i) => (
                 <li key={i} className="fest-stat">
