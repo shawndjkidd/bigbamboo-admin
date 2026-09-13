@@ -422,7 +422,7 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); c
   --cream: #f3e3c3; --cream-2: #e6d0a8;
   --ink: #14100c; --ink-2: #241a12;
   --teal: #0f3d38; --teal-2: #16544c;
-  --amber: #f0b429; --ember: #e0521c; --neon: #6cf3d6;
+  --amber: #f0b429; --ember: #e0521c; --neon: #f7c948;
   --fest-w: min(1280px, 100%);
   --fest-body: 'Special Elite', 'Courier Prime', 'Courier New', monospace;
   --paper: repeating-linear-gradient(0deg, rgba(0,0,0,.035) 0 1px, transparent 1px 3px),
@@ -677,7 +677,7 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); c
      floating as a caption above the clock. */
   font-size: clamp(30px, 9.4vw, 108px); line-height: .96; text-transform: uppercase; text-align: center;
   white-space: nowrap;
-  color: #eafff9; text-shadow: 0 0 8px rgba(108,243,214,.9), 0 0 26px rgba(108,243,214,.55), 0 0 62px rgba(108,243,214,.32);
+  color: #fff7e2; text-shadow: 0 0 8px rgba(247,201,72,.9), 0 0 26px rgba(247,201,72,.55), 0 0 62px rgba(247,201,72,.32);
   animation: fest-flicker 9s infinite steps(1, end);
 }
 .fest[data-lang="vi"] .fest-count__label { font-size: clamp(22px, 7vw, 82px); }
@@ -686,14 +686,14 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); c
 .fest-count__cell { display: flex; flex-direction: column; align-items: center; text-align: center; }
 .fest-count__cell i {
   font-style: normal; font-size: clamp(12px, 1.9vw, 17px); font-weight: 800; letter-spacing: .3em;
-  text-transform: uppercase; margin-top: 10px; color: #cffaf0;
-  text-shadow: 0 0 6px rgba(108,243,214,.8), 0 0 20px rgba(108,243,214,.45);
+  text-transform: uppercase; margin-top: 10px; color: #ffeec4;
+  text-shadow: 0 0 6px rgba(247,201,72,.8), 0 0 20px rgba(247,201,72,.45);
 }
 .fest-neon {
   position: relative; display: inline-block;
   font-family: var(--fest-display, 'Alfa Slab One'), Georgia, serif; font-weight: 400; letter-spacing: .01em;
-  font-size: clamp(64px, 19vw, 190px); line-height: .86; font-variant-numeric: tabular-nums; color: #eafff9;
-  text-shadow: 0 0 8px rgba(108,243,214,.95), 0 0 28px rgba(108,243,214,.7), 0 0 70px rgba(108,243,214,.45);
+  font-size: clamp(64px, 19vw, 190px); line-height: .86; font-variant-numeric: tabular-nums; color: #fff7e2;
+  text-shadow: 0 0 8px rgba(247,201,72,.95), 0 0 28px rgba(247,201,72,.7), 0 0 70px rgba(247,201,72,.45);
   animation: fest-flicker 7s infinite steps(1, end);
 }
 .fest-neon::after {
@@ -734,8 +734,8 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); c
 .fest-price__amount {
   font-family: var(--fest-display, 'Alfa Slab One'), Georgia, serif; font-weight: 400;
   font-size: clamp(64px, 11vw, 124px); line-height: .86; letter-spacing: .01em;
-  font-variant-numeric: tabular-nums; color: #eafff9;
-  text-shadow: 0 0 7px rgba(108,243,214,.9), 0 0 26px rgba(108,243,214,.55), 0 0 60px rgba(108,243,214,.34);
+  font-variant-numeric: tabular-nums; color: #fff7e2;
+  text-shadow: 0 0 7px rgba(247,201,72,.9), 0 0 26px rgba(247,201,72,.55), 0 0 60px rgba(247,201,72,.34);
 }
 .fest-price__text { font-size: clamp(16.5px, 2.1vw, 20px); font-weight: 700; margin-top: 18px; line-height: 1.35; opacity: .95; }
 .fest-note { font-size: clamp(15px, 1.9vw, 17px); font-weight: 500; margin: 20px auto 0; opacity: .8; max-width: 64ch; }
