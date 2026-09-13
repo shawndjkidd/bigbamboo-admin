@@ -449,9 +449,18 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); c
 }
 .fest-date { color: var(--fg); }
 .fest-time { color: var(--gold); }
-.fest-venue { font-style: normal; font-size: clamp(15px, 2.2vw, 18px); color: var(--fg-2); margin-top: 16px; line-height: 1.55; }
+.fest-venue { font-style: normal; font-size: clamp(15px, 2.2vw, 18px); color: var(--fg-2); margin-top: 18px; line-height: 1.55; display: flex; flex-direction: column; gap: 2px; }
 .fest-venue b { color: var(--fg); font-weight: 700; }
 .fest-link { display: inline-block; margin-top: 6px; font-size: 14px; font-weight: 600; color: var(--gold); text-decoration: none; border-bottom: 1px solid rgba(242,177,52,.45); }
+.fest-mapbtn {
+  display: inline-flex; align-items: center; gap: 8px; margin-top: 14px;
+  padding: 11px 18px; border-radius: 10px; border: 2px solid rgba(242,177,52,.55);
+  background: rgba(242,177,52,.10); color: var(--gold); text-decoration: none;
+  font-size: 14px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+  transition: background .14s ease, transform .14s ease;
+}
+.fest-mapbtn:hover { background: rgba(242,177,52,.2); transform: translateY(-1px); }
+.fest-mapbtn svg { flex-shrink: 0; }
 .fest-poster { display: block; width: 100%; margin: 34px 0 0; border-radius: 16px; border: 1px solid var(--line); box-shadow: 0 30px 70px rgba(0,0,0,.6); }
 .fest-blurb { font-size: clamp(16.5px, 2.1vw, 20px); line-height: 1.58; color: var(--fg-2); margin: 30px 0 0; max-width: 60ch; }
 .fest-entry {
@@ -480,17 +489,25 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); c
 }
 
 /* Countdown: broken neon ----------------------------------------------- */
-.fest-countdown { margin-top: 30px; }
-.fest-count__label { font-size: 12px; font-weight: 800; letter-spacing: .24em; text-transform: uppercase; color: var(--ember); }
-.fest-count__row { display: flex; gap: clamp(16px, 5vw, 44px); margin-top: 12px; flex-wrap: wrap; }
-.fest-count__cell { display: flex; flex-direction: column; }
-.fest-count__cell i { font-style: normal; font-size: 12px; font-weight: 800; letter-spacing: .2em; text-transform: uppercase; color: var(--fg-3); margin-top: 6px; }
+.fest-countdown { margin-top: clamp(48px, 7vw, 76px); padding-top: 26px; border-top: 1px solid var(--line); }
+.fest-count__label {
+  font-family: var(--fest-display, 'Alfa Slab One'), Georgia, serif;
+  font-size: clamp(22px, 4.4vw, 40px); line-height: 1; text-transform: uppercase; text-align: center;
+  color: #eafff9; text-shadow: 0 0 8px rgba(108,243,214,.9), 0 0 26px rgba(108,243,214,.55), 0 0 60px rgba(108,243,214,.35);
+  animation: fest-flicker 9s infinite steps(1, end);
+}
+.fest-count__row { display: grid; grid-template-columns: repeat(3, 1fr); gap: clamp(8px, 2vw, 24px); margin-top: clamp(14px, 2.5vw, 26px); width: 100%; }
+.fest-count__cell { display: flex; flex-direction: column; align-items: center; text-align: center; }
+.fest-count__cell i {
+  font-style: normal; font-size: clamp(12px, 1.9vw, 17px); font-weight: 800; letter-spacing: .3em;
+  text-transform: uppercase; margin-top: 10px; color: #cffaf0;
+  text-shadow: 0 0 6px rgba(108,243,214,.8), 0 0 20px rgba(108,243,214,.45);
+}
 .fest-neon {
   position: relative; display: inline-block;
-  font-family: var(--fest-display, 'Alfa Slab One'), Georgia, serif;
-  font-size: clamp(52px, 13vw, 104px); line-height: .9; font-variant-numeric: tabular-nums;
+  font-size: clamp(64px, 19vw, 190px); line-height: .86; font-variant-numeric: tabular-nums;
   color: #eafff9;
-  text-shadow: 0 0 6px rgba(108,243,214,.95), 0 0 22px rgba(108,243,214,.65), 0 0 54px rgba(108,243,214,.42);
+  text-shadow: 0 0 8px rgba(108,243,214,.95), 0 0 28px rgba(108,243,214,.7), 0 0 70px rgba(108,243,214,.45);
   animation: fest-flicker 7s infinite steps(1, end);
 }
 .fest-neon::after {
@@ -600,12 +617,18 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); c
 
 /* The display face: set on a wrapper by the page, chosen in the admin. */
 .fest .fest-title, .fest .fest-h2, .fest .fest-cta__title, .fest .fest-card__beer,
-.fest .fest-price__amount, .fest .fest-neon {
+.fest .fest-how__title, .fest .fest-partners__names, .fest .fest-ticket__label, .fest .fest-ticket__stamp {
   font-family: var(--fest-display, 'Alfa Slab One'), Georgia, 'Times New Roman', serif;
   font-weight: 400;
 }
+/* Money and the clock stay in the solid face — drippy numbers don't read. */
+.fest .fest-door__amount, .fest .fest-price__amount, .fest .fest-neon, .fest .fest-how__n,
+.fest .fest-date, .fest .fest-time {
+  font-family: inherit; font-weight: 800; letter-spacing: -.02em; font-variant-numeric: tabular-nums;
+}
 @media (max-width: 560px) {
   .fest-shell { padding-left: 16px; padding-right: 16px; padding-bottom: 70px; }
+  .fest-poster { width: calc(100% + 32px); margin-left: -16px; border-radius: 0; border-left: none; border-right: none; }
   .fest-door { flex-direction: column; align-items: flex-start; gap: 6px; }
 }
 

@@ -168,23 +168,13 @@ export default function FestPage({ beers, settings }: { beers: FestBeer[]; setti
             <span className="fest-time">{s('time')}</span>
           </div>
           <address className="fest-venue">
-            <b>{s('venue')}</b><br />{s('address')}
-            <a className="fest-link" href={MAPS} target="_blank" rel="noreferrer">{s('map')} ↗</a>
+            <b>{s('venue')}</b>
+            <span>{s('address')}</span>
           </address>
-
-          {d != null && (
-            <div className="fest-countdown" aria-label={s('countdown')}>
-              <div className="fest-count__label">{s('countdown')}</div>
-              <div className="fest-count__row">
-                {[[d, s('days')], [h, s('hours')], [m, s('mins')]].map(([n, l]) => (
-                  <span key={String(l)} className="fest-count__cell">
-                    <b className="fest-neon" data-text={String(n)}>{String(n).padStart(2, '0')}</b>
-                    <i>{l}</i>
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
+          <a className="fest-mapbtn" href={MAPS} target="_blank" rel="noreferrer">
+            <svg viewBox="0 0 24 24" aria-hidden="true" width="17" height="17"><path fill="currentColor" d="M12 2a7 7 0 0 0-7 7c0 5.25 7 13 7 13s7-7.75 7-13a7 7 0 0 0-7-7Zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5Z"/></svg>
+            {s('map')}
+          </a>
 
           {poster && <img className="fest-poster" src={poster} alt="" />}
           <p className="fest-blurb">{s('blurb')}</p>
@@ -198,6 +188,20 @@ export default function FestPage({ beers, settings }: { beers: FestBeer[]; setti
               </div>
             )}
         </header>
+
+        {d != null && (
+          <div className="fest-countdown" aria-label={s('countdown')}>
+            <div className="fest-count__label">{s('countdown')}</div>
+            <div className="fest-count__row">
+              {[[d, s('days')], [h, s('hours')], [m, s('mins')]].map(([n, l]) => (
+                <span key={String(l)} className="fest-count__cell">
+                  <b className="fest-neon" data-text={String(n).padStart(2, '0')}>{String(n).padStart(2, '0')}</b>
+                  <i>{l}</i>
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
 
         <section className="fest-section">
           <div className="fest-head">
