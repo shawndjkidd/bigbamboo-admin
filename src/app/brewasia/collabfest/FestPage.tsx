@@ -37,9 +37,9 @@ const T = {
     map: 'Open in Maps',
     blurb: 'One night, one bar, and a wall of collaboration beers brewed for BrewAsia 2026. Breweries from Vietnam, Korea, India, China and the Philippines pour side by side: collab kegs on the BigBamBoo taps, the BZZD collab bar, a BBQ collab with Việt Thích Barbecue and a guest pitmaster from India, DJs until close. Come in costume.',
     entry: 'BrewAsia conference pass = free entry, free tasting glass, free tokens.',
-    tickets: 'Get tickets',
+    tickets: 'Tickets at the door',
     soonStamp: 'Coming soon',
-    soon: 'Online tickets land on this page soon. Until then, pay at the door.',
+    soon: 'Online sales coming soon — this page will carry them.',
     countdown: 'Until the first pour',
     days: 'days', hours: 'hours', mins: 'min',
     statCollabs: '20+',
@@ -66,10 +66,10 @@ const T = {
     priceDoorKicker: 'Entry',
     packTitle: 'Collab tasting packs',
     pack1: '200k',
-    pack1Text: '4 tokens + festival glass',
+    pack1Text: '4 tokens',
     pack2: '500k',
-    pack2Text: '10 + 2 tokens + festival glass',
-    packNote: 'One token = one pour of any collab beer, whatever the strength. Out of tokens? Top up at the same price all night.',
+    pack2Text: 'Buy 12, 2 free',
+    packNote: 'One token = one pour of any collab beer, whatever the strength. Your first token purchase comes with a free festival glass. Out of tokens? Top up at the same price all night.',
     howTitle: 'How the night works',
     how1Title: 'Collab taps',
     how1: 'Collab kegs go on the BigBamBoo tap wall, poured all night until they blow.',
@@ -93,9 +93,9 @@ const T = {
     map: 'Mở bản đồ',
     blurb: 'Một đêm, một quán bar, và cả một dàn bia collab nấu riêng cho BrewAsia 2026. Các nhà máy bia từ Việt Nam, Hàn Quốc, Ấn Độ, Trung Quốc và Philippines cùng góp mặt: keg collab trên dàn vòi BigBamBoo, quầy collab BZZD, BBQ collab cùng Việt Thích Barbecue và đầu bếp BBQ khách mời từ Ấn Độ, DJ tới giờ đóng cửa. Hãy tới trong trang phục hoá trang.',
     entry: 'Vé hội nghị BrewAsia = vào cửa miễn phí, ly nếm thử miễn phí, token miễn phí.',
-    tickets: 'Mua vé',
+    tickets: 'Mua vé tại cửa',
     soonStamp: 'Sắp mở bán',
-    soon: 'Vé online sẽ sớm có ngay trên trang này. Trong lúc đó, bạn thanh toán tại cửa.',
+    soon: 'Vé online sẽ sớm mở bán ngay trên trang này.',
     countdown: 'Đếm ngược tới ly đầu tiên',
     days: 'ngày', hours: 'giờ', mins: 'phút',
     statCollabs: '20+',
@@ -122,10 +122,10 @@ const T = {
     priceDoorKicker: 'Vào cửa',
     packTitle: 'Gói nếm thử collab',
     pack1: '200k',
-    pack1Text: '4 token + ly lưu niệm',
+    pack1Text: '4 token',
     pack2: '500k',
-    pack2Text: '10 + 2 token + ly lưu niệm',
-    packNote: '1 token = 1 ly bia collab bất kỳ, không phân biệt nồng độ. Hết token? Mua thêm với giá như cũ suốt đêm.',
+    pack2Text: 'Mua 12, tặng 2',
+    packNote: '1 token = 1 ly bia collab bất kỳ, không phân biệt nồng độ. Lần mua token đầu tiên được tặng ly lưu niệm. Hết token? Mua thêm với giá như cũ suốt đêm.',
     howTitle: 'Đêm hội diễn ra thế nào',
     how1Title: 'Vòi collab',
     how1: 'Keg collab lên dàn vòi của BigBamBoo, phục vụ cả đêm tới khi hết.',
@@ -287,7 +287,6 @@ export default function FestPage({ beers, settings, live }: { beers: FestBeer[];
             : (
               <div className="fest-ticket">
                 <span className="fest-ticket__label">{s('tickets')}</span>
-                <span className="fest-ticket__stamp">{s('soonStamp')}</span>
                 <span className="fest-ticket__note">{s('soon')}</span>
               </div>
             )}
