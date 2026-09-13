@@ -42,7 +42,8 @@ const T = {
     entry: 'BrewAsia conference pass = free entry, free tasting glass, free tokens.',
     tickets: 'Tickets at the door',
     soonStamp: 'Coming soon',
-    soon: 'Online sales coming soon — this page will carry them.',
+    soon: 'Pay at the door on the night. Online sales coming soon — this page will carry them.',
+    ticketsOnline: 'Buy online, or pay at the door on the night.',
     countdown: 'Until the first pour',
     days: 'days', hours: 'hours', mins: 'min',
     statCollabs: '20+',
@@ -68,7 +69,7 @@ const T = {
     tbd: 'Beer to be announced',
     empty: 'The tap list drops soon. Collabs are in the tank right now.',
     beers: 'beers', breweries: 'breweries',
-    priceTitle: 'At the door',
+    priceTitle: 'Tickets',
     priceDoor: '100k',
     priceDoorText: 'Free with a BrewAsia conference pass',
     priceDoorKicker: 'Entry',
@@ -103,7 +104,8 @@ const T = {
     entry: 'Vé hội nghị BrewAsia = vào cửa miễn phí, ly nếm thử miễn phí, token miễn phí.',
     tickets: 'Mua vé tại cửa',
     soonStamp: 'Sắp mở bán',
-    soon: 'Vé online sẽ sớm mở bán ngay trên trang này.',
+    soon: 'Thanh toán tại cửa trong đêm diễn. Vé online sẽ sớm mở bán ngay trên trang này.',
+    ticketsOnline: 'Mua vé online, hoặc thanh toán tại cửa trong đêm diễn.',
     countdown: 'Đếm ngược tới ly đầu tiên',
     days: 'ngày', hours: 'giờ', mins: 'phút',
     statCollabs: '20+',
@@ -129,7 +131,7 @@ const T = {
     tbd: 'Bia sẽ công bố sau',
     empty: 'Danh sách vòi sẽ sớm công bố. Các mẻ collab đang trong tank.',
     beers: 'loại bia', breweries: 'nhà máy bia',
-    priceTitle: 'Tại cửa',
+    priceTitle: 'Vé',
     priceDoor: '100k',
     priceDoorText: 'Miễn phí với vé hội nghị BrewAsia',
     priceDoorKicker: 'Vào cửa',
@@ -298,34 +300,15 @@ export default function FestPage({ beers, settings, live }: { beers: FestBeer[];
           <div className="fest-plus" aria-hidden="true"><span>{s('plus')}</span></div>
 
           <ul className="fest-draws">
-            {[s('draw1'), s('draw2'), s('draw3')].map((d, i) => {
-              const img = settings[`fest_extra${i + 1}_img`] || ''
-              return (
-                <li key={d} className="fest-draw" data-i={i}>
-                  <span className="fest-draw__tape" aria-hidden />
-                  <span className="fest-draw__photo">
-                    {img
-                      ? <img src={img} alt="" loading="lazy" />
-                      : <span className="fest-draw__empty" aria-hidden />}
-                  </span>
-                  <span className="fest-draw__cap">{d}</span>
-                </li>
-              )
-            })}
+            {[s('draw1'), s('draw2'), s('draw3')].map(d => (
+              <li key={d} className="fest-draw">{d}</li>
+            ))}
           </ul>
 
           <p className="fest-blurb">{s('blurb')}</p>
 
           <div className="fest-entry">{s('entry')}</div>
 
-          {ticketUrl
-            ? <a className="fest-btn" href={ticketUrl} target="_blank" rel="noreferrer">{s('tickets')}</a>
-            : (
-              <div className="fest-ticket">
-                <span className="fest-ticket__label">{s('tickets')}</span>
-                <span className="fest-ticket__note">{s('soon')}</span>
-              </div>
-            )}
         </div>
       </section>
 
@@ -335,6 +318,10 @@ export default function FestPage({ beers, settings, live }: { beers: FestBeer[];
         <div className="fest-inner">
 
           <h2 className="fest-h2 fest-h2--glow">{s('priceTitle')}</h2>
+          <p className="fest-ticket__note">{ticketUrl ? s('ticketsOnline') : s('soon')}</p>
+          {ticketUrl && (
+            <a className="fest-btn" href={ticketUrl} target="_blank" rel="noreferrer">{s('tickets')}</a>
+          )}
           <div className="fest-money">
             <div className="fest-price" data-door="true">
               <div className="fest-price__kicker">{s('priceDoorKicker')}</div>

@@ -27,7 +27,8 @@ const TEXT_FIELDS: { name: string; label: string; hint?: string; area?: boolean 
   { name: 'draw2', label: 'Headline draw 2' },
   { name: 'draw3', label: 'Headline draw 3' },
   { name: 'lineupSub', label: 'Line under “What’s pouring”' },
-  { name: 'priceTitle', label: 'Price section: title' },
+  { name: 'priceTitle', label: 'Ticket section: title' },
+  { name: 'ticketsOnline', label: 'Ticket line, when there IS a ticket link' },
   { name: 'priceDoor', label: 'Door price' },
   { name: 'priceDoorText', label: 'Door price: line under it' },
   { name: 'packTitle', label: 'Tasting packs: label' },
@@ -45,9 +46,6 @@ const TEXT_FIELDS: { name: string; label: string; hint?: string; area?: boolean 
 const PLAIN_FIELDS: { key: string; label: string; hint?: string }[] = [
   { key: 'fest_ticket_url', label: 'Ticket link', hint: 'Leave empty to hide the ticket button.' },
   { key: 'fest_poster_url', label: 'Poster image link', hint: 'Leave empty to use the Collab Fest poster we uploaded.' },
-  { key: 'fest_extra1_img', label: 'Photo 1 (Polaroid)', hint: 'Square photo works best. Empty shows an undeveloped print.' },
-  { key: 'fest_extra2_img', label: 'Photo 2 (Polaroid)' },
-  { key: 'fest_extra3_img', label: 'Photo 3 (Polaroid)' },
   { key: 'fest_starts_at', label: 'Countdown start', hint: '2026-10-31T16:00:00+07:00' },
 ]
 
