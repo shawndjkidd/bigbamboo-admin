@@ -23,7 +23,8 @@ export const DEFAULTS: Record<Lang, Record<string, string>> = {
     statusMain: 'Open on event nights',
     statusSub: 'Hours are event-based right now — see what’s on below',
     statusOpenToday: 'Open tonight',
-    locCity: 'An Phú, Saigon', locStreet: '10 An Phú, An Khánh · Thủ Đức, TP.HCM',
+    locCity: 'An Phú, Saigon', locStreet: '10 An Phú, An Khánh · Thủ Đức',
+    visitAddress: '10 An Phú, An Khánh, Thủ Đức (District 2), Ho Chi Minh City',
     comingUpNone: 'New events going up soon',
     eventsEyebrow: 'Events', eventsTitle: 'Upcoming Events',
     eventsEmpty: 'Nothing on the calendar just yet. Follow along on Instagram and we’ll shout when the next one lands.',
@@ -50,7 +51,8 @@ export const DEFAULTS: Record<Lang, Record<string, string>> = {
     statusMain: 'Mở cửa vào đêm sự kiện',
     statusSub: 'Hiện tại chúng tôi mở theo sự kiện — xem lịch bên dưới',
     statusOpenToday: 'Tối nay mở cửa',
-    locCity: 'An Phú, Sài Gòn', locStreet: '10 An Phú, An Khánh · Thủ Đức, TP.HCM',
+    locCity: 'An Phú, Sài Gòn', locStreet: '10 An Phú, An Khánh · Thủ Đức',
+    visitAddress: '10 An Phú, An Khánh, Thủ Đức (Quận 2), TP. Hồ Chí Minh',
     comingUpNone: 'Sự kiện mới sẽ sớm được cập nhật',
     eventsEyebrow: 'Sự kiện', eventsTitle: 'Sự kiện sắp tới',
     eventsEmpty: 'Hiện chưa có sự kiện nào. Theo dõi Instagram để biết sự kiện kế tiếp nhé.',
@@ -85,7 +87,8 @@ export const FIELDS: Field[] = [
   { name: 'statusOpenToday', label: 'Info bar: status when there’s an event today' },
   { name: 'labelLocation', label: 'Info bar: “Location” label' },
   { name: 'locCity', label: 'Info bar: city' },
-  { name: 'locStreet', label: 'Info bar: street address' },
+  { name: 'locStreet', label: 'Info bar: street address (keep it short)' },
+  { name: 'visitAddress', label: 'Visit: full address' },
   { name: 'labelComingUp', label: 'Info bar: “Coming up” label' },
   { name: 'comingUpNone', label: 'Info bar: when there are no events' },
   { name: 'eventsEyebrow', label: 'Events: small label above the heading' },
@@ -114,8 +117,6 @@ export const FIELDS: Field[] = [
 // Text keys the old site stored without a prefix. Same wording, older name.
 const LEGACY_TEXT: Record<string, string> = {
   heroSlogan: 'slogan',
-  locStreet: 'address_street',
-  locCity: 'address_city',
 }
 
 // Link keys are shared between languages.

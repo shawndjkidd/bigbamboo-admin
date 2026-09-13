@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useMemo, useState } from 'react'
+import Image from 'next/image'
 import {
   type Lang, type Settings, resolve, resolveLink,
   sectionLabel, translateTag, priceLabel,
@@ -96,7 +97,9 @@ export default function SiteHome({
     <div className="bb">
       <header className="bb-header">
         <div className="bb-logo-wrap">
-          <div className="bb-logo-icon"><img src="/images/bbb-img-4.jpg" alt="" /></div>
+          <div className="bb-logo-icon">
+            <Image src="/images/bbb-img-4.jpg" alt="" width={36} height={36} priority />
+          </div>
           <div className="bb-logo-text">BigBamBoo</div>
         </div>
         <nav className="bb-nav">
@@ -121,10 +124,14 @@ export default function SiteHome({
       </header>
 
       <section className="bb-hero">
-        <div className="bb-hero-bg" />
+        <div className="bb-hero-bg">
+          <Image src="/images/bbb-img-1.png" alt="" fill priority sizes="100vw" />
+        </div>
         <div className="bb-hero-fade" />
         <div className="bb-hero-content">
-          <div className="bb-hero-logo"><img src="/images/bbb-img-5.png" alt="BigBamBoo" /></div>
+          <div className="bb-hero-logo">
+            <Image src="/images/bbb-img-5.png" alt="BigBamBoo" width={585} height={585} priority sizes="(max-width: 665px) 88vw, 585px" />
+          </div>
           <div className="bb-hero-slogan"><Slogan text={t('heroSlogan')} /></div>
           <p className="bb-hero-tagline">{t('heroTagline')}</p>
           <div className="bb-hero-buttons">
@@ -201,7 +208,9 @@ export default function SiteHome({
       </section>
 
       <section id="events">
-        <div className="bb-events-bg" />
+        <div className="bb-events-bg">
+          <Image src="/images/bbb-img-2.png" alt="" fill loading="lazy" sizes="100vw" />
+        </div>
         <div className="bb-events-inner">
           <div className="bb-events-eyebrow">{t('eventsEyebrow')}</div>
           <h2 className="bb-events-title">{t('eventsTitle')}</h2>
@@ -236,7 +245,9 @@ export default function SiteHome({
       </section>
 
       <section id="coming-soon">
-        <div className="bb-cs-bg" />
+        <div className="bb-cs-bg">
+          <Image src="/images/bbb-img-3.png" alt="" fill loading="lazy" sizes="100vw" />
+        </div>
         <div className="bb-cs-content">
           <div className="bb-cs-badge">{t('merchBadge')}</div>
           <div className="bb-cs-headline">{t('merchHeadline')}</div>
@@ -271,7 +282,7 @@ export default function SiteHome({
           <div className="bb-visit-left">
             <div className="bb-visit-eyebrow">{t('locCity')}</div>
             <h2 className="bb-visit-title">{t('visitTitle')}</h2>
-            <div className="bb-visit-addr">{t('locStreet')}</div>
+            <div className="bb-visit-addr">{t('visitAddress')}</div>
             <div className="bb-visit-links">
               {maps && <a href={maps} target="_blank" rel="noreferrer" className="bb-map-btn">{t('visitMaps')}</a>}
               {instagram && <a href={instagram} target="_blank" rel="noreferrer" className="bb-visit-btn is-ig">{t('socInstagram')}</a>}
