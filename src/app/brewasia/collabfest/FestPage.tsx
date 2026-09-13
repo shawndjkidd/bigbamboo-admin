@@ -40,6 +40,17 @@ const T = {
     soon: 'Online tickets land on this page soon. Until then, pay at the door.',
     countdown: 'Until the first pour',
     days: 'days', hours: 'hours', mins: 'min',
+    statCollabs: '20+',
+    statCollabsLabel: 'collab beers',
+    statCountries: '10',
+    statCountriesLabel: 'countries',
+    statHours: '8',
+    statHoursLabel: 'hours',
+    countriesTitle: 'Collabs from across Asia and beyond',
+    countries: 'Vietnam · Japan · China · Singapore · Korea · India · Philippines · Australia · UK',
+    draw1: 'Full roasted pig BBQ',
+    draw2: 'The BZZD collab cocktail bar',
+    draw3: 'Live music & DJs',
     lineup: 'On the taps',
     lineupSub: 'Announced one by one as they’re locked in. Keep checking back.',
     confirmed: 'Confirmed',
@@ -84,6 +95,17 @@ const T = {
     soon: 'Vé online sẽ sớm có ngay trên trang này. Trong lúc đó, bạn thanh toán tại cửa.',
     countdown: 'Đếm ngược tới ly đầu tiên',
     days: 'ngày', hours: 'giờ', mins: 'phút',
+    statCollabs: '20+',
+    statCollabsLabel: 'bia collab',
+    statCountries: '10',
+    statCountriesLabel: 'quốc gia',
+    statHours: '8',
+    statHoursLabel: 'giờ',
+    countriesTitle: 'Bia collab từ khắp châu Á và xa hơn',
+    countries: 'Việt Nam · Nhật Bản · Trung Quốc · Singapore · Hàn Quốc · Ấn Độ · Philippines · Úc · Anh',
+    draw1: 'Heo quay nguyên con',
+    draw2: 'Quầy cocktail collab BZZD',
+    draw3: 'Nhạc sống & DJ',
     lineup: 'Trên vòi',
     lineupSub: 'Công bố dần khi từng mẻ được chốt. Hãy ghé lại nhé.',
     confirmed: 'Đã xác nhận',
@@ -215,6 +237,22 @@ export default function FestPage({ beers, settings }: { beers: FestBeer[]; setti
               {s('map')}
             </a>
           </div>
+
+          <div className="fest-stats">
+            {[[s('statCollabs'), s('statCollabsLabel')], [s('statCountries'), s('statCountriesLabel')], [s('statHours'), s('statHoursLabel')]].map(([n, l]) => (
+              <div key={l} className="fest-stat">
+                <span className="fest-stat__n">{n}</span>
+                <span className="fest-stat__l">{l}</span>
+              </div>
+            ))}
+          </div>
+
+          <h2 className="fest-claim">{s('countriesTitle')}</h2>
+          <div className="fest-countries">{s('countries')}</div>
+
+          <ul className="fest-draws">
+            {[s('draw1'), s('draw2'), s('draw3')].map(d => <li key={d} className="fest-draw">{d}</li>)}
+          </ul>
 
           <p className="fest-blurb">{s('blurb')}</p>
 

@@ -513,6 +513,36 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); c
   box-shadow: 4px 4px 0 rgba(20,16,12,.35); transition: transform .12s ease;
 }
 .fest-mapbtn:hover { transform: translate(-1px, -1px); }
+/* The claim: how big this thing is, in numbers you can read across a room */
+.fest-stats {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: clamp(10px, 2vw, 26px);
+  margin-top: clamp(34px, 5vw, 52px);
+}
+.fest-stat { display: flex; flex-direction: column; align-items: center; }
+.fest-stat__n {
+  font-family: var(--fest-display, 'Alfa Slab One'), Georgia, serif;
+  font-size: clamp(52px, 11vw, 118px); line-height: .9; color: var(--cream);
+  text-shadow: 5px 5px 0 rgba(20,16,12,.4);
+}
+.fest-stat__l { font-size: clamp(12px, 1.8vw, 16px); font-weight: 800; letter-spacing: .22em; text-transform: uppercase; margin-top: 8px; opacity: .9; }
+.fest-claim {
+  font-family: var(--fest-display, 'Alfa Slab One'), Georgia, serif; font-weight: 400;
+  font-size: clamp(30px, 5.6vw, 58px); line-height: 1; text-transform: uppercase;
+  margin: clamp(34px, 5vw, 54px) auto 0; max-width: 20ch; color: var(--amber);
+  text-shadow: 4px 4px 0 rgba(20,16,12,.35);
+}
+.fest-countries {
+  margin: 18px auto 0; max-width: 44ch; font-size: clamp(14px, 2vw, 18px); font-weight: 800;
+  letter-spacing: .14em; text-transform: uppercase; line-height: 1.7;
+}
+.fest-draws { list-style: none; display: grid; gap: 10px; margin: clamp(30px, 4vw, 42px) auto 0; padding: 0; max-width: 760px; }
+.fest-draw {
+  background: var(--cream); color: var(--ink); padding: 14px 20px; border: 2px solid var(--ink);
+  font-size: clamp(16px, 2.2vw, 21px); font-weight: 800; text-transform: uppercase; letter-spacing: -.01em;
+  box-shadow: 5px 5px 0 rgba(20,16,12,.35);
+}
+.fest-draw:nth-child(2) { transform: rotate(-.5deg); background: var(--amber); }
+.fest-draw:nth-child(3) { transform: rotate(.4deg); }
 .fest-blurb { font-size: clamp(17px, 2.1vw, 20px); font-weight: 500; line-height: 1.55; margin: clamp(26px, 3.5vw, 38px) auto 0; max-width: 62ch; }
 .fest-entry {
   display: inline-block; margin-top: clamp(26px, 3.5vw, 36px); padding: 20px 28px; max-width: 58ch;
