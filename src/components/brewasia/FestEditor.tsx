@@ -15,13 +15,24 @@ const TEXT_FIELDS: { name: string; label: string; hint?: string; area?: boolean 
   { name: 'entry', label: 'Entry line', hint: 'Who gets in free, who buys a ticket.' },
   { name: 'tickets', label: 'Ticket button text' },
   { name: 'lineupSub', label: 'Line under “What’s pouring”' },
+  { name: 'priceTitle', label: 'Price section: title' },
+  { name: 'priceDoor', label: 'Door price' },
+  { name: 'priceDoorText', label: 'Door price: line under it' },
+  { name: 'packTitle', label: 'Tasting packs: label' },
+  { name: 'pack1', label: 'Small pack price' },
+  { name: 'pack1Text', label: 'Small pack: what you get' },
+  { name: 'pack2', label: 'Big pack price' },
+  { name: 'pack2Text', label: 'Big pack: what you get' },
+  { name: 'packNote', label: 'Token note' },
+  { name: 'soon', label: 'Shown instead of the ticket button, until there is a ticket link' },
+  { name: 'countries', label: 'Countries line' },
   { name: 'ctaTitle', label: 'Brewery call-out: title' },
   { name: 'ctaText', label: 'Brewery call-out: text', area: true },
   { name: 'also', label: 'Friday Ale Trail note', area: true },
 ]
 const PLAIN_FIELDS: { key: string; label: string; hint?: string }[] = [
   { key: 'fest_ticket_url', label: 'Ticket link', hint: 'Leave empty to hide the ticket button.' },
-  { key: 'fest_poster_url', label: 'Poster image link', hint: 'A direct link to a .jpg or .png. Leave empty for no poster.' },
+  { key: 'fest_poster_url', label: 'Poster image link', hint: 'Leave empty to use the Collab Fest poster we uploaded.' },
   { key: 'fest_starts_at', label: 'Countdown start', hint: '2026-10-31T16:00:00+07:00' },
 ]
 

@@ -412,12 +412,12 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); c
 
 /* ── BrewAsia public event page ───────────────────────────── */
 .fest {
-  --ink: #0b0a0d; --ink-2: #131218; --line: rgba(255,255,255,.10);
-  --gold: #f0b429; --gold-soft: rgba(240,180,41,.14); --violet: #a97bff;
-  --fg: #f6f3ee; --fg-2: rgba(246,243,238,.72); --fg-3: rgba(246,243,238,.48);
+  --ink: #170906; --ink-2: #24100b; --line: rgba(255,229,199,.12);
+  --gold: #e0a53c; --gold-soft: rgba(224,165,60,.14); --violet: #c1440e;
+  --fg: #f7ebdc; --fg-2: rgba(247,235,220,.74); --fg-3: rgba(247,235,220,.50);
   background:
-    radial-gradient(900px 500px at 12% -8%, rgba(240,180,41,.16), transparent 60%),
-    radial-gradient(760px 460px at 92% 4%, rgba(169,123,255,.16), transparent 60%),
+    radial-gradient(900px 520px at 14% -10%, rgba(224,165,60,.18), transparent 62%),
+    radial-gradient(780px 480px at 92% 2%, rgba(193,68,14,.28), transparent 62%),
     var(--ink);
   color: var(--fg); min-height: 100vh;
 }
@@ -482,3 +482,12 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); c
   .fest-count__row b { font-size: 30px; }
   .fest-cta { padding: 22px; }
 }
+
+.fest-countries { font-size: 12.5px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--violet); margin-top: 12px; }
+.fest-prices { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 14px; margin-top: 18px; }
+.fest-price { border: 1px solid var(--line); border-radius: 14px; padding: 20px; background: linear-gradient(180deg, var(--ink-2), rgba(36,16,11,.5)); }
+.fest-price[data-pack="true"] { border-color: rgba(224,165,60,.34); }
+.fest-price__kicker { font-size: 11px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--gold); margin-bottom: 6px; }
+.fest-price__amount { font-size: 40px; font-weight: 800; letter-spacing: -.03em; line-height: 1; }
+.fest-price__text { font-size: 14.5px; color: var(--fg-2); margin-top: 8px; line-height: 1.5; }
+.fest-soon { margin-top: 16px; font-size: 14px; color: var(--fg-2); border: 1px dashed var(--line); border-radius: 10px; padding: 11px 15px; display: inline-block; }

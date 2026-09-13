@@ -23,16 +23,27 @@ const SIGNUP = '/brewasia/collab'
 // Defaults. Anything set in the admin (site_settings key in brackets) wins.
 const T = {
   en: {
-    eyebrow: 'BrewAsia 2026 · Ho Chi Minh City',
+    eyebrow: 'BigBamBoo × CraftCon Saigon × BrewAsia',
     title: 'Halloween Collab Fest',
     date: 'Saturday 31 October 2026',
-    time: 'From 4pm until late',
+    time: '4pm – midnight',
     venue: 'BigBamBoo',
     address: '10 An Phú, An Khánh, Thủ Đức (District 2), Ho Chi Minh City',
     map: 'Open in Google Maps',
-    blurb: 'One night, one bar, and a wall of collaboration beers brewed for BrewAsia 2026. Breweries from across Asia pour side by side: collab kegs on the BigBamBoo taps and brewers pouring their own. Come in costume.',
-    entry: 'Free for BrewAsia conference attendees · Tickets at the door for everyone else',
+    blurb: 'One night, one bar, and a wall of collaboration beers brewed for BrewAsia 2026. Breweries from Vietnam, Korea, India, China and the Philippines pour side by side: collab kegs on the BigBamBoo taps, the BZZD collab bar, a BBQ collab with Việt Thích Barbecue and a guest pitmaster from India, DJs all night. Come in costume.',
+    entry: 'Free for BrewAsia conference attendees · 100k at the door for everyone else',
     tickets: 'Get tickets',
+    priceTitle: 'At the door',
+    priceDoor: '100k',
+    priceDoorText: 'Entry on the night. Free if you’re at the BrewAsia conference.',
+    packTitle: 'Collab tasting packs',
+    pack1: '200k',
+    pack1Text: '4 tokens + a festival glass',
+    pack2: '500k',
+    pack2Text: '10 tokens + a festival glass',
+    packNote: 'One token = one pour of any collab beer. Out of tokens? Top up at the same price all night.',
+    soon: 'Online tickets coming soon on our own site. Until then, pay at the door.',
+    countries: 'Vietnam · Korea · India · China · Philippines',
     countdown: 'Until the first pour',
     days: 'days', hours: 'hours', mins: 'min',
     lineup: 'What’s pouring',
@@ -46,8 +57,8 @@ const T = {
     howTitle: 'How the night works',
     how1Title: 'Collab taps',
     how1: 'Collab kegs go on the BigBamBoo tap wall, poured all night until they blow.',
-    how2Title: 'Brewers pouring',
-    how2: 'Some breweries bring their own setup and pour their beer themselves. Go and talk to them.',
+    how2Title: 'BZZD collab bar & BBQ',
+    how2: 'The BZZD collab bar pours alongside the taps, with a BBQ collab from Việt Thích Barbecue and a guest pitmaster from India. DJs all night.',
     how3Title: 'Costumes',
     how3: 'It’s Halloween. Dress for it. The best costumes get looked after.',
     ctaTitle: 'Brewing a collab?',
@@ -57,16 +68,27 @@ const T = {
     also: 'Friday Ale Trail · Friday 30 October — collab beers pouring at bars across Saigon. Pay as you go, collect a digital stamp at every stop.',
   },
   vi: {
-    eyebrow: 'BrewAsia 2026 · TP. Hồ Chí Minh',
+    eyebrow: 'BigBamBoo × CraftCon Saigon × BrewAsia',
     title: 'Halloween Collab Fest',
     date: 'Thứ Bảy 31/10/2026',
-    time: 'Từ 16:00 đến khuya',
+    time: '16:00 – nửa đêm',
     venue: 'BigBamBoo',
     address: '10 An Phú, An Khánh, Thủ Đức (Quận 2 cũ), TP. Hồ Chí Minh',
     map: 'Mở Google Maps',
-    blurb: 'Một đêm, một quán bar, và cả một dàn bia collab nấu riêng cho BrewAsia 2026. Các nhà máy bia khắp châu Á cùng góp mặt: keg collab trên dàn vòi của BigBamBoo và các nhà nấu bia tự phục vụ. Hãy tới trong trang phục hoá trang.',
-    entry: 'Miễn phí cho khách tham dự hội nghị BrewAsia · Khách khác mua vé tại cửa',
+    blurb: 'Một đêm, một quán bar, và cả một dàn bia collab nấu riêng cho BrewAsia 2026. Các nhà máy bia từ Việt Nam, Hàn Quốc, Ấn Độ, Trung Quốc và Philippines cùng góp mặt: keg collab trên dàn vòi BigBamBoo, quầy collab BZZD, BBQ collab cùng Việt Thích Barbecue và đầu bếp BBQ khách mời từ Ấn Độ, DJ suốt đêm. Hãy tới trong trang phục hoá trang.',
+    entry: 'Miễn phí cho khách tham dự hội nghị BrewAsia · 100k tại cửa cho khách khác',
     tickets: 'Mua vé',
+    priceTitle: 'Tại cửa',
+    priceDoor: '100k',
+    priceDoorText: 'Vé vào cửa trong đêm hội. Miễn phí nếu bạn tham dự hội nghị BrewAsia.',
+    packTitle: 'Gói nếm thử collab',
+    pack1: '200k',
+    pack1Text: '4 token + 1 ly lưu niệm',
+    pack2: '500k',
+    pack2Text: '10 token + 1 ly lưu niệm',
+    packNote: '1 token = 1 ly bia collab bất kỳ. Hết token? Mua thêm với giá như cũ suốt đêm.',
+    soon: 'Vé bán online trên website của chúng tôi sẽ sớm có. Trong lúc đó, bạn thanh toán tại cửa.',
+    countries: 'Việt Nam · Hàn Quốc · Ấn Độ · Trung Quốc · Philippines',
     countdown: 'Đếm ngược tới ly đầu tiên',
     days: 'ngày', hours: 'giờ', mins: 'phút',
     lineup: 'Bia có mặt',
@@ -80,8 +102,8 @@ const T = {
     howTitle: 'Đêm hội diễn ra thế nào',
     how1Title: 'Vòi collab',
     how1: 'Keg collab lên dàn vòi của BigBamBoo, phục vụ cả đêm tới khi hết.',
-    how2Title: 'Nhà nấu bia phục vụ',
-    how2: 'Một số nhà máy mang quầy riêng và tự rót bia của mình. Hãy ghé trò chuyện với họ.',
+    how2Title: 'Quầy collab BZZD & BBQ',
+    how2: 'Quầy collab BZZD phục vụ song song dàn vòi, cùng BBQ collab từ Việt Thích Barbecue và đầu bếp khách mời từ Ấn Độ. DJ suốt đêm.',
     how3Title: 'Hoá trang',
     how3: 'Halloween mà. Hãy hoá trang. Những bộ đẹp nhất sẽ được ưu ái.',
     ctaTitle: 'Bạn đang nấu bia collab?',
@@ -110,7 +132,7 @@ export default function FestPage({ beers, settings }: { beers: FestBeer[]; setti
   }, [])
   function pickLang(l: Lang) { setLang(l); try { localStorage.setItem('brewasia_form_lang', l) } catch { /* ignore */ } }
 
-  const poster = settings.fest_poster_url || ''
+  const poster = settings.fest_poster_url || '/collabfest-poster.jpg'
   const ticketUrl = settings.fest_ticket_url || ''
   const startsAt = Date.parse(settings.fest_starts_at || '2026-10-31T16:00:00+07:00')
   const left = now && Number.isFinite(startsAt) ? Math.max(0, startsAt - now) : null
@@ -143,11 +165,14 @@ export default function FestPage({ beers, settings }: { beers: FestBeer[]; setti
             <span className="fest-time">{s('time')}</span>
           </div>
           <div className="fest-venue">{s('venue')} · {s('address')}</div>
+          <div className="fest-countries">{s('countries')}</div>
           <a className="fest-link" href={MAPS} target="_blank" rel="noreferrer">{s('map')} ↗</a>
           {poster && <img className="fest-poster" src={poster} alt="" />}
           <p className="fest-blurb">{s('blurb')}</p>
           <div className="fest-entry">{s('entry')}</div>
-          {ticketUrl && <a className="fest-btn" href={ticketUrl} target="_blank" rel="noreferrer">{s('tickets')}</a>}
+          {ticketUrl
+            ? <a className="fest-btn" href={ticketUrl} target="_blank" rel="noreferrer">{s('tickets')}</a>
+            : <div className="fest-soon">{s('soon')}</div>}
 
           {d != null && (
             <div className="fest-countdown" aria-label={s('countdown')}>
@@ -187,6 +212,27 @@ export default function FestPage({ beers, settings }: { beers: FestBeer[]; setti
               ))}
             </div>
           )}
+        </section>
+
+        <section className="fest-section">
+          <h2 className="fest-h2">{s('priceTitle')}</h2>
+          <div className="fest-prices">
+            <div className="fest-price">
+              <div className="fest-price__amount">{s('priceDoor')}</div>
+              <div className="fest-price__text">{s('priceDoorText')}</div>
+            </div>
+            <div className="fest-price" data-pack="true">
+              <div className="fest-price__kicker">{s('packTitle')}</div>
+              <div className="fest-price__amount">{s('pack1')}</div>
+              <div className="fest-price__text">{s('pack1Text')}</div>
+            </div>
+            <div className="fest-price" data-pack="true">
+              <div className="fest-price__kicker">{s('packTitle')}</div>
+              <div className="fest-price__amount">{s('pack2')}</div>
+              <div className="fest-price__text">{s('pack2Text')}</div>
+            </div>
+          </div>
+          <p className="fest-sub" style={{ marginTop: 12 }}>{s('packNote')}</p>
         </section>
 
         <section className="fest-section">
