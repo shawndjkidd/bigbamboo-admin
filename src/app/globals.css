@@ -409,3 +409,76 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); c
   .keg-modal { max-height: 92dvh; border-radius: 16px 16px 0 0; padding: 20px 16px 28px; }
   .keg-wrap .input, .keg-modal .input { font-size: 16px; }
 }
+
+/* ── BrewAsia public event page ───────────────────────────── */
+.fest {
+  --ink: #0b0a0d; --ink-2: #131218; --line: rgba(255,255,255,.10);
+  --gold: #f0b429; --gold-soft: rgba(240,180,41,.14); --violet: #a97bff;
+  --fg: #f6f3ee; --fg-2: rgba(246,243,238,.72); --fg-3: rgba(246,243,238,.48);
+  background:
+    radial-gradient(900px 500px at 12% -8%, rgba(240,180,41,.16), transparent 60%),
+    radial-gradient(760px 460px at 92% 4%, rgba(169,123,255,.16), transparent 60%),
+    var(--ink);
+  color: var(--fg); min-height: 100vh;
+}
+.fest-shell { max-width: 1040px; margin: 0 auto; padding: 18px 20px 80px; }
+.fest-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
+.fest-mark { font-size: 13px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: var(--fg-3); }
+.fest-lang { height: 30px; padding: 0 12px; border-radius: 8px; font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; background: transparent; color: var(--fg-3); border: 1px solid var(--line); }
+.fest-lang[data-on="true"] { color: var(--ink); background: var(--gold); border-color: var(--gold); }
+.fest-eyebrow { font-size: 12px; font-weight: 700; letter-spacing: .18em; text-transform: uppercase; color: var(--gold); }
+.fest-title {
+  font-size: clamp(44px, 9vw, 92px); line-height: .94; font-weight: 800; letter-spacing: -.03em;
+  margin: 14px 0 18px; max-width: 12ch;
+  background: linear-gradient(180deg, #fff8e6 0%, var(--gold) 62%, #b97f14 100%);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.fest-datebar { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; font-size: 19px; font-weight: 700; }
+.fest-dot { color: var(--fg-3); }
+.fest-time { color: var(--fg-2); font-weight: 600; }
+.fest-venue { font-size: 14.5px; color: var(--fg-2); margin-top: 8px; line-height: 1.5; }
+.fest-link { font-size: 13px; color: var(--gold); text-decoration: none; display: inline-block; margin-top: 6px; border-bottom: 1px solid rgba(240,180,41,.35); }
+.fest-poster { display: block; width: 100%; max-width: 620px; margin: 24px 0 0; border-radius: 14px; border: 1px solid var(--line); }
+.fest-blurb { font-size: 17px; line-height: 1.62; color: var(--fg-2); margin: 22px 0 0; max-width: 62ch; }
+.fest-entry { margin-top: 20px; padding: 12px 16px; border-radius: 10px; font-size: 14.5px; font-weight: 600; border: 1px solid rgba(240,180,41,.30); background: var(--gold-soft); color: var(--fg); display: inline-block; }
+.fest-btn { display: inline-block; margin-top: 16px; padding: 13px 24px; border-radius: 10px; text-decoration: none; background: var(--gold); color: #1a1405; font-weight: 700; font-size: 15px; border: 1px solid var(--gold); transition: transform .12s ease, box-shadow .12s ease; }
+.fest-btn:hover { transform: translateY(-1px); box-shadow: 0 10px 26px rgba(240,180,41,.22); }
+.fest-countdown { margin-top: 30px; padding-top: 20px; border-top: 1px solid var(--line); }
+.fest-count__label { font-size: 11.5px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: var(--fg-3); }
+.fest-count__row { display: flex; gap: 26px; margin-top: 10px; }
+.fest-count__row span { font-size: 13px; color: var(--fg-3); letter-spacing: .04em; }
+.fest-count__row b { display: block; font-size: 38px; font-weight: 800; color: var(--fg); font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+.fest-section { margin-top: 56px; }
+.fest-head { display: flex; align-items: baseline; justify-content: space-between; gap: 14px; flex-wrap: wrap; }
+.fest-h2 { font-size: clamp(26px, 4vw, 34px); font-weight: 800; letter-spacing: -.02em; margin: 0; }
+.fest-tally { font-size: 13px; font-weight: 700; color: var(--gold); letter-spacing: .04em; }
+.fest-sub { font-size: 14px; color: var(--fg-3); margin: 8px 0 20px; }
+.fest-empty { border: 1px dashed var(--line); border-radius: 12px; padding: 30px 26px; color: var(--fg-2); font-size: 15px; line-height: 1.6; }
+.fest-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
+.fest-card { position: relative; border: 1px solid var(--line); background: linear-gradient(180deg, var(--ink-2), rgba(19,18,24,.55)); border-radius: 14px; padding: 20px; transition: transform .14s ease, border-color .14s ease; }
+.fest-card:hover { transform: translateY(-2px); border-color: rgba(240,180,41,.36); }
+.fest-card[data-confirmed="true"] { border-color: rgba(240,180,41,.30); }
+.fest-card__breweries { font-size: 12.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--violet); line-height: 1.4; }
+.fest-card__beer { font-size: 21px; font-weight: 800; letter-spacing: -.01em; margin: 8px 0 0; line-height: 1.2; }
+.fest-card__meta { font-size: 14px; color: var(--fg-2); margin-top: 5px; }
+.fest-card__foot { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
+.fest-tag { font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; padding: 4px 9px; border-radius: 6px; border: 1px solid var(--line); color: var(--fg-3); }
+.fest-tag[data-confirmed="true"] { color: var(--gold); border-color: rgba(240,180,41,.4); background: var(--gold-soft); }
+.fest-how { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin-top: 18px; }
+.fest-how__item { border-top: 2px solid var(--gold); padding-top: 14px; }
+.fest-how__title { font-size: 16.5px; font-weight: 700; }
+.fest-how__text { font-size: 14.5px; color: var(--fg-2); line-height: 1.6; margin: 6px 0 0; }
+.fest-cta { margin-top: 56px; border: 1px solid var(--line); border-radius: 16px; padding: 28px; background: linear-gradient(120deg, rgba(240,180,41,.10), rgba(169,123,255,.10)); display: flex; align-items: center; justify-content: space-between; gap: 22px; flex-wrap: wrap; }
+.fest-cta__title { font-size: 24px; font-weight: 800; letter-spacing: -.01em; }
+.fest-cta__text { font-size: 15px; color: var(--fg-2); line-height: 1.55; margin: 6px 0 0; max-width: 46ch; }
+.fest-cta .fest-btn { margin-top: 0; }
+.fest-also { margin-top: 46px; border-left: 2px solid var(--violet); padding: 4px 0 4px 18px; }
+.fest-also__label { font-size: 11.5px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: var(--violet); }
+.fest-also__text { font-size: 15px; color: var(--fg-2); line-height: 1.6; margin: 6px 0 0; max-width: 62ch; }
+.fest-foot { margin-top: 56px; padding-top: 22px; border-top: 1px solid var(--line); font-size: 13.5px; color: var(--fg-3); line-height: 1.6; }
+@media (max-width: 560px) {
+  .fest-shell { padding: 16px 16px 64px; }
+  .fest-count__row { gap: 18px; }
+  .fest-count__row b { font-size: 30px; }
+  .fest-cta { padding: 22px; }
+}

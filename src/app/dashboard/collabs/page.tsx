@@ -2,6 +2,7 @@
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '@/lib/supabase'
+import { FestEditor } from '@/components/brewasia/FestEditor'
 import { SignupLink } from '@/components/brewasia/SignupLink'
 import { Field, Modal, Pill, StatCard, fmtL, todayKey, type Tone } from '@/components/brewasia/ui'
 
@@ -629,6 +630,7 @@ function FormTag() {
   return <span title="Sent by the brewery through the collab form" style={{ marginLeft: 8, fontSize: 11, fontWeight: 600, color: 'var(--accent)', border: '1px solid var(--accent)', borderRadius: 5, padding: '1px 6px', verticalAlign: 2, whiteSpace: 'nowrap' }}>Form</span>
 }
 
+const festUrl = () => `${typeof window !== 'undefined' ? window.location.origin : ''}/brewasia/collabfest`
 const collabUrl = () => `${typeof window !== 'undefined' ? window.location.origin : ''}/brewasia/collab`
 const collabMessage = () => `Hi,
 
@@ -654,6 +656,7 @@ BigBamBoo`
 
 function CollabSignup({ collabs, onRefresh }: { collabs: Collab[]; onRefresh: () => void }) {
   const [open, setOpen] = useState(true)
+  const [editFest, setEditFest] = useState(false)
   const sent = collabs.filter(c => c.from_form)
   const breweries = new Set(sent.map(c => c.submitted_by || c.code)).size
   return (
@@ -666,6 +669,17 @@ function CollabSignup({ collabs, onRefresh }: { collabs: Collab[]; onRefresh: ()
         <span aria-hidden style={{ marginLeft: 'auto', color: 'var(--text-muted)', fontSize: 12 }}>{open ? 'Hide' : 'Show'}</span>
       </button>
       {open && <SignupLink url={collabUrl()} emailText={collabMessage()} onRefresh={onRefresh} />}
+      {open && (
+        <div className="donate-panel__invite" style={{ borderTop: '1px solid var(--border-light)' }}>
+          <input className="input" readOnly value={festUrl()} onFocus={e => e.currentTarget.select()} aria-label="Public event page" style={{ fontSize: 13 }} />
+          <a className="btn-outline" href={festUrl()} target="_blank" rel="noreferrer" style={{ fontSize: 13, textDecoration: 'none', whiteSpace: 'nowrap' }}>Open event page</a>
+          <button className="btn-outline" onClick={() => setEditFest(f => !f)} aria-expanded={editFest} style={{ fontSize: 13, whiteSpace: 'nowrap' }}>{editFest ? 'Close editor' : 'Edit page'}</button>
+          <span style={{ fontSize: 12, color: 'var(--text-muted)', flexBasis: '100%' }}>
+            The public Halloween Collab Fest page. It lists every collab with Fest kegs once its status is Matched or further. Lead and Dead stay hidden.
+          </span>
+        </div>
+      )}
+      {open && editFest && <FestEditor url={festUrl()} />}
     </div>
   )
 }
