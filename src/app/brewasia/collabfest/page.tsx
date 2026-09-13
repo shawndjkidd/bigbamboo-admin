@@ -4,7 +4,7 @@ import FestPage, { type FestBeer, type FestSettings } from './FestPage'
 
 // Public event page for the Halloween Collab Fest.
 // - The beer list is built from the Collabs page: any collab with Fest kegs and a status
-//   of Matched or further shows here. Lead and Dead stay hidden.
+//   of Event ready shows here. Everything earlier stays private.
 // - Every piece of wording, the poster and the ticket link come from site_settings
 //   (fest_*), edited on the admin Collabs page. No code change needed to edit the page.
 export const dynamic = 'force-dynamic'
@@ -16,7 +16,9 @@ export const metadata: Metadata = {
   robots: { index: true, follow: true },
 }
 
-const SHOW = ['matched', 'brewing', 'event_ready', 'done']
+// Only beers Shawn has actually put on the Fest show here: a collab appears once its
+// status is Event ready (or Done). Matched and Brewing stay private.
+const SHOW = ['event_ready', 'done']
 
 export default async function CollabFestPage() {
   let beers: FestBeer[] = []

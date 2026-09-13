@@ -18,7 +18,7 @@ export type FestSettings = Record<string, string>
 type Lang = 'en' | 'vi'
 
 const MAPS = 'https://www.google.com/maps/search/BigBamBoo+An+Ph%C3%BA+Th%E1%BB%A7+%C4%90%E1%BB%A9c'
-const SIGNUP = '/brewasia/collab'
+const CONTACT_FALLBACK = 'https://wa.me/84347393293'
 
 // Defaults. Anything set in the admin (site_settings key in brackets) wins.
 const T = {
@@ -31,7 +31,7 @@ const T = {
     address: '10 An Phú, An Khánh, Thủ Đức (District 2), Ho Chi Minh City',
     map: 'Open in Google Maps',
     blurb: 'One night, one bar, and a wall of collaboration beers brewed for BrewAsia 2026. Breweries from Vietnam, Korea, India, China and the Philippines pour side by side: collab kegs on the BigBamBoo taps, the BZZD collab bar, a BBQ collab with Việt Thích Barbecue and a guest pitmaster from India, DJs all night. Come in costume.',
-    entry: 'Free for BrewAsia conference attendees · 100k at the door for everyone else',
+    entry: 'BrewAsia conference pass = free entry, free tasting glass and free tokens. 100k at the door for everyone else.',
     tickets: 'Get tickets',
     priceTitle: 'At the door',
     priceDoor: '100k',
@@ -46,24 +46,25 @@ const T = {
     countries: 'Vietnam · Korea · India · China · Philippines',
     countdown: 'Until the first pour',
     days: 'days', hours: 'hours', mins: 'min',
-    lineup: 'What’s pouring',
-    lineupSub: 'The list grows as collabs are confirmed. Come back for more.',
+    lineup: 'On the taps',
+    lineupSub: 'Announced one by one as they’re locked in. Keep checking back.',
     confirmed: 'Confirmed',
     coming: 'Brewing',
+    contactCta: 'Contact us',
     ownSetup: 'Pouring at their own bar',
     tbd: 'Beer to be announced',
-    empty: 'The first collabs are in the tank. This list fills up as breweries confirm.',
+    empty: 'The tap list drops soon. Collabs are in the tank right now.',
     beers: 'beers', breweries: 'breweries',
     howTitle: 'How the night works',
     how1Title: 'Collab taps',
     how1: 'Collab kegs go on the BigBamBoo tap wall, poured all night until they blow.',
     how2Title: 'BZZD collab bar & BBQ',
-    how2: 'The BZZD collab bar pours alongside the taps, with a BBQ collab from Việt Thích Barbecue and a guest pitmaster from India. DJs all night.',
+    how2: 'The BZZD collab bar pours alongside the taps, with a BBQ collab from Việt Thích Barbecue and a guest pitmaster from India. DJs until close.',
     how3Title: 'Costumes',
     how3: 'It’s Halloween. Dress for it. The best costumes get looked after.',
-    ctaTitle: 'Brewing a collab?',
-    ctaText: 'Breweries: tell us what you’re bringing. Pour it yourself, or send kegs for our taps.',
-    cta: 'Send us your collab',
+    ctaTitle: 'Brewing something for the Fest?',
+    ctaText: 'Breweries: contact us for more information.',
+    cta: 'Contact us for more information',
     alsoTitle: 'The night before',
     also: 'Friday Ale Trail · Friday 30 October — collab beers pouring at bars across Saigon. Pay as you go, collect a digital stamp at every stop.',
   },
@@ -76,7 +77,7 @@ const T = {
     address: '10 An Phú, An Khánh, Thủ Đức (Quận 2 cũ), TP. Hồ Chí Minh',
     map: 'Mở Google Maps',
     blurb: 'Một đêm, một quán bar, và cả một dàn bia collab nấu riêng cho BrewAsia 2026. Các nhà máy bia từ Việt Nam, Hàn Quốc, Ấn Độ, Trung Quốc và Philippines cùng góp mặt: keg collab trên dàn vòi BigBamBoo, quầy collab BZZD, BBQ collab cùng Việt Thích Barbecue và đầu bếp BBQ khách mời từ Ấn Độ, DJ suốt đêm. Hãy tới trong trang phục hoá trang.',
-    entry: 'Miễn phí cho khách tham dự hội nghị BrewAsia · 100k tại cửa cho khách khác',
+    entry: 'Vé hội nghị BrewAsia = vào cửa miễn phí, ly nếm thử miễn phí và token miễn phí. 100k tại cửa cho khách khác.',
     tickets: 'Mua vé',
     priceTitle: 'Tại cửa',
     priceDoor: '100k',
@@ -91,13 +92,14 @@ const T = {
     countries: 'Việt Nam · Hàn Quốc · Ấn Độ · Trung Quốc · Philippines',
     countdown: 'Đếm ngược tới ly đầu tiên',
     days: 'ngày', hours: 'giờ', mins: 'phút',
-    lineup: 'Bia có mặt',
-    lineupSub: 'Danh sách sẽ dài thêm khi các collab được xác nhận. Hãy ghé lại nhé.',
+    lineup: 'Trên vòi',
+    lineupSub: 'Công bố dần khi từng mẻ được chốt. Hãy ghé lại nhé.',
     confirmed: 'Đã xác nhận',
     coming: 'Đang nấu',
+    contactCta: 'Liên hệ',
     ownSetup: 'Tự phục vụ tại quầy riêng',
     tbd: 'Bia sẽ công bố sau',
-    empty: 'Những mẻ collab đầu tiên đang trong tank. Danh sách sẽ cập nhật khi được xác nhận.',
+    empty: 'Danh sách vòi sẽ sớm công bố. Các mẻ collab đang trong tank.',
     beers: 'loại bia', breweries: 'nhà máy bia',
     howTitle: 'Đêm hội diễn ra thế nào',
     how1Title: 'Vòi collab',
@@ -106,9 +108,9 @@ const T = {
     how2: 'Quầy collab BZZD phục vụ song song dàn vòi, cùng BBQ collab từ Việt Thích Barbecue và đầu bếp khách mời từ Ấn Độ. DJ suốt đêm.',
     how3Title: 'Hoá trang',
     how3: 'Halloween mà. Hãy hoá trang. Những bộ đẹp nhất sẽ được ưu ái.',
-    ctaTitle: 'Bạn đang nấu bia collab?',
-    ctaText: 'Nhà máy bia: hãy cho chúng tôi biết bạn mang gì tới. Tự phục vụ, hoặc gửi keg cho vòi của chúng tôi.',
-    cta: 'Gửi thông tin collab',
+    ctaTitle: 'Bạn đang nấu bia cho Fest?',
+    ctaText: 'Nhà máy bia: liên hệ với chúng tôi để biết thêm thông tin.',
+    cta: 'Liên hệ để biết thêm',
     alsoTitle: 'Đêm trước đó',
     also: 'Friday Ale Trail · Thứ Sáu 30/10 — bia collab phục vụ tại các quán khắp Sài Gòn. Trả tiền theo từng ly, nhận dấu điện tử ở mỗi điểm.',
   },
@@ -206,7 +208,6 @@ export default function FestPage({ beers, settings }: { beers: FestBeer[]; setti
                   <div className="fest-card__meta">{[b.beer_style, b.abv != null ? `${b.abv}%` : null].filter(Boolean).join(' · ')}</div>
                   <div className="fest-card__foot">
                     <span className="fest-tag" data-confirmed={b.confirmed}>{b.confirmed ? s('confirmed') : s('coming')}</span>
-                    {b.own_setup && <span className="fest-tag fest-tag--ghost">{s('ownSetup')}</span>}
                   </div>
                 </article>
               ))}
@@ -252,13 +253,9 @@ export default function FestPage({ beers, settings }: { beers: FestBeer[]; setti
             <div className="fest-cta__title">{s('ctaTitle')}</div>
             <p className="fest-cta__text">{s('ctaText')}</p>
           </div>
-          <a className="fest-btn" href={SIGNUP}>{s('cta')}</a>
+          <a className="fest-btn" href={settings.fest_contact_url || CONTACT_FALLBACK} target="_blank" rel="noreferrer">{s('cta')}</a>
         </section>
 
-        <section className="fest-also">
-          <div className="fest-also__label">{s('alsoTitle')}</div>
-          <p className="fest-also__text">{s('also')}</p>
-        </section>
 
         <footer className="fest-foot">
           <div>{s('venue')} · {s('address')}</div>
