@@ -924,26 +924,42 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); c
   letter-spacing: .2em; text-transform: uppercase; opacity: .55;
 }
 /* Not announced yet: the bill is printed, the names are not filled in. */
-.fest-card--ghost .fest-card__brewery:last-of-type,
-.fest-card--ghost .fest-card__beer { color: rgba(27,20,16,.3); }
-.fest-card--ghost .fest-card__band { background: rgba(27,20,16,.12); color: rgba(27,20,16,.42); }
+/* Colour rotation: A cream / dark green / orange, B dark green / cream / mustard,
+   C burnt orange / cream / dark green. The accent is the beer band and the versus. */
+.fest-card[data-tone="a"] { color: var(--pine); }
+.fest-card[data-tone="b"] { background: var(--pine); color: var(--cream); }
+.fest-card[data-tone="b"] .fest-card__band { background: var(--amber); color: var(--pine); }
+.fest-card[data-tone="b"] .fest-card__vs { color: var(--amber); }
+.fest-card[data-tone="c"] { background: var(--rust); color: var(--cream); }
+.fest-card[data-tone="c"] .fest-card__band { background: var(--pine); color: var(--cream); }
+.fest-card[data-tone="c"] .fest-card__vs { color: var(--cream); }
+.fest-card[data-tone="b"] .fest-card__vs::before, .fest-card[data-tone="b"] .fest-card__vs::after,
+.fest-card[data-tone="c"] .fest-card__vs::before, .fest-card[data-tone="c"] .fest-card__vs::after { background: currentColor; opacity: .35; }
+/* Coming soon: the unknowns fade back against whichever tone the card has. */
+.fest-card--ghost .fest-card__brewery:last-of-type { opacity: .45; }
+.fest-card--ghost .fest-card__beer { opacity: .85; }
 .fest-card--ghost .fest-card__stats { opacity: .34; }
 /* States. JUST ADDED is a small tilted tag; KICKED greys the card out under a worn
    rubber stamp. Both are real text. */
 .fest-card__badge {
-  position: absolute; top: 2px; right: 6px; z-index: 2; transform: rotate(6deg);
+  position: absolute; top: clamp(34px, 3.4vw, 38px); right: 8px; z-index: 2; transform: rotate(6deg);
   background: var(--amber); color: var(--ink); border: 2px solid var(--ink); border-radius: 3px;
   padding: 3px 8px; box-shadow: 2px 2px 0 rgba(0,0,0,.45);
   font-family: var(--fest-body); font-size: clamp(9.5px, 1vw, 11px); font-weight: 700;
   letter-spacing: .16em; text-transform: uppercase; line-height: 1.2;
 }
-.fest-card[data-state="kicked"] > :not(.fest-card__stamp) { filter: grayscale(1) contrast(.92); opacity: .62; }
+/* Greys the whole card, background included, whatever its tone; the stamp sits above. */
+.fest-card[data-state="kicked"]::after {
+  content: ''; position: absolute; inset: 0; z-index: 1; pointer-events: none;
+  -webkit-backdrop-filter: grayscale(1) brightness(.78) contrast(.9); backdrop-filter: grayscale(1) brightness(.78) contrast(.9);
+}
 .fest-card__stamp {
   position: absolute; top: 44%; left: 50%; z-index: 2; transform: translate(-50%, -50%) rotate(-14deg);
-  padding: 4px 16px 2px; border: 4px solid var(--rust-2); border-radius: 4px; color: var(--rust-2);
+  padding: 4px 16px 2px; border: 4px solid var(--rust); border-radius: 4px; color: var(--rust);
+  background: var(--cream); box-shadow: 3px 3px 0 rgba(0,0,0,.4);
   font-family: var(--fest-display, 'Alfa Slab One'), Georgia, serif; font-weight: 400;
   font-size: clamp(34px, 4.4vw, 50px); line-height: 1; letter-spacing: .06em; text-transform: uppercase;
-  white-space: nowrap; pointer-events: none; opacity: .92;
+  white-space: nowrap; pointer-events: none;
   /* Worn ink: every layer is solid except one small hole; intersected, the holes knock
      flecks out of the stamp. Browsers without mask-composite show it clean. */
   --wear:

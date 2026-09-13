@@ -179,6 +179,8 @@ const T = {
 }
 
 const K = (lang: Lang, name: string) => `fest_${name}_${lang}`
+// Tap card colours rotate A B C by position, never by brewery.
+const TONES = ['a', 'b', 'c'] as const
 
 // A torn paper edge, as if the band above were ripped off. `fill` is the colour of the
 // band the tear belongs to.
@@ -432,7 +434,7 @@ export default function FestPage({ beers, settings, live }: { beers: FestBeer[];
             {beers.map((b, i) => {
               const state = b.kicked ? 'kicked' : b.just_added ? 'just_added' : 'announced'
               return (
-                <article key={b.code} className="fest-card" data-state={state} style={{ transform: `rotate(${(i % 3) - 1}deg)` }}>
+                <article key={b.code} className="fest-card" data-state={state} data-tone={TONES[i % 3]} style={{ transform: `rotate(${(i % 3) - 1}deg)` }}>
                   {state === 'just_added' && <span className="fest-card__badge">{s('justAdded')}</span>}
                   {state === 'kicked' && <span className="fest-card__stamp">{s('kicked')}</span>}
                   <div className="fest-card__top">{s('oneNight')}</div>
@@ -469,7 +471,7 @@ export default function FestPage({ beers, settings, live }: { beers: FestBeer[];
             {Array.from({ length: fillers }, (_, k) => {
               const i = beers.length + k
               return (
-                <article key={`soon-${k}`} className="fest-card fest-card--ghost" data-state="coming_soon" style={{ transform: `rotate(${(i % 3) - 1}deg)` }}>
+                <article key={`soon-${k}`} className="fest-card fest-card--ghost" data-state="coming_soon" data-tone={TONES[i % 3]} style={{ transform: `rotate(${(i % 3) - 1}deg)` }}>
                   <div className="fest-card__top">{s('oneNight')}</div>
                   <div className="fest-card__bill">
                     <div className="fest-card__brewery">BigBamBoo</div>
