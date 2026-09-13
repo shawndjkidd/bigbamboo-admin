@@ -416,6 +416,7 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); c
    admin for headings, Archivo for everything else. Neon only on the dark band,
    which is the only ground it glows against.                        */
 .fest {
+  --pine: #0e1e14; --pine-2: #16301f;
   --rust: #b8391a; --rust-2: #8f2a12;
   --cream: #f3e3c3; --cream-2: #e6d0a8;
   --ink: #14100c; --ink-2: #241a12;
@@ -434,11 +435,7 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); c
 .fest-hero { position: relative; background: var(--ink); }
 /* The poster is the headline — never crop it. Whole image, always, at any width. */
 .fest-banner { display: block; width: 100%; height: auto; }
-@media (min-aspect-ratio: 1/1) and (min-width: 900px) {
-  /* On short, wide screens keep it inside the viewport so the page still invites a scroll. */
-  .fest-hero { display: flex; justify-content: center; background: var(--ink); }
-  .fest-banner { max-height: 86vh; width: auto; max-width: 100%; }
-}
+
 .fest-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .fest-topbar {
   position: absolute; inset: 0 0 auto 0; z-index: 2;
@@ -467,6 +464,13 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); c
 }
 .fest-inner { width: var(--fest-w); margin: 0 auto; padding-inline: clamp(18px, 4vw, 40px); position: relative; z-index: 1; text-align: center; }
 .fest-band--rust { background-color: var(--rust); color: var(--cream); }
+/* Continues straight out of the poster: same deep green, same grain. */
+.fest-band--pine {
+  background-color: var(--pine); color: var(--cream);
+  background-image: var(--paper), radial-gradient(900px 420px at 50% -10%, rgba(242,177,52,.10), transparent 65%);
+}
+.fest-band--pine .fest-strip { box-shadow: 7px 7px 0 rgba(0,0,0,.5); }
+.fest-band--pine .fest-stat__n { text-shadow: 5px 5px 0 rgba(0,0,0,.5); }
 .fest-band--dark { background-color: var(--ink); color: var(--cream); }
 .fest-band--cream { background-color: var(--cream); color: var(--ink); }
 .fest-band--teal { background-color: var(--teal); color: var(--cream); }
@@ -478,7 +482,7 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); c
 .fest-palms--left { left: clamp(-10px, 1vw, 24px); }
 .fest-palms--right { right: clamp(-10px, 1vw, 24px); transform: scaleX(-1); }
 .fest-tear { display: block; width: 100%; height: clamp(22px, 3.4vw, 42px); }
-.fest-bats { position: absolute; top: clamp(10px, 2vw, 22px); right: clamp(10px, 3vw, 40px); width: clamp(120px, 18vw, 220px); color: rgba(20,16,12,.55); pointer-events: none; }
+.fest-bats { position: absolute; top: clamp(10px, 2vw, 22px); right: clamp(10px, 3vw, 40px); width: clamp(120px, 18vw, 220px); color: rgba(0,0,0,.45); pointer-events: none; }
 
 /* Headings -------------------------------------------------------------- */
 .fest-h2 {
@@ -487,6 +491,8 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); c
 }
 .fest-band--cream .fest-h2 { color: var(--rust-2); }
 .fest-band--teal .fest-h2 { color: var(--amber); }
+.fest-band--rust .fest-h2 { color: var(--cream); }
+.fest-band--rust .fest-cta { background: rgba(20,16,12,.28); }
 .fest-h2--glow { color: #fff4e2; text-shadow: 0 0 12px rgba(242,177,52,.5), 0 0 44px rgba(224,82,28,.45); margin-top: clamp(48px, 7vw, 78px); }
 .fest-head { display: flex; align-items: baseline; justify-content: center; gap: 16px; flex-wrap: wrap; }
 .fest-tally { font-size: 13px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: var(--rust); }

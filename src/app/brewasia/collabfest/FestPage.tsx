@@ -18,6 +18,8 @@ export type FestBeer = {
   own_setup: boolean
 }
 export type FestSettings = Record<string, string>
+// Counted live from the Collabs page.
+export type FestLive = { collabs: number; countries: number; countryList: string }
 type Lang = 'en' | 'vi'
 
 const MAPS = 'https://www.google.com/maps/search/BigBamBoo+An+Ph%C3%BA+Th%E1%BB%A7+%C4%90%E1%BB%A9c'
@@ -170,7 +172,7 @@ function Bats() {
   )
 }
 
-export default function FestPage({ beers, settings }: { beers: FestBeer[]; settings: FestSettings }) {
+export default function FestPage({ beers, settings, live }: { beers: FestBeer[]; settings: FestSettings; live?: FestLive }) {
   const [lang, setLang] = useState<Lang>('en')
   const [now, setNow] = useState<number | null>(null)
   const base = T[lang]
@@ -192,6 +194,11 @@ export default function FestPage({ beers, settings }: { beers: FestBeer[]; setti
   const h = left == null ? null : Math.floor((left % 86400000) / 3600000)
   const m = left == null ? null : Math.floor((left % 3600000) / 60000)
   const breweryCount = new Set(beers.flatMap(b => b.breweries)).size
+
+  // Admin wording wins; then the live count from Collabs; then the default above.
+  const statCollabs = settings[K(lang, 'statCollabs')] || (live && live.collabs > 1 ? `${live.collabs}` : base.statCollabs)
+  const statCountries = settings[K(lang, 'statCountries')] || (live && live.countries > 1 ? `${live.countries}` : base.statCountries)
+  const countryList = settings[K(lang, 'countries')] || (live && live.countries > 1 ? live.countryList : base.countries)
   // Socials come from the same settings the homepage uses, so they're set in one place.
   const socials = [
     { label: 'Instagram', href: settings.home_instagram_url || '' },
@@ -219,7 +226,7 @@ export default function FestPage({ beers, settings }: { beers: FestBeer[]; setti
       </header>
 
       {/* Rust band: when, where, how you get in */}
-      <section className="fest-band fest-band--rust">
+      <section className="fest-band fest-band--pine">
         <Bats />
         <div className="fest-inner">
           <div className="fest-strip">
@@ -239,7 +246,7 @@ export default function FestPage({ beers, settings }: { beers: FestBeer[]; setti
           </div>
 
           <div className="fest-stats">
-            {[[s('statCollabs'), s('statCollabsLabel')], [s('statCountries'), s('statCountriesLabel')], [s('statHours'), s('statHoursLabel')]].map(([n, l]) => (
+            {[[statCollabs, s('statCollabsLabel')], [statCountries, s('statCountriesLabel')], [s('statHours'), s('statHoursLabel')]].map(([n, l]) => (
               <div key={l} className="fest-stat">
                 <span className="fest-stat__n">{n}</span>
                 <span className="fest-stat__l">{l}</span>
@@ -248,7 +255,7 @@ export default function FestPage({ beers, settings }: { beers: FestBeer[]; setti
           </div>
 
           <h2 className="fest-claim">{s('countriesTitle')}</h2>
-          <div className="fest-countries">{s('countries')}</div>
+          <div className="fest-countries">{countryList}</div>
 
           <ul className="fest-draws">
             {[s('draw1'), s('draw2'), s('draw3')].map(d => <li key={d} className="fest-draw">{d}</li>)}
@@ -345,8 +352,8 @@ export default function FestPage({ beers, settings }: { beers: FestBeer[]; setti
       </section>
 
       {/* Teal band: BigBamBoo's own colour, for how the night runs */}
-      <div className="fest-seam"><Tear fill="#0f3d38" /></div>
-      <section className="fest-band fest-band--teal">
+      <div className="fest-seam"><Tear fill="#b8391a" /></div>
+      <section className="fest-band fest-band--rust">
         <div className="fest-inner">
           <h2 className="fest-h2">{s('howTitle')}</h2>
           <div className="fest-how">
