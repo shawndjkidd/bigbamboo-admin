@@ -1,163 +1,446 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import {
+  type Lang, type Settings, resolve, resolveLink,
+  sectionLabel, translateTag, priceLabel,
+} from './copy'
+import type { SiteEvent, SiteMenuItem } from './types'
 
-// Public homepage. English and Vietnamese. Everything here reads from site_settings
-// (home_*), so the dashboard can change it; the defaults below are what shows when a
-// field is left empty.
+// A port of the old Hostinger homepage. Same sections in the same order, same section
+// ids, same palette and type — the styles live under .bb in globals.css. What changed on
+// purpose: four languages became two, the pill shapes are squared off, the weekly hours
+// table is gone (hours are event-based now), and the fonts are self-hosted.
+//
+// Still to come in a later phase: the ticket modal and event detail popup, and the
+// Drinks Club sign-up box (it needs its table first — a dead email box on a live page is
+// worse than no box).
 
-export type SiteSettings = Record<string, string>
-export type SiteEvent = { id: string; title: string; date: string; description: string | null }
-type Lang = 'en' | 'vi'
+const STAMP_COUNT = 10
+const FILLED_STAMPS = 3
 
-const D = {
-  en: {
-    tagline: 'Cold drinks. Breezy nights. No bad vibes.',
-    sub: 'Tiki–tropical vibes, draft cocktails, craft beer, American comfort food with a Hawaiian twist… and a little bụi!',
-    statusLabel: 'Status', statusValue: 'Open on event nights', statusNote: 'Hours are event-based right now — check what’s on below',
-    locLabel: 'Location', locValue: 'An Phú, Saigon', locNote: '10 An Phú, An Khánh, Thủ Đức, TP.HCM',
-    nextLabel: 'Coming up', nextNone: 'New events going up soon',
-    eventsTitle: 'What’s on',
-    eventsNone: 'Nothing on the calendar this week. Follow along for the next one.',
-    festTitle: 'Halloween Collab Fest',
-    festText: 'Saturday 31 October · 4pm – midnight. Collab beers from Vietnam, Korea, India, China and the Philippines, the BZZD collab bar, BBQ, DJs and costumes.',
-    festCta: 'See the lineup',
-    visitTitle: 'Pull up.',
-    visitAddress: '10 An Phú, An Khánh · Thủ Đức, TP.HCM',
-    maps: 'Open in Maps', grab: 'Order on Grab', instagram: 'Instagram', facebook: 'Facebook',
-    menuTitle: 'Drink & eat',
-    menuText: 'Draft cocktails, craft beer, and food that goes with both.',
-    footer: 'An Phú · Ho Chi Minh City',
-  },
-  vi: {
-    tagline: 'Bia lạnh. Đêm mát. Không drama.',
-    sub: 'Không khí tiki nhiệt đới, cocktail rót vòi, bia thủ công, món Mỹ pha chút Hawaii… và một chút bụi!',
-    statusLabel: 'Tình trạng', statusValue: 'Mở cửa vào đêm sự kiện', statusNote: 'Hiện tại chúng tôi mở theo sự kiện — xem lịch bên dưới',
-    locLabel: 'Địa chỉ', locValue: 'An Phú, Sài Gòn', locNote: '10 An Phú, An Khánh, Thủ Đức, TP.HCM',
-    nextLabel: 'Sắp diễn ra', nextNone: 'Sự kiện mới sẽ sớm được cập nhật',
-    eventsTitle: 'Sự kiện',
-    eventsNone: 'Tuần này chưa có sự kiện. Hãy theo dõi để biết sự kiện kế tiếp.',
-    festTitle: 'Halloween Collab Fest',
-    festText: 'Thứ Bảy 31/10 · 16:00 – nửa đêm. Bia collab từ Việt Nam, Hàn Quốc, Ấn Độ, Trung Quốc và Philippines, quầy collab BZZD, BBQ, DJ và hoá trang.',
-    festCta: 'Xem danh sách bia',
-    visitTitle: 'Ghé chơi nhé.',
-    visitAddress: '10 An Phú, An Khánh · Thủ Đức, TP.HCM',
-    maps: 'Mở bản đồ', grab: 'Đặt trên Grab', instagram: 'Instagram', facebook: 'Facebook',
-    menuTitle: 'Uống & ăn',
-    menuText: 'Cocktail rót vòi, bia thủ công, và đồ ăn hợp với cả hai.',
-    footer: 'An Phú · TP. Hồ Chí Minh',
-  },
-}
-
-const LINKS = {
-  maps: 'https://www.google.com/maps/search/BigBamBoo+An+Ph%C3%BA+Th%E1%BB%A7+%C4%90%E1%BB%A9c',
-  fest: '/brewasia/collabfest',
-}
-
-export default function SiteHome({ settings, events }: { settings: SiteSettings; events: SiteEvent[] }) {
+export default function SiteHome({
+  settings, events, menu,
+}: { settings: Settings; events: SiteEvent[]; menu: SiteMenuItem[] }) {
   const [lang, setLang] = useState<Lang>('en')
-  const base = D[lang]
-  const s = (name: keyof (typeof D)['en']) => settings[`home_${String(name)}_${lang}`] || base[name]
+  const [cat, setCat] = useState('all')
+  const [active, setActive] = useState('menu')
+
+  const t = (name: string) => resolve(settings, lang, name)
 
   useEffect(() => {
-    try { const v = localStorage.getItem('bb_lang'); if (v === 'vi' || v === 'en') setLang(v) } catch { /* ignore */ }
+    try {
+      const v = localStorage.getItem('bb_lang')
+      if (v === 'vi' || v === 'en') setLang(v)
+    } catch { /* ignore */ }
   }, [])
-  function pickLang(l: Lang) { setLang(l); try { localStorage.setItem('bb_lang', l) } catch { /* ignore */ } }
 
-  const instagram = settings.home_instagram_url || ''
-  const facebook = settings.home_facebook_url || ''
-  const grab = settings.home_grab_url || ''
+  function pickLang(l: Lang) {
+    setLang(l)
+    try { localStorage.setItem('bb_lang', l) } catch { /* ignore */ }
+  }
+
+  // Which section the header and phone bar should highlight.
+  useEffect(() => {
+    const ids = ['menu', 'events', 'club', 'visit']
+    function onScroll() {
+      const y = window.scrollY + 140
+      let found = ids[0]
+      for (const id of ids) {
+        const el = document.getElementById(id)
+        if (el && el.offsetTop <= y) found = id
+      }
+      setActive(found)
+    }
+    onScroll()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
+
+  const instagram = resolveLink(settings, 'instagram_url')
+  const facebook = resolveLink(settings, 'facebook_url')
+  const messenger = resolveLink(settings, 'messenger_url')
+  const maps = resolveLink(settings, 'maps_url')
+  const grab = resolveLink(settings, 'grab_url')
+
+  // Group the drinks by section, in the order the dashboard defines.
+  const sections = useMemo(() => {
+    const bySection = new Map<string, SiteMenuItem[]>()
+    for (const item of menu) {
+      if (!bySection.has(item.section)) bySection.set(item.section, [])
+      bySection.get(item.section)!.push(item)
+    }
+    let order: string[] = []
+    try {
+      const raw = settings.menu_section_order
+      if (raw) { const parsed = JSON.parse(raw); if (Array.isArray(parsed)) order = parsed.map(String) }
+    } catch { /* fall back to insertion order */ }
+    const keys = [
+      ...order.filter(k => bySection.has(k)),
+      ...Array.from(bySection.keys()).filter(k => !order.includes(k)),
+    ]
+    return keys.map(key => ({ key, items: bySection.get(key)!, ...sectionLabel(key, lang) }))
+  }, [menu, settings.menu_section_order, lang])
+
+  const shown = cat === 'all' ? sections : sections.filter(s => s.key === cat)
   const next = events[0]
+  const todayISO = new Date().toISOString().slice(0, 10)
+  const openToday = !!next && next.date === todayISO
+
+  const navItems = [
+    { id: 'menu', label: t('navMenu') },
+    { id: 'events', label: t('navEvents') },
+    { id: 'visit', label: t('navVisit') },
+  ]
 
   return (
     <div className="bb">
-      <div className="bb-shell">
-        <header className="bb-top">
-          <span className="bb-mark">BigBamBoo</span>
-          <div style={{ display: 'flex', gap: 4 }} role="group" aria-label="Language">
-            {(['en', 'vi'] as Lang[]).map(l => (
-              <button key={l} className="bb-lang" data-on={lang === l} onClick={() => pickLang(l)} aria-pressed={lang === l}>
-                {l === 'en' ? 'EN' : 'VI'}
-              </button>
-            ))}
-          </div>
-        </header>
+      <header className="bb-header">
+        <div className="bb-logo-wrap">
+          <div className="bb-logo-icon"><img src="/images/bbb-img-4.jpg" alt="" /></div>
+          <div className="bb-logo-text">BigBamBoo</div>
+        </div>
+        <nav className="bb-nav">
+          {navItems.map(n => (
+            <a key={n.id} href={`#${n.id}`} className={`bb-nav-link${active === n.id ? ' is-on' : ''}`}>{n.label}</a>
+          ))}
+          <a href="#club" className="bb-nav-cta">{t('navClub')}</a>
+        </nav>
+        <div className="bb-header-controls" role="group" aria-label="Language">
+          {(['en', 'vi'] as Lang[]).map(l => (
+            <button
+              key={l}
+              className="bb-lang"
+              data-on={lang === l}
+              aria-pressed={lang === l}
+              onClick={() => pickLang(l)}
+            >
+              {l.toUpperCase()}
+            </button>
+          ))}
+        </div>
+      </header>
 
-        <section className="bb-hero">
-          <h1 className="bb-tagline">{s('tagline')}</h1>
-          <p className="bb-sub">{s('sub')}</p>
-          <div className="bb-hero__links">
-            <a className="bb-btn" href="#events">{s('eventsTitle')}</a>
-            <a className="bb-btn bb-btn--ghost" href={LINKS.fest}>{s('festTitle')}</a>
+      <section className="bb-hero">
+        <div className="bb-hero-bg" />
+        <div className="bb-hero-fade" />
+        <div className="bb-hero-content">
+          <div className="bb-hero-logo"><img src="/images/bbb-img-5.png" alt="BigBamBoo" /></div>
+          <div className="bb-hero-slogan"><Slogan text={t('heroSlogan')} /></div>
+          <p className="bb-hero-tagline">{t('heroTagline')}</p>
+          <div className="bb-hero-buttons">
+            <a href="#menu" className="bb-hbtn bb-hbtn--menu">{t('btnMenu')}</a>
+            <a href="#events" className="bb-hbtn bb-hbtn--events">{t('btnEvents')}</a>
+            {/* Scan·Tap·Win lived at /scan-tap-win.html on Hostinger; it's a real page in
+                this app now. */}
+            <a href="/play" className="bb-hbtn bb-hbtn--spin">{t('btnSpin')}</a>
           </div>
-        </section>
+          <div className="bb-hero-social">
+            {instagram && <a href={instagram} target="_blank" rel="noreferrer" className="bb-soc bb-soc--ig">{t('socInstagram')}</a>}
+            {facebook && <a href={facebook} target="_blank" rel="noreferrer" className="bb-soc bb-soc--fb">{t('socFacebook')}</a>}
+            {messenger && <a href={messenger} target="_blank" rel="noreferrer" className="bb-soc bb-soc--msg">{t('btnMessenger')}</a>}
+          </div>
+        </div>
+      </section>
 
-        <section className="bb-strip">
-          <div className="bb-strip__card">
-            <div className="bb-strip__label">{s('statusLabel')}</div>
-            <div className="bb-strip__value">{s('statusValue')}</div>
-            <div className="bb-strip__note">{s('statusNote')}</div>
-          </div>
-          <div className="bb-strip__card">
-            <div className="bb-strip__label">{s('locLabel')}</div>
-            <div className="bb-strip__value">{s('locValue')}</div>
-            <div className="bb-strip__note">{s('locNote')}</div>
-          </div>
-          <div className="bb-strip__card">
-            <div className="bb-strip__label">{s('nextLabel')}</div>
-            <div className="bb-strip__value">{next ? next.title : s('nextNone')}</div>
-            <div className="bb-strip__note">{next ? fmtDate(next.date, lang) : ''}</div>
-          </div>
-        </section>
-
-        <section className="bb-section" id="events">
-          <h2 className="bb-h2">{s('eventsTitle')}</h2>
-          {events.length === 0 ? (
-            <div className="bb-empty">{s('eventsNone')}</div>
+      <div className="bb-info">
+        <div className="bb-info-cell">
+          <div className="bb-info-label">{t('labelStatus')}</div>
+          {openToday ? (
+            <div className="bb-open-badge">
+              <span className="bb-open-pulse" />
+              <span className="bb-info-main">{t('statusOpenToday')}</span>
+            </div>
           ) : (
-            <div className="bb-events">
-              {events.map(e => (
-                <article key={e.id} className="bb-event">
-                  <div className="bb-event__date">{fmtDate(e.date, lang)}</div>
-                  <h3 className="bb-event__title">{e.title}</h3>
-                  {e.description && <p className="bb-event__text">{e.description}</p>}
+            <div className="bb-info-main">{t('statusMain')}</div>
+          )}
+          <div className="bb-info-sub">{t('statusSub')}</div>
+        </div>
+        <div className="bb-info-cell">
+          <div className="bb-info-label">{t('labelLocation')}</div>
+          <div className="bb-info-main">{t('locCity')}</div>
+          <div className="bb-info-sub">{t('locStreet')}</div>
+        </div>
+        <div className="bb-info-cell">
+          <div className="bb-info-label">{t('labelComingUp')}</div>
+          <div className="bb-info-main">{next ? eventTitle(next, lang) : t('comingUpNone')}</div>
+          <div className="bb-info-sub">{next ? fmtDate(next.date, lang) : ''}</div>
+        </div>
+      </div>
+
+      <section id="menu">
+        {sections.length > 0 && (
+          <div className="bb-cat-wrap">
+            <div className="bb-cat-nav">
+              <button className={`bb-cat-btn${cat === 'all' ? ' is-on' : ''}`} onClick={() => setCat('all')}>
+                {t('catAll')}
+              </button>
+              {sections.map(s => (
+                <button key={s.key} className={`bb-cat-btn${cat === s.key ? ' is-on' : ''}`} onClick={() => setCat(s.key)}>
+                  {s.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+        {sections.length === 0 ? (
+          <div className="bb-menu-empty" style={{ paddingTop: 48 }}>{t('menuEmpty')}</div>
+        ) : (
+          shown.map((s, i) => (
+            <div key={s.key}>
+              {i > 0 && <div className="bb-menu-divider" />}
+              <div className="bb-menu-head">
+                <h3>{s.label}</h3>
+                {s.note && <p>{s.note}</p>}
+              </div>
+              <div className="bb-menu-list">
+                {s.items.map(item => <MenuRow key={item.id} item={item} sectionKey={s.key} lang={lang} />)}
+              </div>
+            </div>
+          ))
+        )}
+      </section>
+
+      <section id="events">
+        <div className="bb-events-bg" />
+        <div className="bb-events-inner">
+          <div className="bb-events-eyebrow">{t('eventsEyebrow')}</div>
+          <h2 className="bb-events-title">{t('eventsTitle')}</h2>
+          {events.length === 0 ? (
+            <div className="bb-events-empty">{t('eventsEmpty')}</div>
+          ) : (
+            <div className="bb-events-grid">
+              {events.map(ev => (
+                <article key={ev.id} className="bb-event-card">
+                  <div className="bb-event-date">
+                    <div className="bb-ev-day">{dayOf(ev.date)}</div>
+                    <div className="bb-ev-month">{monthOf(ev.date, lang)}</div>
+                  </div>
+                  <div className="bb-ev-body">
+                    {ev.type && <div className="bb-ev-type">{ev.type}</div>}
+                    <div className="bb-ev-title">{eventTitle(ev, lang)}</div>
+                    {eventText(ev, lang) && <div className="bb-ev-desc">{eventText(ev, lang)}</div>}
+                    <div className="bb-ev-meta">
+                      {fmtTime(ev) && <span className="bb-ev-time">{fmtTime(ev)}</span>}
+                      {ev.facebook_link && (
+                        <a href={ev.facebook_link} target="_blank" rel="noreferrer" className="bb-ev-fb">
+                          {t('evFacebook')}
+                        </a>
+                      )}
+                    </div>
+                  </div>
                 </article>
               ))}
             </div>
           )}
-        </section>
+        </div>
+      </section>
 
-        <section className="bb-fest">
-          <div>
-            <div className="bb-fest__kicker">BrewAsia 2026</div>
-            <h2 className="bb-h2">{s('festTitle')}</h2>
-            <p className="bb-fest__text">{s('festText')}</p>
-            <a className="bb-btn" href={LINKS.fest}>{s('festCta')}</a>
+      <section id="coming-soon">
+        <div className="bb-cs-bg" />
+        <div className="bb-cs-content">
+          <div className="bb-cs-badge">{t('merchBadge')}</div>
+          <div className="bb-cs-headline">{t('merchHeadline')}</div>
+          <p className="bb-cs-sub">{t('merchSub')}</p>
+        </div>
+      </section>
+
+      <section id="club">
+        <div className="bb-club-inner">
+          <div className="bb-club-top">
+            <div>
+              <div className="bb-club-eyebrow">{t('clubEyebrow')}</div>
+              <h2 className="bb-club-title">
+                <span className="bb-ct1">{t('clubBuy')}</span>
+                <span className="bb-ct2">{t('clubFree')}</span>
+              </h2>
+            </div>
           </div>
-          <img className="bb-fest__poster" src={settings.fest_poster_url || '/collabfest-poster.jpg'} alt="" />
-        </section>
-
-        <section className="bb-section" id="visit">
-          <h2 className="bb-h2">{s('visitTitle')}</h2>
-          <p className="bb-address">{s('visitAddress')}</p>
-          <div className="bb-hero__links">
-            <a className="bb-btn" href={LINKS.maps} target="_blank" rel="noreferrer">{s('maps')}</a>
-            {grab && <a className="bb-btn bb-btn--ghost" href={grab} target="_blank" rel="noreferrer">{s('grab')}</a>}
-            {instagram && <a className="bb-btn bb-btn--ghost" href={instagram} target="_blank" rel="noreferrer">{s('instagram')}</a>}
-            {facebook && <a className="bb-btn bb-btn--ghost" href={facebook} target="_blank" rel="noreferrer">{s('facebook')}</a>}
+          <div className="bb-club-stamps">
+            {Array.from({ length: STAMP_COUNT }).map((_, i) =>
+              i === STAMP_COUNT - 1
+                ? <div key={i} className="bb-stamp is-gift">FREE</div>
+                : <div key={i} className={`bb-stamp${i < FILLED_STAMPS ? ' is-filled' : ''}`}><StampMark /></div>
+            )}
           </div>
-        </section>
+          <p className="bb-club-fine">{t('clubFine')}</p>
+        </div>
+      </section>
 
-        <footer className="bb-foot">
-          <div>BigBamBoo · bigbamboo.app</div>
-          <div>{s('footer')}</div>
-        </footer>
-      </div>
+      <section id="visit">
+        <div className="bb-visit-inner">
+          <div className="bb-visit-left">
+            <div className="bb-visit-eyebrow">{t('locCity')}</div>
+            <h2 className="bb-visit-title">{t('visitTitle')}</h2>
+            <div className="bb-visit-addr">{t('locStreet')}</div>
+            <div className="bb-visit-links">
+              {maps && <a href={maps} target="_blank" rel="noreferrer" className="bb-map-btn">{t('visitMaps')}</a>}
+              {instagram && <a href={instagram} target="_blank" rel="noreferrer" className="bb-visit-btn is-ig">{t('socInstagram')}</a>}
+              {facebook && <a href={facebook} target="_blank" rel="noreferrer" className="bb-visit-btn is-fb">{t('socFacebook')}</a>}
+              {grab && <a href={grab} target="_blank" rel="noreferrer" className="bb-visit-btn is-grab">{t('socGrab')}</a>}
+            </div>
+          </div>
+          <div className="bb-visit-right">
+            <div className="bb-visit-note">{t('visitNote')}</div>
+          </div>
+        </div>
+      </section>
+
+      <footer className="bb-foot">
+        <div className="bb-foot-logo">BigBamBoo · bigbamboo.app</div>
+        <div className="bb-foot-note">{t('footerNote')} · © {new Date().getFullYear()}</div>
+      </footer>
+
+      <nav className="bb-bottom-nav">
+        <div className="bb-bnav-items">
+          <a href="#menu" className={`bb-bnav-item${active === 'menu' ? ' is-on' : ''}`}>{t('navMenu')}</a>
+          <a href="#events" className={`bb-bnav-item${active === 'events' ? ' is-on' : ''}`}>{t('navEvents')}</a>
+          <a href="#club" className={`bb-bnav-item${active === 'club' ? ' is-on' : ''}`}>{t('navClubShort')}</a>
+          <a href="#visit" className={`bb-bnav-item${active === 'visit' ? ' is-on' : ''}`}>{t('navVisit')}</a>
+        </div>
+      </nav>
     </div>
   )
+}
+
+// ── Menu row ────────────────────────────────────────────────────────────────────
+
+function MenuRow({ item, sectionKey, lang }: { item: SiteMenuItem; sectionKey: string; lang: Lang }) {
+  const name = (lang === 'vi' && item.name_vi) || item.name
+  const desc = (lang === 'vi' && item.description_vi) || item.description
+
+  // Wine, beer and shots wear the ABV next to the brand; everything else next to the name.
+  const abvOnBrandLine = ['wine', 'beer', 'shots'].includes(sectionKey) && !!item.abv
+  const brandParts = [item.brand, item.subtitle].filter(Boolean) as string[]
+  if (abvOnBrandLine) brandParts.push(item.abv)
+
+  const tags = item.tags.filter(Boolean)
+
+  return (
+    <div className="bb-menu-row">
+      <div>
+        <div className="bb-row-name-line">
+          <span className="bb-row-name">{name}</span>
+          {item.abv && !abvOnBrandLine && sectionKey !== 'na' && <span className="bb-row-abv">{item.abv}</span>}
+        </div>
+        {brandParts.length > 0 && <div className="bb-row-brand">{brandParts.join(' · ')}</div>}
+        {desc && <div className="bb-row-desc">{desc}</div>}
+        {(item.is_draft || tags.length > 0) && (
+          <div className="bb-row-tags">
+            {item.is_draft && <span className="bb-row-tag is-draft">{translateTag('On Tap', lang)}</span>}
+            {tags.map(tag => (
+              <span key={tag} className={`bb-row-tag${tagClass(tag)}`}>{translateTag(tag, lang)}</span>
+            ))}
+          </div>
+        )}
+      </div>
+      <Price item={item} lang={lang} />
+    </div>
+  )
+}
+
+function Price({ item, lang }: { item: SiteMenuItem; lang: Lang }) {
+  if (item.price_glass || item.price_bottle) {
+    return (
+      <div className="bb-prices is-wine">
+        {item.price_glass && <Pair size={priceLabel('glass', lang)} val={item.price_glass} />}
+        {item.price_bottle && <Pair size={priceLabel('bottle', lang)} val={item.price_bottle} />}
+      </div>
+    )
+  }
+  if (item.price_small || item.price_large) {
+    return (
+      <div className="bb-prices">
+        {item.price_small && <Pair size={priceLabel('glass', lang)} val={item.price_small} />}
+        {item.price_large && <Pair size={priceLabel('pint', lang)} val={item.price_large} />}
+      </div>
+    )
+  }
+  // Combined strings typed into the dashboard, e.g. "350ml: 59k / 500ml: 79k".
+  if (item.price.includes('/')) {
+    const parts = item.price.split('/').map(s => s.trim()).filter(Boolean)
+    const isWine = parts.some(p => /^(glass|bottle)/i.test(p))
+    return (
+      <div className={`bb-prices${isWine ? ' is-wine' : ''}`}>
+        {parts.map((p, i) => {
+          const glass = p.match(/^glass[:\s]+(.+)$/i)
+          const bottle = p.match(/^bottle[:\s]+(.+)$/i)
+          const sized = p.match(/^(\d+\s*ml)[:\s]+(.+)$/i)
+          if (glass) return <Pair key={i} size={priceLabel('glass', lang)} val={glass[1].trim()} />
+          if (bottle) return <Pair key={i} size={priceLabel('bottle', lang)} val={bottle[1].trim()} />
+          if (sized) return <Pair key={i} size={sized[1]} val={sized[2].trim()} />
+          return <Pair key={i} size="" val={p} />
+        })}
+      </div>
+    )
+  }
+  return <div className="bb-row-price">{item.price}</div>
+}
+
+function Pair({ size, val }: { size: string; val: string }) {
+  return (
+    <div className="bb-price-pair">
+      {size && <span className="bb-mp-size">{size}</span>}
+      <span className="bb-mp-val">{val}</span>
+    </div>
+  )
+}
+
+// Green for the food-ish tags, teal for the drink-ish ones — as the old page had it.
+function tagClass(tag: string): string {
+  const t = tag.toLowerCase()
+  if (['vegan', 'local', 'fresh'].includes(t)) return ' is-g'
+  if (['craft', 'on tap', 'new'].includes(t)) return ' is-b'
+  return ''
+}
+
+// ── Bits and pieces ─────────────────────────────────────────────────────────────
+
+// The slogan is one editable string; whatever sits between *stars* comes out yellow.
+function Slogan({ text }: { text: string }) {
+  const parts = text.split('*')
+  return <>{parts.map((p, i) => (i % 2 === 1 ? <span key={i}>{p}</span> : p))}</>
+}
+
+function StampMark() {
+  return (
+    <svg viewBox="0 0 80 80" aria-hidden="true">
+      <rect x="2" y="2" width="76" height="76" rx="8" fill="none" stroke="currentColor" strokeWidth="2.5" />
+      <rect x="10" y="10" width="18" height="20" rx="3" fill="none" stroke="currentColor" strokeWidth="2" />
+      <rect x="32" y="10" width="8" height="20" rx="2" fill="none" stroke="currentColor" strokeWidth="2" />
+      <rect x="44" y="10" width="18" height="20" rx="3" fill="none" stroke="currentColor" strokeWidth="2" />
+      <rect x="8" y="33" width="19" height="14" rx="3" fill="none" stroke="currentColor" strokeWidth="2" />
+      <rect x="30" y="33" width="8" height="14" rx="2" fill="none" stroke="currentColor" strokeWidth="2" />
+      <rect x="41" y="33" width="23" height="14" rx="3" fill="none" stroke="currentColor" strokeWidth="2" />
+      <rect x="8" y="50" width="19" height="20" rx="3" fill="none" stroke="currentColor" strokeWidth="2" />
+      <rect x="30" y="50" width="18" height="20" rx="3" fill="none" stroke="currentColor" strokeWidth="2" />
+      <rect x="51" y="50" width="18" height="20" rx="3" fill="none" stroke="currentColor" strokeWidth="2" />
+    </svg>
+  )
+}
+
+function eventTitle(ev: SiteEvent, lang: Lang) { return (lang === 'vi' && ev.title_vi) || ev.title }
+function eventText(ev: SiteEvent, lang: Lang) { return (lang === 'vi' && ev.description_vi) || ev.description }
+
+function dayOf(d: string) {
+  const dt = new Date(`${d}T00:00:00`)
+  return isNaN(dt.getTime()) ? '—' : String(dt.getDate())
+}
+
+function monthOf(d: string, lang: Lang) {
+  const dt = new Date(`${d}T00:00:00`)
+  if (isNaN(dt.getTime())) return ''
+  return dt.toLocaleDateString(lang === 'vi' ? 'vi-VN' : 'en-GB', { month: 'short' })
 }
 
 function fmtDate(d: string, lang: Lang) {
   const dt = new Date(`${d}T00:00:00`)
   if (isNaN(dt.getTime())) return d
   return dt.toLocaleDateString(lang === 'vi' ? 'vi-VN' : 'en-GB', { weekday: 'short', day: 'numeric', month: 'short' })
+}
+
+function fmtTime(ev: SiteEvent) {
+  return [ev.start_time, ev.end_time]
+    .filter(Boolean)
+    .map(t => String(t).slice(0, 5).replace(':', 'h'))
+    .join(' – ')
 }
