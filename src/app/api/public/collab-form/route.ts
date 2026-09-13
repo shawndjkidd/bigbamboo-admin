@@ -4,6 +4,7 @@
 // Only ever ADDS a collab. Unknown breweries are added to Producers.
 import { NextRequest, NextResponse } from 'next/server'
 import { getServiceClient } from '@/lib/supabase'
+import { addInboxItem } from '@/lib/inbox'
 
 export const dynamic = 'force-dynamic'
 
@@ -95,7 +96,21 @@ export async function POST(req: NextRequest) {
     notes: notes ? `From collab form: ${notes}` : null,
     fest_pour: ['own_setup', 'main_taps', 'unsure'].includes(body?.fest_pour) ? body.fest_pour : null,
     from_form: true, submitted_by: sender.name, contact_name, contact_phone, contact_email,
-  }).select('code').single()
+  }).select('id, code').single()
   if (error || !data) return NextResponse.json({ error: 'save' }, { status: 500 })
+
+  await addInboxItem(svc, {
+    kind: 'collab_signup',
+    title: `${sender.name} signed up a collab`,
+    summary: [
+      names.length > 1 ? `with ${names.slice(1).map(n => n.name).join(', ')}` : 'partner not named yet',
+      str(body?.beer_name, 160),
+      kegs.length ? `${kegs.length} keg line${kegs.length === 1 ? '' : 's'}` : null,
+      contact_name,
+    ].filter(Boolean).join(' · '),
+    ref_table: 'brewasia_collabs',
+    ref_id: data.id ?? data.code,
+  })
+
   return NextResponse.json({ ok: true, code: data.code, brewery: sender.name, partners: names.slice(1).map(n => n.name) })
 }

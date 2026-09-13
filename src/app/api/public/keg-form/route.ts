@@ -7,6 +7,7 @@
 import { randomBytes } from 'crypto'
 import { NextRequest, NextResponse } from 'next/server'
 import { getServiceClient } from '@/lib/supabase'
+import { addInboxItem } from '@/lib/inbox'
 
 export const dynamic = 'force-dynamic'
 
@@ -106,6 +107,17 @@ export async function POST(req: NextRequest) {
     contact_phone: producer.contact_phone || contact_phone,
     contact_email: producer.contact_email || contact_email,
   }).eq('id', producer.id)
+
+  await addInboxItem(svc, {
+    kind: 'keg_signup',
+    title: `${producer.name} pledged ${rows.length} keg${rows.length === 1 ? '' : 's'}`,
+    summary: [
+      (created || []).map((k: any) => k.beer_name).filter(Boolean).slice(0, 4).join(', ') || null,
+      contact_name,
+    ].filter(Boolean).join(' · '),
+    ref_table: 'brewasia_producers',
+    ref_id: producer.id,
+  })
 
   return NextResponse.json({ ok: true, brewery: producer.name, kegs: created || [], edit_token: editToken })
 }

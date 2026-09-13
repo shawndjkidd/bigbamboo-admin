@@ -25,6 +25,7 @@ export default function SiteHome({
   const [cat, setCat] = useState('all')
   const [active, setActive] = useState('menu')
   const [clubEmail, setClubEmail] = useState('')
+  const [clubZalo, setClubZalo] = useState('')
   const [clubTrap, setClubTrap] = useState('')
   const [club, setClub] = useState<ClubState>('idle')
 
@@ -97,11 +98,12 @@ export default function SiteHome({
       const r = await fetch('/api/public/club-signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: clubEmail, lang, source: 'homepage', website: clubTrap }),
+        body: JSON.stringify({ email: clubEmail, zalo: clubZalo, lang, source: 'homepage', website: clubTrap }),
       })
       if (!r.ok) throw new Error('failed')
       setClub('done')
       setClubEmail('')
+      setClubZalo('')
     } catch { setClub('error') }
   }
 
@@ -293,9 +295,14 @@ export default function SiteHome({
                   value={clubTrap} onChange={e => setClubTrap(e.target.value)}
                 />
                 <input
-                  type="email" required className="bb-club-email" aria-label={t('clubNotify')}
+                  type="email" required className="bb-club-email" aria-label={t('clubEmailPlaceholder')}
                   placeholder={t('clubEmailPlaceholder')}
                   value={clubEmail} onChange={e => setClubEmail(e.target.value)}
+                />
+                <input
+                  type="tel" className="bb-club-email bb-club-email--zalo" aria-label={t('clubZaloPlaceholder')}
+                  placeholder={t('clubZaloPlaceholder')}
+                  value={clubZalo} onChange={e => setClubZalo(e.target.value)}
                 />
                 <button type="submit" className="bb-club-btn" disabled={club === 'sending'}>
                   {t('clubNotify')}
@@ -311,6 +318,7 @@ export default function SiteHome({
                 : <div key={i} className={`bb-stamp${i < FILLED_STAMPS ? ' is-filled' : ''}`}><StampMark /></div>
             )}
           </div>
+          {clubReady && <p className="bb-club-promise">{t('clubPromise')}</p>}
           <p className="bb-club-fine">{t('clubFine')}</p>
         </div>
       </section>

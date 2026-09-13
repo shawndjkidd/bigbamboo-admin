@@ -963,6 +963,9 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); c
 .bb-club-btn:disabled { opacity: 0.55; cursor: not-allowed; }
 .bb-club-fine { font-family: var(--mono-font); font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--yellow); opacity: 0.85; }
 .bb-club-said { font-family: var(--mono-font); font-size: 12px; letter-spacing: 0.08em; color: var(--t1); margin-top: 8px; }
+/* The Zalo box is optional, so it gives ground to the address when space is tight. */
+.bb-club-email--zalo { flex: 0 1 210px; min-width: 150px; }
+.bb-club-promise { font-size: 13px; color: var(--t2); margin: 10px 0 4px; line-height: 1.5; }
 /* Honeypot: off-screen rather than display:none, which some bots skip. */
 .bb-hide { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
 

@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { usePathname, useSearchParams, useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useT, setAdminLang, type Lang } from '@/i18n/admin'
+import { KINDS } from '@/lib/inbox'
 
 interface NavItem {
   href: string
@@ -93,6 +94,28 @@ function SidebarInner({ role, venueName }: { role: string; venueName: string }) 
   useEffect(() => { setOpen(false) }, [pathname, sp.toString()])
   const { t, lang } = useT()
   const label = (k: string) => t.nav[k] || k
+
+  // A dot next to any tab holding something nobody has looked at yet. Counted by kind and
+  // mapped to the tab that owns those records, so the sidebar and the Overview inbox can
+  // never disagree about where a thing lives.
+  const [newByHref, setNewByHref] = useState<Record<string, number>>({})
+  useEffect(() => {
+    let cancelled = false
+    async function count() {
+      const { data, error } = await supabase.from('inbox_items').select('kind').eq('status', 'new')
+      if (cancelled || error || !data) return
+      const out: Record<string, number> = {}
+      for (const row of data as { kind: string }[]) {
+        const href = (KINDS as Record<string, { href: string }>)[row.kind]?.href
+        if (href) out[href] = (out[href] || 0) + 1
+      }
+      setNewByHref(out)
+    }
+    count()
+    // Cheap enough to re-check on navigation; that is also when a count is most likely
+    // to have just changed, because reading a tab is what clears it.
+    return () => { cancelled = true }
+  }, [pathname])
 
   async function copyLink(href: string) {
     const url = (typeof window !== 'undefined' ? window.location.origin : '') + href
@@ -193,6 +216,15 @@ function SidebarInner({ role, venueName }: { role: string; venueName: string }) 
               letterSpacing: '0.01em',
             }}>
               {label(item.label)}
+              {newByHref[item.href.split('?')[0]] > 0 && (
+                <span
+                  title={`${newByHref[item.href.split('?')[0]]} new`}
+                  style={{
+                    display: 'inline-block', width: 7, height: 7, borderRadius: '50%',
+                    background: 'var(--red, #dc2626)', marginLeft: 7, verticalAlign: 'middle',
+                  }}
+                />
+              )}
             </Link>
           )
         })}

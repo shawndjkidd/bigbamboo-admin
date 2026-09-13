@@ -4,19 +4,21 @@ import { supabase } from '@/lib/supabase'
 
 // Drinks Club sign-ups from the public homepage.
 //
-// These are not customers. They are addresses somebody typed into a box, so nothing here
-// is in the loyalty tables and nothing gets stamped. When the stamp card is real, work
-// down this list and create the customer deliberately — "Mark done" records that you did,
-// so the list can be worked through without keeping a second one somewhere else.
+// These are not customers. They are details somebody typed into a box, so nothing here is
+// in the loyalty tables and nothing gets stamped. When the stamp card is real, export this
+// list and create the customers deliberately.
+//
+// The page promises we'll only ever message people about the Drinks Club. This list is
+// that promise: one table to export, one table to delete from.
 
 type Signup = {
   id: string
-  email: string
   created_at: string
+  email: string
+  zalo: string | null
+  name: string | null
   source: string
   lang: string
-  converted_at: string | null
-  notes: string | null
 }
 
 export default function ClubSignupsPage() {
@@ -24,7 +26,6 @@ export default function ClubSignupsPage() {
   const [loading, setLoading] = useState(true)
   const [msg, setMsg] = useState('')
   const [q, setQ] = useState('')
-  const [showDone, setShowDone] = useState(false)
 
   useEffect(() => { load() }, [])
 
@@ -32,12 +33,10 @@ export default function ClubSignupsPage() {
     setLoading(true)
     const { data, error } = await supabase
       .from('club_signups')
-      .select('id, email, created_at, source, lang, converted_at, notes')
+      .select('id, created_at, email, zalo, name, source, lang')
       .order('created_at', { ascending: false })
     setLoading(false)
     if (error) {
-      // Until the migration is applied this table does not exist; say so plainly rather
-      // than showing an empty list, which reads as "nobody has signed up".
       setMsg(
         /does not exist|schema cache/i.test(error.message)
           ? 'The club_signups table is not there yet. Apply supabase/migrations/20260913000000_club_signups.sql and reload.'
@@ -49,29 +48,56 @@ export default function ClubSignupsPage() {
     setRows((data || []) as Signup[])
   }
 
-  async function toggleDone(r: Signup) {
-    const converted_at = r.converted_at ? null : new Date().toISOString()
-    const { error } = await supabase.from('club_signups').update({ converted_at }).eq('id', r.id)
-    if (error) { setMsg(error.message); return }
-    setRows(prev => prev.map(x => (x.id === r.id ? { ...x, converted_at } : x)))
-  }
-
   const shown = useMemo(() => {
     const needle = q.trim().toLowerCase()
-    return rows.filter(r => {
-      if (!showDone && r.converted_at) return false
-      return !needle || r.email.toLowerCase().includes(needle)
-    })
-  }, [rows, q, showDone])
-
-  const waiting = rows.filter(r => !r.converted_at).length
-
-  function copyAll() {
-    const list = shown.map(r => r.email).join(', ')
-    navigator.clipboard?.writeText(list).then(
-      () => setMsg(`Copied ${shown.length} address${shown.length === 1 ? '' : 'es'}.`),
-      () => setMsg('Could not copy — select the column by hand.')
+    if (!needle) return rows
+    return rows.filter(r =>
+      r.email.toLowerCase().includes(needle) ||
+      (r.name || '').toLowerCase().includes(needle) ||
+      (r.zalo || '').includes(needle)
     )
+  }, [rows, q])
+
+  const withZalo = rows.filter(r => r.zalo).length
+
+  // Somebody asking to come off the list has to be able to come off it — that is the
+  // other half of "we'll only ever message you about the Drinks Club". Also how a test
+  // sign-up gets tidied away.
+  async function remove(r: Signup) {
+    if (!confirm(`Remove ${r.email} from the Drinks Club list?`)) return
+    const { error } = await supabase.from('club_signups').delete().eq('id', r.id)
+    if (error) { setMsg(error.message); return }
+    setRows(prev => prev.filter(x => x.id !== r.id))
+    setMsg(`Removed ${r.email}.`)
+  }
+
+  // A spreadsheet is what this list is for, so give people the file rather than a column
+  // to drag-select. Excel opens UTF-8 CSV correctly only with a BOM, and Vietnamese names
+  // are the whole reason that matters here.
+  function exportCsv() {
+    const cell = (v: string | null) => {
+      const s = String(v ?? '')
+      return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
+    }
+    const header = ['Email', 'Name', 'Zalo', 'Language', 'Source', 'Signed up']
+    const lines = [
+      header.join(','),
+      ...shown.map(r => [
+        cell(r.email), cell(r.name), cell(r.zalo),
+        cell(r.lang === 'vi' ? 'Vietnamese' : 'English'),
+        cell(r.source), cell(new Date(r.created_at).toISOString().slice(0, 10)),
+      ].join(',')),
+    ]
+    const blob = new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `drinks-club-${new Date().toISOString().slice(0, 10)}.csv`
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    URL.revokeObjectURL(url)
+    setMsg(`Exported ${shown.length} sign-up${shown.length === 1 ? '' : 's'}.`)
   }
 
   if (loading) return <div className="keg-wrap"><div className="card" style={{ padding: 24, color: 'var(--text-muted)' }}>Loading…</div></div>
@@ -82,31 +108,27 @@ export default function ClubSignupsPage() {
         <div>
           <div className="page-title">Drinks Club</div>
           <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: '6px 0 0', maxWidth: 620, lineHeight: 1.55 }}>
-            People who asked to hear when the stamp card launches. {waiting} waiting
-            {rows.length !== waiting && `, ${rows.length - waiting} already done`}.
-            The page promises no spam — this list is the whole promise.
+            {rows.length} {rows.length === 1 ? 'person has' : 'people have'} asked to hear when the stamp card
+            launches{withZalo > 0 && `, ${withZalo} with a Zalo number`}. The homepage promises we’ll only
+            message them about the Drinks Club — this list is that promise.
           </p>
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <button className="btn-outline" onClick={copyAll} disabled={!shown.length} style={{ fontSize: 13 }}>
-            Copy addresses
-          </button>
+          <button className="btn-accent" onClick={exportCsv} disabled={!shown.length}>Export CSV</button>
           <button className="btn-outline" onClick={load} style={{ fontSize: 13 }}>Refresh</button>
         </div>
       </div>
 
       {msg && <div className="card" style={{ padding: '10px 14px', marginTop: 14, fontSize: 13, color: 'var(--text-secondary)' }}>{msg}</div>}
 
-      <div className="card" style={{ padding: 14, marginTop: 18, display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
-        <input
-          className="input" value={q} onChange={e => setQ(e.target.value)}
-          placeholder="Search an address" style={{ flex: 1, minWidth: 200 }}
-        />
-        <label style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 13, color: 'var(--text-secondary)' }}>
-          <input type="checkbox" checked={showDone} onChange={e => setShowDone(e.target.checked)} />
-          Show ones already done
-        </label>
-      </div>
+      {rows.length > 0 && (
+        <div className="card" style={{ padding: 14, marginTop: 18 }}>
+          <input
+            className="input" value={q} onChange={e => setQ(e.target.value)}
+            placeholder="Search a name, address or number" style={{ width: '100%' }}
+          />
+        </div>
+      )}
 
       <div className="card" style={{ padding: 0, marginTop: 18, overflowX: 'auto' }}>
         {shown.length === 0 ? (
@@ -118,23 +140,23 @@ export default function ClubSignupsPage() {
             <thead>
               <tr style={{ textAlign: 'left', color: 'var(--text-muted)', fontSize: 12 }}>
                 <th style={{ padding: '10px 14px', fontWeight: 600 }}>Email</th>
-                <th style={{ padding: '10px 14px', fontWeight: 600 }}>Signed up</th>
+                <th style={{ padding: '10px 14px', fontWeight: 600 }}>Name</th>
+                <th style={{ padding: '10px 14px', fontWeight: 600 }}>Zalo</th>
                 <th style={{ padding: '10px 14px', fontWeight: 600 }}>Language</th>
-                <th style={{ padding: '10px 14px', fontWeight: 600 }}>From</th>
+                <th style={{ padding: '10px 14px', fontWeight: 600 }}>Signed up</th>
                 <th style={{ padding: '10px 14px', fontWeight: 600 }}></th>
               </tr>
             </thead>
             <tbody>
               {shown.map(r => (
-                <tr key={r.id} style={{ borderTop: '1px solid var(--border-light)', opacity: r.converted_at ? 0.55 : 1 }}>
+                <tr key={r.id} style={{ borderTop: '1px solid var(--border-light)' }}>
                   <td style={{ padding: '11px 14px', fontWeight: 600 }}>{r.email}</td>
-                  <td style={{ padding: '11px 14px', color: 'var(--text-secondary)' }}>{fmt(r.created_at)}</td>
+                  <td style={{ padding: '11px 14px', color: 'var(--text-secondary)' }}>{r.name || '—'}</td>
+                  <td style={{ padding: '11px 14px', color: 'var(--text-secondary)' }}>{r.zalo || '—'}</td>
                   <td style={{ padding: '11px 14px', color: 'var(--text-secondary)' }}>{r.lang === 'vi' ? 'Tiếng Việt' : 'English'}</td>
-                  <td style={{ padding: '11px 14px', color: 'var(--text-muted)' }}>{r.source}</td>
+                  <td style={{ padding: '11px 14px', color: 'var(--text-muted)' }}>{fmt(r.created_at)}</td>
                   <td style={{ padding: '11px 14px', textAlign: 'right' }}>
-                    <button className="btn-outline" style={{ fontSize: 12 }} onClick={() => toggleDone(r)}>
-                      {r.converted_at ? 'Undo' : 'Mark done'}
-                    </button>
+                    <button className="btn-outline" style={{ fontSize: 12 }} onClick={() => remove(r)}>Remove</button>
                   </td>
                 </tr>
               ))}

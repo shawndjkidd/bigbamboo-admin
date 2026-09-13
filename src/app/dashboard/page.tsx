@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import { ops, vnd, today, canSeeDashboard, type StaffRole } from '@/lib/ops/api'
+import { KIND_ORDER, kindLabel, kindHref, type InboxItem } from '@/lib/inbox'
 
 type DaySale = { occurred_on: string; net: number | null; gross: number | null; source?: string }
 type EventRow = { id: string; title: string; event_date: string; capacity: number | null; ticket_price: number | null; is_free: boolean | null }
@@ -19,6 +20,7 @@ export default function Overview() {
   const [pnl, setPnl] = useState<Pnl[]>([])
   const [pnlMonth, setPnlMonth] = useState<string>('')
   const [loading, setLoading] = useState(true)
+  const [inbox, setInbox] = useState<InboxItem[]>([])
 
   useEffect(() => { load() }, [])
 
@@ -29,6 +31,16 @@ export default function Overview() {
     const { data: su } = await supabase.from('staff_users').select('role').eq('email', user.email).maybeSingle()
     const r = (su?.role || 'staff') as StaffRole
     setRole(r)
+
+    // What the public sent us and nobody has looked at yet. Read before the financials
+    // because it is the only thing on this page that somebody is waiting on.
+    const { data: inboxRows } = await supabase
+      .from('inbox_items')
+      .select('id, created_at, kind, title, summary, ref_table, ref_id, status')
+      .neq('status', 'done')
+      .order('created_at', { ascending: false })
+      .limit(50)
+    setInbox((inboxRows || []) as InboxItem[])
 
     const td = today()
     const since = new Date(); since.setDate(since.getDate() - 30)
@@ -112,6 +124,8 @@ export default function Overview() {
     <div style={{ maxWidth: 960 }}>
       <h1 style={{ fontSize: 26, fontWeight: 700, margin: '0 0 2px' }}>BigBamBoo</h1>
       <p style={{ fontSize: 14, color: 'var(--text-muted)', margin: 0 }}>Overview · {new Date().toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })}</p>
+
+      <Inbox items={inbox} onChange={setInbox} sectionH={sectionH} card={card} />
 
       {/* Profit & Loss */}
       {canFinance && (
@@ -236,4 +250,139 @@ export default function Overview() {
       </div>
     </div>
   )
+}
+
+// ── Inbox ─────────────────────────────────────────────────────────────────────
+//
+// Everything the public sent us, grouped by kind, each row linking to the tab that owns
+// the real record. The row is a pointer: open it and you land on the record itself, not a
+// copy of it that might have moved on since.
+//
+// new → read → done. Opening a row marks it read, which is what clears the sidebar dot;
+// "Done" files it away. Nothing emails anyone — this is the inbox.
+function Inbox({
+  items, onChange, sectionH, card,
+}: {
+  items: InboxItem[]
+  onChange: (next: InboxItem[]) => void
+  sectionH: React.CSSProperties
+  card: React.CSSProperties
+}) {
+  const [busy, setBusy] = useState(false)
+  const fresh = items.filter(i => i.status === 'new')
+  if (items.length === 0) return null
+
+  async function setStatus(ids: string[], status: 'read' | 'done') {
+    if (!ids.length || busy) return
+    setBusy(true)
+    const { error } = await supabase.from('inbox_items').update({ status }).in('id', ids)
+    setBusy(false)
+    if (error) return
+    onChange(
+      status === 'done'
+        ? items.filter(i => !ids.includes(i.id))
+        : items.map(i => (ids.includes(i.id) ? { ...i, status } : i))
+    )
+  }
+
+  const groups = KIND_ORDER
+    .map(kind => ({ kind, rows: items.filter(i => i.kind === kind) }))
+    .filter(g => g.rows.length > 0)
+  // Anything with a kind we don't have a tab for still has to show up somewhere.
+  const known = new Set(KIND_ORDER as string[])
+  const others = items.filter(i => !known.has(i.kind))
+  if (others.length) groups.push({ kind: 'other' as any, rows: others })
+
+  return (
+    <>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap', margin: '24px 0 12px' }}>
+        <div style={{ ...sectionH, margin: 0 }}>
+          Inbox
+          {fresh.length > 0 && <span style={{ color: 'var(--red)' }}> · {fresh.length} new</span>}
+        </div>
+        {fresh.length > 0 && (
+          <button
+            onClick={() => setStatus(fresh.map(i => i.id), 'read')}
+            disabled={busy}
+            style={{ padding: '6px 12px', fontSize: 12.5, fontWeight: 600, borderRadius: 8, border: '1px solid var(--border-light)', background: 'var(--bg-card)', color: 'var(--text-secondary)', cursor: 'pointer' }}
+          >
+            Mark all read
+          </button>
+        )}
+      </div>
+
+      <div style={{ ...card, padding: 0, overflow: 'hidden' }}>
+        {groups.map((g, gi) => {
+          const href = kindHref(g.kind)
+          const groupNew = g.rows.filter(r => r.status === 'new').length
+          return (
+            <div key={g.kind} style={{ borderTop: gi === 0 ? 'none' : '1px solid var(--border-light)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '12px 18px 6px' }}>
+                <div style={{ fontSize: 12.5, fontWeight: 700, letterSpacing: '.04em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
+                  {kindLabel(g.kind)}
+                  {groupNew > 0 && <span style={{ color: 'var(--red)' }}> · {groupNew}</span>}
+                </div>
+                {href && (
+                  <Link href={href} style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--accent)', textDecoration: 'none' }}>
+                    Open tab →
+                  </Link>
+                )}
+              </div>
+              {g.rows.map(r => {
+                const body = (
+                  <>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      {r.status === 'new' && (
+                        <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--red)', flexShrink: 0 }} />
+                      )}
+                      <span style={{ fontWeight: r.status === 'new' ? 700 : 500, fontSize: 14, color: 'var(--text)' }}>{r.title}</span>
+                    </div>
+                    {r.summary && (
+                      <div style={{ fontSize: 12.5, color: 'var(--text-muted)', marginTop: 3, marginLeft: r.status === 'new' ? 15 : 0, lineHeight: 1.45 }}>
+                        {r.summary}
+                      </div>
+                    )}
+                  </>
+                )
+                return (
+                  <div key={r.id} style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, padding: '9px 18px 11px' }}>
+                    <div style={{ minWidth: 0 }}>
+                      {href ? (
+                        <Link href={href} onClick={() => { if (r.status === 'new') setStatus([r.id], 'read') }} style={{ textDecoration: 'none', display: 'block' }}>
+                          {body}
+                        </Link>
+                      ) : body}
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+                      <span style={{ fontSize: 11.5, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{ago(r.created_at)}</span>
+                      <button
+                        onClick={() => setStatus([r.id], 'done')}
+                        disabled={busy}
+                        style={{ padding: '4px 9px', fontSize: 11.5, fontWeight: 600, borderRadius: 7, border: '1px solid var(--border-light)', background: 'transparent', color: 'var(--text-muted)', cursor: 'pointer' }}
+                      >
+                        Done
+                      </button>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )
+        })}
+      </div>
+    </>
+  )
+}
+
+function ago(iso: string) {
+  const then = new Date(iso).getTime()
+  if (isNaN(then)) return ''
+  const mins = Math.floor((Date.now() - then) / 60000)
+  if (mins < 1) return 'just now'
+  if (mins < 60) return `${mins}m ago`
+  const hrs = Math.floor(mins / 60)
+  if (hrs < 24) return `${hrs}h ago`
+  const days = Math.floor(hrs / 24)
+  if (days < 7) return `${days}d ago`
+  return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
 }
