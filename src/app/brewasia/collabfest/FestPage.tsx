@@ -179,13 +179,19 @@ function Web({ side }: { side: 'left' | 'right' }) {
   )
 }
 
+const BAT = 'M20 30c6-10 10-4 14-10 3 6 6 2 10 10-6-2-8 4-10 6-2-2-4-8-14-6Z'
+
+/* Shadow bats. Six of them, each on its own path and its own clock, so they
+   drift across the band rather than sitting in the corner as decoration. */
 function Bats() {
   return (
-    <svg className="fest-bats" viewBox="0 0 220 60" aria-hidden="true">
-      <path fill="currentColor" d="M20 30c6-10 10-4 14-10 3 6 6 2 10 10-6-2-8 4-10 6-2-2-4-8-14-6Z" />
-      <path fill="currentColor" d="M96 16c7-12 12-5 17-12 4 7 7 2 12 12-7-2-10 5-12 8-3-3-5-10-17-8Z" opacity=".75" />
-      <path fill="currentColor" d="M164 38c5-9 9-4 12-9 3 5 5 2 9 9-5-2-7 3-9 5-2-2-3-7-12-5Z" opacity=".6" />
-    </svg>
+    <div className="fest-bats" aria-hidden="true">
+      {[0, 1, 2, 3, 4, 5].map(i => (
+        <svg key={i} className="fest-bat" data-i={i} viewBox="0 0 64 36">
+          <path fill="currentColor" d={BAT} />
+        </svg>
+      ))}
+    </div>
   )
 }
 
@@ -226,6 +232,7 @@ export default function FestPage({ beers, settings, live }: { beers: FestBeer[];
     <div className="fest" data-lang={lang}>
       {/* Poster, full bleed, doing the job it was drawn for */}
       <header className="fest-hero">
+        <Bats />
         <div className="fest-topbar">
           <span className="fest-mark">BigBamBoo</span>
           <div role="group" aria-label="Language" style={{ display: 'flex', gap: 4 }}>
@@ -271,12 +278,8 @@ export default function FestPage({ beers, settings, live }: { beers: FestBeer[];
           <h2 className="fest-claim">{s('countriesTitle')}</h2>
 
           <ul className="fest-draws">
-            {[s('draw1'), s('draw2'), s('draw3')].map((d, i) => (
-              <li key={d} className="fest-draw" data-i={i}>
-                <span className="fest-draw__text">{d}</span>
-                <span className="fest-draw__wear" aria-hidden />
-                {i === 1 && <span className="fest-draw__peel" aria-hidden />}
-              </li>
+            {[s('draw1'), s('draw2'), s('draw3')].map(d => (
+              <li key={d} className="fest-draw">{d}</li>
             ))}
           </ul>
 

@@ -466,12 +466,30 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); c
 .fest-inner { width: var(--fest-w); margin: 0 auto; padding-inline: clamp(18px, 4vw, 40px); position: relative; z-index: 1; text-align: center; }
 .fest-band--rust { background-color: var(--rust); color: var(--cream); }
 /* Continues straight out of the poster: same deep green, same grain. */
+/* One speckle, shared by every dark band, so the grain runs unbroken from the
+   poster all the way down instead of dropping into flat colour. */
+.fest {
+  --fest-speckle:
+    radial-gradient(1.4px 1.4px at 18% 24%, rgba(243,227,195,.14), transparent 60%),
+    radial-gradient(1.1px 1.1px at 71% 12%, rgba(243,227,195,.11), transparent 60%),
+    radial-gradient(1.6px 1.6px at 44% 63%, rgba(243,227,195,.10), transparent 60%),
+    radial-gradient(1.2px 1.2px at 88% 48%, rgba(243,227,195,.12), transparent 60%),
+    radial-gradient(1.3px 1.3px at 9% 78%, rgba(243,227,195,.10), transparent 60%),
+    radial-gradient(1px 1px at 59% 90%, rgba(243,227,195,.13), transparent 60%);
+}
 .fest-band--pine {
   background-color: var(--pine); color: var(--cream);
-  background-image: var(--paper), radial-gradient(900px 420px at 50% -10%, rgba(242,177,52,.10), transparent 65%);
+  background-image:
+    var(--paper), var(--fest-speckle),
+    radial-gradient(900px 420px at 50% -10%, rgba(242,177,52,.10), transparent 65%);
+  background-size: auto, 320px 320px, auto;
 }
 
-.fest-band--dark { background-color: var(--ink); color: var(--cream); }
+.fest-band--dark {
+  background-color: var(--ink); color: var(--cream);
+  background-image: var(--paper), var(--fest-speckle);
+  background-size: auto, 320px 320px;
+}
 .fest-band--cream { background-color: var(--cream); color: var(--ink); }
 .fest-seam { position: relative; line-height: 0; margin-top: -1px; }
 .fest-palms {
@@ -481,15 +499,36 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); c
 .fest-palms--left { left: clamp(-10px, 1vw, 24px); }
 .fest-palms--right { right: clamp(-10px, 1vw, 24px); transform: scaleX(-1); }
 .fest-tear { display: block; width: 100%; height: clamp(22px, 3.4vw, 42px); }
-.fest-bats {
-  position: absolute; top: clamp(10px, 2vw, 22px); right: clamp(10px, 3vw, 40px);
-  width: clamp(120px, 18vw, 220px); color: rgba(0,0,0,.5); pointer-events: none;
-  animation: fest-drift 14s ease-in-out infinite alternate;
+/* Bats ------------------------------------------------------------------
+   Shadows, not illustrations: low opacity, softly blurred, each one crossing
+   the full width on its own clock so the space always has something moving. */
+.fest-bats { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 0; }
+.fest-bat {
+  position: absolute; color: rgba(0,0,0,.42); width: clamp(26px, 3.4vw, 46px); height: auto;
+  filter: blur(.4px);
+  animation: fest-cross linear infinite, fest-flap ease-in-out infinite alternate;
+  will-change: transform;
 }
-@keyframes fest-drift {
-  from { transform: translate(0, 0) rotate(0deg); }
-  to { transform: translate(-26px, 14px) rotate(-3deg); }
+.fest-bat[data-i="0"] { top: 12%; animation-duration: 26s, 0.42s; animation-delay: -3s, 0s; }
+.fest-bat[data-i="1"] { top: 34%; animation-duration: 34s, 0.5s; animation-delay: -14s, -.1s; opacity: .72; width: clamp(20px, 2.6vw, 34px); }
+.fest-bat[data-i="2"] { top: 58%; animation-duration: 21s, 0.36s; animation-delay: -8s, -.2s; opacity: .55; }
+.fest-bat[data-i="3"] { top: 76%; animation-duration: 40s, 0.56s; animation-delay: -22s, -.05s; opacity: .48; width: clamp(30px, 4.2vw, 58px); }
+.fest-bat[data-i="4"] { top: 23%; animation-duration: 30s, 0.46s; animation-delay: -27s, -.3s; opacity: .38; width: clamp(16px, 2vw, 26px); }
+.fest-bat[data-i="5"] { top: 67%; animation-duration: 46s, 0.6s; animation-delay: -35s, -.15s; opacity: .3; width: clamp(36px, 5vw, 68px); }
+@keyframes fest-cross {
+  from { transform: translateX(-16vw) translateY(0); }
+  25%  { transform: translateX(14vw) translateY(-22px); }
+  50%  { transform: translateX(46vw) translateY(16px); }
+  75%  { transform: translateX(78vw) translateY(-14px); }
+  to   { transform: translateX(116vw) translateY(4px); }
 }
+@keyframes fest-flap {
+  from { scale: 1 1; }
+  to { scale: 1 .58; }
+}
+/* Over the poster they read paler, so they stay shadows against the artwork. */
+.fest-hero .fest-bats { z-index: 2; }
+.fest-hero .fest-bat { color: rgba(0,0,0,.34); mix-blend-mode: multiply; }
 .fest-moon {
   position: absolute; top: clamp(-70px, -4vw, -30px); left: 50%; transform: translateX(-50%);
   width: clamp(240px, 34vw, 460px); aspect-ratio: 1; border-radius: 50%; pointer-events: none;
@@ -501,7 +540,7 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); c
 }
 .fest-web--left { left: 0; }
 .fest-web--right { right: 0; transform: scaleX(-1); }
-@media (prefers-reduced-motion: reduce) { .fest-bats { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .fest-bat { animation: none; display: none; } }
 
 /* Headings -------------------------------------------------------------- */
 .fest-h2 {
@@ -541,71 +580,24 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); c
   margin: clamp(34px, 5vw, 54px) auto 0; max-width: 20ch; color: var(--amber);
   text-shadow: 4px 4px 0 rgba(20,16,12,.35);
 }
-/* Dymo tape. Embossed plastic: the letter is pressed through, so it reads as a bright
-   core with a hard dark edge beneath and a thin highlight over. Matte, scuffed, cut by
-   hand, and one corner has started lifting off the wall. */
+/* The three draws. No tape, no paper, no box - the type is the object. Big
+   display caps, a hairline between each, and they fill the band. */
 .fest-draws {
-  list-style: none; display: flex; flex-direction: column; align-items: center; gap: clamp(16px, 2.2vw, 26px);
-  margin: clamp(42px, 5vw, 66px) auto 0; padding: 0;
+  list-style: none; display: flex; flex-direction: column; align-items: stretch;
+  margin: clamp(44px, 5.5vw, 74px) auto 0; padding: 0; max-width: 100%;
 }
 .fest-draw {
-  position: relative; display: inline-flex; align-items: center;
-  padding: clamp(13px, 1.7vw, 17px) clamp(26px, 3vw, 36px) clamp(13px, 1.7vw, 17px) clamp(34px, 3.6vw, 44px);
-  border-radius: 3px;
-  font-family: var(--fest-body); font-weight: 400;
-  font-size: clamp(15px, 2.3vw, 26px); line-height: 1; letter-spacing: .16em; text-transform: uppercase;
-  color: #f6f4f0;
-  background:
-    radial-gradient(120% 180% at 50% -40%, rgba(255,255,255,.10), transparent 60%),
-    linear-gradient(180deg, #2e2d2b 0%, #1c1b1a 55%, #121110 100%);
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,.14),
-    inset 0 -3px 6px rgba(0,0,0,.55),
-    0 12px 20px rgba(0,0,0,.5);
-  text-shadow:
-    0 -1px 0 rgba(255,255,255,.55),
-    0 1px 0 rgba(0,0,0,.9),
-    0 2px 1px rgba(0,0,0,.7),
-    0 0 6px rgba(255,255,255,.16);
-  clip-path: polygon(0.6% 4%, 99.4% 0%, 100% 96%, 0% 100%);
+  position: relative;
+  font-family: var(--fest-display, 'Alfa Slab One'), Georgia, serif; font-weight: 400;
+  font-size: clamp(26px, 6.4vw, 74px); line-height: 1.06; letter-spacing: .015em;
+  text-transform: uppercase; text-align: center; text-wrap: balance;
+  padding-block: clamp(16px, 2.4vw, 30px);
+  color: var(--cream);
+  text-shadow: 0 2px 0 rgba(0,0,0,.5), 0 0 34px rgba(242,177,52,.16);
 }
-.fest-draw::before {
-  content: ''; position: absolute; left: clamp(11px, 1.4vw, 15px); top: 50%; transform: translateY(-50%);
-  width: 7px; height: 7px; border-radius: 50%;
-  background: rgba(0,0,0,.72); box-shadow: inset 0 1px 1px rgba(0,0,0,.9), 0 1px 0 rgba(255,255,255,.14);
-}
-.fest-draw__wear {
-  position: absolute; inset: 0; pointer-events: none; opacity: .5; mix-blend-mode: overlay; border-radius: 3px;
-  background:
-    radial-gradient(14px 3px at 22% 30%, rgba(255,255,255,.5), transparent 70%),
-    radial-gradient(22px 2px at 63% 72%, rgba(255,255,255,.36), transparent 70%),
-    radial-gradient(8px 2px at 84% 36%, rgba(255,255,255,.42), transparent 70%),
-    radial-gradient(18px 3px at 41% 82%, rgba(0,0,0,.45), transparent 70%);
-}
-.fest-draw__peel {
-  position: absolute; right: -3px; bottom: -3px; width: clamp(24px, 2.8vw, 38px); aspect-ratio: 1; pointer-events: none;
-  background: linear-gradient(315deg, #cfcac1 0%, #949087 46%, #615e58 100%);
-  clip-path: polygon(100% 0, 100% 100%, 0 100%);
-  border-bottom-right-radius: 3px;
-  filter: drop-shadow(-5px -4px 6px rgba(0,0,0,.6));
-  transform: rotate(-2deg);
-}
-.fest-draw:nth-child(1) { transform: rotate(-1.1deg); }
-.fest-draw:nth-child(2) {
-  transform: rotate(.8deg);
-  background:
-    radial-gradient(120% 180% at 50% -40%, rgba(255,255,255,.10), transparent 60%),
-    linear-gradient(180deg, #8f2c14 0%, #6d1f0d 55%, #4a1408 100%);
-  clip-path: polygon(0% 2%, 99.5% 5%, 99% 98%, 0.5% 95%);
-}
-.fest-draw:nth-child(3) {
-  transform: rotate(-.5deg);
-  background:
-    radial-gradient(120% 180% at 50% -40%, rgba(255,255,255,.09), transparent 60%),
-    linear-gradient(180deg, #1b4631 0%, #123423 55%, #0a1f15 100%);
-  clip-path: polygon(0.4% 5%, 99.6% 2%, 99.5% 95%, 0% 98%);
-}
-.fest-draw__text { display: block; }
+.fest-draw + .fest-draw { border-top: 1px solid rgba(243,227,195,.2); }
+.fest-draw:nth-child(2) { color: var(--amber); }
+.fest-draw:nth-child(3) { color: #e8785a; }
 
 .fest-blurb { font-size: clamp(17px, 2.1vw, 20.5px); font-weight: 400; line-height: 1.68; margin: clamp(26px, 3.5vw, 38px) auto 0; max-width: 56ch; }
 .fest-entry {
@@ -639,10 +631,15 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); c
 .fest-countdown--top { margin-top: 0; padding-bottom: clamp(6px, 1.5vw, 14px); }
 .fest-count__label {
   font-family: var(--fest-display, 'Alfa Slab One'), Georgia, serif;
-  font-size: clamp(24px, 4.6vw, 44px); line-height: 1; text-transform: uppercase; text-align: center;
+  /* Sized off the viewport so the line spans the band edge to edge instead of
+     floating as a caption above the clock. */
+  font-size: clamp(30px, 9.4vw, 108px); line-height: .96; text-transform: uppercase; text-align: center;
+  white-space: nowrap;
   color: #eafff9; text-shadow: 0 0 8px rgba(108,243,214,.9), 0 0 26px rgba(108,243,214,.55), 0 0 62px rgba(108,243,214,.32);
   animation: fest-flicker 9s infinite steps(1, end);
 }
+.fest[data-lang="vi"] .fest-count__label { font-size: clamp(22px, 7vw, 82px); }
+@media (max-width: 480px) { .fest-count__label { white-space: normal; } }
 .fest-count__row { display: grid; grid-template-columns: repeat(3, 1fr); gap: clamp(8px, 2vw, 24px); margin-top: clamp(14px, 2.5vw, 26px); }
 .fest-count__cell { display: flex; flex-direction: column; align-items: center; text-align: center; }
 .fest-count__cell i {
