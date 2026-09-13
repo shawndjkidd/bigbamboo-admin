@@ -540,18 +540,56 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); c
   margin: clamp(34px, 5vw, 54px) auto 0; max-width: 20ch; color: var(--amber);
   text-shadow: 4px 4px 0 rgba(20,16,12,.35);
 }
-/* The three draws, set as type. No drawn objects, no fake paper — the poster
-   illustrates, the page speaks. */
+/* Dymo tape: embossed plastic label strips, punched, scuffed and stuck on crooked.
+   The letters are pressed into the tape, so they're lighter than it with a hard shadow
+   below and a faint highlight above. */
 .fest-draws {
-  list-style: none; display: grid; gap: 0; margin: clamp(40px, 5vw, 64px) auto 0; padding: 0;
-  max-width: 900px; border-top: 1px solid rgba(243,227,195,.22);
+  list-style: none; display: flex; flex-direction: column; align-items: center; gap: clamp(14px, 2vw, 22px);
+  margin: clamp(42px, 5vw, 66px) auto 0; padding: 0; max-width: 760px;
 }
 .fest-draw {
-  padding: clamp(20px, 3vw, 30px) 0; border-bottom: 1px solid rgba(243,227,195,.22);
-  font-family: var(--fest-display, 'Alfa Slab One'), Georgia, serif;
-  font-size: clamp(22px, 4.4vw, 46px); line-height: 1.02; text-transform: uppercase; color: var(--cream);
+  position: relative; align-self: center;
+  padding: clamp(14px, 1.8vw, 18px) clamp(34px, 4vw, 52px) clamp(14px, 1.8vw, 18px) clamp(46px, 5vw, 64px);
+  border-radius: 5px;
+  font-family: var(--fest-body); font-weight: 800;
+  font-size: clamp(15px, 2.4vw, 26px); line-height: 1; letter-spacing: .16em; text-transform: uppercase;
+  color: rgba(255,255,255,.94);
+  background:
+    repeating-linear-gradient(92deg, rgba(255,255,255,.035) 0 2px, transparent 2px 9px),
+    linear-gradient(180deg, #3a3a38 0%, #232321 46%, #141413 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.18), inset 0 -2px 4px rgba(0,0,0,.5),
+    0 10px 18px rgba(0,0,0,.45);
+  text-shadow: 0 2px 0 rgba(0,0,0,.75), 0 -1px 0 rgba(255,255,255,.22);
 }
-.fest-draw:nth-child(2) { color: var(--amber); }
+/* punched hole at the head of the strip */
+.fest-draw::before {
+  content: ''; position: absolute; left: clamp(16px, 2vw, 24px); top: 50%; transform: translateY(-50%);
+  width: 11px; height: 11px; border-radius: 50%;
+  background: rgba(0,0,0,.62); box-shadow: inset 0 1px 2px rgba(0,0,0,.8), 0 1px 0 rgba(255,255,255,.12);
+}
+/* the cut end, nicked like tape off the roll */
+.fest-draw::after {
+  content: ''; position: absolute; right: -1px; top: 0; bottom: 0; width: clamp(14px, 1.6vw, 20px);
+  background: linear-gradient(180deg, #3a3a38, #141413);
+  clip-path: polygon(0 0, 100% 0, 100% 38%, 62% 50%, 100% 62%, 100% 100%, 0 100%);
+  border-radius: 0 5px 5px 0;
+}
+.fest-draw:nth-child(1) { transform: rotate(-1.3deg); }
+.fest-draw:nth-child(2) {
+  transform: rotate(.9deg);
+  background:
+    repeating-linear-gradient(92deg, rgba(255,255,255,.04) 0 2px, transparent 2px 9px),
+    linear-gradient(180deg, #9c2f14 0%, #7d2410 48%, #521608 100%);
+}
+.fest-draw:nth-child(2)::after { background: linear-gradient(180deg, #9c2f14, #521608); }
+.fest-draw:nth-child(3) {
+  transform: rotate(-.5deg);
+  background:
+    repeating-linear-gradient(92deg, rgba(255,255,255,.04) 0 2px, transparent 2px 9px),
+    linear-gradient(180deg, #1d4a34 0%, #143826 48%, #0c2317 100%);
+}
+.fest-draw:nth-child(3)::after { background: linear-gradient(180deg, #1d4a34, #0c2317); }
 .fest-draw__text { display: block; }
 
 .fest-blurb { font-size: clamp(17px, 2.1vw, 20px); font-weight: 500; line-height: 1.55; margin: clamp(26px, 3.5vw, 38px) auto 0; max-width: 62ch; }
