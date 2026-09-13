@@ -28,6 +28,10 @@ type Lang = 'en' | 'vi'
 const MAPS = 'https://www.google.com/maps/search/BigBamBoo+10+An+Ph%C3%BA%2C+An+Kh%C3%A1nh%2C+Ho+Chi+Minh+City'
 const CONTACT_FALLBACK = 'https://wa.me/84347393293'
 const BANNER = '/collabfest-banner.jpg'
+// The poster split in two: the plate with the hand removed, and the hand itself,
+// so the skeleton can break out of the ground in front of the moon.
+const PLATE = '/images/collabfest-plate.jpg'
+const HAND = '/images/hand-beer.png'
 
 const T = {
   en: {
@@ -54,6 +58,7 @@ const T = {
     statHoursLabel: 'hours',
     countriesTitle: 'Collabs from across Asia and beyond',
     plus: 'Plus…',
+    toast: 'Một, hai, ba, dô!',
     oneNight: 'One night only · 31 Oct',
     versus: 'versus',
     abv: 'ABV',
@@ -116,6 +121,7 @@ const T = {
     statHoursLabel: 'giờ',
     countriesTitle: 'Bia collab từ khắp châu Á và xa hơn',
     plus: 'Và còn…',
+    toast: 'Một, hai, ba, dô!',
     oneNight: 'Chỉ một đêm · 31/10',
     versus: 'đối đầu',
     abv: 'Nồng độ',
@@ -224,7 +230,10 @@ export default function FestPage({ beers, settings, live }: { beers: FestBeer[];
   }, [])
   function pickLang(l: Lang) { setLang(l); try { localStorage.setItem('brewasia_form_lang', l) } catch { /* ignore */ } }
 
-  const poster = settings.fest_poster_url || BANNER
+  // A custom poster from the dashboard replaces the whole hero: we can't know where
+  // the hand belongs on someone else's artwork, so the rise only runs on our own plate.
+  const customPoster = settings.fest_poster_url || ''
+  const poster = customPoster || PLATE
   const ticketUrl = settings.fest_ticket_url || ''
   const startsAt = Date.parse(settings.fest_starts_at || '2026-10-31T16:00:00+07:00')
   const left = now && Number.isFinite(startsAt) ? Math.max(0, startsAt - now) : null
@@ -264,6 +273,24 @@ export default function FestPage({ beers, settings, live }: { beers: FestBeer[];
           </div>
         </div>
         <img className="fest-banner" src={poster} alt={`${s('title')} — ${s('date')}`} />
+        {!customPoster && (
+          <div className="fest-rise" aria-hidden="true">
+            <span className="fest-rise__dust" />
+            <svg className="fest-rise__ground" viewBox="0 0 300 90" preserveAspectRatio="none">
+              <path className="fest-rise__mound" d="M6 90c18-26 34-14 46-34 9-15 20-22 33-22 10 0 17 5 24 13 8 9 15 6 24-4 11-12 22-10 32 4 9 13 19 16 30 8 12-9 24-4 34 12 8 13 20 14 33 23H6Z" />
+              <g className="fest-rise__shards">
+                <path d="M92 56l-16-22 5 26z" data-s="0" />
+                <path d="M128 40l-9-26-8 25z" data-s="1" />
+                <path d="M170 38l12-24 3 25z" data-s="2" />
+                <path d="M206 52l19-19-4 25z" data-s="3" />
+                <path d="M74 66l-22-12 14 20z" data-s="4" />
+                <path d="M228 68l23-9-13 19z" data-s="5" />
+              </g>
+            </svg>
+            <img className="fest-rise__hand" src={HAND} alt="" />
+            <span className="fest-rise__toast">{s('toast')}</span>
+          </div>
+        )}
         <h1 className="fest-sr">{s('title')}</h1>
       </header>
 
