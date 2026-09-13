@@ -20,6 +20,8 @@ export type FestBeer = {
   places?: string[]
   confirmed: boolean
   own_setup: boolean
+  kicked?: boolean
+  just_added?: boolean
 }
 export type FestSettings = Record<string, string>
 // Counted live from the Collabs page.
@@ -78,7 +80,9 @@ const T = {
     confirmed: 'Confirmed',
     coming: 'Brewing',
     tbd: 'Beer to be announced',
-    empty: 'The tap list drops soon. Collabs are in the tank right now.',
+    justAdded: 'Just added',
+    kicked: 'Kicked',
+    comingSoon: 'Next collab dropping soon',
     beers: 'beers', breweries: 'breweries',
     priceTitle: 'Tickets',
     step1: 'Get in the door',
@@ -143,7 +147,9 @@ const T = {
     confirmed: 'Đã xác nhận',
     coming: 'Đang nấu',
     tbd: 'Bia sẽ công bố sau',
-    empty: 'Danh sách vòi sẽ sớm công bố. Các mẻ collab đang trong tank.',
+    justAdded: 'Mới thêm',
+    kicked: 'Hết keg',
+    comingSoon: 'Collab tiếp theo sắp ra mắt',
     beers: 'loại bia', breweries: 'nhà máy bia',
     priceTitle: 'Vé',
     step1: 'Vào cửa',
@@ -262,6 +268,7 @@ export default function FestPage({ beers, settings, live }: { beers: FestBeer[];
   const h = left == null ? null : Math.floor((left % 86400000) / 3600000)
   const m = left == null ? null : Math.floor((left % 3600000) / 60000)
   const breweryCount = new Set(beers.flatMap(b => b.breweries)).size
+  const fillers = beers.length < 3 ? 3 - beers.length : (3 - (beers.length % 3)) % 3
 
   // The typed figures ("20+", "10+") are floors: once the live count from Collabs
   // passes one, the real number shows instead.
@@ -421,32 +428,13 @@ export default function FestPage({ beers, settings, live }: { beers: FestBeer[];
           </div>
           <p className="fest-sub">{s('lineupSub')}</p>
 
-          {beers.length === 0 ? (
-            <div className="fest-grid fest-grid--ghost" aria-label={s('empty')}>
-              {[0, 1, 2].map(i => (
-                <article key={i} className="fest-card fest-card--ghost" style={{ transform: `rotate(${i - 1}deg)` }}>
-                  <div className="fest-card__top">{s('oneNight')}</div>
-                  <div className="fest-card__bill">
-                    <div className="fest-card__brewery">BigBamBoo</div>
-                    <div className="fest-card__vs">{s('versus')}</div>
-                    <div className="fest-card__brewery">? ? ?</div>
-                  </div>
-                  <div className="fest-card__band">
-                    <div className="fest-card__beer">{s('tbd')}</div>
-                    <div className="fest-card__style">{s('empty')}</div>
-                  </div>
-                  <div className="fest-card__stats">
-                    <div><b>?</b><span>{s('abv')}</span></div>
-                    <div><b>{pourMl}</b><span>{s('pourLabel')}</span></div>
-                    <div><b>?</b><span>{s('kegs')}</span></div>
-                  </div>
-                </article>
-              ))}
-            </div>
-          ) : (
-            <div className="fest-grid">
-              {beers.map((b, i) => (
-                <article key={b.code} className="fest-card" data-confirmed={b.confirmed} style={{ transform: `rotate(${(i % 3) - 1}deg)` }}>
+          <div className="fest-grid">
+            {beers.map((b, i) => {
+              const state = b.kicked ? 'kicked' : b.just_added ? 'just_added' : 'announced'
+              return (
+                <article key={b.code} className="fest-card" data-state={state} style={{ transform: `rotate(${(i % 3) - 1}deg)` }}>
+                  {state === 'just_added' && <span className="fest-card__badge">{s('justAdded')}</span>}
+                  {state === 'kicked' && <span className="fest-card__stamp">{s('kicked')}</span>}
                   <div className="fest-card__top">{s('oneNight')}</div>
                   <div className="fest-card__bill">
                     {b.breweries.length
@@ -475,9 +463,31 @@ export default function FestPage({ beers, settings, live }: { beers: FestBeer[];
                     <div><b>{b.kegs != null ? b.kegs : '—'}</b><span>{s('kegs')}</span></div>
                   </div>
                 </article>
-              ))}
-            </div>
-          )}
+              )
+            })}
+            {/* Coming soon: filler, not a database row. Tops the list up to a full row of three. */}
+            {Array.from({ length: fillers }, (_, k) => {
+              const i = beers.length + k
+              return (
+                <article key={`soon-${k}`} className="fest-card fest-card--ghost" data-state="coming_soon" style={{ transform: `rotate(${(i % 3) - 1}deg)` }}>
+                  <div className="fest-card__top">{s('oneNight')}</div>
+                  <div className="fest-card__bill">
+                    <div className="fest-card__brewery">BigBamBoo</div>
+                    <div className="fest-card__vs">{s('versus')}</div>
+                    <div className="fest-card__brewery">? ? ?</div>
+                  </div>
+                  <div className="fest-card__band">
+                    <div className="fest-card__beer">{s('comingSoon')}</div>
+                  </div>
+                  <div className="fest-card__stats">
+                    <div><b>?</b><span>{s('abv')}</span></div>
+                    <div><b>{pourMl}</b><span>{s('pourLabel')}</span></div>
+                    <div><b>?</b><span>{s('kegs')}</span></div>
+                  </div>
+                </article>
+              )
+            })}
+          </div>
         </div>
       </section>
 

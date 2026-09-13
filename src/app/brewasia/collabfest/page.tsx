@@ -19,6 +19,9 @@ export const metadata: Metadata = {
 // Only beers Shawn has actually put on the Fest show here: a collab appears once its
 // status is Event ready (or Done). Matched and Brewing stay private.
 const SHOW = ['event_ready', 'done']
+// A beer announced within this window wears the JUST ADDED badge; it drops off by itself.
+const JUST_ADDED_MS = 7 * 24 * 60 * 60 * 1000
+
 // Counted on the page before the beer itself is announced: anything past "interested".
 const COUNTED = ['matched', 'brewing', 'event_ready', 'done']
 
@@ -45,7 +48,7 @@ export default async function CollabFestPage() {
     const [{ data: collabs }, { data: rows }, { data: producers }] = await Promise.all([
       // Tap order: fest_order first (unset goes last), then code.
       svc.from('brewasia_collabs')
-        .select('code, vn_partner, partners, beer_name, beer_style, abv, ibu, status, kegs, fest_pour, fest_order')
+        .select('code, vn_partner, partners, beer_name, beer_style, abv, ibu, status, kegs, fest_pour, fest_order, announced_at, kicked_at')
         .order('fest_order', { ascending: true, nullsFirst: false })
         .order('code'),
       svc.from('site_settings').select('key, value').or('key.like.fest_%,key.like.home_%'),
@@ -100,6 +103,9 @@ export default async function CollabFestPage() {
           .filter((l: any) => l?.use === 'halloween')
           .reduce((n: number, l: any) => n + (Number(l?.qty) || 0), 0) || null,
         confirmed: c.status === 'event_ready' || c.status === 'done',
+        // Derived, never stored: kicked once the keg blows, just added for a week after announcing.
+        kicked: c.kicked_at != null,
+        just_added: c.announced_at != null && Date.now() - Date.parse(c.announced_at) < JUST_ADDED_MS,
         own_setup: c.fest_pour === 'own_setup',
       }))
   } catch { /* show the page with whatever we have */ }
