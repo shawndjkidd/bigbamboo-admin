@@ -1,40 +1,31 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '@/lib/supabase'
+import { FIELDS, LINKS, DEFAULTS } from '@/app/site/copy'
 
 // Website editor: every word on the public homepage (bigbamboo.app), in English and
-// Vietnamese, plus the social and Grab links. Saved to site_settings under home_*.
-// "Translate to Vietnamese" fills the Vietnamese boxes from the English ones with Gemini;
-// they're suggestions, so read them before they go out.
+// Vietnamese, plus the social, Maps and Grab links. Saved to site_settings under home_*.
+//
+// FIELDS and LINKS are imported from the homepage's own copy.ts rather than repeated
+// here, so a string added to the page shows up in this editor without anyone having to
+// remember to add it twice.
+//
+// "Fill in Vietnamese" fills the empty Vietnamese boxes from the English ones with
+// Gemini; they're suggestions, so read them before they go out.
 
-type F = { name: string; label: string; area?: boolean }
-const FIELDS: F[] = [
-  { name: 'tagline', label: 'Big line at the top' },
-  { name: 'sub', label: 'Line under it', area: true },
-  { name: 'statusLabel', label: 'Status card: label' },
-  { name: 'statusValue', label: 'Status card: main line' },
-  { name: 'statusNote', label: 'Status card: small line' },
-  { name: 'locLabel', label: 'Location card: label' },
-  { name: 'locValue', label: 'Location card: main line' },
-  { name: 'locNote', label: 'Location card: address' },
-  { name: 'nextLabel', label: 'Coming-up card: label' },
-  { name: 'nextNone', label: 'Coming-up card: when there are no events' },
-  { name: 'eventsTitle', label: 'Events heading' },
-  { name: 'eventsNone', label: 'When there are no events' },
-  { name: 'festTitle', label: 'Collab Fest block: title' },
-  { name: 'festText', label: 'Collab Fest block: text', area: true },
-  { name: 'festCta', label: 'Collab Fest block: button' },
-  { name: 'visitTitle', label: 'Visit heading' },
-  { name: 'visitAddress', label: 'Visit address line' },
-  { name: 'maps', label: 'Maps button' },
-  { name: 'grab', label: 'Grab button' },
-  { name: 'footer', label: 'Footer line' },
-]
-const LINKS = [
-  { key: 'home_instagram_url', label: 'Instagram link', hint: 'Leave empty to hide the button' },
-  { key: 'home_facebook_url', label: 'Facebook link', hint: 'Leave empty to hide the button' },
-  { key: 'home_grab_url', label: 'Grab link', hint: 'Your BigBamBoo page on Grab, not grab.com' },
-]
+// Labels read "Hero: big slogan", "Visit: heading" and so on. Split on the first colon
+// to group them, so this is a set of short lists rather than one wall of forty boxes.
+function groupOf(label: string) {
+  const i = label.indexOf(':')
+  return i === -1 ? 'Page' : label.slice(0, i).trim()
+}
+function shortLabel(label: string) {
+  const i = label.indexOf(':')
+  return i === -1 ? label : label.slice(i + 1).trim()
+}
+
+// The old Hostinger keys the homepage still falls back to when a home_* box is empty.
+const LEGACY_KEYS = ['slogan', 'instagram_url', 'facebook_url', 'google_maps_url', 'grab_url']
 
 export default function SiteEditorPage() {
   const [vals, setVals] = useState<Record<string, string>>({})
@@ -45,9 +36,23 @@ export default function SiteEditorPage() {
 
   useEffect(() => { load() }, [])
 
+  const groups = useMemo(() => {
+    const out: { name: string; fields: typeof FIELDS }[] = []
+    for (const f of FIELDS) {
+      const g = groupOf(f.label)
+      const found = out.find(o => o.name === g)
+      if (found) found.fields.push(f)
+      else out.push({ name: g, fields: [f] })
+    }
+    return out
+  }, [])
+
   async function load() {
     setLoading(true)
-    const { data, error } = await supabase.from('site_settings').select('key, value').like('key', 'home_%')
+    const { data, error } = await supabase
+      .from('site_settings')
+      .select('key, value')
+      .or(`key.like.home_%,key.in.(${LEGACY_KEYS.join(',')})`)
     setLoading(false)
     if (error) { setMsg(error.message); return }
     setVals(Object.fromEntries((data || []).map(r => [String(r.key), String(r.value ?? '')])))
@@ -99,8 +104,9 @@ export default function SiteEditorPage() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap' }}>
         <div>
           <div className="page-title">Website</div>
-          <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: '6px 0 0', maxWidth: 560, lineHeight: 1.55 }}>
-            Every word on the public homepage. Leave a box empty to use our standard wording. Changes are live as soon as you click away.
+          <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: '6px 0 0', maxWidth: 620, lineHeight: 1.55 }}>
+            Every word on the public homepage. Leave a box empty to use our standard wording —
+            the grey text in each box shows what that is. Changes go live as soon as you click away.
           </p>
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -112,40 +118,64 @@ export default function SiteEditorPage() {
 
       {msg && <div className="card" style={{ padding: '10px 14px', marginTop: 14, fontSize: 13, color: 'var(--text-secondary)' }}>{msg}</div>}
 
-      <div className="card" style={{ padding: 18, marginTop: 18 }}>
-        {FIELDS.map(f => (
-          <div key={f.name} style={{ marginBottom: 18 }}>
-            <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>
-              {f.label}
-              {(saved === enKey(f.name) || saved === viKey(f.name)) && <span style={{ color: 'var(--accent)' }}> · saved</span>}
+      {groups.map(g => (
+        <div className="card" style={{ padding: 18, marginTop: 18 }} key={g.name}>
+          <div className="section-title" style={{ margin: '0 0 14px' }}>{g.name}</div>
+          {g.fields.map(f => (
+            <div key={f.name} style={{ marginBottom: 18 }}>
+              <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>
+                {shortLabel(f.label)}
+                {(saved === enKey(f.name) || saved === viKey(f.name)) && <span style={{ color: 'var(--accent)' }}> · saved</span>}
+              </div>
+              <div className="keg-grid-2">
+                <label>
+                  <span style={{ display: 'block', fontSize: 11, color: 'var(--text-muted)', marginBottom: 4 }}>English</span>
+                  {f.area
+                    ? <textarea className="input" rows={3} placeholder={DEFAULTS.en[f.name] || ''} value={vals[enKey(f.name)] || ''} onChange={e => set(enKey(f.name), e.target.value)} onBlur={e => save(enKey(f.name), e.target.value)} />
+                    : <input className="input" placeholder={DEFAULTS.en[f.name] || ''} value={vals[enKey(f.name)] || ''} onChange={e => set(enKey(f.name), e.target.value)} onBlur={e => save(enKey(f.name), e.target.value)} />}
+                </label>
+                <label>
+                  <span style={{ display: 'block', fontSize: 11, color: 'var(--text-muted)', marginBottom: 4 }}>Tiếng Việt</span>
+                  {f.area
+                    ? <textarea className="input" rows={3} placeholder={DEFAULTS.vi[f.name] || ''} value={vals[viKey(f.name)] || ''} onChange={e => set(viKey(f.name), e.target.value)} onBlur={e => save(viKey(f.name), e.target.value)} />
+                    : <input className="input" placeholder={DEFAULTS.vi[f.name] || ''} value={vals[viKey(f.name)] || ''} onChange={e => set(viKey(f.name), e.target.value)} onBlur={e => save(viKey(f.name), e.target.value)} />}
+                </label>
+              </div>
             </div>
-            <div className="keg-grid-2">
-              <label>
-                <span style={{ display: 'block', fontSize: 11, color: 'var(--text-muted)', marginBottom: 4 }}>English</span>
-                {f.area
-                  ? <textarea className="input" rows={3} value={vals[enKey(f.name)] || ''} onChange={e => set(enKey(f.name), e.target.value)} onBlur={e => save(enKey(f.name), e.target.value)} />
-                  : <input className="input" value={vals[enKey(f.name)] || ''} onChange={e => set(enKey(f.name), e.target.value)} onBlur={e => save(enKey(f.name), e.target.value)} />}
-              </label>
-              <label>
-                <span style={{ display: 'block', fontSize: 11, color: 'var(--text-muted)', marginBottom: 4 }}>Tiếng Việt</span>
-                {f.area
-                  ? <textarea className="input" rows={3} value={vals[viKey(f.name)] || ''} onChange={e => set(viKey(f.name), e.target.value)} onBlur={e => save(viKey(f.name), e.target.value)} />
-                  : <input className="input" value={vals[viKey(f.name)] || ''} onChange={e => set(viKey(f.name), e.target.value)} onBlur={e => save(viKey(f.name), e.target.value)} />}
-              </label>
-            </div>
-          </div>
-        ))}
-
-        <div className="section-title" style={{ margin: '6px 0 12px' }}>Links</div>
-        <div className="keg-grid-3">
-          {LINKS.map(l => (
-            <label key={l.key}>
-              <span style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 5 }}>
-                {l.label}{saved === l.key && <span style={{ color: 'var(--accent)' }}> · saved</span>}
-              </span>
-              <input className="input" value={vals[l.key] || ''} placeholder={l.hint} onChange={e => set(l.key, e.target.value)} onBlur={e => save(l.key, e.target.value)} />
-            </label>
           ))}
+        </div>
+      ))}
+
+      <div className="card" style={{ padding: 18, marginTop: 18 }}>
+        <div className="section-title" style={{ margin: '0 0 6px' }}>Links</div>
+        <p style={{ color: 'var(--text-muted)', fontSize: 12.5, margin: '0 0 14px', lineHeight: 1.5 }}>
+          Shared between both languages. Leave one empty to hide its button — except where the
+          box says it is still using an older setting, which the homepage falls back to.
+        </p>
+        <div className="keg-grid-3">
+          {LINKS.map(l => {
+            const key = `home_${l.name}`
+            const legacy = l.legacy ? (vals[l.legacy] || '') : ''
+            return (
+              <label key={key}>
+                <span style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 5 }}>
+                  {l.label}{saved === key && <span style={{ color: 'var(--accent)' }}> · saved</span>}
+                </span>
+                <input
+                  className="input"
+                  value={vals[key] || ''}
+                  placeholder={legacy ? `Currently using: ${legacy}` : l.hint}
+                  onChange={e => set(key, e.target.value)}
+                  onBlur={e => save(key, e.target.value)}
+                />
+                {legacy && !(vals[key] || '').trim() && (
+                  <span style={{ display: 'block', fontSize: 11, color: 'var(--text-muted)', marginTop: 4, lineHeight: 1.45 }}>
+                    From an older setting. Type here to replace it.
+                  </span>
+                )}
+              </label>
+            )
+          })}
         </div>
       </div>
     </div>

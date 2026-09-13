@@ -106,7 +106,7 @@ export const FIELDS: Field[] = [
   { name: 'visitNote', label: 'Visit: opening-hours note' },
   { name: 'visitMaps', label: 'Visit: Maps button' },
   { name: 'socGrab', label: 'Visit: Grab button' },
-  { name: 'footerNote', label: 'Footer line' },
+  { name: 'footerNote', label: 'Footer: line' },
   { name: 'navMenu', label: 'Nav: Menu' },
   { name: 'navEvents', label: 'Nav: Events' },
   { name: 'navVisit', label: 'Nav: Visit' },
