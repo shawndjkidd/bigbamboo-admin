@@ -35,6 +35,9 @@ const NAV: NavItem[] = [
   { href: '/dashboard/ops/menu-map', label: 'Menu map' },
   { href: '/dashboard/ops/categories', label: 'Categories' },
 
+  { href: '#website', label: 'Website', section: true },
+  { href: '/dashboard/site', label: 'Homepage' },
+
   { href: '#menu-events', label: 'Menu & Events', section: true },
   { href: '/dashboard/menu', label: 'Menu' },
   { href: '/dashboard/events', label: 'Events' },

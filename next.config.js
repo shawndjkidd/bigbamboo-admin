@@ -17,8 +17,11 @@ const nextConfig = {
   // while admin.bigbamboo.app keeps the full /jukebox/* paths.
   async rewrites() {
     const jukeHost = { type: 'host', value: 'jukebox.bigbamboo.app' }
+    // bigbamboo.app is the public website; the dashboard stays on admin.bigbamboo.app.
+    const siteHosts = [{ type: 'host', value: 'bigbamboo.app' }, { type: 'host', value: 'www.bigbamboo.app' }]
     return {
       beforeFiles: [
+        ...siteHosts.map(h => ({ source: '/', has: [h], destination: '/site' })),
         {
           source: '/',
           has: [jukeHost],

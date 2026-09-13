@@ -491,3 +491,41 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); c
 .fest-price__amount { font-size: 40px; font-weight: 800; letter-spacing: -.03em; line-height: 1; }
 .fest-price__text { font-size: 14.5px; color: var(--fg-2); margin-top: 8px; line-height: 1.5; }
 .fest-soon { margin-top: 16px; font-size: 14px; color: var(--fg-2); border: 1px dashed var(--line); border-radius: 10px; padding: 11px 15px; display: inline-block; }
+
+/* ── Public BigBamBoo homepage (bigbamboo.app) ─────────────── */
+.bb {
+  --ink: #101014; --ink-2: #1a1a20; --line: rgba(255,255,255,.10);
+  --hot: #e8772e; --fg: #f7f4ef; --fg-2: rgba(247,244,239,.74); --fg-3: rgba(247,244,239,.50);
+  background: radial-gradient(900px 520px at 16% -10%, rgba(232,119,46,.20), transparent 60%), var(--ink);
+  color: var(--fg); min-height: 100vh;
+}
+.bb-shell { max-width: 1040px; margin: 0 auto; padding: 18px 20px 72px; }
+.bb-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 40px; }
+.bb-mark { font-size: 15px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; }
+.bb-lang { height: 30px; padding: 0 12px; border-radius: 8px; font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; background: transparent; color: var(--fg-3); border: 1px solid var(--line); }
+.bb-lang[data-on="true"] { background: var(--hot); border-color: var(--hot); color: #1a0c03; }
+.bb-tagline { font-size: clamp(38px, 7vw, 68px); line-height: 1.02; font-weight: 800; letter-spacing: -.03em; margin: 0; max-width: 16ch; }
+.bb-sub { font-size: 17px; line-height: 1.6; color: var(--fg-2); margin: 18px 0 0; max-width: 58ch; }
+.bb-hero__links { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 22px; }
+.bb-btn { display: inline-block; padding: 12px 20px; border-radius: 10px; text-decoration: none; font-weight: 700; font-size: 15px; background: var(--hot); color: #1a0c03; border: 1px solid var(--hot); }
+.bb-btn--ghost { background: transparent; color: var(--fg); border-color: var(--line); }
+.bb-strip { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-top: 44px; }
+.bb-strip__card { border: 1px solid var(--line); border-radius: 12px; padding: 18px; background: var(--ink-2); }
+.bb-strip__label { font-size: 11px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--hot); }
+.bb-strip__value { font-size: 18px; font-weight: 700; margin-top: 6px; line-height: 1.3; }
+.bb-strip__note { font-size: 13.5px; color: var(--fg-3); margin-top: 4px; line-height: 1.45; }
+.bb-section { margin-top: 56px; }
+.bb-h2 { font-size: clamp(26px, 4vw, 34px); font-weight: 800; letter-spacing: -.02em; margin: 0 0 16px; }
+.bb-empty { border: 1px dashed var(--line); border-radius: 12px; padding: 26px; color: var(--fg-2); font-size: 15px; }
+.bb-events { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px; }
+.bb-event { border: 1px solid var(--line); border-radius: 12px; padding: 18px; background: var(--ink-2); }
+.bb-event__date { font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--hot); }
+.bb-event__title { font-size: 19px; font-weight: 700; margin: 8px 0 0; line-height: 1.25; }
+.bb-event__text { font-size: 14px; color: var(--fg-2); line-height: 1.55; margin: 6px 0 0; }
+.bb-fest { margin-top: 56px; border: 1px solid var(--line); border-radius: 16px; padding: 26px; background: linear-gradient(120deg, rgba(232,119,46,.12), rgba(193,68,14,.10)); display: grid; grid-template-columns: 1.3fr .7fr; gap: 26px; align-items: center; }
+.bb-fest__kicker { font-size: 11.5px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: var(--hot); margin-bottom: 6px; }
+.bb-fest__text { font-size: 15.5px; color: var(--fg-2); line-height: 1.6; margin: 0 0 18px; max-width: 52ch; }
+.bb-fest__poster { width: 100%; border-radius: 12px; border: 1px solid var(--line); }
+.bb-address { font-size: 16px; color: var(--fg-2); margin: 0; }
+.bb-foot { margin-top: 60px; padding-top: 22px; border-top: 1px solid var(--line); font-size: 13.5px; color: var(--fg-3); line-height: 1.7; }
+@media (max-width: 720px) { .bb-fest { grid-template-columns: 1fr; } .bb-shell { padding: 16px 16px 56px; } }
