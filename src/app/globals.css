@@ -583,12 +583,9 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); c
 }
 .fest-band--cream { background-color: var(--cream); color: var(--ink); }
 .fest-seam { position: relative; line-height: 0; margin-top: -1px; }
-.fest-palms {
-  position: absolute; bottom: 0; width: clamp(90px, 14vw, 190px); color: rgba(20,16,12,.7);
-  pointer-events: none; z-index: 2;
-}
-.fest-palms--left { left: clamp(-10px, 1vw, 24px); }
-.fest-palms--right { right: clamp(-10px, 1vw, 24px); transform: scaleX(-1); }
+
+
+
 .fest-tear { display: block; width: 100%; height: clamp(22px, 3.4vw, 42px); }
 /* Bats ------------------------------------------------------------------
    Shadows, not illustrations: low opacity, softly blurred, each one crossing
@@ -621,12 +618,44 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); c
 .fest-hero .fest-bats { z-index: 2; }
 .fest-hero .fest-bat { color: rgba(0,0,0,.34); mix-blend-mode: multiply; }
 
-.fest-web {
-  position: absolute; top: 0; width: clamp(90px, 12vw, 170px); color: rgba(20,16,12,.28); pointer-events: none;
-}
-.fest-web--left { left: 0; }
-.fest-web--right { right: 0; transform: scaleX(-1); }
+
+
+
 @media (prefers-reduced-motion: reduce) { .fest-bat { animation: none; display: none; } }
+
+/* Wallpaper -------------------------------------------------------------
+   Pieces lifted straight out of the poster - the palms, a couple of bats -
+   flattened to ink and sunk into the background of each band. They sit under
+   everything and stay faint: shadows on a wall, not illustrations. */
+.fest-shadows { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 0; }
+.fest-shadow { position: absolute; height: auto; opacity: .14; }
+.fest-shadow--left  { left: clamp(-40px, -3vw, -10px); bottom: 0; width: clamp(150px, 20vw, 320px); }
+.fest-shadow--right { right: clamp(-40px, -3vw, -10px); bottom: 0; width: clamp(150px, 20vw, 320px); transform: scaleX(-1); }
+.fest-shadow--bat1 { left: 12%; top: 8%;  width: clamp(48px, 7vw, 110px); opacity: .1; transform: rotate(-8deg); }
+.fest-shadow--bat2 { right: 16%; top: 18%; width: clamp(36px, 5vw, 84px);  opacity: .09; transform: rotate(6deg); }
+.fest-band--cream .fest-shadow { opacity: .07; }
+.fest-band--rust .fest-shadow { opacity: .12; }
+
+/* Lightning. Two quick strikes, then a long wait - a storm somewhere off in
+   the distance rather than a strobe in the room. */
+.fest-storm {
+  position: absolute; inset: 0; pointer-events: none; z-index: 0; opacity: 0;
+  background:
+    linear-gradient(180deg, rgba(214,232,255,.5), rgba(214,232,255,.12) 34%, transparent 62%),
+    radial-gradient(120% 60% at 50% 0%, rgba(255,255,255,.32), transparent 70%);
+  animation: fest-lightning 17s steps(1, end) infinite;
+}
+@keyframes fest-lightning {
+  0%, 100% { opacity: 0; }
+  1.2%  { opacity: .9; }
+  2.0%  { opacity: .08; }
+  2.6%  { opacity: .75; }
+  3.4%  { opacity: 0; }
+  46%   { opacity: 0; }
+  46.8% { opacity: .55; }
+  47.4% { opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) { .fest-storm { display: none; } }
 
 /* Headings -------------------------------------------------------------- */
 .fest-h2 {
@@ -690,14 +719,18 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); c
 }
 @media (min-width: 800px) {
   .fest-draws { grid-template-columns: repeat(3, 1fr); }
-  .fest-draw + .fest-draw { border-top: 0; border-left: 1px solid rgba(243,227,195,.2); }
 }
+/* Proper boxes, not hairline dividers: each one is its own panel. */
 .fest-draw {
-  display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
   gap: clamp(12px, 1.6vw, 20px);
-  padding: clamp(16px, 2.2vw, 28px) clamp(10px, 1.6vw, 22px);
+  padding: clamp(26px, 3.2vw, 44px) clamp(16px, 2vw, 26px);
+  border: 2px solid rgba(243,227,195,.3); border-radius: 4px;
+  background: rgba(0, 0, 0, .18);
+  box-shadow: 5px 5px 0 rgba(0, 0, 0, .3);
 }
-.fest-draw + .fest-draw { border-top: 1px solid rgba(243,227,195,.2); }
+.fest-draw[data-i="1"] { border-color: rgba(242,177,52,.42); }
+.fest-draw[data-i="2"] { border-color: rgba(232,120,90,.4); }
 .fest-draw__art {
   width: clamp(110px, 15vw, 190px); height: auto; display: block;
   filter: drop-shadow(0 10px 18px rgba(0,0,0,.5));
@@ -712,7 +745,7 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); c
 .fest-draw[data-i="1"] .fest-draw__text { color: var(--amber); }
 .fest-draw[data-i="2"] .fest-draw__text { color: #e8785a; }
 
-.fest-blurb { font-size: clamp(17px, 2.1vw, 20.5px); font-weight: 400; line-height: 1.68; margin: clamp(26px, 3.5vw, 38px) auto 0; max-width: 56ch; }
+
 
 
 /* Tickets --------------------------------------------------------------- */
@@ -743,7 +776,7 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); c
      floating as a caption above the clock. */
   font-size: clamp(30px, 9.4vw, 108px); line-height: .96; text-transform: uppercase; text-align: center;
   white-space: nowrap;
-  color: #fff7e2; text-shadow: 0 0 8px rgba(247,201,72,.9), 0 0 26px rgba(247,201,72,.55), 0 0 62px rgba(247,201,72,.32);
+  color: #fff7e2; text-shadow: 0 0 8px rgba(247,201,72,.9), 0 0 18px rgba(247,201,72,.5), 0 0 30px rgba(247,201,72,.22);
   animation: fest-flicker 9s infinite steps(1, end);
 }
 .fest[data-lang="vi"] .fest-count__label { font-size: clamp(22px, 7vw, 82px); }
@@ -759,7 +792,7 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); c
   position: relative; display: inline-block;
   font-family: var(--fest-display, 'Alfa Slab One'), Georgia, serif; font-weight: 400; letter-spacing: .01em;
   font-size: clamp(64px, 19vw, 190px); line-height: .86; font-variant-numeric: tabular-nums; color: #fff7e2;
-  text-shadow: 0 0 8px rgba(247,201,72,.95), 0 0 28px rgba(247,201,72,.7), 0 0 70px rgba(247,201,72,.45);
+  text-shadow: 0 0 8px rgba(247,201,72,.95), 0 0 20px rgba(247,201,72,.62), 0 0 34px rgba(247,201,72,.3);
   animation: fest-flicker 7s infinite steps(1, end);
 }
 .fest-neon::after {
@@ -790,7 +823,7 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); c
 }
 .fest-price[data-door="true"] .fest-price__amount {
   color: #fff3d2;
-  text-shadow: 0 0 8px rgba(242,177,52,.95), 0 0 30px rgba(242,177,52,.6), 0 0 72px rgba(242,177,52,.38);
+  text-shadow: 0 0 8px rgba(242,177,52,.95), 0 0 22px rgba(242,177,52,.52), 0 0 36px rgba(242,177,52,.24);
   animation: fest-flicker 11s infinite steps(1, end);
 }
 .fest-price[data-door="true"] .fest-price__kicker { color: var(--amber); }
@@ -801,7 +834,7 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); c
   font-family: var(--fest-display, 'Alfa Slab One'), Georgia, serif; font-weight: 400;
   font-size: clamp(64px, 11vw, 124px); line-height: .86; letter-spacing: .01em;
   font-variant-numeric: tabular-nums; color: #fff7e2;
-  text-shadow: 0 0 7px rgba(247,201,72,.9), 0 0 26px rgba(247,201,72,.55), 0 0 60px rgba(247,201,72,.34);
+  text-shadow: 0 0 7px rgba(247,201,72,.9), 0 0 18px rgba(247,201,72,.5), 0 0 30px rgba(247,201,72,.22);
 }
 .fest-price__text { font-size: clamp(16.5px, 2.1vw, 20px); font-weight: 700; margin-top: 18px; line-height: 1.35; opacity: .95; }
 .fest-note { font-size: clamp(15px, 1.9vw, 17px); font-weight: 500; margin: 20px auto 0; opacity: .8; max-width: 64ch; }

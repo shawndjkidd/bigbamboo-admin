@@ -47,7 +47,6 @@ const T = {
     venue: 'BigBamBoo',
     address: '10 An Phú, An Khánh, Ho Chi Minh City',
     map: 'Open in Maps',
-    blurb: 'One night, one bar, and a wall of collaboration beers brewed for BrewAsia 2026. Breweries from Vietnam, Korea, India, China and the Philippines pour side by side: collab kegs on the BigBamBoo taps, the BZZD collab bar, a BBQ collab with Việt Thích Barbecue and a guest pitmaster from India, DJs until close. Come in costume.',
     tickets: 'Tickets at the door',
     soonStamp: 'Coming soon',
     soon: 'Pay at the door on the night. Online sales coming soon — this page will carry them.',
@@ -108,7 +107,6 @@ const T = {
     venue: 'BigBamBoo',
     address: '10 An Phú, An Khánh, TP. Hồ Chí Minh',
     map: 'Mở bản đồ',
-    blurb: 'Một đêm, một quán bar, và cả một dàn bia collab nấu riêng cho BrewAsia 2026. Các nhà máy bia từ Việt Nam, Hàn Quốc, Ấn Độ, Trung Quốc và Philippines cùng góp mặt: keg collab trên dàn vòi BigBamBoo, quầy collab BZZD, BBQ collab cùng Việt Thích Barbecue và đầu bếp BBQ khách mời từ Ấn Độ, DJ tới giờ đóng cửa. Hãy tới trong trang phục hoá trang.',
     tickets: 'Mua vé tại cửa',
     soonStamp: 'Sắp mở bán',
     soon: 'Thanh toán tại cửa trong đêm diễn. Vé online sẽ sớm mở bán ngay trên trang này.',
@@ -177,26 +175,23 @@ function Tear({ fill, flip }: { fill: string; flip?: boolean }) {
 }
 
 // A palm silhouette, straight out of the poster's skyline.
-function Palms({ side }: { side: 'left' | 'right' }) {
+/* The poster's own palms and bats, dropped in behind the content as shadows -
+   flattened to ink and kept faint, so they read as wallpaper, not decoration. */
+function Shadows({ bats = false }: { bats?: boolean }) {
   return (
-    <svg className={`fest-palms fest-palms--${side}`} viewBox="0 0 120 150" aria-hidden="true">
-      <path fill="currentColor" d="M57 150c1-38 3-63 6-84l6 1c-4 21-6 46-7 83Z" />
-      <path fill="currentColor" d="M63 62c-11-11-25-16-40-14 12-7 29-5 41 4-7-13-20-21-35-23 15-5 32 2 41 15-1-15-9-28-22-36 17 2 29 16 30 33 7-13 21-21 37-21-13 6-23 17-26 31 12-8 27-10 41-4-16-1-31 6-40 18Z" />
-    </svg>
+    <div className="fest-shadows" aria-hidden="true">
+      <img className="fest-shadow fest-shadow--left" src="/images/palms-left.png" alt="" loading="lazy" />
+      <img className="fest-shadow fest-shadow--right" src="/images/palms-right.png" alt="" loading="lazy" />
+      {bats && <>
+        <img className="fest-shadow fest-shadow--bat1" src="/images/bat1.png" alt="" loading="lazy" />
+        <img className="fest-shadow fest-shadow--bat2" src="/images/bat2.png" alt="" loading="lazy" />
+      </>}
+    </div>
   )
 }
 
 
-function Web({ side }: { side: 'left' | 'right' }) {
-  return (
-    <svg className={`fest-web fest-web--${side}`} viewBox="0 0 120 120" aria-hidden="true">
-      <g fill="none" stroke="currentColor" strokeWidth="1.6">
-        <path d="M0 0 120 120M0 0 0 120M0 0 120 0M0 0 60 120M0 0 120 60M0 0 30 120M0 0 120 30" />
-        <path d="M22 0a22 22 0 0 1-22 22M44 0a44 44 0 0 1-44 44M70 0a70 70 0 0 1-70 70M98 0a98 98 0 0 1-98 98" />
-      </g>
-    </svg>
-  )
-}
+
 
 const BAT = 'M20 30c6-10 10-4 14-10 3 6 6 2 10 10-6-2-8 4-10 6-2-2-4-8-14-6Z'
 
@@ -287,6 +282,8 @@ export default function FestPage({ beers, settings, live }: { beers: FestBeer[];
 
       {/* Rust band: when, where, how you get in */}
       <section className="fest-band fest-band--pine">
+        <Shadows bats />
+        <span className="fest-storm" aria-hidden="true" />
         <Bats />
         <div className="fest-inner">
           {d != null && (
@@ -328,7 +325,6 @@ export default function FestPage({ beers, settings, live }: { beers: FestBeer[];
             })}
           </ul>
 
-          <p className="fest-blurb">{s('blurb')}</p>
 
 
         </div>
@@ -365,8 +361,7 @@ export default function FestPage({ beers, settings, live }: { beers: FestBeer[];
       {/* Cream band: the beer */}
       <div className="fest-seam"><Tear fill="#f3e3c3" /></div>
       <section className="fest-band fest-band--cream">
-        <Web side="left" />
-        <Web side="right" />
+        <Shadows />
         <div className="fest-inner">
           <div className="fest-head">
             <h2 className="fest-h2">{s('lineup')}</h2>
@@ -434,6 +429,7 @@ export default function FestPage({ beers, settings, live }: { beers: FestBeer[];
       {/* Teal band: BigBamBoo's own colour, for how the night runs */}
       <div className="fest-seam"><Tear fill="#b8391a" /></div>
       <section className="fest-band fest-band--rust">
+        <Shadows />
         <div className="fest-inner">
           <h2 className="fest-h2">{s('howTitle')}</h2>
           <div className="fest-how">
