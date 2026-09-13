@@ -45,6 +45,9 @@ const TEXT_FIELDS: { name: string; label: string; hint?: string; area?: boolean 
 const PLAIN_FIELDS: { key: string; label: string; hint?: string }[] = [
   { key: 'fest_ticket_url', label: 'Ticket link', hint: 'Leave empty to hide the ticket button.' },
   { key: 'fest_poster_url', label: 'Poster image link', hint: 'Leave empty to use the Collab Fest poster we uploaded.' },
+  { key: 'fest_draw1_img', label: 'Draw 1 graphic', hint: 'Optional. Transparent PNG works best. Empty shows the words alone.' },
+  { key: 'fest_draw2_img', label: 'Draw 2 graphic' },
+  { key: 'fest_draw3_img', label: 'Draw 3 graphic' },
   { key: 'fest_starts_at', label: 'Countdown start', hint: '2026-10-31T16:00:00+07:00' },
 ]
 

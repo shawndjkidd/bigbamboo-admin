@@ -456,22 +456,23 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); c
 /* Broken ground: a dark mound in the poster's own ink, sitting at the wrist. */
 
 
-.fest-rise__debris {
-  position: absolute; left: 60.5%; bottom: 34.5%; width: 24%; height: 4.5%; z-index: 4;
-  animation: fest-ground 1.6s ease-out .45s both;
+/* Earth thrown up as it breaks through. The chunks are cut from the artwork,
+   each one on its own arc, tumbling out and falling back. */
+.fest-rise__debris { position: absolute; left: 0; top: 0; width: 100%; height: 100%; z-index: 4; }
+.fest-rise__chunk {
+  position: absolute; left: 70%; top: 62%; width: 5.5%; height: auto;
+  transform-origin: 50% 50%;
+  animation: fest-chunk 2.6s cubic-bezier(.2,.6,.5,1) both;
 }
-.fest-rise__shards path { fill: #1a1410; transform-origin: 50% 100%; animation: fest-shard 2.4s ease-out .5s both; }
-.fest-rise__shards path[data-s="1"] { animation-duration: 2.9s; animation-delay: .7s; }
-.fest-rise__shards path[data-s="2"] { animation-duration: 2.2s; animation-delay: 1.5s; }
-.fest-rise__shards path[data-s="3"] { animation-duration: 2.6s; animation-delay: 2.4s; }
-.fest-rise__shards path[data-s="4"] { animation-duration: 3.1s; animation-delay: 3.1s; }
-.fest-rise__shards path[data-s="5"] { animation-duration: 2.4s; animation-delay: 3.9s; }
-/* Dust kicked up as it comes through. */
-.fest-rise__dust {
-  position: absolute; left: 59%; bottom: 32%; width: 27%; height: 11%;
-  background: radial-gradient(closest-side, rgba(26,20,16,.55), transparent 72%);
-  filter: blur(8px);
-  animation: fest-dust 4.6s ease-out .45s both;
+.fest-rise__chunk[data-i="0"] { --dx: -13vw; --dy: -9vh; --rot: -220deg; width: 7%;   animation-duration: 3.1s; animation-delay: .55s; }
+.fest-rise__chunk[data-i="1"] { --dx: 9vw;   --dy: -7vh; --rot: 260deg;  width: 4.6%; animation-duration: 2.7s; animation-delay: 1.5s; }
+.fest-rise__chunk[data-i="2"] { --dx: -7vw;  --dy: -6vh; --rot: 180deg;  width: 4.2%; animation-duration: 2.9s; animation-delay: 2.6s; }
+.fest-rise__chunk[data-i="3"] { --dx: 12vw;  --dy: -5vh; --rot: -300deg; width: 3.4%; animation-duration: 2.5s; animation-delay: 3.6s; }
+@keyframes fest-chunk {
+  0%   { opacity: 0; transform: translate(0, 0) rotate(0deg) scale(.5); }
+  12%  { opacity: 1; transform: translate(calc(var(--dx) * .3), calc(var(--dy) * .8)) rotate(calc(var(--rot) * .25)) scale(1); }
+  55%  { opacity: 1; transform: translate(calc(var(--dx) * .75), calc(var(--dy) * .35)) rotate(calc(var(--rot) * .7)) scale(1); }
+  100% { opacity: 0; transform: translate(var(--dx), 6vh) rotate(var(--rot)) scale(.85); }
 }
 @keyframes fest-burst {
   /* Clawing out, not launching: four pushes, each slipping back a little
@@ -487,20 +488,6 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); c
   94%  { transform: translateY(-1.5%) rotate(-.4deg); }
   100% { transform: translateY(0) rotate(0deg); }
 }
-@keyframes fest-ground {
-  from { opacity: 0; transform: scaleY(.2); }
-  to   { opacity: 1; transform: scaleY(1); }
-}
-@keyframes fest-shard {
-  from { opacity: 1; transform: translate(0, 0) rotate(0deg); }
-  to   { opacity: 0; transform: translate(calc((var(--x, 0) * 1px)), -38px) rotate(190deg); }
-}
-.fest-rise__shards path[data-s="0"] { --x: -34; }
-.fest-rise__shards path[data-s="1"] { --x: -12; }
-.fest-rise__shards path[data-s="2"] { --x: 14; }
-.fest-rise__shards path[data-s="3"] { --x: 36; }
-.fest-rise__shards path[data-s="4"] { --x: -52; }
-.fest-rise__shards path[data-s="5"] { --x: 54; }
 @keyframes fest-dust {
   from { opacity: 0; transform: scale(.35); }
   30%  { opacity: .9; }
@@ -508,8 +495,8 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); c
 }
 /* Nothing moves for anyone who asked for that: the hand simply stands there. */
 @media (prefers-reduced-motion: reduce) {
-  .fest-rise__hand, .fest-rise__debris { animation: none; }
-  .fest-rise__dust, .fest-rise__shards { display: none; }
+  .fest-rise__hand { animation: none; }
+  .fest-rise__dust, .fest-rise__debris { display: none; }
 }
 
 /* Poster atmosphere. No small objects - slow fog, a firelight breath from
@@ -634,11 +621,13 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); c
 /* Over the poster they read paler, so they stay shadows against the artwork. */
 .fest-hero .fest-bats { z-index: 2; }
 .fest-hero .fest-bat { color: rgba(0,0,0,.34); mix-blend-mode: multiply; }
+/* Kept fully inside the band: with a negative top the band clipped it and the
+   glow ended in a hard flat line across the top. */
 .fest-moon {
-  position: absolute; top: clamp(-70px, -4vw, -30px); left: 50%; transform: translateX(-50%);
+  position: absolute; top: 0; left: 50%; transform: translateX(-50%);
   width: clamp(240px, 34vw, 460px); aspect-ratio: 1; border-radius: 50%; pointer-events: none;
-  background: radial-gradient(circle at 42% 38%, rgba(242,177,52,.30), rgba(242,177,52,.10) 55%, transparent 72%);
-  filter: blur(2px);
+  background: radial-gradient(circle at 50% 45%, rgba(242,177,52,.26), rgba(242,177,52,.09) 52%, transparent 70%);
+  filter: blur(10px);
 }
 .fest-web {
   position: absolute; top: 0; width: clamp(90px, 12vw, 170px); color: rgba(20,16,12,.28); pointer-events: none;
@@ -685,24 +674,51 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); c
   margin: clamp(34px, 5vw, 54px) auto 0; max-width: 20ch; color: var(--amber);
   text-shadow: 4px 4px 0 rgba(20,16,12,.35);
 }
-/* The three draws, plain. Big display caps, a hairline between each, filling
-   the band. No prop, no frame - the type is the object. */
+/* "Plus..." - the lead-in to the three draws. Sits well clear of the claim
+   above it, so it reads as the start of the next thing, not a subtitle. */
+.fest-plus {
+  display: flex; align-items: center; gap: clamp(16px, 3vw, 32px);
+  margin: clamp(46px, 6vw, 82px) auto clamp(4px, 1vw, 10px); max-width: 30ch;
+}
+.fest-plus::before, .fest-plus::after { content: ''; flex: 1; height: 1px; background: rgba(243,227,195,.26); }
+.fest-plus span {
+  font-family: var(--fest-display, 'Alfa Slab One'), Georgia, serif; font-weight: 400;
+  font-size: clamp(28px, 4.8vw, 54px); line-height: 1; letter-spacing: .03em;
+  text-transform: uppercase; color: var(--amber);
+  text-shadow: 0 2px 0 rgba(0,0,0,.45);
+}
+
+/* The three draws, side by side. Each column stands on its own with the type
+   alone; a graphic sits above the words when there's art for it, and nothing
+   is left behind when there isn't. */
 .fest-draws {
-  list-style: none; display: flex; flex-direction: column; align-items: stretch;
-  margin: clamp(26px, 3.4vw, 44px) auto 0; padding: 0; max-width: 100%;
+  list-style: none; display: grid; gap: clamp(22px, 3vw, 44px);
+  grid-template-columns: 1fr;
+  margin: clamp(26px, 3.4vw, 44px) auto 0; padding: 0;
+}
+@media (min-width: 800px) {
+  .fest-draws { grid-template-columns: repeat(3, 1fr); }
+  .fest-draw + .fest-draw { border-top: 0; border-left: 1px solid rgba(243,227,195,.2); }
 }
 .fest-draw {
-  position: relative;
+  display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
+  gap: clamp(12px, 1.6vw, 20px);
+  padding: clamp(16px, 2.2vw, 28px) clamp(10px, 1.6vw, 22px);
+}
+.fest-draw + .fest-draw { border-top: 1px solid rgba(243,227,195,.2); }
+.fest-draw__art {
+  width: clamp(110px, 15vw, 190px); height: auto; display: block;
+  filter: drop-shadow(0 10px 18px rgba(0,0,0,.5));
+}
+.fest-draw__text {
   font-family: var(--fest-display, 'Alfa Slab One'), Georgia, serif; font-weight: 400;
-  font-size: clamp(26px, 6.4vw, 74px); line-height: 1.06; letter-spacing: .015em;
+  font-size: clamp(24px, 3.1vw, 40px); line-height: 1.04; letter-spacing: .015em;
   text-transform: uppercase; text-align: center; text-wrap: balance;
-  padding-block: clamp(16px, 2.4vw, 30px);
   color: var(--cream);
   text-shadow: 0 2px 0 rgba(0,0,0,.5), 0 0 34px rgba(242,177,52,.16);
 }
-.fest-draw + .fest-draw { border-top: 1px solid rgba(243,227,195,.2); }
-.fest-draw:nth-child(2) { color: var(--amber); }
-.fest-draw:nth-child(3) { color: #e8785a; }
+.fest-draw[data-i="1"] .fest-draw__text { color: var(--amber); }
+.fest-draw[data-i="2"] .fest-draw__text { color: #e8785a; }
 
 .fest-blurb { font-size: clamp(17px, 2.1vw, 20.5px); font-weight: 400; line-height: 1.68; margin: clamp(26px, 3.5vw, 38px) auto 0; max-width: 56ch; }
 

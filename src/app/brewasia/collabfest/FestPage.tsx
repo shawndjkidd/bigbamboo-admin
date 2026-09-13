@@ -35,6 +35,8 @@ const HAND = '/images/hand-beer.png'
 // The ground, cut from the plate itself so the torn edge matches exactly. It sits
 // above the hand, so the arm comes up from behind it.
 const GROUND = '/images/collabfest-ground.png'
+// Chunks of earth thrown up as it breaks through.
+const DEBRIS = ['/images/debris1.png', '/images/debris2.png', '/images/debris3.png', '/images/debris4.png']
 
 const T = {
   en: {
@@ -274,16 +276,11 @@ export default function FestPage({ beers, settings, live }: { beers: FestBeer[];
         {!customPoster && (
           <div className="fest-rise" aria-hidden="true">
             <span className="fest-rise__dust" />
-            <svg className="fest-rise__debris" viewBox="0 0 300 90" preserveAspectRatio="none">
-              <g className="fest-rise__shards">
-                <path d="M92 56l-16-22 5 26z" data-s="0" />
-                <path d="M128 40l-9-26-8 25z" data-s="1" />
-                <path d="M170 38l12-24 3 25z" data-s="2" />
-                <path d="M206 52l19-19-4 25z" data-s="3" />
-                <path d="M74 66l-22-12 14 20z" data-s="4" />
-                <path d="M228 68l23-9-13 19z" data-s="5" />
-              </g>
-            </svg>
+            <span className="fest-rise__debris" aria-hidden="true">
+              {DEBRIS.map((d, i) => (
+                <img key={d} className="fest-rise__chunk" data-i={i} src={d} alt="" />
+              ))}
+            </span>
             <img className="fest-rise__hand" src={HAND} alt="" />
             <img className="fest-rise__ground-img" src={GROUND} alt="" />
           </div>
@@ -324,9 +321,15 @@ export default function FestPage({ beers, settings, live }: { beers: FestBeer[];
           <div className="fest-plus" aria-hidden="true"><span>{s('plus')}</span></div>
 
           <ul className="fest-draws">
-            {[s('draw1'), s('draw2'), s('draw3')].map(d => (
-              <li key={d} className="fest-draw">{d}</li>
-            ))}
+            {[s('draw1'), s('draw2'), s('draw3')].map((d, i) => {
+              const img = settings[`fest_draw${i + 1}_img`] || ''
+              return (
+                <li key={d} className="fest-draw" data-i={i}>
+                  {img && <img className="fest-draw__art" src={img} alt="" loading="lazy" />}
+                  <span className="fest-draw__text">{d}</span>
+                </li>
+              )
+            })}
           </ul>
 
           <p className="fest-blurb">{s('blurb')}</p>
