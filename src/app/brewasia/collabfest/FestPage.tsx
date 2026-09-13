@@ -22,7 +22,7 @@ export type FestSettings = Record<string, string>
 export type FestLive = { collabs: number; countries: number; countryList: string }
 type Lang = 'en' | 'vi'
 
-const MAPS = 'https://www.google.com/maps/search/BigBamBoo+An+Ph%C3%BA+Th%E1%BB%A7+%C4%90%E1%BB%A9c'
+const MAPS = 'https://www.google.com/maps/search/BigBamBoo+10+An+Ph%C3%BA%2C+An+Kh%C3%A1nh%2C+Ho+Chi+Minh+City'
 const CONTACT_FALLBACK = 'https://wa.me/84347393293'
 const BANNER = '/collabfest-banner.jpg'
 
@@ -33,7 +33,7 @@ const T = {
     date: 'Saturday 31 October 2026',
     time: '4pm – midnight',
     venue: 'BigBamBoo',
-    address: '10 An Phú, An Khánh, Thủ Đức (District 2), Ho Chi Minh City',
+    address: '10 An Phú, An Khánh, Ho Chi Minh City',
     map: 'Open in Maps',
     blurb: 'One night, one bar, and a wall of collaboration beers brewed for BrewAsia 2026. Breweries from Vietnam, Korea, India, China and the Philippines pour side by side: collab kegs on the BigBamBoo taps, the BZZD collab bar, a BBQ collab with Việt Thích Barbecue and a guest pitmaster from India, DJs until close. Come in costume.',
     entry: 'BrewAsia conference pass = free entry, free tasting glass, free tokens.',
@@ -89,7 +89,7 @@ const T = {
     date: 'Thứ Bảy 31/10/2026',
     time: '16:00 – nửa đêm',
     venue: 'BigBamBoo',
-    address: '10 An Phú, An Khánh, Thủ Đức (Quận 2 cũ), TP. Hồ Chí Minh',
+    address: '10 An Phú, An Khánh, TP. Hồ Chí Minh',
     map: 'Mở bản đồ',
     blurb: 'Một đêm, một quán bar, và cả một dàn bia collab nấu riêng cho BrewAsia 2026. Các nhà máy bia từ Việt Nam, Hàn Quốc, Ấn Độ, Trung Quốc và Philippines cùng góp mặt: keg collab trên dàn vòi BigBamBoo, quầy collab BZZD, BBQ collab cùng Việt Thích Barbecue và đầu bếp BBQ khách mời từ Ấn Độ, DJ tới giờ đóng cửa. Hãy tới trong trang phục hoá trang.',
     entry: 'Vé hội nghị BrewAsia = vào cửa miễn phí, ly nếm thử miễn phí, token miễn phí.',
@@ -223,7 +223,7 @@ export default function FestPage({ beers, settings, live }: { beers: FestBeer[];
   ].filter(l => l.href)
 
   return (
-    <div className="fest">
+    <div className="fest" data-lang={lang}>
       {/* Poster, full bleed, doing the job it was drawn for */}
       <header className="fest-hero">
         <div className="fest-topbar">
@@ -274,6 +274,8 @@ export default function FestPage({ beers, settings, live }: { beers: FestBeer[];
             {[s('draw1'), s('draw2'), s('draw3')].map((d, i) => (
               <li key={d} className="fest-draw" data-i={i}>
                 <span className="fest-draw__text">{d}</span>
+                <span className="fest-draw__wear" aria-hidden />
+                {i === 1 && <span className="fest-draw__peel" aria-hidden />}
               </li>
             ))}
           </ul>

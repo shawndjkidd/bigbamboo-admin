@@ -12,7 +12,7 @@ type Lang = 'en' | 'vi'
 
 // Shipping + visitor-pass details shown to breweries. Edit here if anything changes.
 const SHIP = {
-  mapsUrl: 'https://www.google.com/maps/search/BigBamBoo+An+Ph%C3%BA+Th%E1%BB%A7+%C4%90%E1%BB%A9c',
+  mapsUrl: 'https://www.google.com/maps/search/BigBamBoo+10+An+Ph%C3%BA%2C+An+Kh%C3%A1nh%2C+Ho+Chi+Minh+City',
   minKegs: 2, // minimum donation; every donating brewery gets 1 pass (Shawn, 2026-09-11)
 }
 type Keg = {
@@ -67,7 +67,7 @@ const T = {
     lastSaved: 'Last saved',
     shipTitle: 'Where and when to send your kegs',
     shipTo: 'Send to',
-    shipAddress: 'BigBamBoo · 10 An Phú, An Khánh, Thủ Đức (District 2), Ho Chi Minh City',
+    shipAddress: 'BigBamBoo · 10 An Phú, An Khánh, Ho Chi Minh City',
     shipMap: 'Open in Google Maps',
     shipWhen: 'Delivery window',
     shipDates: 'Monday 5 October – Friday 23 October 2026, weekdays only (no weekend deliveries)',
@@ -122,7 +122,7 @@ const T = {
     lastSaved: 'Lưu lần cuối',
     shipTitle: 'Gửi keg ở đâu và khi nào',
     shipTo: 'Địa chỉ nhận',
-    shipAddress: 'BigBamBoo · 10 An Phú, An Khánh, Thủ Đức (Quận 2 cũ), TP. Hồ Chí Minh',
+    shipAddress: 'BigBamBoo · 10 An Phú, An Khánh, TP. Hồ Chí Minh',
     shipMap: 'Mở Google Maps',
     shipWhen: 'Thời gian giao',
     shipDates: 'Thứ Hai 5/10 – Thứ Sáu 23/10/2026, chỉ ngày thường (không giao cuối tuần)',
