@@ -27,6 +27,7 @@ const TEXT_FIELDS: { name: string; label: string; hint?: string; area?: boolean 
   { name: 'draw2', label: 'Headline draw 2' },
   { name: 'draw3', label: 'Headline draw 3' },
   { name: 'lineupSub', label: 'Line under “What’s pouring”' },
+  { name: 'pourLabel', label: 'Tap card: label under the pour size (e.g. ml / token)' },
   { name: 'step1', label: 'Step 1 heading (getting in)' },
   { name: 'step2', label: 'Step 2 heading (buying tokens)' },
   { name: 'priceTitle', label: 'Ticket section: title' },
@@ -51,6 +52,7 @@ const PLAIN_FIELDS: { key: string; label: string; hint?: string }[] = [
   { key: 'fest_draw1_img', label: 'Draw 1 graphic', hint: 'Optional. Transparent PNG works best. Empty shows the words alone.' },
   { key: 'fest_draw2_img', label: 'Draw 2 graphic' },
   { key: 'fest_draw3_img', label: 'Draw 3 graphic' },
+  { key: 'fest_pour_ml', label: 'Pour size per token, in ml (shown on every tap card)', hint: '150' },
   { key: 'fest_starts_at', label: 'Countdown start', hint: '2026-10-31T16:00:00+07:00' },
 ]
 

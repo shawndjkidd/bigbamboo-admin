@@ -17,6 +17,7 @@ export type FestBeer = {
   kegs: number | null
   ibu?: number | null
   logos?: string[]
+  places?: string[]
   confirmed: boolean
   own_setup: boolean
 }
@@ -67,6 +68,7 @@ const T = {
     versus: 'versus',
     abv: 'ABV',
     kegs: 'Kegs',
+    pourLabel: 'ml / token',
     countries: 'Vietnam · Japan · China · Singapore · Korea · India · Philippines · Australia · UK',
     draw1: 'Full roasted pig BBQ collab',
     draw2: 'The BZZD collab cocktail bar',
@@ -131,6 +133,7 @@ const T = {
     versus: 'đối đầu',
     abv: 'Nồng độ',
     kegs: 'Keg',
+    pourLabel: 'ml / token',
     countries: 'Việt Nam · Nhật Bản · Trung Quốc · Singapore · Hàn Quốc · Ấn Độ · Philippines · Úc · Anh',
     draw1: 'Collab heo quay nguyên con',
     draw2: 'Quầy cocktail collab BZZD',
@@ -251,6 +254,8 @@ export default function FestPage({ beers, settings, live }: { beers: FestBeer[];
   const customPoster = settings.fest_poster_url || ''
   const poster = customPoster || PLATE
   const ticketUrl = settings.fest_ticket_url || ''
+  // One pour size for every beer, set once in the editor.
+  const pourMl = settings.fest_pour_ml || '150'
   const startsAt = Date.parse(settings.fest_starts_at || '2026-10-31T16:00:00+07:00')
   const left = now && Number.isFinite(startsAt) ? Math.max(0, startsAt - now) : null
   const d = left == null ? null : Math.floor(left / 86400000)
@@ -432,6 +437,7 @@ export default function FestPage({ beers, settings, live }: { beers: FestBeer[];
                   </div>
                   <div className="fest-card__stats">
                     <div><b>?</b><span>{s('abv')}</span></div>
+                    <div><b>{pourMl}</b><span>{s('pourLabel')}</span></div>
                     <div><b>?</b><span>{s('kegs')}</span></div>
                   </div>
                 </article>
@@ -452,6 +458,7 @@ export default function FestPage({ beers, settings, live }: { beers: FestBeer[];
                                 carry script, and this is what makes that inert. */}
                             {b.logos?.[j] ? <img className="fest-card__logo" src={b.logos[j]} alt="" loading="lazy" /> : null}
                             <span>{n}</span>
+                            {b.places?.[j] && <span className="fest-card__place">{b.places[j]}</span>}
                           </div>
                         </Fragment>
                       ))
@@ -464,6 +471,7 @@ export default function FestPage({ beers, settings, live }: { beers: FestBeer[];
                   <div className="fest-card__stats">
                     <div><b>{b.abv != null ? b.abv : '—'}</b><span>{s('abv')}</span></div>
                     {b.ibu != null && <div><b>{b.ibu}</b><span>IBU</span></div>}
+                    <div><b>{pourMl}</b><span>{s('pourLabel')}</span></div>
                     <div><b>{b.kegs != null ? b.kegs : '—'}</b><span>{s('kegs')}</span></div>
                   </div>
                 </article>
