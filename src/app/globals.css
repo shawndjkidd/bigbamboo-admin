@@ -443,18 +443,23 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); c
    tracks the poster at any width. Measured off the artwork: the moon sits at
    74% across, the hand belongs at 56.5% with a 22% width. */
 .fest-rise { position: absolute; inset: 0; pointer-events: none; z-index: 2; overflow: hidden; }
+/* Cut from the plate at y=47.9%, so it lands exactly back over its own pixels. */
+.fest-rise__ground-img {
+  position: absolute; left: 0; top: 47.96%; width: 100%; height: auto; z-index: 3;
+}
 .fest-rise__hand {
-  position: absolute; left: 62%; bottom: 36.5%; width: 21%; height: auto;
+  position: absolute; left: 62%; bottom: 36.5%; width: 21%; height: auto; z-index: 2;
   transform-origin: 50% 100%;
   filter: drop-shadow(0 10px 18px rgba(0,0,0,.55));
   animation: fest-burst 5.4s cubic-bezier(.36,.06,.32,1) .5s both;
 }
 /* Broken ground: a dark mound in the poster's own ink, sitting at the wrist. */
-.fest-rise__ground {
-  position: absolute; left: 60.5%; bottom: 34.5%; width: 24%; height: 4.5%;
+
+
+.fest-rise__debris {
+  position: absolute; left: 60.5%; bottom: 34.5%; width: 24%; height: 4.5%; z-index: 4;
   animation: fest-ground 1.6s ease-out .45s both;
 }
-.fest-rise__mound { fill: #1a1410; }
 .fest-rise__shards path { fill: #1a1410; transform-origin: 50% 100%; animation: fest-shard 2.4s ease-out .5s both; }
 .fest-rise__shards path[data-s="1"] { animation-duration: 2.9s; animation-delay: .7s; }
 .fest-rise__shards path[data-s="2"] { animation-duration: 2.2s; animation-delay: 1.5s; }
@@ -503,7 +508,7 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); c
 }
 /* Nothing moves for anyone who asked for that: the hand simply stands there. */
 @media (prefers-reduced-motion: reduce) {
-  .fest-rise__hand, .fest-rise__ground { animation: none; }
+  .fest-rise__hand, .fest-rise__debris { animation: none; }
   .fest-rise__dust, .fest-rise__shards { display: none; }
 }
 
@@ -534,18 +539,6 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); c
 @keyframes fest-embers {
   from { opacity: .55; transform: translateX(-50%) scaleY(1); }
   to   { opacity: .95; transform: translateX(-50%) scaleY(1.1); }
-}
-/* A torch passing: one slow pale sweep, with a long gap between passes. */
-.fest-haze__sweep {
-  position: absolute; top: -30%; left: -35%; width: 26%; height: 160%;
-  background: linear-gradient(100deg, transparent, rgba(255,246,224,.11) 45%, transparent);
-  transform: rotate(9deg);
-  animation: fest-sweep 19s ease-in-out infinite;
-}
-@keyframes fest-sweep {
-  0%, 62% { transform: translateX(0) rotate(9deg); opacity: 0; }
-  70% { opacity: 1; }
-  100% { transform: translateX(460%) rotate(9deg); opacity: 0; }
 }
 @media (prefers-reduced-motion: reduce) { .fest-haze { display: none; } }
 

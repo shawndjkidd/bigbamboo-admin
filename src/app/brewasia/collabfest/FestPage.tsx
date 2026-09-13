@@ -32,6 +32,9 @@ const BANNER = '/collabfest-banner.jpg'
 // so the skeleton can break out of the ground in front of the moon.
 const PLATE = '/images/collabfest-plate.jpg'
 const HAND = '/images/hand-beer.png'
+// The ground, cut from the plate itself so the torn edge matches exactly. It sits
+// above the hand, so the arm comes up from behind it.
+const GROUND = '/images/collabfest-ground.png'
 
 const T = {
   en: {
@@ -256,7 +259,6 @@ export default function FestPage({ beers, settings, live }: { beers: FestBeer[];
           <span className="fest-haze__fog" data-i="0" />
           <span className="fest-haze__fog" data-i="1" />
           <span className="fest-haze__fire" />
-          <span className="fest-haze__sweep" />
         </div>
         <div className="fest-topbar">
           <span className="fest-mark">BigBamBoo</span>
@@ -272,8 +274,7 @@ export default function FestPage({ beers, settings, live }: { beers: FestBeer[];
         {!customPoster && (
           <div className="fest-rise" aria-hidden="true">
             <span className="fest-rise__dust" />
-            <svg className="fest-rise__ground" viewBox="0 0 300 90" preserveAspectRatio="none">
-              <path className="fest-rise__mound" d="M6 90c18-26 34-14 46-34 9-15 20-22 33-22 10 0 17 5 24 13 8 9 15 6 24-4 11-12 22-10 32 4 9 13 19 16 30 8 12-9 24-4 34 12 8 13 20 14 33 23H6Z" />
+            <svg className="fest-rise__debris" viewBox="0 0 300 90" preserveAspectRatio="none">
               <g className="fest-rise__shards">
                 <path d="M92 56l-16-22 5 26z" data-s="0" />
                 <path d="M128 40l-9-26-8 25z" data-s="1" />
@@ -284,6 +285,7 @@ export default function FestPage({ beers, settings, live }: { beers: FestBeer[];
               </g>
             </svg>
             <img className="fest-rise__hand" src={HAND} alt="" />
+            <img className="fest-rise__ground-img" src={GROUND} alt="" />
           </div>
         )}
         <h1 className="fest-sr">{s('title')}</h1>
