@@ -585,7 +585,10 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); c
 .fest-btn--ember { background: var(--ember); color: var(--cream); border-color: var(--ink); }
 
 /* Countdown + money (dark band) ------------------------------------------ */
-.fest-countdown { }
+.fest-countdown { margin-top: clamp(8px, 2vw, 20px); }
+/* The clock leads the page now: it sits straight under the poster, so it carries its own
+   breathing room rather than inheriting spacing from whatever came before it. */
+.fest-countdown--top { margin-top: 0; padding-bottom: clamp(6px, 1.5vw, 14px); }
 .fest-count__label {
   font-family: var(--fest-display, 'Alfa Slab One'), Georgia, serif;
   font-size: clamp(24px, 4.6vw, 44px); line-height: 1; text-transform: uppercase; text-align: center;
