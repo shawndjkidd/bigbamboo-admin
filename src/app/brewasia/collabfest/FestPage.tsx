@@ -389,10 +389,11 @@ export default function FestPage({ beers, settings, live }: { beers: FestBeer[];
   const floor = (typed: string, count = 0) => (count > (parseInt(typed, 10) || Infinity) ? `${count}` : typed)
   const statCollabs = floor(s('statCollabs'), live?.collabs)
   const statBreweries = floor(s('statBreweries'), live?.breweries)
-  // Socials come from the same settings the homepage uses, so they're set in one place.
+  // Socials come from the same settings the homepage uses, so they're set in one place;
+  // empty falls back to the bar's own /bigbamboo.vn pages rather than dropping the link.
   const socials = [
-    { label: 'Instagram', href: settings.home_instagram_url || '' },
-    { label: 'Facebook', href: settings.home_facebook_url || '' },
+    { label: 'Instagram', href: settings.home_instagram_url || 'https://www.instagram.com/bigbamboo.vn' },
+    { label: 'Facebook', href: settings.home_facebook_url || 'https://www.facebook.com/bigbamboo.vn' },
     { label: 'Zalo', href: settings.fest_zalo_url || '' },
   ].filter(l => l.href)
 
