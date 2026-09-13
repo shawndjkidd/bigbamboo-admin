@@ -695,7 +695,6 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); c
 }
 .fest-band--cream .fest-h2 { color: var(--rust-2); }
 .fest-band--rust .fest-h2 { color: var(--cream); }
-.fest-band--rust .fest-cta { background: rgba(20,16,12,.28); }
 .fest-h2--glow { color: #fff4e2; text-shadow: 0 0 12px rgba(242,177,52,.5), 0 0 44px rgba(224,82,28,.45); margin-top: clamp(48px, 7vw, 78px); }
 .fest-head { display: flex; align-items: baseline; justify-content: center; gap: 16px; flex-wrap: wrap; }
 .fest-tally { font-size: 13px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: var(--rust); }
@@ -1041,15 +1040,29 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); c
 .fest-how__n { display: block; font-size: clamp(30px, 3.6vw, 42px); font-weight: 800; line-height: 1; color: rgba(240,180,41,.7); font-variant-numeric: tabular-nums; margin-bottom: 8px; }
 .fest-how__title { font-family: var(--fest-display, 'Alfa Slab One'), Georgia, serif; font-weight: 400; font-size: clamp(22px, 2.6vw, 28px); text-transform: uppercase; line-height: 1.08; }
 .fest-how__text { font-size: clamp(15.5px, 1.9vw, 17.5px); font-weight: 500; line-height: 1.55; margin: 10px 0 0; opacity: .9; }
-.fest-cta {
-  margin-top: clamp(44px, 6vw, 70px); padding: clamp(26px, 4vw, 42px); background: var(--teal-2);
-  border: 3px solid var(--amber); display: flex; align-items: center; justify-content: space-between;
-  gap: clamp(20px, 4vw, 48px); flex-wrap: wrap; text-align: left;
+/* Brewery CTA: a compact orange banner, copy left and one printed button right;
+   the button drops under the copy on phones. */
+.fest-brewcta {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+  gap: 14px clamp(18px, 3vw, 40px); max-width: 1100px; margin: clamp(26px, 3.6vw, 44px) auto 0;
+  padding: clamp(16px, 2.2vw, 24px) clamp(18px, 3vw, 34px); text-align: left;
+  background: var(--rust); color: var(--cream); border: 2px solid var(--ink); border-radius: 4px;
+  box-shadow: 5px 5px 0 rgba(20,16,12,.45);
 }
-.fest-cta > div { flex: 1 1 320px; }
-.fest-cta .fest-btn { flex: 0 0 auto; margin-top: 0; }
-.fest-cta__title { font-family: var(--fest-display, 'Alfa Slab One'), Georgia, serif; font-weight: 400; font-size: clamp(28px, 4.2vw, 42px); text-transform: uppercase; line-height: 1; color: var(--amber); }
-.fest-cta__text { font-size: clamp(16px, 2vw, 18px); font-weight: 500; line-height: 1.5; margin: 10px 0 0; max-width: 44ch; }
+.fest-brewcta__copy { flex: 1 1 300px; }
+.fest-brewcta__title {
+  margin: 0; font-family: var(--fest-display, 'Alfa Slab One'), Georgia, serif; font-weight: 400;
+  font-size: clamp(20px, 2.8vw, 30px); line-height: 1.05; text-transform: uppercase;
+}
+.fest-brewcta__text { margin: 6px 0 0; font-size: clamp(14.5px, 1.7vw, 16.5px); line-height: 1.4; }
+.fest-brewcta__btn {
+  flex: 0 0 auto; display: inline-flex; align-items: center; gap: 10px; padding: 12px 20px;
+  background: var(--amber); color: var(--pine); border: 2px solid var(--ink); border-radius: 4px;
+  box-shadow: 4px 4px 0 var(--ink); text-decoration: none; transition: transform .12s ease;
+  font-family: var(--fest-body); font-size: 15px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+}
+.fest-brewcta__btn:hover, .fest-brewcta__btn:focus-visible { transform: translate(-1px, -1px); }
+@media (prefers-reduced-motion: reduce) { .fest-brewcta__btn { transition: none; } }
 
 /* Footer band -------------------------------------------------------------- */
 .fest-footband { padding-block: clamp(36px, 5vw, 60px); text-align: center; }
@@ -1079,7 +1092,6 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); c
 .fest .fest-title { font-family: var(--fest-display, 'Alfa Slab One'), Georgia, serif; }
 @media (max-width: 640px) {
   .fest-door { flex-direction: column; align-items: flex-start; gap: 4px; }
-  .fest-cta { flex-direction: column; align-items: flex-start; }
 }
 
 /* ── Public BigBamBoo homepage (bigbamboo.app) ───────────────────────────────

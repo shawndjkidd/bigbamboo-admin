@@ -111,7 +111,7 @@ const T = {
     how3Title: 'Costumes',
     how3: 'It’s Halloween. Dress for it. The best costumes get looked after.',
     ctaTitle: 'Brewing something for the Fest?',
-    ctaText: 'Breweries: contact us for more information.',
+    ctaText: 'We’re still locking in collabs. Breweries, get in touch.',
     cta: 'Contact us',
     partnersLabel: 'Brought to you by',
     partners: 'BrewAsia × CraftCon Saigon × BigBamBoo',
@@ -185,7 +185,7 @@ const T = {
     how3Title: 'Hóa trang',
     how3: 'Halloween mà. Hãy hóa trang. Những bộ đẹp nhất sẽ được ưu ái.',
     ctaTitle: 'Bạn đang nấu bia cho Fest?',
-    ctaText: 'Nhà máy bia: liên hệ với chúng tôi để biết thêm thông tin.',
+    ctaText: 'Chúng tôi vẫn đang chốt các collab. Nhà máy bia, hãy liên hệ với chúng tôi.',
     cta: 'Liên hệ',
     partnersLabel: 'Đồng tổ chức',
     partners: 'BrewAsia × CraftCon Saigon × BigBamBoo',
@@ -626,6 +626,17 @@ export default function FestPage({ beers, settings, live }: { beers: FestBeer[];
               )
             })]}
           </TapCarousel>
+
+          {/* Brewery call-out: one compact banner, straight after the taps. */}
+          <div className="fest-brewcta">
+            <div className="fest-brewcta__copy">
+              <h3 className="fest-brewcta__title">{s('ctaTitle')}</h3>
+              <p className="fest-brewcta__text">{s('ctaText')}</p>
+            </div>
+            <a className="fest-brewcta__btn" href={settings.fest_contact_url || CONTACT_FALLBACK} target="_blank" rel="noreferrer">
+              {s('cta')} <span aria-hidden="true">→</span>
+            </a>
+          </div>
         </div>
       </section>
 
@@ -643,14 +654,6 @@ export default function FestPage({ beers, settings, live }: { beers: FestBeer[];
                 <p className="fest-how__text">{s(bk as keyof (typeof T)['en'])}</p>
               </div>
             ))}
-          </div>
-
-          <div className="fest-cta">
-            <div>
-              <div className="fest-cta__title">{s('ctaTitle')}</div>
-              <p className="fest-cta__text">{s('ctaText')}</p>
-            </div>
-            <a className="fest-btn fest-btn--ember" href={settings.fest_contact_url || CONTACT_FALLBACK} target="_blank" rel="noreferrer">{s('cta')}</a>
           </div>
         </div>
       </section>
