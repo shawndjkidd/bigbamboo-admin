@@ -550,11 +550,7 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); c
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='.5'/%3E%3C/svg%3E");
   mix-blend-mode: overlay;
 }
-.fest-band--dark::before {
-  content: ''; position: absolute; left: 50%; top: clamp(-120px, -10vw, -60px); width: min(760px, 90vw); aspect-ratio: 1;
-  transform: translateX(-50%); border-radius: 50%; z-index: -1;
-  background: radial-gradient(circle, rgba(242,177,52,.22), rgba(224,82,28,.10) 45%, transparent 70%);
-}
+
 .fest-inner { width: var(--fest-w); margin: 0 auto; padding-inline: clamp(18px, 4vw, 40px); position: relative; z-index: 1; text-align: center; }
 .fest-band--rust { background-color: var(--rust); color: var(--cream); }
 /* Continues straight out of the poster: same deep green, same grain. */
@@ -571,16 +567,19 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); c
 }
 .fest-band--pine {
   background-color: var(--pine); color: var(--cream);
-  background-image:
-    var(--paper), var(--fest-speckle),
-    radial-gradient(900px 420px at 50% -10%, rgba(242,177,52,.10), transparent 65%);
-  background-size: auto, 320px 320px, auto;
+  background-image: var(--paper), var(--fest-speckle);
+  background-size: auto, 320px 320px;
 }
 
 .fest-band--dark {
   background-color: var(--ink); color: var(--cream);
-  background-image: var(--paper), var(--fest-speckle);
-  background-size: auto, 320px 320px;
+  /* No halo behind the type - the ground is texture: print grain, speckle and a
+     fine woven tone, so the neon is the only light in the band. */
+  background-image:
+    var(--paper), var(--fest-speckle),
+    repeating-linear-gradient(90deg, rgba(243,227,195,.022) 0 1px, transparent 1px 3px),
+    repeating-linear-gradient(0deg, rgba(0,0,0,.22) 0 1px, transparent 1px 4px);
+  background-size: auto, 320px 320px, auto, auto;
 }
 .fest-band--cream { background-color: var(--cream); color: var(--ink); }
 .fest-seam { position: relative; line-height: 0; margin-top: -1px; }
@@ -621,14 +620,7 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); c
 /* Over the poster they read paler, so they stay shadows against the artwork. */
 .fest-hero .fest-bats { z-index: 2; }
 .fest-hero .fest-bat { color: rgba(0,0,0,.34); mix-blend-mode: multiply; }
-/* Kept fully inside the band: with a negative top the band clipped it and the
-   glow ended in a hard flat line across the top. */
-.fest-moon {
-  position: absolute; top: 0; left: 50%; transform: translateX(-50%);
-  width: clamp(240px, 34vw, 460px); aspect-ratio: 1; border-radius: 50%; pointer-events: none;
-  background: radial-gradient(circle at 50% 45%, rgba(242,177,52,.26), rgba(242,177,52,.09) 52%, transparent 70%);
-  filter: blur(10px);
-}
+
 .fest-web {
   position: absolute; top: 0; width: clamp(90px, 12vw, 170px); color: rgba(20,16,12,.28); pointer-events: none;
 }

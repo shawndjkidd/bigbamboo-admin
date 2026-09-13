@@ -186,9 +186,6 @@ function Palms({ side }: { side: 'left' | 'right' }) {
   )
 }
 
-function Moon() {
-  return <div className="fest-moon" aria-hidden="true" />
-}
 
 function Web({ side }: { side: 'left' | 'right' }) {
   return (
@@ -290,7 +287,6 @@ export default function FestPage({ beers, settings, live }: { beers: FestBeer[];
 
       {/* Rust band: when, where, how you get in */}
       <section className="fest-band fest-band--pine">
-        <Moon />
         <Bats />
         <div className="fest-inner">
           {d != null && (
