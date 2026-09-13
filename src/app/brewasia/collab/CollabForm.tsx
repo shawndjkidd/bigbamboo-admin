@@ -25,6 +25,16 @@ const T = {
     readyBy: 'Ready by',
     kegs: 'Kegs',
     kegsHint: 'Which event are the kegs for?',
+    eventsTitle: 'The two collab events',
+    trailName: 'Friday Ale Trail · Friday 30 October',
+    trailText: 'An extended Ale Trail across Saigon. Everyone is invited and it’s pay as you go: buy a beer at each stop and collect a digital stamp. Collabs pour at trail bars, and extra venues can buy collab kegs at a good discounted rate.',
+    festName: 'Halloween Collab Fest · Saturday 31 October at BigBamBoo',
+    festText: 'Collab kegs on our taps, plus other breweries pouring. Bring your own setup, or donate kegs and we’ll put them on the main taps. Free for BrewAsia conference attendees; ticketed for the public.',
+    beerRule: 'The beer doesn’t have to be brewed for the event, but we want something special, not your everyday beer: a collab, a Halloween theme, or a one-off.',
+    deliverTitle: 'Send all kegs to BigBamBoo',
+    deliverText: '10 An Phú, An Khánh, Thủ Đức (District 2), Ho Chi Minh City. Weekdays only, by Friday 23 October, so we can build the Ale Trail maps.',
+    pourTitle: 'Halloween Collab Fest: how do you want to pour?',
+    pours: { own_setup: 'We’ll bring our own setup', main_taps: 'We’ll donate kegs for your main taps', unsure: 'Not sure yet' } as Record<string, string>,
     event: 'Event', qty: 'How many kegs', size: 'Keg size (L)', tbd: 'Not sure yet',
     uses: { friday_ale_trail: 'Friday Ale Trail', halloween: 'Halloween Collab Fest', unassigned: 'Not sure yet' } as Record<Use, string>,
     addKegs: '+ Add kegs for another event',
@@ -55,6 +65,16 @@ const T = {
     readyBy: 'Sẵn sàng trước ngày',
     kegs: 'Keg bia',
     kegsHint: 'Keg dành cho sự kiện nào?',
+    eventsTitle: 'Hai sự kiện collab',
+    trailName: 'Friday Ale Trail · Thứ Sáu 30/10',
+    trailText: 'Ale Trail mở rộng khắp Sài Gòn. Mọi người đều được mời, trả tiền theo từng ly: mua một ly bia ở mỗi điểm và nhận một con dấu điện tử. Bia collab được phục vụ tại các quán trong trail, và các địa điểm khác có thể mua keg collab với giá ưu đãi.',
+    festName: 'Halloween Collab Fest · Thứ Bảy 31/10 tại BigBamBoo',
+    festText: 'Keg collab trên hệ thống vòi của chúng tôi, cùng các nhà máy bia khác. Bạn có thể mang hệ thống rót riêng, hoặc tài trợ keg để chúng tôi phục vụ trên vòi chính. Miễn phí cho khách tham dự hội nghị BrewAsia; khách thường mua vé.',
+    beerRule: 'Bia không bắt buộc phải nấu riêng cho sự kiện, nhưng chúng tôi muốn điều đặc biệt, không phải bia thường ngày: bia collab, chủ đề Halloween, hoặc một mẻ đặc biệt.',
+    deliverTitle: 'Gửi tất cả keg tới BigBamBoo',
+    deliverText: '10 An Phú, An Khánh, Thủ Đức (Quận 2 cũ), TP. Hồ Chí Minh. Chỉ ngày thường, trước Thứ Sáu 23/10, để chúng tôi làm bản đồ Ale Trail.',
+    pourTitle: 'Halloween Collab Fest: bạn muốn phục vụ thế nào?',
+    pours: { own_setup: 'Chúng tôi mang hệ thống rót riêng', main_taps: 'Chúng tôi tài trợ keg cho vòi chính', unsure: 'Chưa rõ' } as Record<string, string>,
     event: 'Sự kiện', qty: 'Số lượng keg', size: 'Dung tích keg (L)', tbd: 'Chưa rõ',
     uses: { friday_ale_trail: 'Friday Ale Trail', halloween: 'Halloween Collab Fest', unassigned: 'Chưa rõ' } as Record<Use, string>,
     addKegs: '+ Thêm keg cho sự kiện khác',
@@ -85,6 +105,7 @@ export default function CollabForm() {
   const [beer, setBeer] = useState({ name: '', style: '', abv: '', ready_by: '' })
   const [kegs, setKegs] = useState<KegLine[]>([blankKeg()])
   const [notes, setNotes] = useState('')
+  const [pour, setPour] = useState('unsure')
   const [website, setWebsite] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -111,7 +132,7 @@ export default function CollabForm() {
           partners: partners.map(p => p.name),
           beer_name: beer.name, beer_style: beer.style, abv: beer.abv, ready_by: beer.ready_by,
           kegs: kegs.map(k => ({ use: k.use, qty: k.qty, size_litres: k.size_litres })),
-          notes,
+          notes, fest_pour: kegs.some(k => k.use === 'halloween') ? pour : null,
         }),
       })
       const j = await r.json().catch(() => ({}))
@@ -153,6 +174,27 @@ export default function CollabForm() {
       ) : (
         <>
           <p style={{ color: 'var(--text-secondary)', lineHeight: 1.6, margin: '0 0 18px', maxWidth: 600 }}>{t.intro}</p>
+
+          <div className="donate-info">
+            <div className="donate-info__title">{t.eventsTitle}</div>
+            <div className="donate-info__grid">
+              <div>
+                <div className="donate-info__label" style={{ color: 'var(--dest-trail)' }}>{t.trailName}</div>
+                <div className="donate-info__value" style={{ fontSize: 14 }}>{t.trailText}</div>
+              </div>
+              <div>
+                <div className="donate-info__label" style={{ color: 'var(--dest-collab)' }}>{t.festName}</div>
+                <div className="donate-info__value" style={{ fontSize: 14 }}>{t.festText}</div>
+              </div>
+            </div>
+            <div className="donate-info__pass">
+              <div className="donate-info__value" style={{ fontSize: 14 }}>{t.beerRule}</div>
+            </div>
+            <div className="donate-info__pass">
+              <div className="donate-info__label">{t.deliverTitle}</div>
+              <div className="donate-info__value" style={{ fontSize: 14 }}>{t.deliverText}</div>
+            </div>
+          </div>
 
           <div className="card" style={{ padding: 20, marginBottom: 14 }}>
             <Field label={t.brewery}>
@@ -225,6 +267,15 @@ export default function CollabForm() {
               ))}
               {kegs.length < 3 && <button className="keg-add-line" onClick={() => setKegs(ks => [...ks, blankKeg(ks[ks.length - 1])])}>{t.addKegs}</button>}
             </div>
+            {kegs.some(k => k.use === 'halloween') && (
+              <div style={{ marginTop: 16 }}>
+                <Field label={t.pourTitle} last>
+                  <select className="input" value={pour} onChange={e => setPour(e.target.value)} style={{ maxWidth: 360 }}>
+                    {['own_setup', 'main_taps', 'unsure'].map(v => <option key={v} value={v}>{t.pours[v]}</option>)}
+                  </select>
+                </Field>
+              </div>
+            )}
             <div style={{ marginTop: 18 }}>
               <Field label={t.notes} last><textarea className="input" rows={3} value={notes} onChange={e => setNotes(e.target.value)} /></Field>
             </div>

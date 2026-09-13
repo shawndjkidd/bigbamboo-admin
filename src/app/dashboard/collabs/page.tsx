@@ -28,6 +28,7 @@ type Collab = {
   kegs: KegLine[]
   notes: string | null
   from_form?: boolean
+  fest_pour?: string | null
   submitted_by?: string | null
   contact_name?: string | null
   contact_phone?: string | null
@@ -40,6 +41,7 @@ type LineDraft = { key: string; use: Use; qty: string; size_litres: string; venu
 type Draft = {
   id?: string
   code?: string
+  fest_pour?: string
   from?: { by: string | null; name: string | null; phone: string | null; email: string | null; at: string | null }
   vn_partner: string
   partners: { key: string; name: string }[]
@@ -70,6 +72,7 @@ const STATUSES: { key: Status; label: string; dot: string }[] = [
   { key: 'done', label: 'Done', dot: 'var(--cal-booked-text)' },
   { key: 'dead', label: 'Dead / no response', dot: 'var(--badge-red-text)' },
 ]
+const POUR_LABEL: Record<string, string> = { own_setup: 'Own setup', main_taps: 'Donating kegs for our taps', unsure: 'Not sure yet' }
 const STATUS_LABEL = Object.fromEntries(STATUSES.map(s => [s.key, s.label])) as Record<Status, string>
 const statusDot = (s: Status) => (STATUSES.find(x => x.key === s) || STATUSES[0]).dot
 const statusOrder = (s: Status) => STATUSES.findIndex(x => x.key === s)
@@ -208,7 +211,7 @@ export default function CollabsPage() {
   function openEdit(c: Collab) {
     setConfirmDelete(false)
     setEditing({
-      id: c.id, code: c.code,
+      id: c.id, code: c.code, fest_pour: c.fest_pour || '',
       from: c.from_form ? { by: c.submitted_by || null, name: c.contact_name || null, phone: c.contact_phone || null, email: c.contact_email || null, at: c.created_at || null } : undefined,
       vn_partner: c.vn_partner || '',
       partners: (c.partners.length ? c.partners : ['']).map(name => ({ key: nk(), name })),
@@ -240,6 +243,7 @@ export default function CollabsPage() {
       status: editing.status,
       ready_by: editing.ready_by || null,
       notes: txt(editing.notes),
+      fest_pour: editing.kegs.some(l => l.use === 'halloween') ? (editing.fest_pour || null) : null,
       kegs: editing.kegs.map(l => {
         const q = num(l.qty)
         return {
@@ -276,11 +280,12 @@ export default function CollabsPage() {
 
   function exportCsv() {
     const esc = (v: unknown) => { const s = v == null ? '' : String(v); return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s }
-    const head = ['Collab ID', 'Vietnam partner', 'Collab partners', 'Country', 'Status', 'Beer', 'Style', 'ABV %', 'Ready by', 'Friday Ale Trail kegs', 'Halloween Collab Fest kegs', 'Unassigned kegs', 'Total kegs', 'Keg detail', 'Notes']
+    const head = ['Collab ID', 'Vietnam partner', 'Collab partners', 'Country', 'Status', 'Beer', 'Style', 'ABV %', 'Ready by', 'Friday Ale Trail kegs', 'Halloween Collab Fest kegs', 'Unassigned kegs', 'Total kegs', 'Keg detail', 'Halloween pour', 'Notes']
     const rows = filtered.map(c => [
       c.code, c.vn_partner, c.partners.join(' × '), countriesOf(c).join(', '), STATUS_LABEL[c.status], c.beer_name, c.beer_style, c.abv, c.ready_by,
       kegsOf(c, 'friday_ale_trail'), kegsOf(c, 'halloween'), kegsOf(c, 'unassigned'), kegsOf(c),
       c.kegs.map(l => `${l.qty ?? 'TBD'}×${l.size_litres != null ? ` ${l.size_litres}L` : ''} ${USE_LABEL[l.use]}${l.venue ? ` (${l.venue})` : ''}`).join('; '),
+      c.fest_pour ? POUR_LABEL[c.fest_pour] || c.fest_pour : '',
       c.notes,
     ])
     const csv = [head, ...rows].map(r => r.map(esc).join(',')).join('\r\n')
@@ -427,7 +432,7 @@ export default function CollabsPage() {
                           <td>
                             <div style={{ fontWeight: 600 }}>{pairingOf(c)}{c.from_form && <FormTag />}</div>
                             <div style={{ ...muted, fontSize: 12.5, marginTop: 2 }}>
-                              {[c.beer_name, c.beer_style, c.abv != null ? `${c.abv}%` : null, c.ready_by ? `ready by ${fmtDate(c.ready_by)}` : null].filter(Boolean).join(' · ') || 'Beer not decided'}
+                              {[c.beer_name, c.beer_style, c.abv != null ? `${c.abv}%` : null, c.ready_by ? `ready by ${fmtDate(c.ready_by)}` : null, c.fest_pour && c.fest_pour !== 'unsure' ? `Fest: ${POUR_LABEL[c.fest_pour] || c.fest_pour}` : null].filter(Boolean).join(' · ') || 'Beer not decided'}
                             </div>
                           </td>
                           <td style={{ color: cs.length ? 'var(--text-secondary)' : 'var(--text-muted)', whiteSpace: 'nowrap' }}>{cs.join(', ') || '—'}</td>
@@ -564,6 +569,15 @@ export default function CollabsPage() {
             <button onClick={addLine} className="keg-add-line">+ Add event</button>
           </div>
 
+          {editing.kegs.some(l => l.use === 'halloween') && (
+            <Field label="Halloween Collab Fest: how they pour">
+              <select className="input" value={editing.fest_pour || ''} onChange={e => setDraft({ fest_pour: e.target.value })} style={{ maxWidth: 320 }}>
+                <option value="">Not set</option>
+                {Object.entries(POUR_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+              </select>
+            </Field>
+          )}
+
           <Field label="Notes">
             <textarea className="input" rows={3} value={editing.notes} onChange={e => setDraft({ notes: e.target.value })} />
           </Field>
@@ -618,7 +632,7 @@ function FormTag() {
 const collabUrl = () => `${typeof window !== 'undefined' ? window.location.origin : ''}/brewasia/collab`
 const collabMessage = () => `Hi,
 
-We're lining up collab beers for BrewAsia 2026: the Friday Ale Trail and the Halloween Collab Fest.
+We're lining up collab beers for BrewAsia 2026:\n\n- Friday Ale Trail, Friday 30 October: an extended Ale Trail across Saigon, with collabs pouring at trail bars and other venues.\n- Halloween Collab Fest, Saturday 31 October at BigBamBoo: bring your own setup or donate kegs for our taps.\n\nWe're looking for something special: a collab, a Halloween theme, or a one-off. All kegs come to BigBamBoo by Friday 23 October (weekdays only).
 
 If you're brewing a collab (or want us to match you with a partner), please send us the details here. It takes 2 minutes:
 ${collabUrl()}
@@ -630,7 +644,7 @@ BigBamBoo
 
 Xin chào,
 
-Chúng tôi đang tổng hợp các loại bia collab cho BrewAsia 2026: Friday Ale Trail và Halloween Collab Fest.
+Chúng tôi đang tổng hợp các loại bia collab cho BrewAsia 2026:\n\n- Friday Ale Trail, Thứ Sáu 30/10: Ale Trail mở rộng khắp Sài Gòn, bia collab phục vụ tại các quán trong trail và địa điểm khác.\n- Halloween Collab Fest, Thứ Bảy 31/10 tại BigBamBoo: mang hệ thống rót riêng hoặc tài trợ keg cho vòi của chúng tôi.\n\nChúng tôi tìm những loại bia đặc biệt: collab, chủ đề Halloween, hoặc mẻ đặc biệt. Tất cả keg gửi tới BigBamBoo trước Thứ Sáu 23/10 (chỉ ngày thường).
 
 Nếu bạn đang nấu bia collab (hoặc muốn chúng tôi kết nối đối tác), vui lòng gửi thông tin tại đây (chỉ mất 2 phút):
 ${collabUrl()}

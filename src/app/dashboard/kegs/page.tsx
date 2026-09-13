@@ -1141,7 +1141,7 @@ Thank you for donating kegs to the BrewAsia conference on Tuesday 27 October!
 Please tell us what you're sending here (it takes 2 minutes):
 ${signupUrl()}
 
-The form has our delivery address and dates: Monday 5 – Friday 23 October, weekdays only. Donate at least 2 kegs for a free visitor pass (every 2 kegs = 1 pass). Feel free to send more if you'd like more of your styles on draft at the conference.
+The form has our delivery address and dates: Monday 5 – Friday 23 October, weekdays only. The minimum donation is 2 kegs, and every donating brewery gets 1 free visitor pass. Feel free to send more if you'd like more of your styles on draft at the conference.
 
 Cheers,
 BigBamBoo
@@ -1155,7 +1155,7 @@ Cảm ơn bạn đã tài trợ keg bia cho hội nghị BrewAsia vào Thứ Ba 
 Vui lòng điền thông tin keg tại đây (chỉ mất 2 phút):
 ${signupUrl()}
 
-Trong form có địa chỉ và thời gian giao keg: Thứ Hai 5/10 – Thứ Sáu 23/10, chỉ ngày thường. Tài trợ tối thiểu 2 keg để nhận 1 vé khách tham quan miễn phí (cứ 2 keg = 1 vé). Bạn cứ thoải mái gửi thêm nếu muốn có nhiều dòng bia hơn tại hội nghị.
+Trong form có địa chỉ và thời gian giao keg: Thứ Hai 5/10 – Thứ Sáu 23/10, chỉ ngày thường. Tài trợ tối thiểu 2 keg, mỗi nhà máy bia tài trợ nhận 1 vé khách tham quan miễn phí. Bạn cứ thoải mái gửi thêm nếu muốn có nhiều dòng bia hơn tại hội nghị.
 
 Trân trọng,
 BigBamBoo`

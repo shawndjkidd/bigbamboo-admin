@@ -93,6 +93,7 @@ export async function POST(req: NextRequest) {
     status: names.length > 1 ? 'matched' : 'interested',
     ready_by, kegs,
     notes: notes ? `From collab form: ${notes}` : null,
+    fest_pour: ['own_setup', 'main_taps', 'unsure'].includes(body?.fest_pour) ? body.fest_pour : null,
     from_form: true, submitted_by: sender.name, contact_name, contact_phone, contact_email,
   }).select('code').single()
   if (error || !data) return NextResponse.json({ error: 'save' }, { status: 500 })

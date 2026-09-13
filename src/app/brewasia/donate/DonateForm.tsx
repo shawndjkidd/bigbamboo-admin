@@ -13,7 +13,7 @@ type Lang = 'en' | 'vi'
 // Shipping + visitor-pass details shown to breweries. Edit here if anything changes.
 const SHIP = {
   mapsUrl: 'https://www.google.com/maps/search/BigBamBoo+An+Ph%C3%BA+Th%E1%BB%A7+%C4%90%E1%BB%A9c',
-  kegsPerPass: 2,
+  minKegs: 2, // minimum donation; every donating brewery gets 1 pass (Shawn, 2026-09-11)
 }
 type Keg = {
   id: string; beer_name: string | null; beer_style: string | null; abv: number | null; ibu: number | null; size_litres: number | null
@@ -73,8 +73,9 @@ const T = {
     shipDates: 'Monday 5 October – Friday 23 October 2026, weekdays only (no weekend deliveries)',
     shipLast: 'Last day to deliver: Friday 23 October. The conference is Tuesday 27 October.',
     passTitle: 'Visitor passes',
-    passRule: 'Donate at least 2 kegs to get a free visitor pass to the BrewAsia conference (every 2 kegs = 1 pass). Feel free to send more: more kegs means more of your styles on draft at the conference.',
-    passCount: (n: number) => n ? `That’s ${n} visitor ${n === 1 ? 'pass' : 'passes'} for your team.` : 'Donate 2 kegs to get a visitor pass.',
+    passRule: 'The minimum donation is 2 kegs, and every donating brewery gets 1 free visitor pass to the BrewAsia conference. Feel free to send more: more kegs means more of your styles on draft at the conference.',
+    needMin: 'The minimum donation is 2 kegs.',
+    passCount: (n: number): string => n ? 'That’s 1 visitor pass for your team.' : 'Add at least 2 kegs to get your visitor pass.',
   },
   vi: {
     eyebrow: 'BrewAsia 2026 · Hội nghị',
@@ -127,8 +128,9 @@ const T = {
     shipDates: 'Thứ Hai 5/10 – Thứ Sáu 23/10/2026, chỉ ngày thường (không giao cuối tuần)',
     shipLast: 'Hạn cuối giao keg: Thứ Sáu 23/10. Hội nghị diễn ra Thứ Ba 27/10.',
     passTitle: 'Vé khách tham quan',
-    passRule: 'Tài trợ tối thiểu 2 keg để nhận 1 vé khách tham quan miễn phí hội nghị BrewAsia (cứ 2 keg = 1 vé). Bạn cứ thoải mái gửi thêm: càng nhiều keg, càng nhiều dòng bia của bạn được phục vụ tại hội nghị.',
-    passCount: (n: number) => n ? `Bạn nhận được ${n} vé khách tham quan.` : 'Tài trợ 2 keg để nhận 1 vé khách tham quan.',
+    passRule: 'Tài trợ tối thiểu 2 keg, và mỗi nhà máy bia tài trợ nhận 1 vé khách tham quan miễn phí hội nghị BrewAsia. Bạn cứ thoải mái gửi thêm: càng nhiều keg, càng nhiều dòng bia của bạn được phục vụ tại hội nghị.',
+    needMin: 'Tài trợ tối thiểu 2 keg.',
+    passCount: (n: number): string => n ? 'Bạn nhận được 1 vé khách tham quan.' : 'Thêm tối thiểu 2 keg để nhận vé khách tham quan.',
   },
 }
 
@@ -202,6 +204,7 @@ export default function DonateForm({ token: initialToken }: { token?: string }) 
     if (!contact.name.trim() || (!contact.phone.trim() && !contact.email.trim())) return setError(t.needContact)
     const filled = lines.filter(l => l.beer_name.trim())
     if (!filled.length) return setError(t.needBeer)
+    if (totalKegs < SHIP.minKegs) return setError(t.needMin)
     setSaving(true)
     try {
       const r = await fetch(shared ? '/api/public/keg-form' : `/api/public/keg-form/${encodeURIComponent(token || '')}`, {
@@ -278,7 +281,7 @@ export default function DonateForm({ token: initialToken }: { token?: string }) 
                   </div>
                 ))}
               </div>
-              <ShipInfo t={t} passes={Math.floor(totalKegs / SHIP.kegsPerPass)} showCount />
+              <ShipInfo t={t} passes={totalKegs >= SHIP.minKegs ? 1 : 0} showCount />
               {editLink && (
                 <div className="donate-editlink">
                   <div style={{ fontWeight: 600, color: 'var(--text)', fontSize: 14 }}>{t.editLinkTitle}</div>
@@ -299,7 +302,7 @@ export default function DonateForm({ token: initialToken }: { token?: string }) 
             <>
               <p style={{ color: 'var(--text-secondary)', lineHeight: 1.6, margin: '0 0 18px', maxWidth: 600 }}>{shared ? t.introShared : t.intro}</p>
 
-              <ShipInfo t={t} passes={Math.floor(totalKegs / SHIP.kegsPerPass)} showCount={totalKegs > 0} />
+              <ShipInfo t={t} passes={totalKegs >= SHIP.minKegs ? 1 : 0} showCount={totalKegs > 0} />
 
               <div className="card" style={{ padding: 20, marginBottom: 14 }}>
                 {shared && (
