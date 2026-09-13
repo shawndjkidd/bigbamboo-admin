@@ -412,13 +412,13 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); c
 
 /* ── BrewAsia public event page ───────────────────────────── */
 .fest {
-  --ink: #120604; --ink-2: #24100b; --line: rgba(255,214,170,.14);
-  --gold: #f0a52c; --gold-soft: rgba(240,165,44,.16); --violet: #d4441a;
-  --fg: #fdf1e2; --fg-2: rgba(253,241,226,.76); --fg-3: rgba(253,241,226,.52);
+  --ink: #1a0a06; --ink-2: #35150c; --line: rgba(255,222,180,.18);
+  --gold: #f2b134; --gold-soft: rgba(242,177,52,.18); --violet: #e0521c;
+  --fg: #fdf0dd; --fg-2: rgba(253,240,221,.80); --fg-3: rgba(253,240,221,.58);
   background:
-    radial-gradient(1100px 620px at 12% -14%, rgba(240,165,44,.24), transparent 60%),
-    radial-gradient(900px 560px at 94% 0%, rgba(212,68,26,.34), transparent 62%),
-    radial-gradient(700px 700px at 50% 108%, rgba(212,68,26,.18), transparent 60%),
+    radial-gradient(1200px 680px at 10% -16%, rgba(242,177,52,.34), transparent 62%),
+    radial-gradient(1000px 620px at 96% -4%, rgba(200,64,27,.55), transparent 64%),
+    radial-gradient(820px 760px at 52% 110%, rgba(224,82,28,.28), transparent 62%),
     var(--ink);
   color: var(--fg); min-height: 100vh;
 }
@@ -431,7 +431,7 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); c
 .fest-title {
   font-size: clamp(54px, 13vw, 132px); line-height: .86; font-weight: 900; letter-spacing: -.045em;
   text-transform: uppercase; margin: 16px 0 20px; max-width: 11ch;
-  background: linear-gradient(178deg, #fff3d6 4%, var(--gold) 52%, #b4470f 100%);
+  background: linear-gradient(178deg, #fff6de 4%, var(--gold) 46%, #d2551a 100%);
   -webkit-background-clip: text; background-clip: text; color: transparent;
   filter: drop-shadow(0 6px 0 rgba(0,0,0,.45)) drop-shadow(0 0 46px rgba(240,165,44,.30));
 }
