@@ -120,16 +120,11 @@ export async function POST(req: NextRequest) {
     from_form: true, submitted_by: sender.name, contact_name, contact_phone, contact_email,
   }
 
-  let { data, error } = await svc.from('brewasia_collabs').insert(collabRow).select('id, code').single()
-  // 42703 is "column does not exist": the ibu migration hasn't been applied yet. Saving
-  // the collab without it beats turning a working public form into a 500. Remove this
-  // fallback once the migration is in — the sign-up matters more than the field.
-  if (error && (error as any).code === '42703') {
-    console.warn('[collab-form] brewasia_collabs.ibu missing — saving without it')
-    const { ibu: _drop, ...withoutIbu } = collabRow
-    ;({ data, error } = await svc.from('brewasia_collabs').insert(withoutIbu).select('id, code').single())
+  const { data, error } = await svc.from('brewasia_collabs').insert(collabRow).select('id, code').single()
+  if (error || !data) {
+    console.error('[collab-form] insert failed', error)
+    return NextResponse.json({ error: 'save' }, { status: 500 })
   }
-  if (error || !data) return NextResponse.json({ error: 'save' }, { status: 500 })
 
   const logosSaved = await attachLogos(svc, logoFiles, names.map(n => n.name))
 
