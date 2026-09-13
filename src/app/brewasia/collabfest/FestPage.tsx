@@ -561,7 +561,7 @@ export default function FestPage({ beers, settings, live }: { beers: FestBeer[];
                   <div className="fest-card__stats">
                     <div><b>{b.abv != null ? b.abv : '—'}</b><span>{s('abv')}</span></div>
                     {b.ibu != null && <div><b>{b.ibu}</b><span>IBU</span></div>}
-                    <div><b>{pourMl}</b><span>{s('pourLabel')}</span></div>
+                    <div className="fest-card__pour"><b>{pourMl}</b><span>{s('pourLabel')}</span></div>
                     <div><b>{b.kegs != null ? b.kegs : '—'}</b><span>{s('kegs')}</span></div>
                   </div>
                 </article>
@@ -583,7 +583,7 @@ export default function FestPage({ beers, settings, live }: { beers: FestBeer[];
                   </div>
                   <div className="fest-card__stats">
                     <div><b>?</b><span>{s('abv')}</span></div>
-                    <div><b>{pourMl}</b><span>{s('pourLabel')}</span></div>
+                    <div className="fest-card__pour"><b>{pourMl}</b><span>{s('pourLabel')}</span></div>
                     <div><b>?</b><span>{s('kegs')}</span></div>
                   </div>
                 </article>

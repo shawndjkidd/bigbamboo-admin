@@ -947,6 +947,9 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); c
   text-align: center;
 }
 .fest-card__stats > div { flex: 1; }
+/* Pour size is the same on every card and the Tickets section already says it, so on
+   phones it gives its column back to ABV, IBU and kegs rather than wrapping the row. */
+@media (max-width: 520px) { .fest-card__pour { display: none; } }
 .fest-card__stats b {
   display: block; font-family: var(--fest-display, 'Alfa Slab One'), Georgia, serif; font-weight: 400;
   font-size: clamp(21px, 2.7vw, 29px); line-height: 1.1; letter-spacing: .03em;
