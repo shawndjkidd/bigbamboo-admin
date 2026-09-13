@@ -17,7 +17,7 @@ export const revalidate = 0
 
 export const metadata: Metadata = {
   title: 'BigBamBoo — Tropical Bar & Venue, An Phú Saigon',
-  description: 'Cold drinks. Breezy nights. No bad vibes. Draft cocktails, craft beer and American comfort food with a Hawaiian twist in An Phú, Thủ Đức.',
+  description: 'Cold drinks. Breezy nights. No bad vibes. Draft cocktails, craft beer and American comfort food with a Hawaiian twist in An Phú, Ho Chi Minh City.',
   robots: { index: true, follow: true },
 }
 
