@@ -128,6 +128,16 @@ function Tear({ fill, flip }: { fill: string; flip?: boolean }) {
   )
 }
 
+// A palm silhouette, straight out of the poster's skyline.
+function Palms({ side }: { side: 'left' | 'right' }) {
+  return (
+    <svg className={`fest-palms fest-palms--${side}`} viewBox="0 0 120 150" aria-hidden="true">
+      <path fill="currentColor" d="M57 150c1-38 3-63 6-84l6 1c-4 21-6 46-7 83Z" />
+      <path fill="currentColor" d="M63 62c-11-11-25-16-40-14 12-7 29-5 41 4-7-13-20-21-35-23 15-5 32 2 41 15-1-15-9-28-22-36 17 2 29 16 30 33 7-13 21-21 37-21-13 6-23 17-26 31 12-8 27-10 41-4-16-1-31 6-40 18Z" />
+    </svg>
+  )
+}
+
 function Bats() {
   return (
     <svg className="fest-bats" viewBox="0 0 220 60" aria-hidden="true">
@@ -252,7 +262,7 @@ export default function FestPage({ beers, settings }: { beers: FestBeer[]; setti
       </section>
 
       {/* Cream band: the beer */}
-      <div className="fest-seam"><Tear fill="#f3e3c3" /></div>
+      <div className="fest-seam"><Palms side="left" /><Palms side="right" /><Tear fill="#f3e3c3" /></div>
       <section className="fest-band fest-band--cream">
         <div className="fest-inner">
           <div className="fest-head">

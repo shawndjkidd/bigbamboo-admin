@@ -432,7 +432,15 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); c
 
 /* Hero ------------------------------------------------------------------ */
 .fest-hero { position: relative; background: var(--ink); }
-.fest-banner { display: block; width: 100%; height: auto; }
+.fest-banner {
+  display: block; width: 100%; height: auto;
+  max-height: min(78vh, 760px); object-fit: cover; object-position: center;
+}
+.fest-hero::after {
+  content: ''; position: absolute; left: 0; right: 0; bottom: -1px; height: 22%;
+  background: linear-gradient(180deg, transparent, rgba(20,16,12,.55) 70%, var(--rust));
+  pointer-events: none;
+}
 .fest-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .fest-topbar {
   position: absolute; inset: 0 0 auto 0; z-index: 2;
@@ -448,13 +456,29 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); c
 .fest-lang[data-on="true"] { background: var(--amber); border-color: var(--amber); color: var(--ink); }
 
 /* Bands ----------------------------------------------------------------- */
-.fest-band { position: relative; padding-block: clamp(44px, 7vw, 84px); background-image: var(--paper); }
+.fest-band { position: relative; padding-block: clamp(44px, 7vw, 84px); background-image: var(--paper); isolation: isolate; }
+.fest::after {
+  content: ''; position: fixed; inset: 0; z-index: 5; pointer-events: none; opacity: .22;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='.5'/%3E%3C/svg%3E");
+  mix-blend-mode: overlay;
+}
+.fest-band--dark::before {
+  content: ''; position: absolute; left: 50%; top: clamp(-120px, -10vw, -60px); width: min(760px, 90vw); aspect-ratio: 1;
+  transform: translateX(-50%); border-radius: 50%; z-index: -1;
+  background: radial-gradient(circle, rgba(242,177,52,.22), rgba(224,82,28,.10) 45%, transparent 70%);
+}
 .fest-inner { width: var(--fest-w); margin: 0 auto; padding-inline: clamp(16px, 3vw, 28px); position: relative; z-index: 1; }
 .fest-band--rust { background-color: var(--rust); color: var(--cream); }
 .fest-band--dark { background-color: var(--ink); color: var(--cream); }
 .fest-band--cream { background-color: var(--cream); color: var(--ink); }
 .fest-band--teal { background-color: var(--teal); color: var(--cream); }
-.fest-seam { line-height: 0; margin-top: -1px; }
+.fest-seam { position: relative; line-height: 0; margin-top: -1px; }
+.fest-palms {
+  position: absolute; bottom: 0; width: clamp(90px, 14vw, 190px); color: rgba(20,16,12,.7);
+  pointer-events: none; z-index: 2;
+}
+.fest-palms--left { left: clamp(-10px, 1vw, 24px); }
+.fest-palms--right { right: clamp(-10px, 1vw, 24px); transform: scaleX(-1); }
 .fest-tear { display: block; width: 100%; height: clamp(22px, 3.4vw, 42px); }
 .fest-bats { position: absolute; top: clamp(10px, 2vw, 22px); right: clamp(10px, 3vw, 40px); width: clamp(120px, 18vw, 220px); color: rgba(20,16,12,.55); pointer-events: none; }
 
@@ -542,7 +566,8 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); c
   text-shadow: 0 0 6px rgba(108,243,214,.8), 0 0 20px rgba(108,243,214,.45);
 }
 .fest-neon {
-  position: relative; display: inline-block; font-weight: 800; letter-spacing: -.04em;
+  position: relative; display: inline-block;
+  font-family: var(--fest-display, 'Alfa Slab One'), Georgia, serif; font-weight: 400; letter-spacing: .01em;
   font-size: clamp(64px, 19vw, 190px); line-height: .86; font-variant-numeric: tabular-nums; color: #eafff9;
   text-shadow: 0 0 8px rgba(108,243,214,.95), 0 0 28px rgba(108,243,214,.7), 0 0 70px rgba(108,243,214,.45);
   animation: fest-flicker 7s infinite steps(1, end);
@@ -571,7 +596,8 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); c
   margin-top: 24px; padding: clamp(22px, 4vw, 34px); border: 3px solid var(--amber); background: rgba(242,177,52,.10);
 }
 .fest-door__amount {
-  font-size: clamp(58px, 14vw, 132px); line-height: .84; font-weight: 800; letter-spacing: -.04em;
+  font-family: var(--fest-display, 'Alfa Slab One'), Georgia, serif; font-weight: 400;
+  font-size: clamp(58px, 14vw, 132px); line-height: .84; letter-spacing: .01em;
   font-variant-numeric: tabular-nums; color: #fff3d2;
   text-shadow: 0 0 8px rgba(242,177,52,.95), 0 0 30px rgba(242,177,52,.6), 0 0 72px rgba(242,177,52,.38);
   animation: fest-flicker 11s infinite steps(1, end);
@@ -581,7 +607,8 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); c
 .fest-price { border: 2px solid rgba(243,227,195,.28); padding: 26px; background: var(--ink-2); }
 .fest-price__kicker { font-size: 11.5px; font-weight: 800; letter-spacing: .2em; text-transform: uppercase; color: var(--ember); margin-bottom: 10px; }
 .fest-price__amount {
-  font-size: clamp(50px, 8.4vw, 82px); line-height: .9; font-weight: 800; letter-spacing: -.04em;
+  font-family: var(--fest-display, 'Alfa Slab One'), Georgia, serif; font-weight: 400;
+  font-size: clamp(50px, 8.4vw, 82px); line-height: .9; letter-spacing: .01em;
   font-variant-numeric: tabular-nums; color: #eafff9;
   text-shadow: 0 0 7px rgba(108,243,214,.9), 0 0 26px rgba(108,243,214,.55), 0 0 60px rgba(108,243,214,.34);
 }
