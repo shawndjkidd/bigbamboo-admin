@@ -44,7 +44,7 @@ export default async function CollabFestPage() {
     const svc = getServiceClient()
     const [{ data: collabs }, { data: rows }, { data: producers }] = await Promise.all([
       svc.from('brewasia_collabs').select('code, vn_partner, partners, beer_name, beer_style, abv, status, kegs, fest_pour').order('code'),
-      svc.from('site_settings').select('key, value').like('key', 'fest_%'),
+      svc.from('site_settings').select('key, value').or('key.like.fest_%,key.like.home_%'),
       svc.from('brewasia_producers').select('name, country'),
     ])
     settings = Object.fromEntries((rows || []).map((r: any) => [String(r.key), String(r.value ?? '')]))

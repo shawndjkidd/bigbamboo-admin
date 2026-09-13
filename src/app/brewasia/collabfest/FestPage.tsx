@@ -164,36 +164,6 @@ function Palms({ side }: { side: 'left' | 'right' }) {
   )
 }
 
-// Three marks for the three draws, cut like the poster's engravings.
-function DrawMark({ i }: { i: number }) {
-  if (i === 0) {
-    return (
-      <svg className="fest-draw__mark" viewBox="0 0 100 100" aria-hidden="true">
-        <g stroke="currentColor" strokeWidth="4.5" strokeLinecap="round" fill="none">
-          <path d="M50 10v80M18 40h64" />
-        </g>
-        <path fill="currentColor" d="M50 22c7 0 12 5 13 11 1 5-1 9-4 12 7 3 12 8 16 15l17-7c3-1 5 2 2 5l-15 11c3 8 4 17 3 26-1 11-4 22-9 31l13 9c2 2 0 5-2 4l-17-6c-4 5-9 9-14 11l2 15c0 3-4 4-5 1l-5-14-5 14c-1 3-5 2-5-1l2-15c-5-2-10-6-14-11l-17 6c-2 1-4-2-2-4l13-9c-5-9-8-20-9-31-1-9 0-18 3-26L9 58c-3-3-1-6 2-5l17 7c4-7 9-12 16-15-3-3-5-7-4-12 1-6 6-11 13-11Z" />
-      </svg>
-    )
-  }
-  if (i === 1) {
-    return (
-      <svg className="fest-draw__mark" viewBox="0 0 100 100" aria-hidden="true">
-        <path fill="currentColor" d="M14 18h72L54 56v26h16v6H30v-6h16V56L14 18Zm14 8 12 14h20l12-14H28Z" />
-        <path fill="currentColor" d="M74 12c4-6 7-3 10-7 2 4 5 1 7 7-4-1-6 3-7 5-2-2-3-6-10-5Z" />
-      </svg>
-    )
-  }
-  return (
-    <svg className="fest-draw__mark" viewBox="0 0 100 100" aria-hidden="true">
-      <circle cx="46" cy="54" r="34" fill="none" stroke="currentColor" strokeWidth="5" />
-      <circle cx="46" cy="54" r="12" fill="none" stroke="currentColor" strokeWidth="5" />
-      <circle cx="46" cy="54" r="4" fill="currentColor" />
-      <path fill="currentColor" d="M74 10h6v40a10 10 0 1 1-6-9V10Z" />
-    </svg>
-  )
-}
-
 function Moon() {
   return <div className="fest-moon" aria-hidden="true" />
 }
@@ -250,7 +220,6 @@ export default function FestPage({ beers, settings, live }: { beers: FestBeer[];
     { label: 'Instagram', href: settings.home_instagram_url || '' },
     { label: 'Facebook', href: settings.home_facebook_url || '' },
     { label: 'Zalo', href: settings.fest_zalo_url || '' },
-    { label: 'WhatsApp', href: settings.fest_contact_url || CONTACT_FALLBACK },
   ].filter(l => l.href)
 
   return (
@@ -303,8 +272,7 @@ export default function FestPage({ beers, settings, live }: { beers: FestBeer[];
 
           <ul className="fest-draws">
             {[s('draw1'), s('draw2'), s('draw3')].map((d, i) => (
-              <li key={d} className="fest-draw">
-                <DrawMark i={i} />
+              <li key={d} className="fest-draw" data-i={i}>
                 <span className="fest-draw__text">{d}</span>
               </li>
             ))}
