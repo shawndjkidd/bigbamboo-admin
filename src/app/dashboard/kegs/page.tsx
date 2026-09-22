@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { SignupLink } from '@/components/brewasia/SignupLink'
+import { BrewAsiaNotice, READ_ONLY, READ_ONLY_MSG } from '@/components/brewasia/BrewAsiaReadOnly'
 import { Choice, Field, Modal, Pill, StatCard, fmtL, todayKey, type Tone } from '@/components/brewasia/ui'
 
 // BrewAsia keg tracker. Every keg we have: who it's from (donated or bought),
@@ -311,6 +312,7 @@ export default function KegsPage() {
 
   // ── writes ──
   async function patch(id: string, changes: Partial<Keg>) {
+    if (READ_ONLY) { showToast(READ_ONLY_MSG); return }
     const before = kegs.find(k => k.id === id)
     if (!before) return
     setKegs(p => p.map(k => (k.id === id ? { ...k, ...changes } : k)))
@@ -374,6 +376,7 @@ export default function KegsPage() {
   }
 
   async function scan(files: File[], text = '') {
+    if (READ_ONLY) { showToast(READ_ONLY_MSG); return }
     const usable = files.filter(f => SCAN_TYPES.test(f.type)).slice(0, 6)
     if (!usable.length && !text.trim()) {
       setScanNote({ tone: 'err', text: 'That isn’t an image. Drop a screenshot, a photo or a PDF.' })
@@ -422,11 +425,11 @@ export default function KegsPage() {
     return t.includes('Files') || t.includes('text/plain')
   }
   const dropHandlers = {
-    onDragEnter: (e: React.DragEvent) => { if (!hasDropContent(e) || editing?.id || splitting) return; e.preventDefault(); setDragging(true) },
-    onDragOver: (e: React.DragEvent) => { if (!hasDropContent(e) || editing?.id || splitting) return; e.preventDefault(); e.dataTransfer.dropEffect = 'copy' },
+    onDragEnter: (e: React.DragEvent) => { if (READ_ONLY || !hasDropContent(e) || editing?.id || splitting) return; e.preventDefault(); setDragging(true) },
+    onDragOver: (e: React.DragEvent) => { if (READ_ONLY || !hasDropContent(e) || editing?.id || splitting) return; e.preventDefault(); e.dataTransfer.dropEffect = 'copy' },
     onDragLeave: (e: React.DragEvent) => { if (e.relatedTarget && (e.currentTarget as Node).contains(e.relatedTarget as Node)) return; setDragging(false) },
     onDrop: (e: React.DragEvent) => {
-      if (editing?.id || splitting) return
+      if (READ_ONLY || editing?.id || splitting) return
       e.preventDefault()
       setDragging(false)
       const files = Array.from(e.dataTransfer.files || [])
@@ -449,6 +452,7 @@ export default function KegsPage() {
   })
 
   function openNew(from?: Keg) {
+    if (READ_ONLY) { showToast(READ_ONLY_MSG); return }
     setConfirmDelete(false)
     setScanNote(null)
     setScanQueue([])
@@ -526,6 +530,7 @@ export default function KegsPage() {
   }
 
   async function saveDraft() {
+    if (READ_ONLY) { showToast(READ_ONLY_MSG); return }
     if (!editing) return
     const brewery = editing.brewery.trim()
     if (!brewery) return showToast('Brewery is required.')
@@ -583,6 +588,7 @@ export default function KegsPage() {
   }
 
   async function deleteDraft() {
+    if (READ_ONLY) { showToast(READ_ONLY_MSG); return }
     if (!editing?.id) return
     setSaving(true)
     const { error } = await supabase.from('brewasia_kegs').delete().eq('id', editing.id)
@@ -594,6 +600,7 @@ export default function KegsPage() {
   }
 
   function openSplit(k: Keg) {
+    if (READ_ONLY) { showToast(READ_ONLY_MSG); return }
     setSplitting(k)
     setSplitQty('1')
     setSplitDest(DESTS.find(d => d.key !== k.destination && d.key !== 'unassigned')?.key || 'unassigned')
@@ -601,6 +608,7 @@ export default function KegsPage() {
   }
 
   async function doSplit() {
+    if (READ_ONLY) { showToast(READ_ONLY_MSG); return }
     const k = splitting
     if (!k) return
     const n = Math.floor(Number(splitQty) || 0)
@@ -656,6 +664,7 @@ export default function KegsPage() {
 
   return (
     <div className="keg-wrap" {...(loadError ? {} : dropHandlers)}>
+      <BrewAsiaNotice page="kegs" />
       {dragging && (
         <div className="keg-drop-overlay" aria-hidden>
           <div className="keg-drop-box">
@@ -676,7 +685,7 @@ export default function KegsPage() {
           <button className="btn-outline" onClick={exportCsv} disabled={!filtered.length} style={{ fontSize: 13 }}>
             Export CSV{anyFilter && filtered.length ? ` (${filtered.length})` : ''}
           </button>
-          <button className="btn-accent" onClick={() => openNew()} disabled={!!loadError}>Add kegs</button>
+          {!READ_ONLY && <button className="btn-accent" onClick={() => openNew()} disabled={!!loadError}>Add kegs</button>}
         </div>
       </div>
 
@@ -723,7 +732,7 @@ export default function KegsPage() {
             })}
           </div>
 
-          <DonationForms producers={producers} kegs={kegs} onRefresh={load} />
+          {!READ_ONLY && <DonationForms producers={producers} kegs={kegs} onRefresh={load} />}
 
           {returnsDue > 0 && (
             <button
@@ -759,7 +768,7 @@ export default function KegsPage() {
             <div className="card" style={{ padding: 28, textAlign: 'center' }}>
               <div style={{ fontWeight: 600, color: 'var(--text)', marginBottom: 6 }}>No kegs yet</div>
               <div style={{ ...muted, fontSize: 13, marginBottom: 16 }}>Add kegs as breweries promise, sell or deliver them.</div>
-              <button className="btn-accent" onClick={() => openNew()}>Add kegs</button>
+              {!READ_ONLY && <button className="btn-accent" onClick={() => openNew()}>Add kegs</button>}
             </div>
           ) : !filtered.length ? (
             <div className="card" style={{ padding: 28, ...muted, fontSize: 13, textAlign: 'center' }}>
@@ -808,7 +817,7 @@ export default function KegsPage() {
                               <DestCell k={k} venues={venuesBy[k.destination] || []} onDest={d => setDestination(k, d)} onVenue={v => patch(k.id, { destination_venue: v })} />
                             </td>
                             <td onClick={e => e.stopPropagation()} style={{ textAlign: 'right' }}>
-                              {k.qty > 1 && (
+                              {!READ_ONLY && k.qty > 1 && (
                                 <button className="btn-outline" onClick={() => openSplit(k)} style={{ height: 30, padding: '0 11px', fontSize: 12 }}>
                                   Split
                                 </button>
@@ -843,7 +852,7 @@ export default function KegsPage() {
                           <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap', alignItems: 'flex-start' }}>
                             <StatusPill value={k.status} onChange={s => setStatus(k, s)} />
                             <DestCell k={k} venues={venuesBy[k.destination] || []} onDest={d => setDestination(k, d)} onVenue={v => patch(k.id, { destination_venue: v })} />
-                            {k.qty > 1 && (
+                            {!READ_ONLY && k.qty > 1 && (
                               <button className="btn-outline" onClick={() => openSplit(k)} style={{ height: 38, padding: '0 14px', fontSize: 13, marginLeft: 'auto' }}>
                                 Split
                               </button>
@@ -1008,7 +1017,7 @@ export default function KegsPage() {
             <textarea className="input" rows={2} value={editing.notes} onChange={e => setEditing(f => f && { ...f, notes: e.target.value })} />
           </Field>
 
-          <div style={{ display: 'flex', gap: 8, marginTop: 6, flexWrap: 'wrap' }}>
+          {READ_ONLY ? <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 6 }}>View only. {READ_ONLY_MSG}</div> : <div style={{ display: 'flex', gap: 8, marginTop: 6, flexWrap: 'wrap' }}>
             <button className="btn-accent" onClick={saveDraft} disabled={saving} style={{ flex: 1 }}>
               {saving ? 'Saving…' : editing.id ? 'Save' : addLabel(editing.lines)}
             </button>
@@ -1017,7 +1026,7 @@ export default function KegsPage() {
                 ? <button className="btn-red" onClick={deleteDraft} disabled={saving}>Confirm delete</button>
                 : <button className="btn-outline" onClick={() => setConfirmDelete(true)} disabled={saving}>Delete</button>
             )}
-          </div>
+          </div>}
         </Modal>
       )}
 
@@ -1239,6 +1248,7 @@ function StatusPill({ value, onChange }: { value: Status; onChange: (s: Status) 
       dot={statusDot(value)}
       options={STATUSES.map(s => ({ value: s, label: STATUS_LABEL[s] }))}
       onChange={v => onChange(v as Status)}
+      disabled={READ_ONLY}
     />
   )
 }
@@ -1255,6 +1265,7 @@ function DestCell({ k, venues, onDest, onVenue }: { k: Keg; venues: string[]; on
         tone={destTone(k.destination)}
         options={DESTS.map(d => ({ value: d.key, label: d.label }))}
         onChange={v => onDest(v as Destination)}
+        disabled={READ_ONLY}
       />
       {needsVenue(k.destination) && (
         <>
@@ -1264,6 +1275,7 @@ function DestCell({ k, venues, onDest, onVenue }: { k: Keg; venues: string[]; on
             value={venue}
             aria-label={venueLabel(k.destination)}
             placeholder={venueHint(k.destination)}
+            readOnly={READ_ONLY}
             onChange={e => setVenue(e.target.value)}
             onBlur={() => { const v = venue.trim() || null; if (v !== (k.destination_venue || null)) onVenue(v) }}
             onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}

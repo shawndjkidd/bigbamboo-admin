@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { FestEditor } from '@/components/brewasia/FestEditor'
 import { SignupLink } from '@/components/brewasia/SignupLink'
+import { BrewAsiaNotice, READ_ONLY, READ_ONLY_MSG } from '@/components/brewasia/BrewAsiaReadOnly'
 import { Field, Modal, Pill, StatCard, fmtL, todayKey, type Tone } from '@/components/brewasia/ui'
 
 // BrewAsia Collab Hub: who's brewing with who, how far along it is, and how many kegs
@@ -200,6 +201,7 @@ export default function CollabsPage() {
 
   // ── writes ──
   async function setStatus(c: Collab, status: Status) {
+    if (READ_ONLY) { showToast(READ_ONLY_MSG); return }
     const before = c.status
     setCollabs(p => p.map(x => (x.id === c.id ? { ...x, status } : x)))
     const { error } = await supabase.from('brewasia_collabs').update({ status }).eq('id', c.id)
@@ -209,7 +211,7 @@ export default function CollabsPage() {
     }
   }
 
-  function openNew() { setConfirmDelete(false); setEditing(blankDraft()) }
+  function openNew() { if (READ_ONLY) { showToast(READ_ONLY_MSG); return } setConfirmDelete(false); setEditing(blankDraft()) }
 
   function openEdit(c: Collab) {
     setConfirmDelete(false)
@@ -233,6 +235,7 @@ export default function CollabsPage() {
   const removeLine = (key: string) => setEditing(f => f && { ...f, kegs: f.kegs.filter(l => l.key !== key) })
 
   async function saveDraft() {
+    if (READ_ONLY) { showToast(READ_ONLY_MSG); return }
     if (!editing) return
     const partners = editing.partners.map(p => p.name.trim()).filter(Boolean)
     if (!editing.vn_partner.trim() && !partners.length) return showToast('Add at least one brewery.')
@@ -272,6 +275,7 @@ export default function CollabsPage() {
   }
 
   async function deleteDraft() {
+    if (READ_ONLY) { showToast(READ_ONLY_MSG); return }
     if (!editing?.id) return
     setSaving(true)
     const { error } = await supabase.from('brewasia_collabs').delete().eq('id', editing.id)
@@ -305,6 +309,7 @@ export default function CollabsPage() {
 
   return (
     <div className="keg-wrap">
+      <BrewAsiaNotice page="collabs" />
       {/* ── Header ── */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap' }}>
         <div>
@@ -318,7 +323,7 @@ export default function CollabsPage() {
           <button className="btn-outline" onClick={exportCsv} disabled={!filtered.length} style={{ fontSize: 13 }}>
             Export CSV{anyFilter && filtered.length ? ` (${filtered.length})` : ''}
           </button>
-          <button className="btn-accent" onClick={openNew} disabled={!!loadError}>Add collab</button>
+          {!READ_ONLY && <button className="btn-accent" onClick={openNew} disabled={!!loadError}>Add collab</button>}
         </div>
       </div>
 
@@ -405,7 +410,7 @@ export default function CollabsPage() {
             <div className="card" style={{ padding: 28, textAlign: 'center' }}>
               <div style={{ fontWeight: 600, color: 'var(--text)', marginBottom: 6 }}>No collabs yet</div>
               <div style={{ ...muted, fontSize: 13, marginBottom: 16 }}>Add each pairing: the Vietnam brewery, who they’re brewing with, and where the kegs go.</div>
-              <button className="btn-accent" onClick={openNew}>Add collab</button>
+              {!READ_ONLY && <button className="btn-accent" onClick={openNew}>Add collab</button>}
             </div>
           ) : !filtered.length ? (
             <div className="card" style={{ padding: 28, ...muted, fontSize: 13, textAlign: 'center' }}>
@@ -589,12 +594,12 @@ export default function CollabsPage() {
             <textarea className="input" rows={3} value={editing.notes} onChange={e => setDraft({ notes: e.target.value })} />
           </Field>
 
-          <div style={{ display: 'flex', gap: 8, marginTop: 6, flexWrap: 'wrap' }}>
+          {READ_ONLY ? <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 6 }}>View only. {READ_ONLY_MSG}</div> : <div style={{ display: 'flex', gap: 8, marginTop: 6, flexWrap: 'wrap' }}>
             <button className="btn-accent" onClick={saveDraft} disabled={saving} style={{ flex: 1 }}>{saving ? 'Saving…' : editing.id ? 'Save' : 'Add collab'}</button>
             {editing.id && (confirmDelete
               ? <button className="btn-red" onClick={deleteDraft} disabled={saving}>Confirm delete</button>
               : <button className="btn-outline" onClick={() => setConfirmDelete(true)} disabled={saving}>Delete</button>)}
-          </div>
+          </div>}
         </Modal>
       )}
 
@@ -611,7 +616,7 @@ function fmtDate(d: string) {
 function StatusSelect({ value, onChange }: { value: Status; onChange: (s: Status) => void }) {
   return (
     <Pill label="Status" value={value} tone={{ fg: 'var(--text-secondary)', bg: 'transparent', bd: 'var(--border)' }} dot={statusDot(value)}
-      options={STATUSES.map(s => ({ value: s.key, label: s.label }))} onChange={v => onChange(v as Status)} />
+      options={STATUSES.map(s => ({ value: s.key, label: s.label }))} onChange={v => onChange(v as Status)} disabled={READ_ONLY} />
   )
 }
 
@@ -674,7 +679,7 @@ function CollabSignup({ collabs, onRefresh }: { collabs: Collab[]; onRefresh: ()
         </span>
         <span aria-hidden style={{ marginLeft: 'auto', color: 'var(--text-muted)', fontSize: 12 }}>{open ? 'Hide' : 'Show'}</span>
       </button>
-      {open && <SignupLink url={collabUrl()} emailText={collabMessage()} onRefresh={onRefresh} />}
+      {open && !READ_ONLY && <SignupLink url={collabUrl()} emailText={collabMessage()} onRefresh={onRefresh} />}
       {open && (
         <div className="donate-panel__invite" style={{ borderTop: '1px solid var(--border-light)' }}>
           <input className="input" readOnly value={festUrl()} onFocus={e => e.currentTarget.select()} aria-label="Public event page" style={{ fontSize: 13 }} />

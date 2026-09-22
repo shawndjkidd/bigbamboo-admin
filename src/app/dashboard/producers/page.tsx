@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { Field, Modal, Pill, todayKey } from '@/components/brewasia/ui'
+import { BrewAsiaNotice, READ_ONLY, READ_ONLY_MSG } from '@/components/brewasia/BrewAsiaReadOnly'
 
 // BrewAsia producers: every brewery we're talking to about collabs, local (Vietnam)
 // and international, with where they are, who to talk to, and how interested they are.
@@ -86,6 +87,7 @@ export default function ProducersPage() {
   // posts to, so staff and breweries go through one validator and one bucket rather than
   // a second staff-only path that could drift from it.
   async function setLogo(p: Producer, logo_url: string | null) {
+    if (READ_ONLY) { showToast(READ_ONLY_MSG); return }
     const { error } = await supabase.from('brewasia_producers').update({ logo_url }).eq('id', p.id)
     if (error) { showToast(error.message); return }
     setProducers(prev => prev.map(x => (x.id === p.id ? { ...x, logo_url } : x)))
@@ -129,13 +131,14 @@ export default function ProducersPage() {
   ].filter(s => s.list.length)
 
   async function setInterest(p: Producer, interest: Interest) {
+    if (READ_ONLY) { showToast(READ_ONLY_MSG); return }
     const before = p.interest
     setProducers(list => list.map(x => (x.id === p.id ? { ...x, interest } : x)))
     const { error } = await supabase.from('brewasia_producers').update({ interest }).eq('id', p.id)
     if (error) { setProducers(list => list.map(x => (x.id === p.id ? { ...x, interest: before } : x))); showToast('Could not save. Try again.') }
   }
 
-  function openNew() { setConfirmDelete(false); setEditing(blank()) }
+  function openNew() { if (READ_ONLY) { showToast(READ_ONLY_MSG); return } setConfirmDelete(false); setEditing(blank()) }
   function openEdit(p: Producer) {
     setConfirmDelete(false)
     setEditing({
@@ -146,6 +149,7 @@ export default function ProducersPage() {
   const setDraft = (patch: Partial<Draft>) => setEditing(f => f && { ...f, ...patch })
 
   async function saveDraft() {
+    if (READ_ONLY) { showToast(READ_ONLY_MSG); return }
     if (!editing) return
     const name = editing.name.trim()
     if (!name) return showToast('Name is required.')
@@ -168,6 +172,7 @@ export default function ProducersPage() {
   }
 
   async function deleteDraft() {
+    if (READ_ONLY) { showToast(READ_ONLY_MSG); return }
     if (!editing?.id) return
     setSaving(true)
     const { error } = await supabase.from('brewasia_producers').delete().eq('id', editing.id)
@@ -195,6 +200,7 @@ export default function ProducersPage() {
 
   return (
     <div className="keg-wrap">
+      <BrewAsiaNotice page="producers" />
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap' }}>
         <div>
           <div className="page-title">BrewAsia producers</div>
@@ -205,7 +211,7 @@ export default function ProducersPage() {
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <Link href="/dashboard/collabs" className="btn-outline" style={{ fontSize: 13, textDecoration: 'none' }}>Collabs</Link>
           <button className="btn-outline" onClick={exportCsv} disabled={!filtered.length} style={{ fontSize: 13 }}>Export CSV</button>
-          <button className="btn-accent" onClick={openNew} disabled={!!loadError}>Add producer</button>
+          {!READ_ONLY && <button className="btn-accent" onClick={openNew} disabled={!!loadError}>Add producer</button>}
         </div>
       </div>
 
@@ -377,12 +383,12 @@ export default function ProducersPage() {
               In collabs: {collabsFor(editing.name).map(c => `${c.code} (${[c.vn_partner, ...c.partners].filter(Boolean).join(' × ')})`).join(', ')}
             </div>
           )}
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {READ_ONLY ? <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>View only. {READ_ONLY_MSG}</div> : <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <button className="btn-accent" onClick={saveDraft} disabled={saving} style={{ flex: 1 }}>{saving ? 'Saving…' : editing.id ? 'Save' : 'Add producer'}</button>
             {editing.id && (confirmDelete
               ? <button className="btn-red" onClick={deleteDraft} disabled={saving}>Confirm delete</button>
               : <button className="btn-outline" onClick={() => setConfirmDelete(true)} disabled={saving}>Delete</button>)}
-          </div>
+          </div>}
         </Modal>
       )}
 
@@ -394,7 +400,7 @@ export default function ProducersPage() {
 function InterestSelect({ value, onChange }: { value: Interest; onChange: (i: Interest) => void }) {
   return (
     <Pill label="Interest" value={value} tone={{ fg: 'var(--text-secondary)', bg: 'transparent', bd: 'var(--border)' }} dot={interestDot(value)}
-      options={INTERESTS.map(i => ({ value: i.key, label: i.label }))} onChange={v => onChange(v as Interest)} />
+      options={INTERESTS.map(i => ({ value: i.key, label: i.label }))} onChange={v => onChange(v as Interest)} disabled={READ_ONLY} />
   )
 }
 
@@ -425,15 +431,15 @@ function LogoCell({ producer, onChange }: { producer: Producer; onChange: (url: 
       {producer.logo_url
         ? <img src={producer.logo_url} alt="" style={{ height: 26, maxWidth: 90, objectFit: 'contain', background: 'var(--bg-subtle)', borderRadius: 4, padding: 2 }} />
         : <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>—</span>}
-      <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--accent)', cursor: busy ? 'default' : 'pointer' }}>
+      {!READ_ONLY && <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--accent)', cursor: busy ? 'default' : 'pointer' }}>
         {busy ? 'Uploading…' : producer.logo_url ? 'Replace' : 'Add'}
         <input
           type="file" hidden disabled={busy}
           accept="image/png,image/jpeg,image/webp,image/svg+xml"
           onChange={e => { const f = e.target.files?.[0]; e.currentTarget.value = ''; if (f) upload(f) }}
         />
-      </label>
-      {producer.logo_url && (
+      </label>}
+      {!READ_ONLY && producer.logo_url && (
         <button
           onClick={() => onChange(null)} disabled={busy}
           style={{ all: 'unset', fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', cursor: 'pointer' }}

@@ -39,21 +39,38 @@ const FONTS: Record<string, string> = {
   'Bungee': 'Bungee',
 }
 
+const BREWASIA_FEED = 'https://brewasia.madesmpl.com/api/public/collab-fest'
+
+async function fetchBrewAsia(): Promise<{ collabs: any[]; producers: any[] }> {
+  try {
+    const res = await fetch(BREWASIA_FEED, { next: { revalidate: 60 } })
+    if (!res.ok) return { collabs: [], producers: [] }
+    const j = await res.json()
+    if (!j?.ok) return { collabs: [], producers: [] }
+    return {
+      collabs: Array.isArray(j.collabs) ? j.collabs : [],
+      producers: Array.isArray(j.producers) ? j.producers : [],
+    }
+  } catch {
+    return { collabs: [], producers: [] }
+  }
+}
+
 export default async function CollabFestPage() {
   let beers: FestBeer[] = []
   let settings: FestSettings = {}
   let live: FestLive = { collabs: 0, breweries: 0, countries: 0, countryList: '' }
   try {
     const svc = getServiceClient()
-    const [{ data: collabs }, { data: rows }, { data: producers }] = await Promise.all([
-      // Tap order: fest_order first (unset goes last), then code.
-      svc.from('brewasia_collabs')
-        .select('code, vn_partner, partners, beer_name, beer_style, abv, ibu, status, kegs, fest_pour, fest_order, announced_at, kicked_at')
-        .order('fest_order', { ascending: true, nullsFirst: false })
-        .order('code'),
+    // Until 31 October 2026 the collabs and producers come from Brew Asia, the single
+    // source of truth for BrewAsia. It returns them already in tap order (fest_order,
+    // then code) with Lead and Dead left out. The page copy stays in site_settings here.
+    // If Brew Asia can't be reached the page still renders, just with an empty tap list.
+    const [brewAsia, { data: rows }] = await Promise.all([
+      fetchBrewAsia(),
       svc.from('site_settings').select('key, value').or('key.like.fest_%,key.like.home_%'),
-      svc.from('brewasia_producers').select('name, country, city, logo_url'),
     ])
+    const { collabs, producers } = brewAsia
     settings = Object.fromEntries((rows || []).map((r: any) => [String(r.key), String(r.value ?? '')]))
 
     // The headline numbers are counted from the Collabs page rather than typed by hand:

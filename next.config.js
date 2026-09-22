@@ -13,6 +13,18 @@ const nextConfig = {
     ],
   },
 
+  // Until 31 October 2026 the BrewAsia brewery forms live on Brew Asia. The old form
+  // code stays in the repo; these just send every old link (private edit tokens too,
+  // which were imported) to the matching Brew Asia form.
+  async redirects() {
+    const BA = 'https://brewasia.madesmpl.com'
+    return [
+      { source: '/brewasia/collab', destination: `${BA}/forms/collab`, permanent: true },
+      { source: '/brewasia/donate', destination: `${BA}/forms/kegs`, permanent: false },
+      { source: '/brewasia/donate/:token', destination: `${BA}/forms/kegs/:token`, permanent: false },
+    ]
+  },
+
   // Host-based rewrites so jukebox.bigbamboo.app gets clean short URLs
   // while admin.bigbamboo.app keeps the full /jukebox/* paths.
   async rewrites() {

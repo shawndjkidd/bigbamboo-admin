@@ -8,13 +8,14 @@ export type Tone = { fg: string; bg: string; bd: string }
 export const todayKey = () => new Date().toLocaleDateString('en-CA')
 export const fmtL = (n: number) => new Intl.NumberFormat('en-US', { maximumFractionDigits: 1 }).format(n)
 
-export function Pill({ value, options, tone, onChange, label, dot }: {
+export function Pill({ value, options, tone, onChange, label, dot, disabled }: {
   value: string
   options: { value: string; label: string }[]
   tone: Tone
   onChange: (v: string) => void
   label: string
   dot?: string
+  disabled?: boolean
 }) {
   return (
     <span className="keg-pill-wrap" style={{ color: tone.fg }}>
@@ -23,6 +24,7 @@ export function Pill({ value, options, tone, onChange, label, dot }: {
         className={dot ? 'keg-pill keg-pill--dot' : 'keg-pill'}
         aria-label={label}
         value={value}
+        disabled={disabled}
         onChange={e => onChange(e.target.value)}
         style={{ background: tone.bg, borderColor: tone.bd, color: tone.fg }}
       >
