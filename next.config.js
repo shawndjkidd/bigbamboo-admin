@@ -22,6 +22,11 @@ const nextConfig = {
       { source: '/brewasia/collab', destination: `${BA}/forms/collab`, permanent: true },
       { source: '/brewasia/donate', destination: `${BA}/forms/kegs`, permanent: true },
       { source: '/brewasia/donate/:token', destination: `${BA}/forms/kegs/:token`, permanent: true },
+      // The Collab Fest page lives on Brew Asia now. The old page is still in this
+      // repo but nothing reaches it: one page, so it cannot drift out of date.
+      // /collabfest is here too because that short link has been shared.
+      { source: '/brewasia/collabfest', destination: `${BA}/collabfest`, permanent: true },
+      { source: '/collabfest', destination: `${BA}/collabfest`, permanent: true },
     ]
   },
 
