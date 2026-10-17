@@ -14,6 +14,10 @@ onto it. Later, the same backend gets wired into the POS.
   So: a shared **core** (P&L, cash, payables, labor, recipes/COGS, stock, staff/roles) plus
   **modules** switched on per venue (Square, Eats365, bank feeds, jukebox, public site, distribution).
 - Changes go live at one venue first, then the rest after checking.
+- **Barcade must not be disrupted.** Do not change ~/barcade-admin, its Vercel project or its Supabase
+  DB. The shared codebase is built and proven on BigBamBoo first. Barcade only moves over later, when
+  Shawn says so, after side-by-side checks, with an instant rollback ready.
+- Code stays in Shawn's personal GitHub (shawndjkidd). Shawn owns it personally; no move needed.
 
 ## The two repos (both on this Mac)
 - `~/barcade-admin` — Barcade Taiwan. Live: admin.barcadetaiwan.com. Supabase `hpswhsrjygumqzkgqizl`.
