@@ -62,9 +62,23 @@ brewasia.madesmpl.com kept. DB tables `brewasia_*` left alone — do not drop.
    scale, needs the RLS rewrite). Give effort for each.
 6. Stop. Shawn approves before any code moves.
 
+## Autonomy (Shawn, 17 Oct: "I want to be hands-off")
+Run the whole job without waiting for Shawn, in phases:
+1. Gap map (Step 1) -> write docs/BARCADE-GAP-MAP.md. Don't stop; pick the recommended options
+   (one shared codebase, one database per customer, core + modules, POS adapters).
+2. Build the shared core in ~/bigbamboo-admin from Barcade's code, with venue settings and modules.
+   BigBamBoo keeps every feature it has today (Square, site, jukebox, club, calendar, etc).
+3. Fix the open security items from Barcade's audit in the new code.
+4. Ship to BigBamBoo in small steps: `npm run build` must pass, commit, `git push origin main`
+   (you may push to bigbamboo-admin yourself), wait for Vercel READY, test admin.bigbamboo.app live.
+   If the live check fails, revert that commit and push again.
+5. After each phase, write docs/where-we-are/YYYY-MM-DD-<topic>.md.
+Only stop and ask Shawn for: anything that deletes or rewrites BigBamBoo production data
+(additive migrations are fine; take a backup first), anything needing his logins or money,
+or a choice that can't be undone. Barcade: read only, always.
+
 ## Rules
 - Very concise. End every reply with what Shawn needs to do + your questions.
-- Shawn pushes. When ready, end with a fenced `cd ~/bigbamboo-admin && git push origin main` block.
 - Before any UI change: mockup now vs after, wait for yes.
 - Buttons squarish (radius ~4), never pills. Gold not orange.
 - Never touch Barcade's production DB or repo while mapping — read only.
