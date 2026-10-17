@@ -5,19 +5,17 @@
 // that record stays the single source of truth and the inbox can never show a stale
 // version of it. Nothing emails anyone; the dashboard is the inbox.
 
-export type InboxKind = 'keg_signup' | 'collab_signup' | 'club_signup' | 'ticket_order'
+export type InboxKind = 'club_signup' | 'ticket_order'
 export type InboxStatus = 'new' | 'read' | 'done'
 
 // Which tab owns each kind of record, and what to call it on screen. Shared by the
 // Overview list and the sidebar dots so they can never disagree about where a thing goes.
 export const KINDS: Record<InboxKind, { label: string; href: string }> = {
-  keg_signup:    { label: 'Keg sign-ups',    href: '/dashboard/kegs' },
-  collab_signup: { label: 'Collab sign-ups', href: '/dashboard/collabs' },
   club_signup:   { label: 'Drinks Club',     href: '/dashboard/club' },
   ticket_order:  { label: 'Ticket orders',   href: '/dashboard/tickets' },
 }
 
-export const KIND_ORDER: InboxKind[] = ['keg_signup', 'collab_signup', 'ticket_order', 'club_signup']
+export const KIND_ORDER: InboxKind[] = ['ticket_order', 'club_signup']
 
 export function kindLabel(kind: string): string {
   return (KINDS as Record<string, { label: string }>)[kind]?.label || kind.replace(/_/g, ' ')

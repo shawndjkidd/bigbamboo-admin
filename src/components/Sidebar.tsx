@@ -17,11 +17,6 @@ interface NavItem {
 const NAV: NavItem[] = [
   { href: '/dashboard', label: 'Overview' },
 
-  { href: '#brewasia', label: 'BrewAsia', section: true },
-  { href: '/dashboard/kegs', label: 'Kegs' },
-  { href: '/dashboard/collabs', label: 'Collabs' },
-  { href: '/dashboard/producers', label: 'Producers' },
-
   { href: '#financials', label: 'Financials', section: true },
   { href: '/dashboard/ops', label: 'Dashboard' },
   { href: '/dashboard/ops/today', label: 'Daily Sales' },

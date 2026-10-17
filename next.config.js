@@ -13,17 +13,14 @@ const nextConfig = {
     ],
   },
 
-  // The BrewAsia brewery forms have moved to Brew Asia (madesmpl) for good. The old form
-  // code stays in the repo; these just send every old link (private edit tokens too,
-  // which were imported) to the matching Brew Asia form.
+  // BrewAsia lives on Brew Asia (madesmpl) for good; its code was removed from this repo
+  // on 17 Oct 2026. These keep every old shared link (edit tokens too) working.
   async redirects() {
     const BA = 'https://brewasia.madesmpl.com'
     return [
       { source: '/brewasia/collab', destination: `${BA}/forms/collab`, permanent: true },
       { source: '/brewasia/donate', destination: `${BA}/forms/kegs`, permanent: true },
       { source: '/brewasia/donate/:token', destination: `${BA}/forms/kegs/:token`, permanent: true },
-      // The Collab Fest page lives on Brew Asia now. The old page is still in this
-      // repo but nothing reaches it: one page, so it cannot drift out of date.
       // /collabfest is here too because that short link has been shared.
       { source: '/brewasia/collabfest', destination: `${BA}/collabfest`, permanent: true },
       { source: '/collabfest', destination: `${BA}/collabfest`, permanent: true },
