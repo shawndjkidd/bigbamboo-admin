@@ -17,6 +17,10 @@ onto it. Later, the same backend gets wired into the POS.
 - **Barcade must not be disrupted.** Do not change ~/barcade-admin, its Vercel project or its Supabase
   DB. The shared codebase is built and proven on BigBamBoo first. Barcade only moves over later, when
   Shawn says so, after side-by-side checks, with an instant rollback ready.
+- **POS = a plug-in connector.** The core never talks to a POS directly. Each POS (Square today,
+  Eats365 at Barcade, a new Vietnamese POS coming — name TBC) is an adapter that reads sales and
+  writes them into one standard sales format. Switching POS = swapping the adapter. Design for this
+  in the gap map: say where Barcade's Eats365 and BigBamBoo's Square code would sit as adapters.
 - Code stays in Shawn's personal GitHub (shawndjkidd). Shawn owns it personally; no move needed.
 
 ## The two repos (both on this Mac)
