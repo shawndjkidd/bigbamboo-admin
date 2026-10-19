@@ -64,15 +64,18 @@ async function run(req: Request) {
   }
 
   const ops = () => getServiceClient().schema('ops')
-  const [lastR, monthR, syncR, connR, unmappedR, lastOkR] = await Promise.all([
+  // Seven full days before today, for Command Centre's Money box.
+  const weekAgo = new Date(Date.parse(`${today}T00:00:00Z`) - 7 * 86_400_000).toISOString().slice(0, 10)
+  const [lastR, monthR, syncR, connR, unmappedR, lastOkR, weekR] = await Promise.all([
     ops().from('sales_daily').select('occurred_on,net').order('occurred_on', { ascending: false }).limit(1),
     ops().from('sales_daily').select('net').gte('occurred_on', today.slice(0, 8) + '01'),
     ops().from('square_sync_log').select('status,started_at,error_message').order('started_at', { ascending: false }).limit(1),
     ops().from('square_connections').select('expires_at').limit(1),
     ops().from('pos_item_map').select('item_name').is('recipe_id', null).or('ignore.is.null,ignore.eq.false'),
     ops().from('square_sync_log').select('started_at').eq('status', 'success').order('started_at', { ascending: false }).limit(1),
+    ops().from('sales_daily').select('net').gte('occurred_on', weekAgo).lt('occurred_on', today),
   ])
-  const readError = [lastR, monthR, syncR, connR, unmappedR, lastOkR].find(r => r.error)?.error?.message
+  const readError = [lastR, monthR, syncR, connR, unmappedR, lastOkR, weekR].find(r => r.error)?.error?.message
   if (readError) {
     await cc({ endpoint: 'failures', key: 'read-failed', body: { operation: 'daily report', message: `Couldn't read BigBamBoo data: ${readError}` } })
     return NextResponse.json({ ok: false, error: readError }, { status: 500 })
@@ -99,6 +102,7 @@ async function run(req: Request) {
 
   const calls: (Call | null)[] = [
     ...(last ? [{ endpoint: 'metrics', key: 'm-last', body: { label: 'Last trading night', value: `${vnd(Number(last.net))} (${shortDate(last.occurred_on)})`, kind: 'num', sensitivity: 'financial' } }] : []),
+    { endpoint: 'metrics', key: 'm-week', body: { label: 'Sales last 7 days', value: vnd(((weekR.data as any[]) || []).reduce((n, x) => n + Number(x.net || 0), 0)), kind: 'num', sensitivity: 'financial' } },
     { endpoint: 'metrics', key: 'm-month', body: { label: 'Sales this month', value: vnd(monthSales), kind: 'num', sensitivity: 'financial' } },
     { endpoint: 'metrics', key: 'm-sync', body: { label: 'Square sync', value: syncBroken ? (sync ? `Problem (${sync.status})` : 'Never ran') : 'OK', kind: 'stat', tone: syncBroken ? 'bad' : 'ok' } },
     { endpoint: 'metrics', key: 'm-unmapped', body: { label: 'Menu items not linked', value: String(unmapped.length), kind: 'num', tone: unmapped.length ? 'warn' : null } },
