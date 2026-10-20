@@ -1,17 +1,4 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "crons": [
-    {
-      "path": "/api/admin/jukebox/cron/expire",
-      "schedule": "0 4 * * *"
-    },
-    {
-      "path": "/api/admin/ops/square/sync?days=2",
-      "schedule": "0 21 * * *"
-    },
-    {
-      "path": "/api/cron/command-centre",
-      "schedule": "0 22 * * *"
-    }
-  ]
+  "crons": []
 }
